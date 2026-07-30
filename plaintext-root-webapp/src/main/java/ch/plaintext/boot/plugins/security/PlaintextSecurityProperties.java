@@ -76,6 +76,49 @@ public class PlaintextSecurityProperties {
     private PageGuardProperties pageGuard = new PageGuardProperties();
 
     /**
+     * Session-Bootstrap aus einem ApiToken ({@code GET /token-login?token=}), Karte 309.
+     * Siehe {@link TokenLoginProperties}.
+     */
+    private TokenLoginProperties tokenLogin = new TokenLoginProperties();
+
+    /**
+     * Konfiguration von {@code /token-login} ({@code ch.plaintext.boot.web.TokenLoginController}).
+     *
+     * <p><b>Hintergrund (Karte 309):</b> Der Endpunkt tauscht ein ApiToken gegen eine vollwertige
+     * Browser-Session. Bis hierher liess er sich weder betrieblich abschalten, noch wertete er den
+     * {@code scope}-Claim des Tokens aus: ein fuer Kiosk/Automation ausgestelltes {@code READ}-Token
+     * lieferte an {@code /token-login} eine Browser-Session mit den <em>vollen</em> DB-Rollen des
+     * Token-Besitzers. Beides ist hier konfigurierbar geworden.</p>
+     */
+    @Data
+    public static class TokenLoginProperties {
+
+        /**
+         * Not-Aus fuer {@code /token-login}. Bei {@code false} antwortet der Endpunkt wie bei einem
+         * ungueltigen Token (Redirect auf die Login-Seite).
+         *
+         * <p>Default bewusst {@code true}: der Endpunkt ist ein produktiv gedachter Anmeldeweg
+         * (Ersatz fuer {@code /autologin}), und ein stiller Default-Aus haette bestehende Links
+         * ohne Vorwarnung gebrochen. Die eigentliche Absicherung leisten der erzwungene Scope
+         * ({@link #getRequiredScopes()}) sowie Lockout-/2FA-Gate. Deployments ohne Token-Login-Nutzer
+         * sollten das Flag dennoch auf {@code false} setzen.</p>
+         */
+        private boolean enabled = true;
+
+        /**
+         * Scopes, die ein Token tragen muss, um daraus eine Browser-Session bauen zu duerfen
+         * (Claim-Wert case-insensitiv). Ein Token <b>ohne</b> {@code scope}-Claim wird immer
+         * abgelehnt — fail-closed, analog zum {@code McpBearerTokenFilter} (Karte 312).
+         *
+         * <p>{@code SESSION} ist der dafuer vorgesehene, minimale Scope; {@code ADMIN} ist
+         * zugelassen, damit bestehende Vollzugriffs-Tokens weiter funktionieren. {@code READ} und
+         * {@code EINTRAGEN} reichen bewusst NICHT: sie werden fuer maschinelle MCP-Zugriffe
+         * ausgestellt und sollen keine interaktive Session mit allen DB-Rollen ergeben.</p>
+         */
+        private List<String> requiredScopes = new ArrayList<>(List.of("SESSION", "ADMIN"));
+    }
+
+    /**
      * Konfiguration des Seiten-Zugriffsschutzes
      * ({@code ch.plaintext.boot.security.PageAccessGuardService} /
      * {@code PageAccessGuardFilter}).

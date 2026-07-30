@@ -405,7 +405,10 @@ public class ApiTokenService implements IApiTokenService {
         apiTokenRepository.save(t);
 
         log.debug("Token validated successfully for userId={}, mandat={}", jwt.userId(), jwt.mandat());
-        return Optional.of(new ApiTokenValidationResult(jwt.userId(), jwt.mandat(), t.getUserEmail(), jwt.tokenName(), jwt.expiresAt()));
+        // Karte 309: scope-Claim mitgeben, damit Aufrufer (z.B. TokenLoginController) die
+        // Berechtigungs-Beschraenkung des Tokens ueberhaupt auswerten koennen.
+        return Optional.of(new ApiTokenValidationResult(jwt.userId(), jwt.mandat(), t.getUserEmail(),
+                jwt.tokenName(), jwt.expiresAt(), jwt.scope()));
     }
 
     /**

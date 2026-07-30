@@ -86,6 +86,19 @@ public interface IApiTokenService {
      * @param email     the email address associated with the token
      * @param tokenName the user-defined name of the token
      * @param expiresAt the expiration time of the token
+     * @param scope     Berechtigungs-Scope aus dem {@code scope}-Claim ({@code READ}/{@code EINTRAGEN}/
+     *                  {@code ADMIN}/{@code SESSION}), oder {@code null} bei Alt-Tokens ohne Claim.
+     *                  <b>Karte 309:</b> bis hierher wurde der Claim von {@code JwtValidationResult} zwar
+     *                  gelesen, aber nicht durchgereicht — Aufrufer ausserhalb des MCP-Filters (z.B.
+     *                  {@code TokenLoginController}) konnten die Scope-Beschraenkung deshalb gar nicht
+     *                  auswerten und vergaben pauschal die vollen DB-Rollen des Token-Besitzers.
      */
-    record ApiTokenValidationResult(Long userId, String mandat, String email, String tokenName, Instant expiresAt) {}
+    record ApiTokenValidationResult(Long userId, String mandat, String email, String tokenName, Instant expiresAt,
+                                    String scope) {
+
+        /** Bequemlichkeits-Konstruktor fuer Aufrufer ohne Scope-Information (Alt-Verhalten). */
+        public ApiTokenValidationResult(Long userId, String mandat, String email, String tokenName, Instant expiresAt) {
+            this(userId, mandat, email, tokenName, expiresAt, null);
+        }
+    }
 }
