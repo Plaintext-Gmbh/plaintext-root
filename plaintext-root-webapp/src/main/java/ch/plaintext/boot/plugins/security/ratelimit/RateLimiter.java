@@ -13,8 +13,24 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class RateLimiter {
 
+    /**
+     * Default-Obergrenze fuer die Anzahl gleichzeitig gehaltener Buckets.
+     * SECURITY (Karte 303, Befund 2, Zusatz): Ohne Deckel konnte ein Angreifer mit vielen
+     * verschiedenen Schluesseln die Map unbegrenzt wachsen lassen (Speicher-DoS), weil das
+     * Cleanup nur alle 5 Minuten laeuft.
+     */
+    public static final int DEFAULT_MAX_BUCKETS = 50_000;
+
+    /**
+     * Sammel-Schluessel, sobald der Deckel erreicht ist. Neue Schluessel bekommen keinen eigenen
+     * Bucket mehr, sondern teilen sich diesen einen — der Flood bremst damit sich selbst aus,
+     * waehrend bereits bekannte (legitime) Schluessel ihren eigenen Bucket behalten.
+     */
+    static final String OVERFLOW_KEY = "__overflow__";
+
     private final int maxRequests;
     private final long windowMillis;
+    private final int maxBuckets;
     private final ConcurrentHashMap<String, TokenBucket> buckets = new ConcurrentHashMap<>();
 
     /**
@@ -22,8 +38,13 @@ public class RateLimiter {
      * @param windowMillis Time window in milliseconds
      */
     public RateLimiter(int maxRequests, long windowMillis) {
+        this(maxRequests, windowMillis, DEFAULT_MAX_BUCKETS);
+    }
+
+    public RateLimiter(int maxRequests, long windowMillis, int maxBuckets) {
         this.maxRequests = maxRequests;
         this.windowMillis = windowMillis;
+        this.maxBuckets = maxBuckets;
     }
 
     /**
@@ -33,8 +54,29 @@ public class RateLimiter {
      * @return true if allowed, false if rate limited
      */
     public boolean tryConsume(String key) {
-        TokenBucket bucket = buckets.computeIfAbsent(key, k -> new TokenBucket(maxRequests, windowMillis));
+        TokenBucket bucket = bucketFor(key);
         return bucket.tryConsume();
+    }
+
+    private TokenBucket bucketFor(String key) {
+        TokenBucket existing = buckets.get(key);
+        if (existing != null) {
+            return existing;
+        }
+        String effectiveKey = buckets.size() >= maxBuckets ? OVERFLOW_KEY : key;
+        return buckets.computeIfAbsent(effectiveKey, k -> new TokenBucket(maxRequests, windowMillis));
+    }
+
+    /**
+     * Gibt ein zuvor verbrauchtes Token zurueck (maximal bis zur Kapazitaet).
+     * Wird fuer Login-Versuche benutzt, die sich nachtraeglich als erfolgreich herausstellen:
+     * das Limit soll Rateversuche bremsen, nicht echte Anmeldungen.
+     */
+    public void refund(String key) {
+        TokenBucket bucket = buckets.get(key);
+        if (bucket != null) {
+            bucket.refund();
+        }
     }
 
     /**
@@ -80,6 +122,13 @@ public class RateLimiter {
                 return true;
             }
             return false;
+        }
+
+        synchronized void refund() {
+            refill();
+            if (tokens.get() < capacity) {
+                tokens.incrementAndGet();
+            }
         }
 
         int getRemaining() {

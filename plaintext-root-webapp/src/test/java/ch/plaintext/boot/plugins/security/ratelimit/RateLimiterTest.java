@@ -128,4 +128,29 @@ class RateLimiterTest {
 
         assertEquals(100, consumed[0]); // Exactly 100 should pass
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("Karte 303: Bucket-Anzahl ist gedeckelt (Speicher-DoS)")
+    void bucketCountIsCapped() {
+        RateLimiter limiter = new RateLimiter(5, 60_000L, 10);
+        for (int i = 0; i < 1_000; i++) {
+            limiter.tryConsume("key-" + i);
+        }
+        assertTrue(limiter.size() <= 11,
+                "Erwartet hoechstens 10 regulaere Buckets + Overflow-Bucket, war: " + limiter.size());
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("Karte 303: bereits bekannte Schluessel behalten ihren "
+            + "eigenen Bucket, auch wenn der Deckel erreicht ist")
+    void knownKeysKeepTheirOwnBucketWhenCapped() {
+        RateLimiter limiter = new RateLimiter(3, 60_000L, 2);
+        assertTrue(limiter.tryConsume("legit"));
+        for (int i = 0; i < 500; i++) {
+            limiter.tryConsume("flood-" + i);
+        }
+        // "legit" hatte erst einen von drei Tokens verbraucht und darf weiterhin durch.
+        assertTrue(limiter.tryConsume("legit"));
+        assertTrue(limiter.tryConsume("legit"));
+    }
 }

@@ -16,6 +16,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,6 +68,8 @@ class RateLimitFilterTest {
         when(request.getRequestURI()).thenReturn("/login");
         when(request.getMethod()).thenReturn("POST");
         when(request.getRemoteAddr()).thenReturn("10.0.0.1");
+        StringWriter sw = new StringWriter();
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
 
         // First 3 should pass
         for (int i = 0; i < 3; i++) {
@@ -72,15 +78,18 @@ class RateLimitFilterTest {
         verify(filterChain, times(3)).doFilter(request, response);
 
         // 4th should be blocked
+        // Karte 303: echter 429 statt 302-Redirect (sendRedirect hatte den 429 ueberschrieben)
         filter.doFilter(request, response, filterChain);
         verify(response).setStatus(429);
-        verify(response).sendRedirect("/login.xhtml?error=rate_limited");
+        verify(response, never()).sendRedirect(anyString());
+        assertTrue(sw.toString().contains("Zu viele Anmeldeversuche"));
     }
 
     @Test
     void shouldRateLimitAutologin() throws Exception {
         when(request.getRequestURI()).thenReturn("/autologin");
         when(request.getRemoteAddr()).thenReturn("10.0.0.2");
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
 
         for (int i = 0; i < 3; i++) {
             filter.doFilter(request, response, filterChain);
@@ -92,24 +101,61 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void shouldUseXForwardedForHeader() {
-        when(request.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4, 5.6.7.8");
-        assertEquals("1.2.3.4", filter.getClientIp(request));
+    @DisplayName("Karte 303: XFF wird von rechts ausgewertet, das vom Client gesetzte erste "
+            + "Element ist NICHT der Schluessel")
+    void shouldUseRightmostUntrustedXForwardedForElement() {
+        when(request.getRemoteAddr()).thenReturn("192.168.208.1");
+        when(request.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4, 203.0.113.9, 192.168.1.224");
+        assertEquals("203.0.113.9", filter.getClientIp(request));
     }
 
     @Test
-    void shouldUseXRealIpHeader() {
+    @DisplayName("Karte 303: kommt der Request nicht von einem vertrauenswuerdigen Proxy, "
+            + "wird XFF komplett ignoriert")
+    void shouldIgnoreXForwardedForFromUntrustedPeer() {
+        when(request.getRemoteAddr()).thenReturn("203.0.113.5");
+        assertEquals("203.0.113.5", filter.getClientIp(request));
+        verify(request, never()).getHeader("X-Forwarded-For");
+    }
+
+    @Test
+    @DisplayName("Karte 303: X-Real-IP wird nicht mehr ausgewertet (nicht verifizierbar)")
+    void shouldIgnoreXRealIpHeader() {
+        when(request.getRemoteAddr()).thenReturn("10.1.2.3");
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn("9.8.7.6");
-        assertEquals("9.8.7.6", filter.getClientIp(request));
+        lenient().when(request.getHeader("X-Real-IP")).thenReturn("9.8.7.6");
+        assertEquals("10.1.2.3", filter.getClientIp(request));
     }
 
     @Test
     void shouldFallBackToRemoteAddr() {
         when(request.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(request.getHeader("X-Real-IP")).thenReturn(null);
         when(request.getRemoteAddr()).thenReturn("127.0.0.1");
         assertEquals("127.0.0.1", filter.getClientIp(request));
+    }
+
+    @Test
+    @DisplayName("Karte 303: gefaelschte XFF-Werte erzeugen keine neuen Buckets")
+    void spoofedXForwardedForDoesNotEscapeTheLimit() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/data");
+        when(request.getRemoteAddr()).thenReturn("192.168.208.1");
+        when(request.getHeader("X-Forwarded-For")).thenAnswer(inv -> spoof() + ", 203.0.113.77, 192.168.1.224");
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        for (int i = 0; i < 5; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(5)).doFilter(request, response);
+
+        filter.doFilter(request, response, filterChain);
+        verify(response).setStatus(429);
+        verify(filterChain, times(5)).doFilter(request, response);
+    }
+
+    private int spoofCounter;
+
+    private String spoof() {
+        return "1.2.3." + (spoofCounter++ % 250);
     }
 
     @Test
@@ -195,7 +241,47 @@ class RateLimitFilterTest {
         filter.cleanupExpiredBuckets(); // Should not throw
     }
 
-    private void assertEquals(String expected, String actual) {
-        org.junit.jupiter.api.Assertions.assertEquals(expected, actual);
+    @Test
+    @DisplayName("Karte 303: erfolgreiche Logins verbrauchen kein Kontingent - das Limit bremst "
+            + "Rateversuche, nicht echte Anmeldungen")
+    void successfulLoginsAreRefunded() throws Exception {
+        when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("10.0.0.77");
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        jakarta.servlet.http.HttpSession session = mock(jakarta.servlet.http.HttpSession.class);
+        org.springframework.security.core.Authentication auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        "user", "pw", java.util.List.of());
+        org.springframework.security.core.context.SecurityContext context =
+                new org.springframework.security.core.context.SecurityContextImpl(auth);
+        when(request.getSession(false)).thenReturn(session);
+        when(session.getAttribute(org.springframework.security.web.context
+                .HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).thenReturn(context);
+
+        // Deutlich mehr als das Limit von 3 - alle erfolgreich, also nie limitiert.
+        for (int i = 0; i < 10; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(10)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+    }
+
+    @Test
+    @DisplayName("Karte 303: fehlgeschlagene Logins zaehlen weiterhin (fail-closed)")
+    void failedLoginsStillCount() throws Exception {
+        when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("10.0.0.78");
+        when(request.getSession(false)).thenReturn(null);
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        for (int i = 0; i < 3; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        filter.doFilter(request, response, filterChain);
+        verify(response).setStatus(429);
+        verify(filterChain, times(3)).doFilter(request, response);
     }
 }
