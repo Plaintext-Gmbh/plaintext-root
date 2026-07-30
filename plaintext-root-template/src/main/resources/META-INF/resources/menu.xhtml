@@ -1,0 +1,201 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:c="http://java.sun.com/jsp/jstl/core">
+
+<div class="menu-wrapper">
+    <div class="layout-menu-container">
+        <h:form id="menuform">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <ul id="menuform:plaintext-menu" class="layout-menu">
+                <c:forEach items="#{menuBean.model.elements}" var="elem">
+                    <c:if test="#{elem.rendered}">
+                        <c:choose>
+                            <c:when test="#{elem['class'].name.contains('Submenu')}">
+                                <li role="menuitem">
+                                    <a href="#">
+                                        <i class="#{elem.icon}"></i>
+                                        <span>#{elem.label}</span>
+                                        <i class="pi pi-chevron-down layout-submenu-toggler"></i>
+                                    </a>
+                                    <ul role="menu">
+                                        <c:forEach items="#{elem.elements}" var="child">
+                                            <c:if test="#{child.rendered}">
+                                                <c:choose>
+                                                    <!-- HÄRTUNG: Ein Submenü als Kind (verschachteltes Submenü) hat
+                                                         KEIN url-Property. #{child.url} darauf wirft eine ELException,
+                                                         die menu.xhtml und damit JEDE eingeloggte Seite crasht.
+                                                         Defensiv: Label rendern + dessen Blatt-Kinder flach darunter,
+                                                         statt blind child.url aufzulösen. -->
+                                                    <c:when test="#{child['class'].name.contains('Submenu')}">
+                                                        <li role="menuitem" class="layout-nested-submenu-label">
+                                                            <a href="#">
+                                                                <i class="#{child.icon}"></i>
+                                                                <span>#{child.label}</span>
+                                                            </a>
+                                                        </li>
+                                                        <c:forEach items="#{child.elements}" var="sub">
+                                                            <c:if test="#{sub.rendered and not sub['class'].name.contains('Submenu')}">
+                                                                <li role="menuitem">
+                                                                    <a href="#{sub.url}">
+                                                                        <i class="#{sub.icon}"></i>
+                                                                        <span>#{sub.value}</span>
+                                                                    </a>
+                                                                </li>
+                                                            </c:if>
+                                                        </c:forEach>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <li role="menuitem">
+                                                            <a href="#{child.url}">
+                                                                <i class="#{child.icon}"></i>
+                                                                <span>#{child.value}</span>
+                                                            </a>
+                                                        </li>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </c:if>
+                                        </c:forEach>
+                                    </ul>
+                                </li>
+                            </c:when>
+                            <c:otherwise>
+                                <li role="menuitem">
+                                    <a href="#{elem.url}">
+                                        <i class="#{elem.icon}"></i>
+                                        <span>#{elem.value}</span>
+                                    </a>
+                                </li>
+                            </c:otherwise>
+                        </c:choose>
+                    </c:if>
+                </c:forEach>
+            </ul>
+        </h:form>
+        <style>
+            /* Sidebar mode: CSS-only submenu animation via max-height */
+            .layout-sidebar .layout-menu > li > ul {
+                display: block !important;
+                max-height: 0;
+                overflow: hidden;
+                opacity: 0;
+            }
+            .layout-sidebar .layout-menu.transitions-enabled > li > ul {
+                transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            }
+            .layout-sidebar .layout-menu > li.active-menuitem > ul {
+                max-height: 500px;
+                opacity: 1;
+            }
+            .layout-sidebar .layout-menu.transitions-enabled > li.active-menuitem > ul {
+                transition: max-height 0.3s ease-in, opacity 0.3s ease-in;
+            }
+
+            /* Slim + Horizontal mode: flyout submenus via display toggle */
+            .layout-slim .layout-menu > li > ul,
+            .layout-horizontal .layout-menu > li > ul {
+                display: none !important;
+                max-height: none;
+                overflow: visible;
+                opacity: 1;
+            }
+            .layout-slim .layout-menu > li.active-menuitem > ul,
+            .layout-horizontal .layout-menu > li.active-menuitem > ul {
+                display: block !important;
+            }
+        </style>
+        <script>
+            //<![CDATA[
+            (function() {
+                var openSubmenuLabel = sessionStorage.getItem('openSubmenuLabel');
+                if (openSubmenuLabel) {
+                    window.submenuToRestore = openSubmenuLabel;
+                }
+            })();
+
+            function isSlimOrHorizontal() {
+                var w = document.querySelector('.layout-wrapper');
+                return w && (w.classList.contains('layout-slim') || w.classList.contains('layout-horizontal')) && window.innerWidth >= 992;
+            }
+
+            function setupSubmenuHandlers() {
+                var openSubmenuLabel = window.submenuToRestore || sessionStorage.getItem('openSubmenuLabel');
+
+                $('.layout-menu > li > ul a').off('click.submenu-item').on('click.submenu-item', function(e) {
+                    var parentMenuItem = $(this).closest('.layout-menu > li');
+                    var parentLabel = parentMenuItem.children('a').first().text().trim();
+                    sessionStorage.setItem('openSubmenuLabel', parentLabel);
+                    e.stopPropagation();
+
+                    // Close sidebar on mobile after clicking a menu item
+                    if (window.innerWidth < 992) {
+                        var wrapper = document.querySelector('.layout-wrapper');
+                        if (wrapper) {
+                            wrapper.classList.remove('layout-mobile-active');
+                            document.body.classList.remove('blocked-scroll');
+                        }
+                    }
+                });
+
+                $('.layout-menu > li').each(function() {
+                    var item = $(this);
+                    var link = item.children('a').first();
+                    var submenu = item.children('ul').first();
+                    var label = link.text().trim();
+
+                    if (submenu.length > 0) {
+                        // Sidebar: restore state
+                        if (!isSlimOrHorizontal() && openSubmenuLabel && label === openSubmenuLabel) {
+                            item.addClass('active-menuitem');
+                        }
+
+                        // Click handler
+                        link.off('click');
+                        link.on('click', function(e) {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+
+                            $('.layout-menu > li').not(item).removeClass('active-menuitem');
+                            item.toggleClass('active-menuitem');
+
+                            if (!isSlimOrHorizontal()) {
+                                if (item.hasClass('active-menuitem')) {
+                                    sessionStorage.setItem('openSubmenuLabel', label);
+                                } else {
+                                    sessionStorage.removeItem('openSubmenuLabel');
+                                }
+                            }
+                            return false;
+                        });
+
+                        // Slim/Horizontal: hover to open
+                        item.off('mouseenter.slim mouseleave.slim');
+                        item.on('mouseenter.slim', function() {
+                            if (isSlimOrHorizontal()) {
+                                $('.layout-menu > li').not(item).removeClass('active-menuitem');
+                                item.addClass('active-menuitem');
+                            }
+                        });
+                        item.on('mouseleave.slim', function() {
+                            if (isSlimOrHorizontal()) {
+                                item.removeClass('active-menuitem');
+                            }
+                        });
+                    }
+                });
+
+                setTimeout(function() {
+                    $('.layout-menu').addClass('transitions-enabled');
+                }, 100);
+            }
+
+            $(function() { setupSubmenuHandlers(); });
+            setTimeout(setupSubmenuHandlers, 1500);
+            //]]>
+        </script>
+    </div>
+</div>
+
+</ui:composition>

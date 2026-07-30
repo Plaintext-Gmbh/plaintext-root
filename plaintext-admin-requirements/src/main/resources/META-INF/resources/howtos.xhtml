@@ -1,0 +1,146 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <p:growl id="messages" showDetail="true" life="3000"/>
+
+            <p:fieldset legend="Howtos - Handlungsanweisungen">
+
+                <div style="margin-bottom: 10px;">
+                    <p:commandButton value="Neu" icon="pi pi-plus"
+                                     actionListener="#{howtoBackingBean.newHowto()}"
+                                     oncomplete="PF('howtoDialog').show()"
+                                     update="howtoDialog" process="@this"/>
+
+                    <p:commandButton value="Bearbeiten" icon="pi pi-pencil"
+                                     actionListener="#{howtoBackingBean.editSelected()}"
+                                     oncomplete="PF('howtoDialog').show()"
+                                     update="howtoDialog" process="@this"
+                                     disabled="#{howtoBackingBean.selected == null}"
+                                     style="margin-left: 5px;"/>
+
+                    <p:commandButton value="Löschen" icon="pi pi-trash" styleClass="ui-button-danger"
+                                     actionListener="#{howtoBackingBean.delete()}"
+                                     update="messages,howtosTable" process="@this"
+                                     disabled="#{howtoBackingBean.selected == null}"
+                                     style="margin-left: 5px;">
+                        <p:confirm header="Löschen bestätigen"
+                                   message="Soll dieses Howto wirklich gelöscht werden?"
+                                   icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+                </div>
+
+                <p:dataTable id="howtosTable" var="howto"
+                             value="#{howtoBackingBean.howtos}"
+                             selectionMode="single" selection="#{howtoBackingBean.selected}"
+                             rowKey="#{howto.id}"
+                             emptyMessage="Keine Howtos vorhanden"
+                             paginator="true"
+                             rows="15"
+                             style="margin-top: 10px;">
+
+                    <p:ajax event="rowSelect" update="fm"/>
+                    <p:ajax event="rowUnselect" update="fm"/>
+
+                    <p:column headerText="Name" style="width: 250px;">
+                        <h:outputText value="#{howto.name}"/>
+                    </p:column>
+
+                    <p:column headerText="Text">
+                        <h:outputText value="#{howto.text}"
+                                      style="white-space: pre-wrap; font-size: 0.9em;"/>
+                    </p:column>
+
+                    <p:column headerText="Beispiel">
+                        <h:outputText value="#{howto.beispiel}"
+                                      style="white-space: pre-wrap; font-size: 0.85em; color: #666;"/>
+                    </p:column>
+
+                    <p:column headerText="Aktiv" style="width: 80px;">
+                        <h:outputText value="#{howto.active ? 'Ja' : 'Nein'}"/>
+                    </p:column>
+
+                    <p:column headerText="Erstellt" style="width: 150px;">
+                        <h:outputText value="#{howto.createdDate}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="Aktionen" style="width: 100px;">
+                        <p:button value="Mobile" icon="pi pi-mobile"
+                                  outcome="howtodetail?id=#{howto.id}"
+                                  styleClass="ui-button-sm"/>
+                    </p:column>
+
+                </p:dataTable>
+
+            </p:fieldset>
+
+            <!-- Edit/New Dialog -->
+            <p:dialog header="Howto bearbeiten" widgetVar="howtoDialog" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe" id="howtoDialog">
+
+                <h:panelGroup rendered="#{howtoBackingBean.editHowto != null}">
+                    <h:panelGrid columns="2" style="width: 100%;" id="editHowtoPanel">
+
+                        <h:outputText value="Name:*"/>
+                        <p:inputText value="#{howtoBackingBean.editHowto.name}"
+                                     required="true"
+                                     style="width: 700px;"
+                                     maxlength="200"/>
+
+                        <h:outputText value="Text:*"/>
+                        <p:inputTextarea value="#{howtoBackingBean.editHowto.text}"
+                                         rows="8"
+                                         required="true"
+                                         style="width: 700px;"
+                                         maxlength="2000"
+                                         counter="textCounter"
+                                         counterTemplate="{0} Zeichen verbleibend"/>
+
+                        <h:outputText value=""/>
+                        <h:outputText id="textCounter" style="font-size: 0.85em; color: #666;"/>
+
+                        <h:outputText value="Beispiel:"/>
+                        <p:inputTextarea value="#{howtoBackingBean.editHowto.beispiel}"
+                                         rows="6"
+                                         style="width: 700px;"/>
+
+                        <h:outputText value="Aktiv:"/>
+                        <p:selectBooleanCheckbox value="#{howtoBackingBean.editHowto.active}"/>
+
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 15px 0;"/>
+
+                    <p:commandButton value="Speichern" icon="pi pi-check"
+                                     action="#{howtoBackingBean.save()}"
+                                     update="messages,howtosTable"
+                                     process="@form"
+                                     ajax="true"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('howtoDialog').hide()"
+                                     style="margin-right: 5px;"/>
+
+                    <p:commandButton value="Abbrechen" icon="pi pi-times"
+                                     actionListener="#{howtoBackingBean.cancel()}"
+                                     onclick="PF('howtoDialog').hide()"
+                                     process="@this"
+                                     styleClass="ui-button-secondary"/>
+
+                </h:panelGroup>
+            </p:dialog>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

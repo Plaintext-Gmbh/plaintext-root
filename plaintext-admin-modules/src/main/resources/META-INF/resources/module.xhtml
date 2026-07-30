@@ -1,0 +1,113 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Module</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{modulesBackingBean.load()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="3000"/>
+
+            <p:fieldset legend="🧩 Modul-Verwaltung" style="margin-bottom: 20px;">
+                <p:dataTable id="tbl" var="m" value="#{modulesBackingBean.module}" styleClass="mobile-safe"
+                             emptyMessage="Keine Module gemeldet — Feature-Module erscheinen hier, sobald sie eine ModuleDescriptor-Bean bereitstellen.">
+                    <p:column headerText="Modul" sortBy="#{m.displayName}">
+                        <h:outputText value="#{m.displayName}"/>
+                    </p:column>
+                    <p:column headerText="Id" style="width:180px;">
+                        <h:outputText value="#{m.moduleId}" style="color:var(--pt-text-color-secondary);"/>
+                    </p:column>
+                    <p:column headerText="Version" style="width:140px;">
+                        <h:outputText value="#{m.version}"/>
+                    </p:column>
+                    <p:column headerText="Aktiv" style="width:110px; text-align:center;">
+                        <p:toggleSwitch value="#{m.enabled}">
+                            <p:ajax listener="#{modulesBackingBean.toggle(m)}" update=":fm:messages"/>
+                        </p:toggleSwitch>
+                    </p:column>
+                    <p:column headerText="Daten" style="width:140px; text-align:center;">
+                        <p:commandButton icon="pi pi-download" title="Exportieren" process="@this"
+                                         ajax="false" styleClass="ui-button-secondary"
+                                         style="margin-right:.25rem;"
+                                         action="#{modulesBackingBean.export(m)}">
+                            <p:fileDownload value="#{modulesBackingBean.exportFile}"/>
+                        </p:commandButton>
+                        <p:commandButton icon="pi pi-upload" title="Importieren" process="@this"
+                                         actionListener="#{modulesBackingBean.importVorbereiten(m)}"
+                                         update=":fm:dlgImport" oncomplete="PF('dlgImport').show()"
+                                         styleClass="ui-button-secondary" style="margin-right:.25rem;"/>
+                        <p:commandButton icon="pi pi-trash" title="Daten leeren" process="@this"
+                                         actionListener="#{modulesBackingBean.clearVorbereiten(m)}"
+                                         update=":fm:dlgClear" oncomplete="PF('dlgClear').show()"
+                                         styleClass="ui-button-danger"/>
+                    </p:column>
+                </p:dataTable>
+                <p:outputPanel style="display:block; margin-top:10px; font-size:0.85em; color:var(--pt-text-color-secondary);">
+                    Hinweis: Deaktivierte Module blenden ihr Menü aus; die funktionale Deaktivierung
+                    (Crons/Listener) prüft jedes Modul über <h:outputText value="ModuleService.isEnabled(...)"/>.
+                </p:outputPanel>
+            </p:fieldset>
+
+            <p:dialog id="dlgImport" header="Modul importieren" widgetVar="dlgImport" modal="true"
+                      resizable="false" styleClass="mobile-safe" showEffect="fade">
+                <p:outputPanel layout="block" rendered="#{not empty modulesBackingBean.importModuleId}">
+                    <p>Importiert eine zuvor exportierte JSON-Datei von Modul
+                        <b>#{modulesBackingBean.importModuleDisplayName}</b> zurück — bestehende
+                        Einträge werden anhand der ID überschrieben, neue angelegt.</p>
+                    <p:fileUpload listener="#{modulesBackingBean.handleImportUpload}"
+                                  mode="advanced" auto="true" dragDropSupport="true"
+                                  update=":fm:dlgImport,:fm:messages" allowTypes="/(\.|\/)(json)$/"
+                                  label="Export-Datei wählen" uploadLabel="Hochladen" cancelLabel="Abbrechen"/>
+                    <h:panelGroup layout="block" style="margin-top:.5rem;" rendered="#{not empty modulesBackingBean.importFileName}">
+                        <span><i class="pi pi-file"></i> #{modulesBackingBean.importFileName}</span>
+                    </h:panelGroup>
+                </p:outputPanel>
+                <f:facet name="footer">
+                    <p:commandButton value="Importieren" icon="pi pi-check"
+                                     actionListener="#{modulesBackingBean.importUebernehmen}"
+                                     disabled="#{empty modulesBackingBean.importFileName}"
+                                     update=":fm:dlgImport,:fm:messages,:fm:tbl"
+                                     oncomplete="PF('dlgImport').hide()"/>
+                    <p:commandButton value="Abbrechen" icon="pi pi-times" type="button"
+                                     onclick="PF('dlgImport').hide()" styleClass="ui-button-secondary"/>
+                </f:facet>
+            </p:dialog>
+
+            <p:dialog id="dlgClear" header="Daten leeren" widgetVar="dlgClear" modal="true"
+                      resizable="false" styleClass="mobile-safe" showEffect="fade">
+                <p:outputPanel layout="block" rendered="#{not empty modulesBackingBean.clearModuleId}">
+                    <p style="color:#d9534f;"><i class="pi pi-exclamation-triangle"></i>
+                        <strong> Achtung:</strong> löscht ALLE Daten von Modul
+                        <b>#{modulesBackingBean.clearModuleDisplayName}</b> unwiderruflich aus der
+                        Datenbank. Vor dem Leeren wird automatisch ein Backup exportiert und
+                        heruntergeladen — schlägt der Export fehl, wird nichts gelöscht.</p>
+                    <h:panelGrid columns="2" cellpadding="6">
+                        <h:outputLabel value="Zur Bestätigung Modulnamen eingeben:"/>
+                        <p:inputText id="bestaetigung" value="#{modulesBackingBean.clearBestaetigung}"
+                                     placeholder="#{modulesBackingBean.clearModuleDisplayName}">
+                            <p:ajax event="keyup" update=":fm:dlgClear:btnClear" process="@this"/>
+                        </p:inputText>
+                    </h:panelGrid>
+                </p:outputPanel>
+                <f:facet name="footer">
+                    <p:commandButton id="btnClear" value="Daten unwiderruflich leeren" icon="pi pi-trash"
+                                     ajax="false" styleClass="ui-button-danger"
+                                     disabled="#{not modulesBackingBean.clearBestaetigungOk}"
+                                     action="#{modulesBackingBean.clearData}"
+                                     onclick="return confirm('Wirklich ALLE Daten von ' + '#{modulesBackingBean.clearModuleDisplayName}' + ' loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden.');">
+                        <p:fileDownload value="#{modulesBackingBean.exportFile}"/>
+                    </p:commandButton>
+                    <p:commandButton value="Abbrechen" icon="pi pi-times" type="button"
+                                     onclick="PF('dlgClear').hide()" styleClass="ui-button-secondary"/>
+                </f:facet>
+            </p:dialog>
+        </h:form>
+    </ui:define>
+</ui:composition>

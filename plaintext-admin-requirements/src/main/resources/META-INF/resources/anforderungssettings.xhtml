@@ -1,0 +1,105 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{anforderungSettingsBackingBean.onLoad()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="3000"/>
+
+            <p:fieldset legend="Claude Automation Settings">
+
+                <h:panelGrid columns="2" style="width: 100%;" columnClasses="col-label,col-input">
+
+                    <h:outputText value="API Token:"/>
+                    <p:panelGrid columns="2" style="border: 0;">
+                        <p:inputText value="#{anforderungSettingsBackingBean.apiToken}"
+                                     size="60"
+                                     readonly="true"/>
+                        <p:commandButton value="Generate New Token"
+                                         icon="pi pi-refresh"
+                                         action="#{anforderungSettingsBackingBean.generateToken()}"
+                                         update="fm"
+                                         styleClass="ui-button-success"/>
+                    </p:panelGrid>
+
+                    <h:outputText value=""/>
+                    <h:outputText value="Kopiere diesen Token in das watch-claude.sh Script"
+                                  style="font-size: 0.9em; color: #666;"/>
+
+                    <h:outputText value="Claude Automation Enabled:"/>
+                    <p:selectBooleanCheckbox value="#{anforderungSettingsBackingBean.claudeAutomationEnabled}"/>
+
+                </h:panelGrid>
+
+                <p:separator style="margin: 20px 0;"/>
+
+                <p:commandButton value="Save Settings"
+                                 icon="pi pi-check"
+                                 action="#{anforderungSettingsBackingBean.save()}"
+                                 update="fm"
+                                 styleClass="ui-button-success"/>
+
+            </p:fieldset>
+
+            <br/>
+
+            <p:fieldset legend="Claude Prompt History" toggleable="true" collapsed="true">
+                <p:dataTable id="tbl" var="prompt"
+                             value="#{anforderungSettingsBackingBean.promptHistory}"
+                             emptyMessage="Keine Prompts vorhanden"
+                             paginator="true"
+                             rows="10">
+
+                    <p:column headerText="Prompt #" style="width: 100px;">
+                        <h:outputText value="#{prompt.promptNumber}"/>
+                    </p:column>
+
+                    <p:column headerText="Status" style="width: 150px;">
+                        <h:outputText value="#{prompt.status}"/>
+                    </p:column>
+
+                    <p:column headerText="Created" style="width: 150px;">
+                        <h:outputText value="#{prompt.createdDate}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="Sent" style="width: 150px;">
+                        <h:outputText value="#{prompt.sentDate}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="Acknowledged" style="width: 150px;">
+                        <h:outputText value="#{prompt.acknowledgedDate}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="Retries" style="width: 80px;">
+                        <h:outputText value="#{prompt.retryCount}"/>
+                    </p:column>
+
+                    <p:column headerText="Prompt Text">
+                        <h:outputText value="#{prompt.promptText}"
+                                      style="font-size: 0.85em; white-space: pre-wrap;"/>
+                    </p:column>
+
+                </p:dataTable>
+            </p:fieldset>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Yes" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="No" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

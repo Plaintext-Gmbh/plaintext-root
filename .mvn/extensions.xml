@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Aktiviert den Maven-Build-Cache (Konfiguration: .mvn/maven-build-cache-config.xml).
+  Unveränderte Module werden aus dem lokalen Cache (~/.m2/build-cache) restauriert statt neu
+  gebaut/getestet — beschleunigt lokale Rebuilds und CI (persistentes ~/.m2 auf den Runnern).
+  Korrektheit hängt am Input-Glob in der Config (siehe Kommentar dort).
+-->
+<extensions xmlns="http://maven.apache.org/EXTENSIONS/1.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/EXTENSIONS/1.0.0 http://maven.apache.org/xsd/core-extensions-1.0.0.xsd">
+    <extension>
+        <groupId>org.apache.maven.extensions</groupId>
+        <artifactId>maven-build-cache-extension</artifactId>
+        <version>1.2.2</version>
+    </extension>
+</extensions>

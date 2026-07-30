@@ -1,0 +1,24 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets">
+
+    <footer class="layout-footer" role="contentinfo">
+        <div class="grid">
+            <div class="col-12">
+                <p style="margin:0; color:var(--pt-text-secondary, #6c757d); font-size:0.8rem;">
+                    <h:outputText value="#{brandingBean.effectiveFooterText}"/>
+                    <ui:fragment rendered="#{brandingBean.showVersion}">
+                        | Version #{versionBean.version}
+                    </ui:fragment>
+                    <ui:fragment rendered="#{brandingBean.showRootVersion}">
+                        | Root #{versionBean.rootVersion}
+                    </ui:fragment>
+                    <ui:fragment rendered="#{brandingBean.showBuildTimestamp}">
+                        | #{versionBean.buildTimestamp}
+                    </ui:fragment>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+</ui:composition>

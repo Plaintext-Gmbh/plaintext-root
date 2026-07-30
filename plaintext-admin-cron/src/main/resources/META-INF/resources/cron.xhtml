@@ -1,0 +1,319 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+        <style>
+            /* Defining column widths */
+            .label-column {
+                width: 30%;
+            }
+
+            .input-column {
+                width: 70%;
+            }
+
+            /* Ensuring that columns sum to less than 100% to avoid overflow */
+            .grid-example {
+                width: 100%;
+            }
+
+            /* Add spacing between rows in dialog */
+            .dialog-grid td {
+                padding: 8px 4px;
+            }
+        </style>
+
+        <script type="text/javascript">
+            //<![CDATA[
+            window.addEventListener('load', function() {
+                if (typeof PF === 'function' && PF('blockIt')) {
+                    PF('blockIt').hide();
+                }
+            });
+
+            document.addEventListener('DOMContentLoaded', function() {
+                if (typeof PF === 'function' && PF('blockIt')) {
+                    PF('blockIt').show();
+                }
+            });
+            //]]>
+        </script>
+
+        <f:event type="preRenderView" listener="#{cronBackingBean.refreshCrons()}"/>
+
+        <p:growl id="messages" showDetail="true" life="3000"/>
+
+        <p:blockUI block="tbl" widgetVar="blockIt">
+            <h:outputText value="#{i18n.t('Bitte warten...')}"/>
+        </p:blockUI>
+
+        <p:poll interval="10" update="fm:tbl" listener="#{cronBackingBean.refreshCrons()}"/>
+
+        <p:fieldset id="fs1" legend="#{i18n.t('Cron Jobs Liste')}">
+
+            <p:dataTable emptyMessage="-"
+                         widgetVar="tbl"
+                         multiViewState="true"
+                         id="tbl"
+                         reflow="true"
+                         var="row"
+                         value="#{cronBackingBean.crons}">
+
+                <p:column headerText="Name" style="width:30%" priority="1"
+                          sortBy="#{row.getDisplayName()}" filterBy="#{row.getDisplayName()}"
+                          filterMatchMode="contains">
+                    <h:outputText value=" #{row.getDisplayName()}" style="font-weight:bold;color: red;"
+                                  rendered="#{row.isGlobal()}"/>
+                    <h:outputText value=" #{row.getDisplayName()}" rendered="#{!row.isGlobal()}"/>
+                </p:column>
+
+                <p:column headerText="Mandant" style="width:15%" priority="1"
+                          sortBy="#{row.mandat}" filterBy="#{row.mandat}"
+                          filterMatchMode="contains"
+                          rendered="#{cronBackingBean.isRoot()}">
+                    <h:outputText value="#{row.mandat}"/>
+                </p:column>
+
+                <p:column headerText="Scope" style="width:10%" priority="2"
+                          sortBy="#{row.getScope()}">
+                    <h:outputText value="#{cronBackingBean.getScopeLabel(row)}"/>
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Ausführung')}" style="width:20%" priority="2">
+                    <p:commandButton value="#{row.cronExpression}"
+                                     icon="pi pi-calendar"
+                                     action="#{cronBackingBean.select(row.getCronName(), row.mandat)}"
+                                     oncomplete="PF('bemDlg').show()"
+                                     update="@form:bem"/>
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Letzter Lauf')}" style="width:20%" priority="3">
+                    <h:panelGroup layout="block" style="white-space: nowrap;">
+                        <p:commandButton icon="pi pi-clock"
+                                         ajax="true"
+                                         actionListener="#{cronBackingBean.trigger(row.getCronName(), row.mandat)}"
+                                         update="@form,messages"
+                                         onstart="PF('blockIt').show()"
+                                         oncomplete="PF('blockIt').hide()"
+                                         title="Jetzt ausführen"
+                                         style="margin-right: 5px;"
+                                         rendered="#{cronBackingBean.isEnabled(row.getCronName(), row.mandat) and !row.getCron().running}"/>
+
+                        <h:outputText value="#{row.getCron().getLastRun()}"
+                                      rendered="#{!row.getCron().running and cronBackingBean.isEnabled(row.getCronName(), row.mandat)}">
+                            <f:convertDateTime locale="de" pattern="dd.MM.yy HH:mm" timeZone="Europe/Zurich"/>
+                        </h:outputText>
+                    </h:panelGroup>
+                    <p:poll interval="3" update="tbl" rendered="#{row.getCron().running}"/>
+
+                    <p:progressBar ajax="true"
+                                   value="#{row.getPercente()}"
+                                   labelTemplate="{value}%"
+                                   styleClass="animated"
+                                   global="false"
+                                   rendered="#{row.getCron().running}"/>
+
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Zähler')}" style="width:10%" priority="4">
+                    <h:outputText value=" #{row.getCron().getCounter()}"
+                                  rendered="#{cronBackingBean.isEnabled(row.getCronName(), row.mandat)}"/>
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Letzte Dauer')} (s)" style="width:10%" priority="4">
+                    <h:outputText value=" #{row.getCron().getLastSeconds()}"
+                                  rendered="#{cronBackingBean.isEnabled(row.getCronName(), row.mandat)}"/>
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Nächster Lauf')}" style="width:20%" priority="3">
+                    <h:panelGroup layout="block" rendered="#{cronBackingBean.isEnabled(row.getCronName(), row.mandat)}">
+                        <h:outputText value="#{cronBackingBean.getNextRun(row)}">
+                            <f:convertDateTime locale="de" pattern="dd.MM.yy HH:mm" timeZone="Europe/Zurich"/>
+                        </h:outputText>
+                        <br/>
+                        <h:outputText value="(#{cronBackingBean.getWann(row)})"/>
+                    </h:panelGroup>
+                </p:column>
+
+                <p:column headerText="Startup" style="width:9%" priority="5"
+                          sortBy="#{row.startup}">
+                    <h:panelGroup layout="block">
+                        <p:commandButton value="Ein"
+                                         icon="pi pi-check"
+                                         styleClass="ui-button-success"
+                                         actionListener="#{cronBackingBean.toggleStartup(row.getCronName(), row.mandat)}"
+                                         update="fm"
+                                         onstart="PF('blockIt').show()"
+                                         oncomplete="PF('blockIt').hide()"
+                                         style="width: 100%; margin-bottom: 2px;"
+                                         rendered="#{cronBackingBean.isStartup(row.getCronName(), row.mandat) and cronBackingBean.isEnabled(row.getCronName(), row.mandat)}"/>
+                        <p:commandButton value="Aus"
+                                         icon="pi pi-times"
+                                         actionListener="#{cronBackingBean.toggleStartup(row.getCronName(), row.mandat)}"
+                                         update="fm"
+                                         onstart="PF('blockIt').show()"
+                                         oncomplete="PF('blockIt').hide()"
+                                         style="width: 100%; margin-bottom: 2px;"
+                                         rendered="#{!cronBackingBean.isStartup(row.getCronName(), row.mandat) and cronBackingBean.isEnabled(row.getCronName(), row.mandat)}"/>
+                    </h:panelGroup>
+                </p:column>
+
+                <p:column headerText="Enabled" style="width:9%" priority="2"
+                          sortBy="#{row.enabled}">
+                    <h:panelGroup layout="block">
+                        <p:commandButton value="Ja"
+                                         icon="pi pi-check"
+                                         styleClass="ui-button-success"
+                                         actionListener="#{cronBackingBean.toggleEnabled(row.getCronName(), row.mandat)}"
+                                         update="fm"
+                                         onstart="PF('blockIt').show()"
+                                         oncomplete="PF('blockIt').hide()"
+                                         style="width: 100%; margin-bottom: 2px;"
+                                         rendered="#{cronBackingBean.isEnabled(row.getCronName(), row.mandat)}"/>
+                        <p:commandButton value="Nein"
+                                         icon="pi pi-times"
+                                         styleClass="ui-button-danger"
+                                         actionListener="#{cronBackingBean.toggleEnabled(row.getCronName(), row.mandat)}"
+                                         update="fm"
+                                         onstart="PF('blockIt').show()"
+                                         oncomplete="PF('blockIt').hide()"
+                                         style="width: 100%; margin-bottom: 2px;"
+                                         rendered="#{!cronBackingBean.isEnabled(row.getCronName(), row.mandat)}"/>
+                    </h:panelGroup>
+                </p:column>
+
+            </p:dataTable>
+
+
+            <p:dialog styleClass="mobile-safe" header="#{i18n.t('Ausführungszeit anpassen')}"
+                      id="bem"
+                      widgetVar="bemDlg"
+                      modal="true"
+                      columnClasses="label-column, input-column"
+                      showEffect="fade"
+                      hideEffect="fade"
+                      resizable="false">
+
+                <h:panelGrid columns="2" styleClass="dialog-grid">
+
+                    <h:outputText value="#{i18n.t('Cron Ausdruck')}:"/>
+                    <p:inputText id="crone" value="#{cronBackingBean.crone}" size="45">
+                        <p:ajax event="keyup" update="ms" listener="#{cronBackingBean.validate()}"/>
+                    </p:inputText>
+
+                    <h:outputText value=""/>
+                    <p:messages id="ms"/>
+
+                    <br/>
+                    <h:panelGroup colspan="3" styleClass="dialog-buttons">
+                        <p:commandButton value="#{i18n.t('Speichern')}"
+                                         icon="pi pi-check"
+                                         actionListener="#{cronBackingBean.save()}"
+                                         oncomplete="PF('bemDlg').hide()"
+                                         update="tbl"
+                                         style="margin-right: 5px;"/>
+                        <p:commandButton value="#{i18n.t('Hilfe')}"
+                                         icon="pi pi-question-circle"
+                                         oncomplete="PF('bemDlg2').show()"/>
+                    </h:panelGroup>
+
+                </h:panelGrid>
+            </p:dialog>
+
+            <p:dialog header="Hilfe zur Cron Notation"
+                      widgetVar="bemDlg2"
+                      modal="true"
+                      showEffect="fade"
+                      hideEffect="fade"
+                      resizable="false"
+                      styleClass="mobile-safe">
+                <h:panelGrid columns="1" cellpadding="5" style="padding: 10px;">
+
+                    <h:outputText value="5 * * * *" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched once every hour, at the begin of the fifth minute (00:05, 01:05, 02:05 etc.)."/>
+                    <br/>
+
+                    <h:outputText value="* * * * *" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every minute."/>
+                    <br/>
+
+                    <h:outputText value="* 12 * * Mon" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every minute during the 12th hour of Monday."/>
+                    <br/>
+
+                    <h:outputText value="* 12 16 * Mon" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every minute during the 12th hour of Monday, 16th, but only if the day is the 16th of the month."/>
+                    <br/>
+
+                    <h:outputText value="Komma-separierte Werte" style="font-weight:bold;"/>
+                    <h:outputText value="Every sub-pattern can contain two or more comma separated values."/>
+                    <br/>
+
+                    <h:outputText value="59 11 * * 1,2,3,4,5" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched at 11:59AM on Monday, Tuesday, Wednesday, Thursday and Friday."/>
+                    <br/>
+
+                    <h:outputText value="Werte-Intervalle" style="font-weight:bold;"/>
+                    <h:outputText value="Values intervals are admitted and defined using the minus character."/>
+                    <br/>
+
+                    <h:outputText value="59 11 * * 1-5" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern is equivalent to the previous one."/>
+                    <br/>
+
+                    <h:outputText value="Step-Werte" style="font-weight:bold;"/>
+                    <h:outputText value="The slash character can be used to identify step values within a range. It can be used both in the form */c and a-b/c."/>
+                    <br/>
+
+                    <h:outputText value="*/5 * * * *" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every 5 minutes (0:00, 0:05, 0:10, 0:15 and so on)."/>
+                    <br/>
+
+                    <h:outputText value="3-18/5 * * * *" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every 5 minutes starting from the third minute of the hour, up to the 18th (0:03, 0:08, 0:13, 0:18, 1:03, 1:08 and so on)."/>
+                    <br/>
+
+                    <h:outputText value="*/15 9-17 * * *" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every 15 minutes between the 9th and 17th hour of the day (9:00, 9:15, 9:30, 9:45 and so on... note that the last execution will be at 17:45)."/>
+                    <br/>
+
+                    <h:outputText value="Kombinierte Regeln" style="font-weight:bold;"/>
+                    <h:outputText value="All the fresh described syntax rules can be used together."/>
+                    <br/>
+
+                    <h:outputText value="* 12 10-16/2 * *" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every minute during the 12th hour of the day, but only if the day is the 10th, the 12th, the 14th or the 16th of the month."/>
+                    <br/>
+
+                    <h:outputText value="* 12 1-15,17,20-25 * *" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every minute during the 12th hour of the day, but the day of the month must be between the 1st and the 15th, the 20th and the 25, or at least it must be the 17th."/>
+                    <br/>
+
+                    <h:outputText value="Pipe-Character" style="font-weight:bold;"/>
+                    <h:outputText value="Finally cron4j lets you combine more scheduling patterns into one, with the pipe character:"/>
+                    <br/>
+
+                    <h:outputText value="0 5 * * *|8 10 * * *|22 17 * * *" style="font-weight:bold;"/>
+                    <h:outputText value="This pattern causes a task to be launched every day at 05:00, 10:08 and 17:22."/>
+                    <br/>
+
+                    <h:panelGroup styleClass="dialog-buttons" style="text-align: center; width: 100%;">
+                        <p:commandButton value="#{i18n.t('Schliessen')}"
+                                         icon="pi pi-times"
+                                         oncomplete="PF('bemDlg2').hide()"/>
+                    </h:panelGroup>
+
+                </h:panelGrid>
+            </p:dialog>
+
+        </p:fieldset>
+
+        </h:form>
+    </ui:define>
+
+</ui:composition>

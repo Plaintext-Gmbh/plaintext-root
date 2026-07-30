@@ -1,0 +1,131 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{rollenzuteilungBackingBean.onLoad()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="3000"/>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="#{i18n.t('Nein')}" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+            <p:fieldset legend="#{i18n.t('Rollenzuteilung')}">
+
+                <div style="margin-bottom: 10px;">
+                    <p:commandButton value="#{i18n.t('Neue Rollenzuteilung')}" icon="pi pi-plus"
+                                     actionListener="#{rollenzuteilungBackingBean.newRollenzuteilung()}"
+                                     oncomplete="PF('dlg').show()"
+                                     update="fm" process="@this"/>
+
+                    <p:commandButton value="#{i18n.t('Bearbeiten')}" icon="pi pi-pencil"
+                                     actionListener="#{rollenzuteilungBackingBean.select()}"
+                                     oncomplete="PF('dlg').show()"
+                                     update="fm" process="@this"
+                                     disabled="#{rollenzuteilungBackingBean.selected == null}"
+                                     style="margin-left: 5px;"/>
+
+                    <p:commandButton value="#{i18n.t('Löschen')}" icon="pi pi-trash" styleClass="ui-button-danger"
+                                     actionListener="#{rollenzuteilungBackingBean.delete()}"
+                                     update="messages,tbl" process="@this"
+                                     disabled="#{rollenzuteilungBackingBean.selected == null}"
+                                     style="margin-left: 5px;">
+                        <p:confirm header="#{i18n.t('Bestätigung')}"
+                                   message="#{i18n.t('Rollenzuteilung wirklich löschen?')}"
+                                   icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+                </div>
+
+                <p:dataTable id="tbl" var="obj" value="#{rollenzuteilungBackingBean.rollenzuteilungen}"
+                             selectionMode="single" selection="#{rollenzuteilungBackingBean.selected}"
+                             rowKey="#{obj.id}" emptyMessage="-" paginator="true" rows="20">
+
+                    <p:ajax event="rowSelect" listener="#{rollenzuteilungBackingBean.select()}" update="fm"/>
+                    <p:ajax event="rowUnselect" listener="#{rollenzuteilungBackingBean.clearSelection()}" update="fm"/>
+
+                    <p:column headerText="#{i18n.t('Benutzername')}" sortBy="#{obj.username}">
+                        <h:outputText value="#{obj.username}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Rolle')}" sortBy="#{obj.roleName}">
+                        <h:outputText value="#{obj.roleName}"/>
+                    </p:column>
+
+                    <p:column headerText="Mandat" sortBy="#{obj.mandat}">
+                        <h:outputText value="#{obj.mandat}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Aktiv')}" sortBy="#{obj.active}" style="width: 80px;">
+                        <h:outputText value="#{obj.active ? i18n.t('Ja') : i18n.t('Nein')}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Gültig')}" style="width: 100px;">
+                        <h:outputText value="#{obj.currentlyValid ? i18n.t('Ja') : i18n.t('Nein')}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Gültig von')}">
+                        <h:outputText value="#{obj.validFrom}">
+                            <f:convertDateTime pattern="dd.MM.yyyy"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Gültig bis')}">
+                        <h:outputText value="#{obj.validUntil}">
+                            <f:convertDateTime pattern="dd.MM.yyyy"/>
+                        </h:outputText>
+                    </p:column>
+                </p:dataTable>
+
+            </p:fieldset>
+
+            <p:dialog header="#{i18n.t('Rollenzuteilung Details')}" widgetVar="dlg" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe">
+
+                <h:panelGroup rendered="#{rollenzuteilungBackingBean.selected != null}">
+                    <h:panelGrid columns="2" style="width: 100%;">
+                        <h:outputText value="#{i18n.t('Benutzername')}:"/>
+                        <p:inputText value="#{rollenzuteilungBackingBean.selected.username}" required="true"
+                                     style="width: 500px;"/>
+
+                        <h:outputText value="#{i18n.t('Rolle')}:"/>
+                        <p:selectOneMenu value="#{rollenzuteilungBackingBean.selected.roleName}" style="width: 500px;">
+                            <f:selectItems value="#{rollenzuteilungBackingBean.availableRoles}"/>
+                        </p:selectOneMenu>
+
+                        <h:outputText value="#{i18n.t('Aktiv')}:"/>
+                        <p:selectBooleanCheckbox value="#{rollenzuteilungBackingBean.selected.active}"/>
+
+                        <h:outputText value="#{i18n.t('Gültig von')}:"/>
+                        <p:datePicker value="#{rollenzuteilungBackingBean.selected.validFrom}"
+                                    pattern="dd.MM.yyyy" style="width: 500px;"/>
+
+                        <h:outputText value="#{i18n.t('Gültig bis')}:"/>
+                        <p:datePicker value="#{rollenzuteilungBackingBean.selected.validUntil}"
+                                    pattern="dd.MM.yyyy" style="width: 500px;"/>
+
+                        <h:outputText value="#{i18n.t('Beschreibung')}:"/>
+                        <p:inputTextarea value="#{rollenzuteilungBackingBean.selected.beschreibung}" rows="4"
+                                         style="width: 500px;"/>
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check"
+                                     action="#{rollenzuteilungBackingBean.save()}"
+                                     update="messages,tbl"
+                                     process="@form"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
+                </h:panelGroup>
+            </p:dialog>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

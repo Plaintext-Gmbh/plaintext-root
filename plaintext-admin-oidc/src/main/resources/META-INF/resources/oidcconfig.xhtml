@@ -1,0 +1,190 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <p:growl id="messages" showDetail="true" life="5000"/>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="#{i18n.t('Nein')}" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+            <p:fieldset legend="#{i18n.t('OIDC / OpenID Connect Konfiguration')}">
+
+                <div style="margin-bottom: 10px;">
+                    <p:commandButton value="#{i18n.t('Neue Konfiguration')}" icon="pi pi-plus"
+                                     actionListener="#{oidcConfigBackingBean.newConfig()}"
+                                     oncomplete="PF('dlg').show()"
+                                     update="detailDialog" process="@this"/>
+                </div>
+
+                <p:dataTable id="tbl" var="cfg" value="#{oidcConfigBackingBean.configs}"
+                             rowKey="#{cfg.id}" emptyMessage="#{i18n.t('Keine OIDC-Konfiguration vorhanden')}">
+
+                    <p:column headerText="#{i18n.t('Name')}" sortBy="#{cfg.name}">
+                        <h:outputText value="#{cfg.name}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Aktiv')}" style="width: 80px;">
+                        <h:outputText value="#{cfg.enabled ? 'Ja' : 'Nein'}"
+                                      style="color: #{cfg.enabled ? 'var(--green-500)' : 'var(--red-500)'}; font-weight: bold;"/>
+                    </p:column>
+
+                    <p:column headerText="Issuer URL">
+                        <h:outputText value="#{cfg.issuerUrl}"/>
+                    </p:column>
+
+                    <p:column headerText="Client ID">
+                        <h:outputText value="#{cfg.clientId}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Letzte Änderung')}">
+                        <h:outputText value="#{cfg.lastModifiedDate}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="" style="width: 60px;">
+                        <p:commandButton icon="pi pi-pencil" title="#{i18n.t('Bearbeiten')}"
+                                         actionListener="#{oidcConfigBackingBean.select(cfg)}"
+                                         oncomplete="PF('dlg').show()"
+                                         update=":fm:detailDialog" process="@this"
+                                         styleClass="ui-button-outlined ui-button-sm ui-button-rounded"/>
+                    </p:column>
+
+                </p:dataTable>
+
+            </p:fieldset>
+
+            <p:dialog header="#{i18n.t('OIDC Konfiguration')}" widgetVar="dlg" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe" id="detailDialog">
+
+                <h:panelGroup id="dialogContent" rendered="#{oidcConfigBackingBean.selected != null}">
+
+                    <h:panelGrid columns="2" style="width: 100%;" columnClasses="label-col,value-col">
+
+                        <h:outputText value="#{i18n.t('Aktiv')}:"/>
+                        <p:toggleSwitch value="#{oidcConfigBackingBean.selected.enabled}"/>
+
+                        <h:outputText value="#{i18n.t('Name')}:"/>
+                        <p:inputText value="#{oidcConfigBackingBean.selected.name}" style="width: 100%;"
+                                     required="true" requiredMessage="Name ist erforderlich"/>
+
+                        <h:outputText value="Issuer URL:"/>
+                        <p:inputText value="#{oidcConfigBackingBean.selected.issuerUrl}" style="width: 100%;"
+                                     placeholder="https://login.plaintext.ch/auth/realms/plaintext"
+                                     required="true" requiredMessage="Issuer-URL ist erforderlich"/>
+
+                        <h:outputText value="Client ID:"/>
+                        <p:inputText value="#{oidcConfigBackingBean.selected.clientId}" style="width: 100%;"
+                                     placeholder="plaintext-app"
+                                     required="true" requiredMessage="Client-ID ist erforderlich"/>
+
+                        <h:outputText value="Client Secret:"/>
+                        <h:panelGroup style="width: 100%;">
+                            <p:password value="#{oidcConfigBackingBean.selected.clientSecret}" style="width: 100%;"
+                                        toggleMask="true" feedback="false"/>
+                            <h:outputText value="Secret gesetzt (Confidential Client)"
+                                          rendered="#{not empty oidcConfigBackingBean.selected.clientSecret}"
+                                          style="display: block; margin-top: 4px; font-size: 0.85rem; color: var(--green-500);"/>
+                            <h:outputText value="Kein Secret (Public Client + PKCE)"
+                                          rendered="#{empty oidcConfigBackingBean.selected.clientSecret}"
+                                          style="display: block; margin-top: 4px; font-size: 0.85rem; color: var(--orange-500);"/>
+                        </h:panelGroup>
+
+                        <h:outputText value="Scopes:"/>
+                        <p:chips value="#{oidcConfigBackingBean.scopesList}" style="width: 100%;"/>
+
+                        <h:outputText value="Username Attribute:"/>
+                        <p:selectOneMenu value="#{oidcConfigBackingBean.selected.usernameAttribute}" style="width: 100%;">
+                            <f:selectItem itemLabel="email" itemValue="email"/>
+                            <f:selectItem itemLabel="preferred_username" itemValue="preferred_username"/>
+                            <f:selectItem itemLabel="sub" itemValue="sub"/>
+                        </p:selectOneMenu>
+
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <h:panelGrid columns="2" style="width: 100%;" columnClasses="label-col,value-col">
+
+                        <h:outputText value="Button Label:"/>
+                        <p:inputText value="#{oidcConfigBackingBean.selected.buttonLabel}" style="width: 100%;"/>
+
+                        <h:outputText value="Button Icon:"/>
+                        <p:inputText value="#{oidcConfigBackingBean.selected.buttonIcon}" style="width: 100%;"
+                                     placeholder="pi pi-sign-in"/>
+
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <h:panelGrid columns="2" style="width: 100%;" columnClasses="label-col,value-col">
+
+                        <h:outputText value="#{i18n.t('Benutzer automatisch anlegen')}:"/>
+                        <p:toggleSwitch value="#{oidcConfigBackingBean.selected.autoCreateUsers}"/>
+
+                        <h:outputText value="#{i18n.t('Standard-Rollen')}:"/>
+                        <p:inputText value="#{oidcConfigBackingBean.selected.defaultRoles}" style="width: 100%;"
+                                     placeholder="user"/>
+
+                        <h:outputText value="#{i18n.t('Standard-Mandat')}:"/>
+                        <p:inputText value="#{oidcConfigBackingBean.selected.defaultMandat}" style="width: 100%;"
+                                     placeholder="default"/>
+
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" styleClass="ui-button-success"
+                                         action="#{oidcConfigBackingBean.save()}"
+                                         update="messages,fm:tbl"
+                                         process="detailDialog"
+                                         oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
+
+                        <p:commandButton value="#{i18n.t('Verbindung testen')}" icon="pi pi-bolt"
+                                         actionListener="#{oidcConfigBackingBean.testConnection()}"
+                                         update="messages" process="detailDialog"/>
+
+                        <p:commandButton value="#{i18n.t('Löschen')}" icon="pi pi-trash" styleClass="ui-button-danger"
+                                         actionListener="#{oidcConfigBackingBean.delete()}"
+                                         update="messages,fm:tbl"
+                                         process="@this"
+                                         oncomplete="PF('dlg').hide()"
+                                         rendered="#{oidcConfigBackingBean.selected.id != null}">
+                            <p:confirm header="#{i18n.t('Bestätigung')}"
+                                       message="#{i18n.t('OIDC-Konfiguration wirklich löschen?')}"
+                                       icon="pi pi-exclamation-triangle"/>
+                        </p:commandButton>
+
+                        <p:commandButton value="Download JSON" icon="pi pi-download"
+                                         actionListener="#{oidcConfigBackingBean.downloadJson()}"
+                                         ajax="false"
+                                         rendered="#{oidcConfigBackingBean.selected.id != null}"/>
+                    </div>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <p:fileUpload mode="advanced" auto="true" allowTypes="/(\.|\/)(json)$/"
+                                      maxFileSize="100000" maxFiles="1"
+                                      label="JSON importieren" uploadLabel="Importieren"
+                                      cancelLabel="Abbrechen"
+                                      listener="#{oidcConfigBackingBean.uploadJson}"
+                                      update="dialogContent,messages"
+                                      skinSimple="true"/>
+                    </div>
+
+                </h:panelGroup>
+            </p:dialog>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

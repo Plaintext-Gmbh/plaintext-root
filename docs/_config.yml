@@ -1,0 +1,5 @@
+title: Plaintext Root
+description: Open-source JSF/PrimeFaces application framework with multi-tenancy
+remote_theme: pages-themes/cayman@v0.2.0
+plugins:
+  - jekyll-remote-theme

@@ -1,0 +1,125 @@
+<ui:composition xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml"
+                template="/includes/template.xhtml">
+
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{mandateMenuBackingBean.initDetail()}"/>
+    </f:metadata>
+
+    <ui:define name="title">#{i18n.t('Menüsteuerung')} - #{i18n.t('Mandat anpassen')}</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:messages id="messages" showDetail="true" closable="true"/>
+
+        <p:fieldset legend="#{i18n.t('Mandat-spezifische Menükonfiguration')}">
+
+                <p:panelGrid columns="2" layout="grid" styleClass="ui-fluid" style="margin-bottom: 20px;">
+                    <p:outputLabel for="mandateName" value="#{i18n.t('Mandatsname')}:" style="font-weight: bold;"/>
+                    <p:selectOneMenu id="mandateName"
+                                     value="#{mandateMenuBackingBean.selected.mandateName}"
+                                     editable="true"
+                                     disabled="#{not empty mandateMenuBackingBean.selected.id}"
+                                     style="width: 100%;">
+                        <f:selectItem itemLabel="-- Mandat wählen oder neu eingeben --" itemValue="" noSelectionOption="true"/>
+                        <f:selectItems value="#{mandateMenuBackingBean.allMandate}"
+                                     var="m"
+                                     itemLabel="#{m}"
+                                     itemValue="#{m}"/>
+                    </p:selectOneMenu>
+                </p:panelGrid>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">
+                        <h:outputText value="#{i18n.t('Menüpunkte einblenden')} (Whitelist)" rendered="#{mandateMenuBackingBean.selected.whitelistMode}"/>
+                        <h:outputText value="#{i18n.t('Menüpunkte ausblenden')} (Blacklist)" rendered="#{!mandateMenuBackingBean.selected.whitelistMode}"/>
+                    </h3>
+                    <div style="display: flex; gap: 5px;">
+                        <p:commandButton value="#{i18n.t('Alle an')}"
+                                         icon="pi pi-check-square"
+                                         styleClass="ui-button-outlined"
+                                         action="#{mandateMenuBackingBean.selectAll}"
+                                         update="fm"
+                                         process="@this"
+                                         style="white-space: nowrap;"/>
+                        <p:commandButton value="#{i18n.t('Alle aus')}"
+                                         icon="pi pi-stop"
+                                         styleClass="ui-button-outlined"
+                                         action="#{mandateMenuBackingBean.deselectAll}"
+                                         update="fm"
+                                         process="@this"
+                                         style="white-space: nowrap;"/>
+                        <p:commandButton value="#{i18n.t('Invertieren')}"
+                                         icon="pi pi-sort-alt"
+                                         styleClass="ui-button-outlined"
+                                         action="#{mandateMenuBackingBean.invertSelection}"
+                                         update="fm"
+                                         process="@this"
+                                         style="white-space: nowrap;"/>
+                        <p:commandButton value="#{mandateMenuBackingBean.selected.whitelistMode ? 'Zu Blacklist wechseln' : 'Zu Whitelist wechseln'}"
+                                         icon="#{mandateMenuBackingBean.selected.whitelistMode ? 'pi pi-ban' : 'pi pi-check-circle'}"
+                                         styleClass="ui-button-secondary"
+                                         action="#{mandateMenuBackingBean.toggleMode}"
+                                         update="fm"
+                                         process="@this"
+                                         style="white-space: nowrap;"/>
+                    </div>
+                </div>
+
+                <p:selectManyCheckbox id="hiddenMenus"
+                                      value="#{mandateMenuBackingBean.selected.hiddenMenus}"
+                                      layout="pageDirection"
+                                      columns="1">
+                    <f:selectItems value="#{mandateMenuBackingBean.availableMenus}"
+                                   var="menu"
+                                   itemLabel="#{menu}"
+                                   itemValue="#{menu}"/>
+                </p:selectManyCheckbox>
+
+                <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    Verfügbare Menüpunkte: #{mandateMenuBackingBean.availableMenus.size()}
+                </p>
+
+                <div style="margin-top: 20px;">
+                    <p:commandButton value="#{i18n.t('Speichern')}"
+                                     icon="pi pi-check"
+                                     styleClass="ui-button-success"
+                                     action="#{mandateMenuBackingBean.save}"
+                                     ajax="false"
+                                     style="margin-right: 10px;"/>
+
+                    <p:commandButton value="#{i18n.t('Löschen')}"
+                                     icon="pi pi-trash"
+                                     styleClass="ui-button-danger"
+                                     action="#{mandateMenuBackingBean.delete}"
+                                     ajax="false"
+                                     rendered="#{not empty mandateMenuBackingBean.selected.id}">
+                        <p:confirm header="Bestätigung" message="Sind Sie sicher, dass Sie diese Konfiguration löschen möchten?" icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+
+                    <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                        <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes" icon="pi pi-check"/>
+                        <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no" icon="pi pi-times"/>
+                    </p:confirmDialog>
+                </div>
+
+                <div style="margin-top: 20px; padding: 10px; background-color: #d1ecf1; border-radius: 5px;">
+                    <p style="margin: 0; color: #0c5460; font-size: 0.9em;">
+                        <i class="pi pi-info-circle" style="margin-right: 5px;"></i>
+                        <h:outputText value="Whitelist-Modus: Wählen Sie die Menüpunkte aus, die für dieses Mandat SICHTBAR sein sollen. Alle anderen werden ausgeblendet."
+                                      rendered="#{mandateMenuBackingBean.selected.whitelistMode}"/>
+                        <h:outputText value="Blacklist-Modus: Wählen Sie die Menüpunkte aus, die für dieses Mandat AUSGEBLENDET werden sollen."
+                                      rendered="#{!mandateMenuBackingBean.selected.whitelistMode}"/>
+                        Die Änderungen werden sofort wirksam, sobald Sie speichern.
+                    </p>
+                </div>
+
+            </p:fieldset>
+        </h:form>
+    </ui:define>
+
+</ui:composition>

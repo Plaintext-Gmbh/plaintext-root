@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core"
+      xmlns:ui="http://java.sun.com/jsf/facelets"
+      xmlns:p="http://primefaces.org/ui"
+      lang="en"
+      data-theme="#{userPreferencesBackingBean.darkMode}">
+
+<h:head>
+    <f:facet name="first">
+        <meta http-equiv="x-ua-compatible" content="IE=edge"/>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+        <meta name="mobile-web-app-capable" content="yes"/>
+        <link rel="icon" href="#{request.contextPath}/resources/plaintext-layout/images/favicon.ico" type="image/x-icon"></link>
+        <!-- Single dynamic theme - uses CSS variables set below -->
+        <h:outputStylesheet library="primefaces-plaintext" name="theme.css"/>
+        <style>
+            /* Prevent menu flickering on page load */
+            body:not(.plaintext-menu-ready) .layout-menu li > ul {
+                visibility: hidden !important;
+            }
+            body.plaintext-menu-ready .layout-menu li > ul {
+                visibility: visible;
+            }
+
+            /* theme=#{userPreferencesBackingBean.componentTheme} dark=#{userPreferencesBackingBean.darkMode} */
+            :root {
+                --pt-primary-color: #{themeColorProvider.getPrimaryColor(userPreferencesBackingBean.componentTheme, userPreferencesBackingBean.darkMode, userPreferencesBackingBean.customColor)} !important;
+                --pt-primary-color-text: #{themeColorProvider.getPrimaryColorText(userPreferencesBackingBean.componentTheme, userPreferencesBackingBean.customColor)} !important;
+                --pt-primary-lighter: #{themeColorProvider.getPrimaryLighter(userPreferencesBackingBean.componentTheme, userPreferencesBackingBean.darkMode, userPreferencesBackingBean.customColor)} !important;
+                --pt-primary-bg-16: #{themeColorProvider.getPrimaryBg16(userPreferencesBackingBean.componentTheme, userPreferencesBackingBean.darkMode, userPreferencesBackingBean.customColor)} !important;
+                --pt-primary-bg-04: #{themeColorProvider.getPrimaryBg04(userPreferencesBackingBean.componentTheme, userPreferencesBackingBean.darkMode, userPreferencesBackingBean.customColor)} !important;
+                --pt-focus-ring-color: #{themeColorProvider.getFocusRing(userPreferencesBackingBean.componentTheme, userPreferencesBackingBean.darkMode, userPreferencesBackingBean.customColor)} !important;
+            }
+
+            /* Light mode surface colors */
+            html[data-theme="light"] {
+                color-scheme: light;
+                --pt-surface-0: #ffffff;
+                --pt-surface-50: #FAFAFA;
+                --pt-surface-hover: #e9ecef;
+                --pt-surface-300: #ced4da;
+                --pt-surface-400: #adb5bd;
+                --pt-surface-border: #dee2e6;
+                --pt-text-color: #495057;
+                --pt-text-color-secondary: #6c757d;
+                --pt-text-dark: #212529;
+                --pt-mask-bg: rgba(0, 0, 0, 0.4);
+            }
+
+            /* Dark mode surface colors */
+            html[data-theme="dark"] {
+                color-scheme: dark;
+                --pt-surface-0: #1e1e2f;
+                --pt-surface-50: #2a2b3d;
+                --pt-surface-hover: #3c3d4f;
+                --pt-surface-300: #606174;
+                --pt-surface-400: #8b8ca0;
+                --pt-surface-border: #3c3d4f;
+                --pt-text-color: #d4d4dc;
+                --pt-text-color-secondary: #a9aabe;
+                --pt-text-dark: #d4d4dc;
+                --pt-mask-bg: rgba(0, 0, 0, 0.6);
+            }
+        </style>
+    </f:facet>
+    <title>
+        <ui:insert name="title">Plaintext App</ui:insert>
+    </title>
+    <h:outputScript name="js/layout.js" library="plaintext-layout"/>
+    <script>
+        //<![CDATA[
+        // Globaler Fix (alle Apps): Datum-only p:datePicker schliesst nach Auswahl automatisch.
+        // PrimeFaces 15 schliesst den Popup-Picker nur, wenn focusOnSelect=true ist — Default ist
+        // false (datepicker.js), daher blieb der Chooser offen. Die eingebaute Auto-Close-Bedingung
+        // schliesst Zeit-Picker (showTime), Range/Multiple- und Inline-Picker bereits selbst aus;
+        // focusOnSelect=true ist damit fuer ALLE Picker sicher und laesst nur Datum-only-Single-
+        // Popups zusaetzlich automatisch schliessen. Zentral, damit jede App per root-Release profitiert.
+        (function() {
+            function patchDatePicker(DP) {
+                if (!DP || !DP.prototype || DP.prototype.__ptAutoClose) return;
+                DP.prototype.__ptAutoClose = true;
+                var origInit = DP.prototype.init;
+                DP.prototype.init = function(cfg) {
+                    if (cfg) { cfg.focusOnSelect = true; }
+                    origInit.call(this, cfg);
+                };
+            }
+            function tryPatch() {
+                if (window.PrimeFaces && PrimeFaces.widget && PrimeFaces.widget.DatePicker) {
+                    patchDatePicker(PrimeFaces.widget.DatePicker);
+                    return true;
+                }
+                return false;
+            }
+            try {
+                if (window.PrimeFaces && PrimeFaces.widget && !tryPatch()) {
+                    // Widget noch nicht geladen: beim spaeteren Definieren patchen (per Setter).
+                    var _dp;
+                    Object.defineProperty(PrimeFaces.widget, 'DatePicker', {
+                        configurable: true, enumerable: true,
+                        get: function() { return _dp; },
+                        set: function(v) { _dp = v; patchDatePicker(v); }
+                    });
+                }
+            } catch (e) { /* defensiv: Fallback ueber ready/pfAjaxComplete unten */ }
+            if (window.$) {
+                $(document).ready(tryPatch);
+                $(document).on('pfAjaxComplete', tryPatch);
+            }
+        })();
+
+        // Fix PrimeFaces dialog accessibility issue: remove focus before hiding
+        $(document).ready(function() {
+            var observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+                        var dialog = $(mutation.target);
+                        if (dialog.attr('aria-hidden') === 'true') {
+                            var focusedElement = dialog.find(':focus');
+                            if (focusedElement.length > 0) {
+                                focusedElement.blur();
+                            }
+                        }
+                    }
+                });
+            });
+
+            function observeDialogs() {
+                $('div[role="dialog"]').each(function() {
+                    observer.observe(this, {
+                        attributes: true,
+                        attributeFilter: ['aria-hidden']
+                    });
+                });
+            }
+
+            observeDialogs();
+
+            $(document).on('pfAjaxComplete', function() {
+                observeDialogs();
+            });
+        });
+        //]]>
+    </script>
+    <ui:insert name="head"/>
+</h:head>
+
+<h:body styleClass="#{userPreferencesBackingBean.inputStyleClass}">
+    <div class="layout-wrapper layout-topbar-#{userPreferencesBackingBean.topbarTheme} layout-menu-#{userPreferencesBackingBean.menuTheme} #{userPreferencesBackingBean.menuMode} #{userPreferencesBackingBean.menuStaticClass}">
+        <ui:include src="/includes/topbar.xhtml"/>
+        <ui:include src="/includes/config.xhtml"/>
+
+        <div class="layout-main">
+            <div class="layout-content">
+                    <f:metadata>
+                        <f:event type="preRenderView" listener="#{pageAccessGuardBackingBean.checkPageAccess()}"/>
+                    </f:metadata>
+                    <ui:insert name="content"/>
+                    <ui:insert name="page"/>
+            </div>
+            <ui:include src="/includes/footer.xhtml"/>
+        </div>
+
+        <p:ajaxStatus style="width:32px;height:32px;position:fixed;right:7px;bottom:7px">
+            <f:facet name="start">
+                <i class="pi pi-spin pi-spinner ajax-loader" aria-hidden="true"/>
+            </f:facet>
+
+            <f:facet name="complete">
+                <h:outputText value=""/>
+            </f:facet>
+        </p:ajaxStatus>
+        <div class="layout-mask modal-in"></div>
+    </div>
+    <h:outputStylesheet name="css/primeicons.css" library="plaintext-layout"/>
+    <h:outputStylesheet name="css/primeflex.min.css" library="plaintext-layout"/>
+    <h:outputStylesheet name="css/#{userPreferencesBackingBean.layout}.css" library="plaintext-layout"/>
+    <!-- Zentrales Mobile-Responsive-CSS: MUSS als letztes laden (gewinnt die Kaskade), deckelt Dialoge/Inputs auf den Viewport. -->
+    <h:outputStylesheet name="css/mobile-responsive.css" library="plaintext-layout"/>
+
+</h:body>
+
+</html>

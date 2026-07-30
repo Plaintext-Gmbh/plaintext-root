@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0 https://maven.apache.org/xsd/build-cache-config-1.0.0.xsd">
+    <configuration>
+        <enabled>true</enabled>
+        <hashAlgorithm>SHA-256</hashAlgorithm>
+        <validateXml>true</validateXml>
+        <local>
+            <maxBuildsCached>3</maxBuildsCached>
+        </local>
+        <projectVersioning adjustMetaInf="true"/>
+    </configuration>
+
+    <input>
+        <global>
+            <!--
+              KORREKTHEIT: Dieser Glob bestimmt, welche Dateien als Build-Inputs gehasht werden.
+              Fehlt ein Typ, invalidiert seine Änderung den Cache NICHT -> veralteter Deploy.
+              Daher bewusst umfassend (lieber über-invalidieren als stale): insbesondere die
+              JSF-Views (*.xhtml) und Flyway-Migrationen (*.sql) MÜSSEN enthalten sein.
+            -->
+            <glob>
+                {*.java,*.kt,*.groovy,*.scala,*.xml,*.properties,*.yaml,*.yml,*.json,*.xhtml,*.html,*.htm,*.jsp,*.jspx,*.js,*.mjs,*.css,*.scss,*.less,*.tld,*.vm,*.ftl,*.ftlh,*.sql,*.sh,*.txt,*.md,*.png,*.jpg,*.jpeg,*.gif,*.svg,*.ico,*.woff,*.woff2,*.ttf,*.eot}
+            </glob>
+        </global>
+    </input>
+
+    <executionControl>
+        <runAlways>
+            <!-- Always run these plugins -->
+            <plugins>
+                <!-- spring-boot:repackage MUSS immer laufen: ein Cache-Restore liefert sonst kein
+                     Exec-Jar und das M3-Jar-Staging des Deploys schlaegt fehl (iot/schuetu 17.07.). -->
+                <plugin artifactId="spring-boot-maven-plugin"/>
+                <plugin artifactId="maven-deploy-plugin"/>
+                <plugin artifactId="maven-install-plugin"/>
+            </plugins>
+        </runAlways>
+        <reconcile>
+            <!-- Reconcile outputs from cache -->
+            <plugins>
+                <plugin artifactId="maven-compiler-plugin"/>
+                <plugin artifactId="maven-resources-plugin"/>
+                <plugin artifactId="maven-surefire-plugin"/>
+            </plugins>
+        </reconcile>
+    </executionControl>
+</cache>

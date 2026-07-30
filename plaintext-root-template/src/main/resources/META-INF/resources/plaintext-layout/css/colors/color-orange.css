@@ -1,0 +1,8 @@
+:root {
+    --primary-color: #FF9800;
+    --primary-color-text: #ffffff;
+    --primary-lighter-color: rgba(255, 152, 0, 0.1);
+    --highlight-bg: rgba(255, 152, 0, 0.1);
+    --highlight-text-color: #FF9800;
+    --focus-ring: 0 0 0 0.2rem rgba(255, 152, 0, 0.4);
+}

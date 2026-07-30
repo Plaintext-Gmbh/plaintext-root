@@ -1,0 +1,215 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Mandate</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+        <f:metadata>
+            <f:event type="preRenderView" listener="#{mandateBackingBean.reload()}"/>
+        </f:metadata>
+
+        <style>
+            .mandate-card {
+                margin-bottom: 20px;
+            }
+
+            .mandat-item {
+                padding: 10px;
+                margin: 5px 0;
+                border-left: 3px solid var(--primary-color, #007ad9);
+                background: var(--surface-50, #f8f9fa);
+            }
+
+            .mandat-item:hover {
+                background: var(--surface-100, #e9ecef);
+                cursor: pointer;
+            }
+
+            .mandat-item.selected {
+                background: var(--highlight-bg, var(--primary-200, #9ec5fe));
+                border-left-color: var(--primary-color, #0d6efd);
+                font-weight: 500;
+            }
+
+            .user-row {
+                padding: 8px 0;
+                border-bottom: 1px solid var(--surface-border, #dee2e6);
+            }
+
+            .user-row:last-child {
+                border-bottom: none;
+            }
+
+            .info-hint-panel {
+                margin-top: 20px;
+                padding: 15px;
+                background: var(--surface-0);
+                border: 1px solid var(--surface-border);
+                border-radius: 5px;
+            }
+
+            .info-hint-panel .hint-title {
+                font-weight: bold;
+                color: var(--primary-color);
+            }
+
+            .info-hint-panel .hint-text {
+                color: var(--text-color);
+            }
+
+            /* Mobile optimizations */
+            @media screen and (max-width: 768px) {
+                .ui-grid-responsive .ui-md-4,
+                .ui-grid-responsive .ui-md-8 {
+                    width: 100% !important;
+                }
+            }
+        </style>
+
+        <p:growl id="messages" showDetail="true" life="5000"/>
+
+        <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+            <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
+            <p:commandButton value="#{i18n.t('Nein')}" type="button" styleClass="ui-confirmdialog-no"/>
+        </p:confirmDialog>
+
+        <div class="ui-grid ui-grid-responsive">
+
+                <!-- Linke Spalte: Mandate -->
+                <div class="ui-g-12 ui-md-4">
+                    <p:panel header="Mandate" styleClass="mandate-card">
+
+                        <h:panelGrid columns="2" style="width: 100%; margin-bottom: 15px;">
+                            <p:inputText id="newMandatName"
+                                       value="#{mandateBackingBean.newMandatName}"
+                                       placeholder="#{i18n.t('Neues Mandat...')}"
+                                       style="width: 100%;"/>
+                            <p:commandButton value="#{i18n.t('Erstellen')}"
+                                           icon="pi pi-plus"
+                                           action="#{mandateBackingBean.createMandat()}"
+                                           update="@form"
+                                           process="@this,newMandatName"
+                                           styleClass="ui-button-success"/>
+                        </h:panelGrid>
+
+                        <p:dataList id="mandateList"
+                                   value="#{mandateBackingBean.mandate}"
+                                   var="mandat"
+                                   type="none"
+                                   emptyMessage="#{i18n.t('Keine Mandate vorhanden')}">
+                            <div class="mandat-item #{mandat eq mandateBackingBean.selectedMandat ? 'selected' : ''}">
+                                <p:commandLink action="#{mandateBackingBean.selectMandat()}"
+                                             update="@form"
+                                             process="@this"
+                                             styleClass="ui-widget"
+                                             style="text-decoration: none; color: inherit; display: block;">
+                                    <f:setPropertyActionListener value="#{mandat}"
+                                                                target="#{mandateBackingBean.selectedMandat}"/>
+                                    <i class="pi pi-folder" style="margin-right: 8px;"/>
+                                    <h:outputText value="#{mandat}"/>
+                                    <h:outputText value=" (#{i18n.t('aktiv')})"
+                                                rendered="#{mandat eq mandateBackingBean.plaintextSecurity.mandat}"
+                                                style="font-weight: bold; color: var(--primary-color, #0d6efd); margin-left: 5px;"/>
+                                </p:commandLink>
+                            </div>
+                        </p:dataList>
+
+                        <h:panelGroup id="deleteButtonPanel" rendered="#{not empty mandateBackingBean.selectedMandat}">
+                            <p:commandButton value="#{i18n.t('Löschen')}"
+                                           icon="pi pi-trash"
+                                           action="#{mandateBackingBean.deleteMandat()}"
+                                           update="messages,mandateList,deleteButtonPanel,usersTable"
+                                           process="@this"
+                                           styleClass="ui-button-danger"
+                                           style="width: 100%; margin-top: 15px;"
+                                           disabled="#{mandateBackingBean.selectedMandat eq 'default'}">
+                                <p:confirm header="#{i18n.t('Bestätigung')}"
+                                         message="#{i18n.t('Wollen Sie das Mandat wirklich löschen?')}"
+                                         icon="pi pi-exclamation-triangle"/>
+                            </p:commandButton>
+                        </h:panelGroup>
+                    </p:panel>
+                </div>
+
+                <!-- Rechte Spalte: Benutzer -->
+                <div class="ui-g-12 ui-md-8">
+                    <p:panel header="#{i18n.t('Benutzer und Mandate-Zuordnung')}" styleClass="mandate-card">
+
+                        <p:dataTable id="usersTable"
+                                   value="#{mandateBackingBean.users}"
+                                   var="user"
+                                   rows="20"
+                                   paginator="true"
+                                   paginatorPosition="bottom"
+                                   emptyMessage="#{i18n.t('Keine Benutzer vorhanden')}"
+                                   filteredValue="#{mandateBackingBean.filteredUsers}"
+                                   widgetVar="usersTable"
+                                   styleClass="users-table"
+                                   reflow="true">
+
+                            <f:facet name="header">
+                                <div style="text-align: right;">
+                                    <p:commandButton value="#{i18n.t('Filter zurücksetzen')}"
+                                                   icon="pi pi-filter-slash"
+                                                   update="usersTable"
+                                                   process="@this"
+                                                   onclick="PF('usersTable').clearFilters()"
+                                                   styleClass="ui-button-outlined"/>
+                                </div>
+                            </f:facet>
+
+                            <p:column headerText="#{i18n.t('Benutzername')}"
+                                    filterBy="#{user.username}"
+                                    filterMatchMode="contains"
+                                    priority="1">
+                                <h:outputText value="#{user.username}"/>
+                                <h:outputText value=" (#{i18n.t('Sie')})"
+                                            rendered="#{user.id eq mandateBackingBean.plaintextSecurity.id}"
+                                            style="font-weight: bold; color: var(--primary-color, #0d6efd); margin-left: 5px;"/>
+                            </p:column>
+
+                            <p:column headerText="Mandat"
+                                    filterBy="#{user.mandat}"
+                                    filterMatchMode="contains"
+                                    priority="2">
+                                <p:selectOneMenu value="#{user.mandat}"
+                                               style="width: 100%;">
+                                    <f:selectItem itemLabel="-- #{i18n.t('Kein Mandat')} --" itemValue="" noSelectionOption="true"/>
+                                    <f:selectItems value="#{mandateBackingBean.allMandate}"
+                                                 var="m"
+                                                 itemLabel="#{m}"
+                                                 itemValue="#{m}"/>
+                                    <p:ajax listener="#{mandateBackingBean.saveUserMandat(user)}"
+                                          update="messages,usersTable"
+                                          process="@this"/>
+                                </p:selectOneMenu>
+                            </p:column>
+
+                            <p:column headerText="Startseite"
+                                    filterBy="#{user.startpage}"
+                                    filterMatchMode="contains"
+                                    priority="3">
+                                <h:outputText value="#{user.startpage}"/>
+                            </p:column>
+
+                        </p:dataTable>
+
+                        <h:panelGrid columns="1" styleClass="info-hint-panel">
+                            <h:outputText value="#{i18n.t('Hinweis')}:" styleClass="hint-title"/>
+                            <h:outputText value="#{i18n.t('Ändern Sie das Mandat eines Benutzers, indem Sie es in der Dropdown-Liste auswählen. Die Änderung wird automatisch gespeichert.')}" styleClass="hint-text"/>
+                            <h:outputText value="#{i18n.t('Benutzer ohne zugewiesenes Mandat erhalten automatisch das default Mandat.')}" styleClass="hint-text"/>
+                        </h:panelGrid>
+
+                    </p:panel>
+                </div>
+
+            </div>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

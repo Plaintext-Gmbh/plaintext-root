@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ch.plaintext</groupId>
+        <artifactId>plaintext-root-parent</artifactId>
+        <version>1.439.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>plaintext-root-archtests</artifactId>
+    <name>plaintext-root-archtests</name>
+    <description>
+        Wiederverwendbare Architektur-/Lint-Tests (ArchUnit + JUnit) fuer plaintext-root und alle
+        abhaengigen Projekte (app, iot, fwtool, schuetu). Die Tests liegen bewusst in src/main/java,
+        damit sie ins publizierte Jar wandern; Consumer lassen sie via Surefire dependenciesToScan
+        gegen ihre eigenen Klassen/Ressourcen laufen — statt sie zu kopieren.
+    </description>
+
+    <dependencies>
+        <!-- ArchUnit (JUnit-5-Engine + Core). Compile-scope, weil die Tests in src/main liegen.
+             Kommt so bei Consumern transitiv auf den Test-Classpath (api + engine). -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+        </dependency>
+
+        <!-- JUnit Jupiter API fuer @Test/@TempDir/Assertions (Version aus dem Spring-Boot-Parent-BOM). -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+
+        <!-- plaintext-root-common bringt transitiv:
+             - ch.plaintext.boot.utils.MobileFormLinter (Scan-Logik des Mobile-Linters)
+             - ch.plaintext:plaintext-root-interfaces -> ch.plaintext.PlaintextCron
+             - spring-context (org.springframework.context.annotation.Scope,
+               org.springframework.scheduling.annotation.Scheduled) -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-common</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

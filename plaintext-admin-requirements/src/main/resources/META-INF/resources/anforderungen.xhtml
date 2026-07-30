@@ -1,0 +1,177 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{anforderungenBackingBean.onLoad()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="3000"/>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+            <p:fieldset legend="#{i18n.t('Anforderungen')}">
+
+                <div style="margin-bottom: 10px;">
+                    <p:outputLabel value="Status: " style="margin-right: 5px;"/>
+                    <p:selectOneMenu value="#{anforderungenBackingBean.filterStatus}" style="width: 150px; margin-right: 10px;">
+                        <f:selectItem itemLabel="Alle" itemValue="ALLE"/>
+                        <f:selectItems value="#{anforderungenBackingBean.statusList}"/>
+                        <p:ajax update="tbl" process="@this"/>
+                    </p:selectOneMenu>
+
+                    <p:button value="#{i18n.t('Neue Anforderung')}" icon="pi pi-plus"
+                              outcome="anforderungdetail"
+                              styleClass="ui-button-success"/>
+
+                    <p:commandButton value="#{i18n.t('Bearbeiten')}" icon="pi pi-pencil"
+                                     actionListener="#{anforderungenBackingBean.select()}"
+                                     oncomplete="PF('dlg').show()"
+                                     update="detailDialog" process="@this"
+                                     disabled="#{anforderungenBackingBean.selected == null}"
+                                     style="margin-left: 5px;"/>
+
+                    <p:commandButton value="#{i18n.t('Löschen')}" icon="pi pi-trash" styleClass="ui-button-danger"
+                                     actionListener="#{anforderungenBackingBean.delete()}"
+                                     update="messages,tbl" process="@this"
+                                     disabled="#{anforderungenBackingBean.selected == null}"
+                                     style="margin-left: 5px;">
+                        <p:confirm header="Bestätigung"
+                                   message="Anforderung wirklich löschen?"
+                                   icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <h:outputText value="#{i18n.t('Offen')}: #{anforderungenBackingBean.offeneCount}" style="margin-right: 15px; font-weight: bold;"/>
+                    <h:outputText value="#{i18n.t('In Bearbeitung')}: #{anforderungenBackingBean.inBearbeitungCount}" style="margin-right: 15px; font-weight: bold;"/>
+                    <h:outputText value="#{i18n.t('Erledigt')}: #{anforderungenBackingBean.erledigtCount}" style="font-weight: bold;"/>
+                </div>
+
+                <p:dataTable id="tbl" var="obj" value="#{anforderungenBackingBean.filteredAnforderungen}"
+                             selectionMode="single" selection="#{anforderungenBackingBean.selected}"
+                             rowKey="#{obj.id}" emptyMessage="-" paginator="true" rows="20"
+                             filteredValue="#{anforderungenBackingBean.tableFilteredAnforderungen}">
+
+                    <p:ajax event="rowSelect" listener="#{anforderungenBackingBean.select()}" update="fm"/>
+                    <p:ajax event="rowUnselect" listener="#{anforderungenBackingBean.clearSelection()}" update="fm"/>
+
+                    <p:column headerText="S" sortBy="#{obj.status}" filterBy="#{obj.status}"
+                              filterMatchMode="contains" style="width: 50px; text-align: center;">
+                        <h:panelGroup layout="block"
+                                      style="display: inline-block; padding: 6px 10px; border-radius: 50%; font-size: 0.9em; font-weight: 600; text-align: center; min-width: 32px;
+                                             background-color: #{obj.status == 'OFFEN' ? '#FEF3C7' : (obj.status == 'IN_BEARBEITUNG' ? '#DBEAFE' : (obj.status == 'ERLEDIGT' ? '#D1FAE5' : (obj.status == 'ABGELEHNT' ? '#FEE2E2' : '#FED7AA')))};
+                                             color: #{obj.status == 'OFFEN' ? '#92400E' : (obj.status == 'IN_BEARBEITUNG' ? '#1E40AF' : (obj.status == 'ERLEDIGT' ? '#065F46' : (obj.status == 'ABGELEHNT' ? '#991B1B' : '#9A3412')))};">
+                            <h:outputText value="#{obj.status == 'OFFEN' ? 'O' : (obj.status == 'IN_BEARBEITUNG' ? 'B' : (obj.status == 'ERLEDIGT' ? 'E' : (obj.status == 'ABGELEHNT' ? 'A' : 'Z')))}"/>
+                        </h:panelGroup>
+                    </p:column>
+
+                    <p:column headerText="Titel" sortBy="#{obj.titel}" filterBy="#{obj.titel}"
+                              filterMatchMode="contains">
+                        <h:outputText value="#{obj.titel}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Letzte Änderung')}" sortBy="#{obj.lastModifiedDate}"
+                              filterBy="#{obj.lastModifiedDate}" filterMatchMode="contains" style="width: 160px;">
+                        <h:outputText value="#{obj.lastModifiedDate}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="Aktionen" style="width: 100px;">
+                        <p:button value="Mobile" icon="pi pi-mobile"
+                                  outcome="anforderungdetail?id=#{obj.id}"
+                                  styleClass="ui-button-sm"/>
+                    </p:column>
+                </p:dataTable>
+
+            </p:fieldset>
+
+            <p:dialog header="#{i18n.t('Anforderung Details')}" widgetVar="dlg" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe" id="detailDialog">
+
+                <h:panelGroup rendered="#{anforderungenBackingBean.selected != null}">
+                    <h:panelGrid columns="2" style="width: 100%;" id="detailPanel">
+                        <h:outputText value="Titel:"/>
+                        <p:inputText value="#{anforderungenBackingBean.selected.titel}" required="true"
+                                     style="width: 600px;"/>
+
+                        <h:outputText value="Status:"/>
+                        <p:selectOneMenu value="#{anforderungenBackingBean.selected.status}" style="width: 600px;">
+                            <f:selectItems value="#{anforderungenBackingBean.statusList}"/>
+                        </p:selectOneMenu>
+
+                        <h:outputText value="Priorität:"/>
+                        <p:selectOneMenu value="#{anforderungenBackingBean.selected.priority}" style="width: 600px;">
+                            <f:selectItems value="#{anforderungenBackingBean.priorityList}"/>
+                        </p:selectOneMenu>
+
+                        <h:outputText value="Kategorie:"/>
+                        <p:inputText value="#{anforderungenBackingBean.selected.kategorie}" style="width: 600px;"/>
+
+                        <h:outputText value="Wiederkehrend:"/>
+                        <p:selectBooleanCheckbox value="#{anforderungenBackingBean.selected.wiederkehrend}">
+                            <p:ajax update="detailPanel"/>
+                        </p:selectBooleanCheckbox>
+
+                        <h:outputText value="Wiederkehrend Tage:" rendered="#{anforderungenBackingBean.selected.wiederkehrend}"/>
+                        <p:inputNumber value="#{anforderungenBackingBean.selected.wiederkehrendTage}"
+                                      rendered="#{anforderungenBackingBean.selected.wiederkehrend}"
+                                      decimalPlaces="0"
+                                      minValue="1"
+                                      maxValue="365"
+                                      style="width: 100px;"/>
+
+                        <h:outputText value="Letzte Bearbeitung:"/>
+                        <h:outputText value="#{anforderungenBackingBean.selected.lastModifiedDate}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+
+                        <h:outputText value="Claude Summary:"/>
+                        <h:panelGroup>
+                            <h:outputText value="Keine Summary vorhanden"
+                                          rendered="#{empty anforderungenBackingBean.selected.claudeSummary}"
+                                          style="font-style: italic; color: #999;"/>
+                            <p:commandButton value="Summary anzeigen" icon="pi pi-file"
+                                             rendered="#{not empty anforderungenBackingBean.selected.claudeSummary}"
+                                             onclick="window.open('claudesummary.xhtml?id=#{anforderungenBackingBean.selected.id}', '_blank', 'width=1000,height=800'); return false;"
+                                             type="button"
+                                             styleClass="ui-button-info"/>
+                        </h:panelGroup>
+
+                        <h:outputText value="Beschreibung:"/>
+                        <p:inputTextarea value="#{anforderungenBackingBean.selected.beschreibung}" rows="6"
+                                         style="width: 600px;"/>
+
+                        <h:outputText value="Howtos:"/>
+                        <p:selectManyCheckbox value="#{anforderungenBackingBean.selectedHowtoIds}"
+                                              layout="pageDirection">
+                            <f:selectItems value="#{anforderungenBackingBean.availableHowtos}"
+                                           var="howto"
+                                           itemValue="#{howto.id}"
+                                           itemLabel="#{howto.name} - #{howto.text}"/>
+                        </p:selectManyCheckbox>
+
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check"
+                                     action="#{anforderungenBackingBean.save()}"
+                                     update="messages,fm:tbl"
+                                     process="detailDialog"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
+                </h:panelGroup>
+            </p:dialog>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

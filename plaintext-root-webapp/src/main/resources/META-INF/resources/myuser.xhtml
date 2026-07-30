@@ -1,0 +1,299 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:pe="http://primefaces.org/ui/extensions"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+        <script type="text/javascript">
+            //<![CDATA[
+            // Advanced mode toggle via Ctrl+Shift+D
+            document.addEventListener('keydown', function(event) {
+                if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+                    event.preventDefault();
+                    remoteToggleAdvancedMode();
+                }
+            });
+            //]]>
+        </script>
+
+        <p:growl id="growl" widgetVar="growl" showDetail="true" life="3000"/>
+
+        <!-- Remote command for advanced mode toggle -->
+        <p:remoteCommand name="remoteToggleAdvancedMode"
+                         action="#{myUserInfoBackingBean.toggleAdvancedMode}"
+                         update="dynamicContentPanel"
+                         oncomplete="if (args &amp;&amp; args.advancedModeEnabled !== undefined) { PF('growl').renderMessage({ 'summary': 'Entwickler-Modus', 'detail': args.advancedModeEnabled ? 'Entwickler-Modus aktiviert (Ctrl+Shift+D)' : 'Entwickler-Modus deaktiviert', 'severity': 'info' }); }"/>
+
+        <style>
+            .user-info-grid td {
+                padding: 12px 8px;
+            }
+            .info-label {
+                font-weight: bold;
+                color: var(--text-color, #495057);
+            }
+            .status-badge {
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 0.85em;
+                font-weight: 500;
+            }
+            .status-active {
+                background-color: var(--green-100, #d4edda);
+                color: var(--green-700, #155724);
+            }
+            .status-inactive {
+                background-color: var(--red-100, #f8d7da);
+                color: var(--red-700, #721c24);
+            }
+            .role-tag {
+                display: inline-block;
+                padding: 4px 10px;
+                margin: 2px;
+                background-color: var(--blue-100, #e3f2fd);
+                color: var(--blue-700, #1976d2);
+                border-radius: 8px;
+                font-size: 0.9em;
+            }
+        </style>
+
+        <p:fieldset legend="#{i18n.t('Benutzerinformationen')}">
+
+            <div style="padding: 20px;">
+
+                <p:outputPanel id="dynamicContentPanel">
+
+                <!-- Basis Informationen -->
+                <h3 style="margin-top: 0; margin-bottom: 20px; color: var(--text-color, #333);">#{i18n.t('Basis Informationen')}</h3>
+                <p:panelGrid columns="2" styleClass="user-info-grid" style="margin-bottom: 30px; width: 100%; max-width: 800px;">
+
+                    <h:outputText value="#{i18n.t('Benutzername')}:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.username}" style="font-size: 1.1em;"/>
+
+                    <h:outputText value="User ID:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.myUserId}"/>
+
+                    <h:outputText value="Mandat:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.mandat}"/>
+
+                    <h:outputText value="#{i18n.t('Startseite')}:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.startpage}"/>
+
+                </p:panelGrid>
+
+                <!-- Passwort ändern -->
+                <p:outputPanel rendered="#{myUserInfoBackingBean.passwordManagementEnabled}">
+                <h3 style="margin-bottom: 20px; color: var(--text-color, #333);">#{i18n.t('Passwort ändern')}</h3>
+                <p:outputPanel id="passwordPanel">
+                    <p:messages id="passwordMessages" showDetail="true" closable="true"/>
+                    <p:panelGrid columns="2" styleClass="user-info-grid" style="margin-bottom: 30px; width: 100%; max-width: 800px;">
+
+                        <h:outputText value="#{i18n.t('Aktuelles Passwort')}:" styleClass="info-label"/>
+                        <p:password id="currentPassword"
+                                    value="#{myUserInfoBackingBean.currentPassword}"
+                                    feedback="false"
+                                    toggleMask="true"
+                                    style="width: 300px;"/>
+
+                        <h:outputText value="#{i18n.t('Neues Passwort')}:" styleClass="info-label"/>
+                        <p:password id="newPassword"
+                                    value="#{myUserInfoBackingBean.newPassword}"
+                                    feedback="true"
+                                    toggleMask="true"
+                                    style="width: 300px;"/>
+
+                        <h:outputText value="#{i18n.t('Passwort bestätigen')}:" styleClass="info-label"/>
+                        <p:password id="confirmPassword"
+                                    value="#{myUserInfoBackingBean.confirmPassword}"
+                                    feedback="false"
+                                    toggleMask="true"
+                                    style="width: 300px;"/>
+
+                        <h:outputText value=""/>
+                        <p:commandButton value="#{i18n.t('Passwort ändern')}"
+                                         icon="pi pi-key"
+                                         styleClass="ui-button-warning"
+                                         action="#{myUserInfoBackingBean.changePassword}"
+                                         update="passwordPanel"
+                                         process="@this currentPassword newPassword confirmPassword"
+                                         ajax="true"/>
+                    </p:panelGrid>
+                </p:outputPanel>
+                </p:outputPanel>
+
+                <!-- Zwei-Faktor-Authentifizierung (nur wenn Feature aktiv + lokaler User) -->
+                <p:outputPanel id="totpPanel" rendered="#{myUserInfoBackingBean.totpFeatureAvailable}">
+                    <h3 style="margin-bottom: 20px; color: var(--text-color, #333);">#{i18n.t('Zwei-Faktor-Authentifizierung')}</h3>
+                    <p:messages id="totpMessages" showDetail="true" closable="true"/>
+
+                    <div style="margin-bottom: 15px;">
+                        <span class="status-badge #{myUserInfoBackingBean.totpEnabled ? 'status-active' : 'status-inactive'}">
+                            #{myUserInfoBackingBean.totpEnabled ? i18n.t('Aktiviert') : i18n.t('Nicht aktiviert')}
+                        </span>
+                    </div>
+
+                    <!-- ZUSTAND A: nicht aktiviert, keine Einrichtung laeuft -> Start-Button -->
+                    <p:outputPanel rendered="#{not myUserInfoBackingBean.totpEnabled and empty myUserInfoBackingBean.totpSetupSecret and empty myUserInfoBackingBean.generatedRecoveryCodes}">
+                        <p style="color: var(--text-color-secondary, #6c757d); max-width: 640px;">
+                            #{i18n.t('Schützen Sie Ihr Konto mit einem zweiten Faktor (Authenticator-App wie Google Authenticator, Aegis, 1Password).')}
+                        </p>
+                        <p:commandButton value="#{i18n.t('Einrichten')}"
+                                         icon="pi pi-shield"
+                                         styleClass="ui-button-success"
+                                         action="#{myUserInfoBackingBean.beginTotpSetup}"
+                                         update="totpPanel"
+                                         process="@this"
+                                         ajax="true"/>
+                    </p:outputPanel>
+
+                    <!-- ZUSTAND B: Einrichtung laeuft -> QR + Secret + Bestaetigungscode -->
+                    <p:outputPanel rendered="#{not empty myUserInfoBackingBean.totpSetupSecret}">
+                        <p:panelGrid columns="2" styleClass="user-info-grid" style="margin-bottom: 20px; width: 100%; max-width: 800px;">
+                            <h:outputText value="#{i18n.t('QR-Code scannen')}:" styleClass="info-label"/>
+                            <h:graphicImage value="#{myUserInfoBackingBean.totpQrCodeDataUri}" alt="TOTP QR" style="width: 200px; height: 200px;"/>
+
+                            <h:outputText value="#{i18n.t('Oder Schlüssel manuell eingeben')}:" styleClass="info-label"/>
+                            <h:outputText value="#{myUserInfoBackingBean.totpSetupSecret}" style="font-family: 'Courier New', monospace; word-break: break-all;"/>
+
+                            <h:outputText value="#{i18n.t('Bestätigungscode')}:" styleClass="info-label"/>
+                            <p:inputText id="totpConfirmationCode"
+                                         value="#{myUserInfoBackingBean.totpConfirmationCode}"
+                                         maxlength="6"
+                                         placeholder="000000"
+                                         style="width: 160px; letter-spacing: 0.3rem; text-align: center;"/>
+
+                            <h:outputText value=""/>
+                            <h:panelGroup>
+                                <p:commandButton value="#{i18n.t('Aktivieren')}"
+                                                 icon="pi pi-check"
+                                                 styleClass="ui-button-success"
+                                                 action="#{myUserInfoBackingBean.confirmTotpSetup}"
+                                                 update="totpPanel"
+                                                 process="@this totpConfirmationCode"
+                                                 ajax="true"/>
+                                <p:commandButton value="#{i18n.t('Abbrechen')}"
+                                                 icon="pi pi-times"
+                                                 styleClass="ui-button-secondary"
+                                                 style="margin-left: 8px;"
+                                                 action="#{myUserInfoBackingBean.cancelTotpSetup}"
+                                                 update="totpPanel"
+                                                 process="@this"
+                                                 immediate="true"
+                                                 ajax="true"/>
+                            </h:panelGroup>
+                        </p:panelGrid>
+                    </p:outputPanel>
+
+                    <!-- Recovery-Codes: EINMALIG nach erfolgreicher Aktivierung -->
+                    <p:outputPanel rendered="#{not empty myUserInfoBackingBean.generatedRecoveryCodes}">
+                        <div style="background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 6px; padding: 12px 16px; margin-bottom: 12px; max-width: 640px;">
+                            #{i18n.t('Bewahren Sie diese Recovery-Codes sicher auf. Jeder Code funktioniert genau einmal, falls Sie keinen Zugriff auf Ihre App haben. Sie werden nur JETZT angezeigt.')}
+                        </div>
+                        <pre style="background: #f5f5f5; color: #333; padding: 14px; border-radius: 6px; font-size: 1.05rem; max-width: 640px;"><ui:repeat value="#{myUserInfoBackingBean.generatedRecoveryCodes}" var="rc">#{rc}
+</ui:repeat></pre>
+                    </p:outputPanel>
+
+                    <!-- ZUSTAND C: aktiviert -> Deaktivieren (mit Passwort) -->
+                    <p:outputPanel rendered="#{myUserInfoBackingBean.totpEnabled and empty myUserInfoBackingBean.generatedRecoveryCodes}">
+                        <p:panelGrid columns="2" styleClass="user-info-grid" style="margin-bottom: 20px; width: 100%; max-width: 800px;">
+                            <h:outputText value="#{i18n.t('Passwort zur Bestätigung')}:" styleClass="info-label"/>
+                            <p:password id="totpDisablePassword"
+                                        value="#{myUserInfoBackingBean.totpDisablePassword}"
+                                        feedback="false" toggleMask="true"
+                                        style="width: 300px;"/>
+                            <h:outputText value=""/>
+                            <p:commandButton value="#{i18n.t('Zwei-Faktor deaktivieren')}"
+                                             icon="pi pi-times"
+                                             styleClass="ui-button-danger"
+                                             action="#{myUserInfoBackingBean.disableTotp}"
+                                             update="totpPanel"
+                                             process="@this totpDisablePassword"
+                                             ajax="true"/>
+                        </p:panelGrid>
+                    </p:outputPanel>
+
+                    <div style="margin-bottom: 30px;"></div>
+                </p:outputPanel>
+
+                <!-- Account Status (only visible in advanced mode) -->
+                <p:outputPanel rendered="#{myUserInfoBackingBean.advancedMode}">
+                <h3 style="margin-bottom: 20px; color: var(--text-color, #333);">#{i18n.t('Account Status')}</h3>
+                <p:panelGrid columns="2" styleClass="user-info-grid" style="margin-bottom: 30px; width: 100%; max-width: 800px;">
+
+                    <h:outputText value="#{i18n.t('Authentifiziert')}:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.authenticated ? 'Ja' : 'Nein'}"
+                                  styleClass="status-badge #{myUserInfoBackingBean.authenticated ? 'status-active' : 'status-inactive'}"/>
+
+                    <h:outputText value="#{i18n.t('Account aktiv')}:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.enabled ? 'Ja' : 'Nein'}"
+                                  styleClass="status-badge #{myUserInfoBackingBean.enabled ? 'status-active' : 'status-inactive'}"/>
+
+                    <h:outputText value="#{i18n.t('Account nicht abgelaufen')}:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.accountNonExpired ? 'Ja' : 'Nein'}"
+                                  styleClass="status-badge #{myUserInfoBackingBean.accountNonExpired ? 'status-active' : 'status-inactive'}"/>
+
+                    <h:outputText value="#{i18n.t('Account nicht gesperrt')}:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.accountNonLocked ? 'Ja' : 'Nein'}"
+                                  styleClass="status-badge #{myUserInfoBackingBean.accountNonLocked ? 'status-active' : 'status-inactive'}"/>
+
+                    <h:outputText value="#{i18n.t('Passwort nicht abgelaufen')}:" styleClass="info-label"/>
+                    <h:outputText value="#{myUserInfoBackingBean.credentialsNonExpired ? 'Ja' : 'Nein'}"
+                                  styleClass="status-badge #{myUserInfoBackingBean.credentialsNonExpired ? 'status-active' : 'status-inactive'}"/>
+
+                </p:panelGrid>
+                </p:outputPanel>
+
+                <!-- Rollen -->
+                <h3 style="margin-bottom: 15px; color: var(--text-color, #333);">#{i18n.t('Zugewiesene Rollen')}</h3>
+                <div style="margin-bottom: 30px;">
+                    <ui:repeat value="#{myUserInfoBackingBean.roles}" var="role">
+                        <span class="role-tag">#{role}</span>
+                    </ui:repeat>
+                    <h:outputText value="#{i18n.t('Keine Rollen zugewiesen')}" rendered="#{empty myUserInfoBackingBean.roles}"
+                                  style="color: var(--text-color-secondary, #6c757d); font-style: italic;"/>
+                </div>
+
+                <!-- Properties (nur in advanced mode sichtbar) -->
+                <p:outputPanel rendered="#{myUserInfoBackingBean.advancedMode}">
+                <h3 style="margin-bottom: 15px; color: var(--text-color, #333);">#{i18n.t('Weitere Eigenschaften')}</h3>
+                <div style="margin-bottom: 30px;">
+                    <ui:repeat value="#{myUserInfoBackingBean.properties}" var="property">
+                        <span class="role-tag" style="background-color: #fff3cd; color: #856404;">#{property}</span>
+                    </ui:repeat>
+                    <h:outputText value="#{i18n.t('Keine weiteren Eigenschaften')}" rendered="#{empty myUserInfoBackingBean.properties}"
+                                  style="color: var(--text-color-secondary, #6c757d); font-style: italic;"/>
+                </div>
+                </p:outputPanel>
+
+                <!-- Magic-Link per E-Mail -->
+                <p:outputPanel id="magicLinkPanel">
+                    <h3 style="margin-bottom: 15px; color: var(--text-color, #333);">#{i18n.t('Magic-Link')}</h3>
+                    <p:messages id="magicLinkMessages" showDetail="true" closable="true"/>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <p:commandButton value="#{i18n.t('Magic-Link an meine Adresse senden')}"
+                                         icon="pi pi-envelope"
+                                         styleClass="ui-button-info"
+                                         actionListener="#{myUserInfoBackingBean.sendMagicLinkToSelf}"
+                                         update="magicLinkPanel magicLinkMessages"
+                                         process="@this"
+                                         ajax="true"/>
+                    </div>
+                    <small style="display: block; color: var(--text-color-secondary, #6c757d);">
+                        #{i18n.t('Wir senden dir einen einmaligen Anmelde-Link an deine E-Mail-Adresse.')}
+                    </small>
+                </p:outputPanel>
+
+                </p:outputPanel>
+
+            </div>
+
+        </p:fieldset>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

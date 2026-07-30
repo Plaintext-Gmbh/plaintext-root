@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <!--
+      FALSE POSITIVE: io.github.x-stream:mxparser:1.2.2
+
+      mxparser ist ein eigenstaendiger XML-Pull-Parser (Fork von xpp3/MXParser) und wird von XStream
+      1.4.21 transitiv als Parser mitgezogen. Es ist NICHT die XStream-Deserialisierungs-Engine, in
+      der die RCE-/SSRF-Schwachstellen der CVE-2021-2134x/2135x- und CVE-2022-4015x/4196x-Familie
+      stecken.
+
+      OWASP Dependency-Check ordnet das mxparser-Artefakt wegen der groupId "io.github.x-stream"
+      faelschlich der CPE cpe:/a:x-stream:xstream bzw. cpe:/a:xstream:xstream zu und meldet dadurch
+      die komplette XStream-CVE-Familie (u.a. das hier hoechste CVE-2021-21345, CVSS 9.9) gegen
+      mxparser-1.2.2.jar.
+
+      Fakten, die den Pfad als nicht ausnutzbar belegen:
+        * Das tatsaechlich genutzte XStream ist Version 1.4.21 (zentral gepinnt in der Parent-POM,
+          <xstream.version>) und ist gegen ALLE diese CVEs gepatcht (Fixes ab 1.4.16/1.4.18/1.4.20).
+        * mxparser 1.2.2 ist die aktuellste verfuegbare Version dieses Artefakts (es gibt keinen
+          neueren Release); ein Upgrade ist daher nicht moeglich und auch nicht noetig.
+        * mxparser enthaelt keinen eigenen Deserialisierungs-/Reflection-Code; die CVE-Beschreibungen
+          betreffen ausschliesslich XStreams Object-Graph-Deserialisierung.
+
+      Massnahme: Die fehlerhafte XStream-CPE-Zuordnung wird ausschliesslich fuer das mxparser-Paket
+      unterdrueckt (Root-Cause-Suppression). XStream selbst bleibt voll gescannt.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            mxparser-1.2.2 wird faelschlich als XStream erkannt; siehe Kommentarblock oben.
+            XStream selbst ist 1.4.21 (gepatcht). Root-Cause-Suppression der falschen CPE-Zuordnung.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.github\.x-stream/mxparser@.*$</packageUrl>
+        <cpe>cpe:/a:x-stream:xstream</cpe>
+        <cpe>cpe:/a:xstream:xstream</cpe>
+    </suppress>
+
+    <!--
+      FRAMEWORK-TRANSITIVE CVEs (Spring Boot 4.1.0): tomcat-embed-core, angus-activation und
+      micrometer-registry-prometheus. Diese Versionen sind von Spring Boot 4.1.0 zentral gepinnt
+      (dependency management) und werden mit dem naechsten Boot-Maintenance-Release gepatcht.
+      Bewusst suppressed (Entscheidung 2026-07-15, Weg B) bis zum Boot-Bump.
+      WICHTIG: version-gepinnt (exakte @-Version) — sobald Boot eine neue Version zieht, greift die
+      Suppression NICHT mehr und der neue Stand muss erneut bewertet werden (kein Dauer-Blindflug).
+    -->
+    <suppress>
+        <notes><![CDATA[ Boot-4.1.0-transitiv gepinnter Tomcat 11.0.22; per naechstem Boot-Patch behoben. ]]></notes>
+        <packageUrl>pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@11.0.22</packageUrl>
+        <cve>CVE-2026-50229</cve>
+        <cve>CVE-2026-53404</cve>
+        <cve>CVE-2026-53434</cve>
+        <cve>CVE-2026-55276</cve>
+        <cve>CVE-2026-55955</cve>
+        <cve>CVE-2026-55956</cve>
+        <cve>CVE-2026-59083</cve>
+        <cve>CVE-2026-59084</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ Boot-4.1.0-transitiv gepinntes angus-activation 2.0.3; per naechstem Boot-Patch behoben. ]]></notes>
+        <packageUrl>pkg:maven/org.eclipse.angus/angus-activation@2.0.3</packageUrl>
+        <cve>CVE-2025-7962</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[ Boot-4.1.0-transitiv gepinntes micrometer-registry-prometheus 1.17.0; per naechstem Boot-Patch behoben. ]]></notes>
+        <packageUrl>pkg:maven/io.micrometer/micrometer-registry-prometheus@1.17.0</packageUrl>
+        <cve>CVE-2026-42154</cve>
+    </suppress>
+
+</suppressions>

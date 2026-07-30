@@ -1,0 +1,51 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+package ch.plaintext.boot.plugins.security.magiclink;
+
+import ch.plaintext.boot.plugins.security.model.MyUserEntity;
+import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
+import ch.plaintext.settings.ISetupConfigService;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.ott.OneTimeToken;
+import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+
+/**
+ * Sendet den Magic-Link per E-Mail statt ihn in die Response zu schreiben.
+ * Antwortet immer neutral (Redirect zu login?magic_link_sent=true),
+ * unabhaengig davon ob die Mail tatsaechlich versendet wurde – kein User-Enumeration.
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class MagicLinkGenerationSuccessHandler implements OneTimeTokenGenerationSuccessHandler {
+
+    private final MyUserRepository userRepository;
+    private final ISetupConfigService setupConfigService;
+    private final MagicLinkService magicLinkService;
+
+    @Override
+    public void handle(HttpServletRequest request, HttpServletResponse response,
+                       OneTimeToken oneTimeToken) throws IOException, ServletException {
+        String username = oneTimeToken.getUsername();
+
+        MyUserEntity user = userRepository.findByUsername(username);
+        if (user != null && setupConfigService.isMagicLinkEnabled(user.getMandat())) {
+            magicLinkService.sendForExistingToken(user, oneTimeToken.getTokenValue(), request);
+        } else if (user != null) {
+            log.debug("MagicLink: fuer Mandat '{}' deaktiviert, Mail nicht gesendet", user.getMandat());
+        } else {
+            log.debug("MagicLink: kein User fuer '{}' gefunden, Mail nicht gesendet", username);
+        }
+
+        // Immer gleiche neutrale Antwort
+        response.sendRedirect(request.getContextPath() + "/login.xhtml?magic_link_sent=true");
+    }
+}

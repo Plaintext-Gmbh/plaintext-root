@@ -1,0 +1,58 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml"
+                template="/includes/template.xhtml">
+
+    <ui:define name="title">#{i18n.t('Zugriff verweigert')}</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <div class="card">
+                <div style="text-align: center; padding: 3rem 0;">
+                    <i class="pi pi-lock" style="font-size: 5rem; color: var(--red-500); margin-bottom: 1rem;"></i>
+
+                    <h1 style="font-size: 2rem; margin-bottom: 1rem; color: var(--text-color);">
+                        #{i18n.t('Zugriff verweigert')}
+                    </h1>
+
+                    <p style="font-size: 1.2rem; margin-bottom: 2rem; color: var(--text-color-secondary);">
+                        #{i18n.t('Sie haben keinen Zugriff auf diese Seite.')}
+                    </p>
+
+                    <div style="max-width: 600px; margin: 0 auto 2rem auto;">
+                        <p:panel header="#{i18n.t('Mögliche Gründe')}">
+                            <ul style="text-align: left; list-style-position: inside;">
+                                <li>#{i18n.t('Diese Funktion erfordert spezielle Berechtigungen (Rollen)')}</li>
+                                <li>#{i18n.t('Die Funktion ist für Ihren Mandanten nicht aktiviert')}</li>
+                                <li>#{i18n.t('Sie wurden von einer abgelaufenen Seite hierher weitergeleitet')}</li>
+                            </ul>
+                        </p:panel>
+                    </div>
+
+                    <div>
+                        <p:commandButton value="#{i18n.t('Zur Startseite')}"
+                                         action="#{myUserInfoBackingBean.navigateToStartpage}"
+                                         ajax="false"
+                                         icon="pi pi-home"
+                                         styleClass="ui-button-lg"/>
+
+                        <p:commandButton value="#{i18n.t('Zurück')}"
+                                         onclick="history.back(); return false;"
+                                         icon="pi pi-arrow-left"
+                                         styleClass="ui-button-lg ui-button-secondary"
+                                         style="margin-left: 1rem;"/>
+                    </div>
+
+                    <p style="margin-top: 2rem; font-size: 0.9rem; color: var(--text-color-secondary);">
+                        #{i18n.t('Bei Fragen wenden Sie sich bitte an Ihren Administrator.')}
+                    </p>
+                </div>
+            </div>
+        </h:form>
+    </ui:define>
+
+</ui:composition>

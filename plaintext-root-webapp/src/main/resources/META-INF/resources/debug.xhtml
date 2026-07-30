@@ -1,0 +1,69 @@
+
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="includes/template.xhtml">
+
+<ui:define name="content">
+    <style>
+        .debug-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+    </style>
+
+    <h:form>
+        <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+        <p:panel header="Debug Information">
+            <h:panelGrid columns="2" cellpadding="10">
+                <h:outputText value="Application Name:" style="font-weight: bold"/>
+                <h:outputText value="Plaintext Boot"/>
+
+                <h:outputText value="Server Time:" style="font-weight: bold"/>
+                <h:outputText value="#{facesContext.externalContext.requestServerName}:#{facesContext.externalContext.requestServerPort}"/>
+
+                <h:outputText value="Context Path:" style="font-weight: bold"/>
+                <h:outputText value="#{facesContext.externalContext.requestContextPath}"/>
+
+                <h:outputText value="Project Stage:" style="font-weight: bold"/>
+                <h:outputText value="#{facesContext.application.projectStage}"/>
+
+                <h:outputText value="View ID:" style="font-weight: bold"/>
+                <h:outputText value="#{facesContext.viewRoot.viewId}"/>
+            </h:panelGrid>
+        </p:panel>
+
+        <p:panel header="Debug Tools" style="margin-top: 20px;">
+            <div class="debug-buttons">
+                <p:button value="Menu Annotation Scanner"
+                          href="/debug/menu-scan"
+                          icon="pi pi-list"/>
+
+                <p:button value="XHTML Resources Scanner"
+                          href="/debug/xhtml-resources"
+                          icon="pi pi-file"/>
+
+                <p:button value="Swagger UI / API Documentation"
+                          href="/swagger"
+                          icon="pi pi-book"/>
+
+                <p:button value="API Docs (JSON)"
+                          href="/api-docs"
+                          icon="pi pi-code"/>
+
+                <p:button value="Menu Registry Test"
+                          href="/debug/menu-registry-test"
+                          icon="pi pi-sitemap"/>
+
+                <p:button value="Mandate Menu Config"
+                          href="/debug/mandate-menu-config"
+                          icon="pi pi-cog"/>
+            </div>
+        </p:panel>
+    </h:form>
+
+</ui:define>
+</ui:composition>

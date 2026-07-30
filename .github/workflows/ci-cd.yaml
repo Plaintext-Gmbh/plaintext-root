@@ -1,0 +1,48 @@
+name: Build And Deploy
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'   # Nightly: schneller Test-Build (ci-only, KEIN Sonar)
+    - cron: '0 4 * * 1'   # Weekly Mo 04:00: Voll-Analyse (Sonar + OWASP-CVE + SpotBugs + Quality-Gate)
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  pipeline:
+    if: ${{ !contains(github.event.head_commit.message, '[skip-ci]') }}
+    uses: Plaintext-Gmbh/plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml@master
+    with:
+      deploy-target: >-
+        ${{ github.event_name == 'schedule' && 'ci-only'
+         || github.event_name == 'pull_request' && 'ci-only'
+         || (github.ref == 'refs/heads/master' && 'release-all' || 'snapshot-dev') }}
+      project-name: plaintext-root
+      database-name: plaintext_root
+      # Deploy-Ziele kommen aus Repository-Variablen (Settings -> Variables), damit
+      # hier keine umgebungsspezifischen Adressen im oeffentlichen Repo stehen.
+      dev-url: ${{ vars.DEPLOY_DEV_URL }}
+      prod-url: ${{ vars.DEPLOY_PROD_URL }}
+      # Sonar + Voll-Analyse NUR wöchentlich (Mo 04:00); nightly bleibt schnell. Dispatch = manueller Voll-Lauf.
+      sonar-enabled: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
+      quality-analysis: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
+      # Build/Deploy laufen auf einem self-hosted Runner im Zielnetz; der Postgres-Host-Port
+      # ist projektspezifisch gewaehlt, damit sich parallele Integrationstest-DBs auf einem
+      # geteilten Docker-Daemon nicht in die Quere kommen.
+      runner: '["self-hosted", "nas"]'
+      postgres-port: '5434'
+    # Caller und reusable Workflow haben denselben Owner -> `secrets: inherit` funktioniert und
+    # reicht alle benoetigten Secrets durch, ohne sie einzeln pflegen zu muessen.
+    # Hinweis: Bei Pull Requests aus Forks stellt GitHub keine Secrets bereit; die Pipeline
+    # laeuft dann als reiner Build/Test-Lauf (deploy-target `ci-only`) ohne Deploy.
+    secrets: inherit

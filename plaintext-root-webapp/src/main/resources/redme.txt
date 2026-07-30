@@ -1,0 +1,6 @@
+Size of the small Logo:
+menu-wrapper .sidebar-logo img -> in dark and light
+
+Height of the big Logo
+.layout-topbar-logo > img -> in dark and light (6 Times)
+

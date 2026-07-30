@@ -1,0 +1,112 @@
+<ui:composition xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml"
+                template="/includes/template.xhtml">
+
+    <ui:define name="title">#{i18n.t('Menüsteuerung')} - #{i18n.t('Übersicht')}</ui:define>
+
+    <ui:define name="content">
+        <style>
+            .info-hint-panel {
+                margin-top: 20px;
+                padding: 10px;
+                background-color: var(--surface-0);
+                border: 1px solid var(--surface-border);
+                border-radius: 5px;
+            }
+
+            .info-hint-panel p {
+                margin: 0;
+                color: var(--text-color);
+                font-size: 0.9em;
+            }
+
+            .hidden-menu-badge {
+                display: inline-block;
+                padding: 3px 8px;
+                margin: 2px;
+                background-color: var(--pink-100);
+                color: var(--pink-700);
+                border-radius: 5px;
+                font-size: 0.85em;
+            }
+        </style>
+
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:messages id="messages" showDetail="true" closable="true"/>
+
+        <p:fieldset legend="#{i18n.t('Mandat-spezifische Menükonfiguration')} - #{i18n.t('Übersicht')}">
+
+                <div style="margin-bottom: 20px;">
+                    <p:commandButton value="#{i18n.t('Neues Mandat')}"
+                                     icon="pi pi-plus"
+                                     styleClass="ui-button-success"
+                                     action="#{mandateMenuBackingBean.newMandate}"
+                                     ajax="false"/>
+                </div>
+
+                <p:dataTable id="mandatesTable"
+                             value="#{mandateMenuBackingBean.mandates}"
+                             var="mandate"
+                             selection="#{mandateMenuBackingBean.selected}"
+                             selectionMode="single"
+                             rowKey="#{mandate.id}"
+                             paginator="true"
+                             rows="10"
+                             paginatorTemplate="{FirstPageLink} {PreviousPageLink} {CurrentPageReport} {NextPageLink} {LastPageLink}"
+                             emptyMessage="#{i18n.t('Keine Konfigurationen vorhanden.')}"
+                             reflow="true">
+
+                    <p:ajax event="rowSelect" listener="#{mandateMenuBackingBean.selectMandate}"/>
+
+                    <p:column headerText="#{i18n.t('Mandatsname')}" sortBy="#{mandate.mandateName}" priority="1">
+                        <h:outputText value="#{mandate.mandateName}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Modus')}" sortBy="#{mandate.whitelistMode}" priority="4" style="width: 120px;">
+                        <h:outputText value="Whitelist" rendered="#{mandate.whitelistMode}" style="color: #28a745; font-weight: bold;"/>
+                        <h:outputText value="Blacklist" rendered="#{!mandate.whitelistMode}" style="color: #dc3545; font-weight: bold;"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Anzahl Menüs')}" sortBy="#{mandate.hiddenMenus.size()}" priority="3">
+                        <h:outputText value="#{mandate.hiddenMenus.size()}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Konfigurierte Menüs')}" priority="2">
+                        <ui:repeat value="#{mandate.hiddenMenus}" var="menu" varStatus="status">
+                            <span class="hidden-menu-badge">#{menu}</span>
+                        </ui:repeat>
+                        <h:outputText value="Keine" rendered="#{empty mandate.hiddenMenus}" style="color: var(--text-color-secondary, #6c757d); font-style: italic;"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Aktionen')}" style="width: 150px; text-align: center;" priority="1">
+                        <p:commandButton value="#{i18n.t('Bearbeiten')}"
+                                         icon="pi pi-pencil"
+                                         styleClass="ui-button-warning"
+                                         action="#{mandateMenuBackingBean.edit}"
+                                         process="@this"
+                                         oncomplete="window.location='mandatemenudetail.xhtml'">
+                            <f:setPropertyActionListener target="#{mandateMenuBackingBean.selected}" value="#{mandate}"/>
+                        </p:commandButton>
+                    </p:column>
+
+                </p:dataTable>
+
+                <div class="info-hint-panel">
+                    <p>
+                        <i class="pi pi-info-circle" style="margin-right: 5px;"></i>
+                        Hier können Sie für jedes Mandat konfigurieren, welche Menüpunkte sichtbar oder ausgeblendet werden sollen.
+                        Wählen Sie ein Mandat aus und klicken Sie auf "Bearbeiten", um die Konfiguration anzupassen.
+                        Im <strong>Blacklist-Modus</strong> werden die ausgewählten Menüs ausgeblendet.
+                        Im <strong>Whitelist-Modus</strong> werden nur die ausgewählten Menüs angezeigt.
+                    </p>
+                </div>
+
+            </p:fieldset>
+        </h:form>
+    </ui:define>
+
+</ui:composition>

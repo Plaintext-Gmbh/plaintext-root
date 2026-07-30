@@ -1,0 +1,59 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Benachrichtigungen</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{notificationBean.refresh()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="5000"/>
+
+            <div style="margin-bottom:12px; display:flex; gap:8px;">
+                <p:commandButton value="Alle als gelesen markieren" icon="pi pi-check"
+                                 actionListener="#{notificationBean.markiereAlleGelesen()}" update="fm"
+                                 styleClass="ui-button-secondary"/>
+                <p:commandButton value="Test-Benachrichtigung an mich senden" icon="pi pi-send"
+                                 actionListener="#{notificationBean.sendeTestBenachrichtigung()}" update="fm"/>
+            </div>
+
+            <p:dataTable id="tbl" var="n" value="#{notificationBean.notifications}" styleClass="ui-datatable-sm"
+                         emptyMessage="Keine Benachrichtigungen" paginator="true" rows="25"
+                         rowsPerPageTemplate="20,25,50,100,200">
+                <p:column headerText="" style="width:36px; text-align:center;">
+                    <i class="pi pi-circle-fill" style="font-size:0.6rem; color:#2196F3;" rendered="#{n.gelesenAm == null}"/>
+                </p:column>
+                <p:column headerText="Titel" sortBy="#{n.titel}">
+                    <h:outputText value="#{n.titel}" style="#{n.gelesenAm == null ? 'font-weight:600;' : ''}"/>
+                </p:column>
+                <p:column headerText="Text">
+                    <h:outputText value="#{n.text}"/>
+                </p:column>
+                <p:column headerText="Typ" sortBy="#{n.typ}" style="width:160px;">
+                    <span class="ui-tag">#{n.typ}</span>
+                </p:column>
+                <p:column headerText="Erstellt" sortBy="#{n.createdDate}" style="width:150px;">
+                    <h:outputText value="#{n.createdDate}">
+                        <f:convertDateTime pattern="dd.MM.yyyy HH:mm"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="" style="width:130px; text-align:center;">
+                    <p:commandButton icon="pi pi-check" title="Als gelesen markieren" process="@this"
+                                     rendered="#{n.gelesenAm == null}"
+                                     actionListener="#{notificationBean.markiereGelesen(n)}" update="fm"
+                                     styleClass="ui-button-flat" style="margin-right:2px;"/>
+                    <h:outputLink value="#{n.link}" rendered="#{not empty n.link}" title="Öffnen"
+                                  styleClass="ui-button-flat" style="display:inline-flex; align-items:center;">
+                        <i class="pi pi-external-link"/>
+                    </h:outputLink>
+                </p:column>
+            </p:dataTable>
+        </h:form>
+    </ui:define>
+</ui:composition>

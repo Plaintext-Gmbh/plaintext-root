@@ -1,0 +1,115 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://java.sun.com/jsf/core"
+                template="includes/template.xhtml">
+
+    <ui:define name="title">Performance Log</ui:define>
+
+    <ui:define name="page">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+        <br/>
+
+        <p:messages/>
+
+        <!-- Baut die Tabelle neu -->
+        #{performanceService.reload()}
+
+        <h:panelGrid columns="1">
+            <p:commandButton value="#{i18n.t('Neu laden')}"
+                             actionListener="#{performanceService.reload()}"
+                             update="grid"/>
+        </h:panelGrid>
+
+        <h:panelGrid id="grid" columns="1" style="width:100%">
+
+            <p:dataTable id="tbl"
+                         var="row"
+                         rowIndexVar="ri"
+                         emptyMessage="-"
+                         value="#{performanceService.dataArr}"
+                         paginator="true"
+                         rows="50"
+                         paginatorPosition="bottom"
+                         sortMode="single"
+                         style="width:100%"
+                         reflow="true">
+
+                <!-- Laufnummer -->
+                <p:column headerText="Nr" style="width:4%; text-align:center;" priority="6">
+                    <h:outputText value="#{ri + 1}"/>
+                </p:column>
+
+                <!-- Methodensignatur -->
+                <p:column headerText="#{i18n.t('Methode')}"
+                          style="width:40%"
+                          filterBy="#{row[1].replace(', ms.','').replace('ch.plaintext.','')}"
+                          filterMatchMode="contains"
+                          sortBy="#{row[1]}"
+                          priority="1">
+                    <h:outputText value="#{row[1].replace(', ms.','').replace('ch.plaintext.','')}"/>
+                </p:column>
+
+                <!-- Hits -->
+                <p:column headerText="Hits"
+                          style="width:6%; text-align:right;"
+                          sortBy="#{row[2]}"
+                          priority="3">
+                    <h:outputText value="#{row[2]}">
+                        <f:convertNumber pattern="#0"/>
+                    </h:outputText>
+                </p:column>
+
+                <!-- Durchschnitt (ms) -->
+                <p:column headerText="#{i18n.t('Durchschnitt')} (ms)"
+                          style="width:8%; text-align:right;"
+                          sortBy="#{row[3]}"
+                          priority="2">
+                    <h:outputText value="#{row[3]}">
+                        <f:convertNumber pattern="#0.##"/>
+                    </h:outputText>
+                </p:column>
+
+                <!-- Min (ms) -->
+                <p:column headerText="Min (ms)"
+                          style="width:6%; text-align:right;"
+                          sortBy="#{row[7]}"
+                          priority="4">
+                    <h:outputText value="#{row[7]}">
+                        <f:convertNumber pattern="#0.##"/>
+                    </h:outputText>
+                </p:column>
+
+                <!-- Max (ms) -->
+                <p:column headerText="Max (ms)"
+                          style="width:6%; text-align:right;"
+                          sortBy="#{row[8]}"
+                          priority="4">
+                    <h:outputText value="#{row[8]}">
+                        <f:convertNumber pattern="#0.##"/>
+                    </h:outputText>
+                </p:column>
+
+                <!-- Letzter Aufruf -->
+                <p:column headerText="#{i18n.t('Letzter Aufruf')}"
+                          style="width:12%; text-align:right;"
+                          sortBy="#{row[13]}"
+                          priority="3">
+                    <h:outputText value="#{row[13]}">
+                        <f:convertDateTime locale="de"
+                                           pattern="dd MMM HH:mm:ss"
+                                           timeZone="Europe/Zurich"/>
+                    </h:outputText>
+                </p:column>
+
+            </p:dataTable>
+
+        </h:panelGrid>
+
+        </h:form>
+    </ui:define>
+
+</ui:composition>

@@ -1,0 +1,851 @@
+/* Theme */
+.ui-widget,
+.ui-widget .ui-widget {
+    font-size: $fontSize;
+    text-decoration: none;
+}
+
+.ui-spinner {
+    .ui-spinner-up {
+        .ui-icon {
+            margin-top: -4px;
+        }
+    }
+    
+    .ui-spinner-down {
+        .ui-icon {
+            margin-top: -10px;
+        }
+    }
+    
+    .ui-spinner-input {
+        font-size: $fontSize;
+    }
+}
+
+.ui-selectonemenu {
+    .ui-selectonemenu-trigger {
+        .ui-icon {
+            padding-left: 0;
+        }
+    }
+    
+    .ui-selectonemenu-label {
+        font-size: $fontSize;
+    }
+}
+
+.ui-fluid {
+    .ui-selectonemenu {
+        .ui-selectonemenu-trigger {
+            .ui-icon {
+                padding-left: 2px;
+            }
+        }
+    }
+}
+
+.ui-selectcheckboxmenu {
+    .ui-selectcheckboxmenu-label {
+        padding: 4px 26px 4px 5px;
+    }
+    
+    .ui-selectcheckboxmenu-trigger {
+        .ui-icon {
+            margin-top: 2px;
+        }
+    }
+}
+
+.ui-selectcheckboxmenu-panel {
+    -webkit-box-shadow: 0 1px 3px 0 rgba(0,0,0,0.3);
+    -moz-box-shadow: 0 1px 3px 0 rgba(0,0,0,0.3);
+    box-shadow: 0 1px 3px 0 rgba(0,0,0,0.3);
+}
+
+.ui-selectcheckboxmenu-panel {
+    .ui-icon {
+        &.ui-icon-circle-close {
+            @include icon-override("\f00d");
+        }
+    }
+}
+
+.ui-fluid {
+    .ui-selectcheckboxmenu {
+        .ui-selectcheckboxmenu-trigger {
+            .ui-icon {
+                padding-left: 5px;
+            }
+        }
+    }
+}
+
+.ui-splitbutton {
+    .ui-splitbutton-menubutton {
+        .ui-icon {
+            margin-top: -10px;
+        }
+    }
+}
+
+.ui-picklist {
+    .ui-picklist-buttons {
+        .ui-icon-arrow-1-n {
+            @include icon-override("\f106");
+        }
+        
+        .ui-icon-arrowstop-1-n {
+            @include icon-override("\f102");
+        }
+        
+        .ui-icon-arrow-1-s {
+            @include icon-override("\f107");
+        }
+        
+        .ui-icon-arrowstop-1-s {
+            @include icon-override("\f103");
+        }
+        
+        .ui-icon-arrow-1-e {
+            @include icon-override("\f105");
+        }
+        
+        .ui-icon-arrowstop-1-e {
+            @include icon-override("\f101");
+        }
+        
+        .ui-icon-arrow-1-w {
+            @include icon-override("\f104");
+        }
+        
+        .ui-icon-arrowstop-1-w {
+            @include icon-override("\f100");
+        }
+    }
+}
+
+@media (max-width: 40em) {
+    .ui-picklist {
+        .ui-picklist-buttons {
+            .ui-icon-arrow-1-e {
+                @include icon-override("\f107");
+            }
+            
+            .ui-icon-arrowstop-1-e {
+                @include icon-override("\f103");
+            }
+            
+            .ui-icon-arrow-1-w {
+                @include icon-override("\f106");
+            }
+            
+            .ui-icon-arrowstop-1-w {
+                @include icon-override("\f102");
+            }
+        }
+    }
+}
+
+.ui-orderlist {
+    .ui-orderlist-controls {
+        .ui-icon-arrow-1-n {
+            @include icon-override("\f106");
+            font-size: 16px;
+            color: #fff;
+        }
+        
+        .ui-icon-arrowstop-1-n {
+            @include icon-override("\f102");
+            font-size: 16px;
+            color: #fff;
+        }
+        
+        .ui-icon-arrow-1-s {
+            @include icon-override("\f107");
+            font-size: 16px;
+            color: #fff;
+        }
+        
+        .ui-icon-arrowstop-1-s {
+            @include icon-override("\f103");
+            font-size: 16px;
+            color: #fff;
+        }
+    }
+    
+    &.ui-grid-responsive {
+        .ui-grid-row {
+            .ui-orderlist-controls {
+                margin-right: 0;
+                padding-right: 10px;
+            }
+        }
+    }
+}
+
+.ui-paginator {
+    > a {
+        vertical-align: top;
+        
+        span {
+            position: relative;
+            top: 1px;
+        }
+    }
+    
+    .ui-paginator-next {
+        height: 17px;
+        overflow: hidden;
+        
+        .ui-icon {
+            &.ui-icon-seek-next {
+                @include icon-override("\f04b");
+                width: 10px;
+            }
+        }
+    }
+    
+    .ui-paginator-last {
+        height: 17px;
+        overflow: hidden;
+        
+        .ui-icon {
+            &.ui-icon-seek-end {
+                @include icon-override("\f051");
+                width: 8px;
+                padding-left: 2px;
+            }
+        }
+    }
+    
+    .ui-paginator-prev {
+        height: 17px;
+        overflow: hidden;
+        padding-left: 5px;
+        
+        .ui-icon {
+            &.ui-icon-seek-prev {
+                @include icon-override("\f04b");
+                -webkit-transform: rotate(180deg);
+                -moz-transform: rotate(180deg);
+                -ms-transform: rotate(180deg);
+                -o-transform: rotate(180deg);
+                transform: rotate(180deg);
+                width: 11px;
+                height: 14px;
+            }
+        }
+    }
+    
+    .ui-paginator-first {
+        height: 17px;
+        overflow: hidden;
+        
+        .ui-icon {    
+            &.ui-icon-seek-first {
+                @include icon-override("\f048");
+                width: 8px;
+                padding-left: 2px;
+            }
+        }
+    }
+    
+    .ui-paginator-pages {
+        padding: 0;
+        vertical-align: top;
+        
+        .ui-paginator-page {
+            height: 17px;
+        }
+    }
+}
+
+.ui-autocomplete {
+    .ui-autocomplete-dropdown {
+        .ui-icon {
+            margin-top: -10px;
+        }
+    }
+}
+
+.ui-selectmanymenu {
+    .ui-chkbox {
+        vertical-align: middle;
+        margin: 2px 4px 0 1px;
+    }
+}
+
+.ui-datepicker {
+    .ui-datepicker-next {
+        .ui-icon {
+            @include icon-override("\f054");
+            color: #fff;
+            width: 10px;
+            height: 15px;
+            padding-left: 5px;
+        }
+    }
+    
+    .ui-datepicker-prev {
+        .ui-icon {
+            @include icon-override("\f053");
+            color: #fff;
+            width: 10px;
+            height: 15px;
+        }
+    }
+}
+
+.ui-chkbox {
+    .ui-icon-blank {
+        @include icon-override("\f00c");
+        visibility: hidden;
+    }
+}
+
+.ui-radiobutton {
+    .ui-icon-blank {
+        @include icon-override("\f111");
+        visibility: hidden;
+    }
+    
+    .ui-icon-bullet, .ui-icon-blank {
+        font-size: 10px;
+        margin-top: 2px;
+        margin-left: 0px;
+    }
+}
+
+.ui-tree {
+    .ui-tree-toggler {
+        vertical-align: middle;
+        
+        &.ui-icon-triangle-1-s {
+            margin-top: -5px;
+        }
+    }
+    
+    &.ui-tree-horizontal {
+        .ui-tree-toggler {
+            vertical-align: middle;
+        }
+    }
+    
+    .ui-treenode-label {
+        margin-top: 0px;
+        vertical-align: middle;
+    }
+    
+    .ui-chkbox {
+        vertical-align: middle;
+        margin-right: 2px;
+    }
+    
+    .ui-treenode-icon {
+        vertical-align: middle;
+        position: relative;
+        top: 1px;
+    }
+} 
+
+.ui-treetable {
+    .ui-treetable-toggler {
+        margin-top: 1px;
+        
+        &.ui-icon-triangle-1-s {
+            margin-top: 1px;
+        }
+    }
+}
+
+.ui-fieldset {
+    .ui-fieldset-legend {
+        .ui-fieldset-toggler {
+            margin-top: 2px;
+        }
+    }
+}
+
+.ui-panel {
+    .ui-panel-titlebar {
+        .ui-icon {
+            vertical-align: middle;
+        }
+    }
+}
+
+/* Messages */
+.ui-messages {
+    &.ui-widget {
+        ul {
+            display: inline-block;
+            margin-left: 0;
+        }
+    }
+}
+
+/* Info */
+.ui-messages .ui-messages-info-icon,.ui-message .ui-message-info-icon {
+    @include icon-override("\f05a");
+    font-size: 20px;
+    color: #fff;
+    margin-top: -2px;
+}
+
+.ui-message .ui-message-info-icon {
+    margin-top: -1px;
+    font-size: 18px;
+}
+
+/* Error */
+.ui-messages .ui-messages-error-icon, .ui-message .ui-message-error-icon {
+    @include icon-override("\f056");
+    font-size: 20px;
+    color: #fff;
+    margin-top: -2px;
+}
+
+.ui-message .ui-message-error-icon {
+    margin-top: -1px;
+    font-size: 18px;
+}
+
+/* Warn */
+.ui-messages .ui-messages-warn-icon,.ui-message .ui-message-warn-icon {
+    @include icon-override("\f071");
+    font-size: 20px;
+    color: #fff;
+    margin-top: -2px;
+}
+
+.ui-message .ui-message-warn-icon {
+    margin-top: -1px;
+    font-size: 18px;
+}
+
+/* Fatal */
+.ui-messages .ui-messages-fatal-icon,.ui-message .ui-message-fatal-icon {
+    @include icon-override("\f056");
+    font-size: 20px;
+    color: #fff;
+    margin-top: -2px;
+}
+
+.ui-message .ui-message-fatal-icon {
+    margin-top: -1px;
+    font-size: 18px;
+}
+
+.ui-messages-close {
+    span {
+        @include icon-override("\f00d");
+        font-size: $fontSize;
+        color: #fff;
+    }
+}
+
+.ui-growl {
+    .ui-growl-item {
+        .ui-growl-image {
+            background: none;
+            color: #fff;
+            padding: 4px;
+            
+            &.ui-growl-image-info {
+                @include icon-override("\f05a");
+                font-size: 36px;
+            }
+            
+            &.ui-growl-image-error {
+                @include icon-override("\f056");
+                font-size: 36px;
+            }
+            
+            &.ui-growl-image-warn {
+                @include icon-override("\f071");
+                font-size: 36px;
+            }
+            
+            &.ui-growl-image-fatal {
+                @include icon-override("\f056");
+                font-size: 36px;
+            }
+        }
+        
+        .ui-growl-icon-close {
+            @include icon-override("\f00d");
+            font-size: $fontSize;
+            color: #fff;
+        }
+    }
+}
+
+.ui-carousel {
+    .ui-carousel-button {
+        &.ui-carousel-next-button {
+            @include icon-override("\f054");
+        }
+        
+        &.ui-carousel-prev-button {
+            @include icon-override("\f053");
+        }
+    }
+    .ui-carousel-page-links {
+        .ui-icon {
+            text-decoration: none;
+            &.ui-icon-radio-on {
+                @include icon-override("\f111");
+                color: #0388e5;
+            }
+        }
+    }
+}
+
+.ui-breadcrumb {
+    .ui-icon {
+        margin-top: 4px;
+        &.ui-icon-home {
+            margin-top: 3px;
+            top: 1px;
+        }
+    }
+    
+    .ui-menuitem-link {
+        text-decoration: none;
+    }
+}
+
+.ui-menu {
+    &.ui-contextmenu {
+        .ui-menuitem-icon {
+            margin-top: 1px;
+        }
+    }
+    
+    &.ui-megamenu {
+        .ui-menuitem-icon {
+            margin-top: 1px;
+        }
+    }
+    
+    .ui-menuitem-link {
+        width: 96%;
+    }
+}
+
+.ui-menubar {
+    .ui-menuitem-link {
+        width: auto;
+    }
+}
+
+.ui-tabmenu {
+    .ui-menuitem-icon {
+        margin-top: 1px;
+    }
+    
+    li.ui-state-active {
+        .ui-menuitem-icon {
+            color: #ffffff;
+        }
+    }
+}
+
+.ui-selectbooleanbutton {
+    .ui-icon {
+        padding-top: 1px;
+    }
+}
+
+.fc-toolbar {
+    .ui-icon {
+        margin-top: 3px;
+    }
+}
+
+.ui-dialog {
+    .ui-dialog-titlebar-close, .ui-dialog-titlebar-minimize, .ui-dialog-titlebar-maximize {
+        text-decoration: none;
+        margin-top: 10px;
+    }
+}
+
+.ui-datatable {
+    .ui-row-toggler {
+        &.ui-icon-circle-triangle-e {
+            @include icon-override("\f054");
+        }
+        &.ui-icon-circle-triangle-s {
+            @include icon-override("\f078");
+        }
+    }
+    
+    .ui-radiobutton {
+        .ui-icon-bullet, .ui-icon-blank {
+            color: #186ba0;
+        }
+    }
+    
+    .ui-chkbox {
+        .ui-chkbox-box {
+            color: #186ba0;
+        }
+    }
+    
+    .ui-datatable-data {
+        tr.ui-state-hover {
+            border-bottom: #d5d5d5;
+        }
+    }
+}
+
+.ui-tabs {
+    .ui-tabs-nav {
+        li {
+            .ui-icon {
+                margin-top: 0.6em;
+            }
+            
+            > a:focus {
+                outline: 0 none;
+            }
+        }
+    }
+}
+
+.ui-selectmanycheckbox{
+    .ui-grid-row {
+        > div {
+            padding: 2px;
+        }
+    }
+}
+
+.ui-panelgrid {
+    &.ui-panelgrid-blank {
+        .ui-grid-responsive {
+            .ui-grid-row {
+                border: 0 none;
+            }
+        }
+    }
+}
+
+.ui-fluid { 
+    .ui-selectonebutton, .ui-selectmanybutton {
+        &.ui-buttonset.ui-buttonset-3 {
+            .ui-button {
+                width: 33.33%;
+            }
+        }
+        
+        &.ui-buttonset.ui-buttonset-6 {
+            .ui-button {
+                width: 16.66%;
+            }
+        }
+    }
+}
+
+@media (max-width : 40em) {
+    .ui-fluid {
+        .ui-selectonebutton, .ui-selectmanybutton {
+            border: 1px solid #d6d6d6;
+
+            &.ui-buttonset {
+                .ui-button {
+                    border-radius: 3px;
+
+                    &:last-child {
+                        border-bottom: 1px solid #d6d6d6;
+                    }
+                }
+                
+                &.ui-buttonset-6, &.ui-buttonset-3 {
+                    .ui-button {
+                        width: 100%;
+                    }
+                }
+            }
+        }
+    }
+}
+
+a {
+    &.ui-commandlink, &.ui-link {
+        color: #2399e5;
+    }
+}
+
+.ui-fluid {
+    .fc {
+        .ui-button {
+            width: auto;
+        }
+    }
+}
+
+.ui-lightbox {
+    .ui-lightbox-nav-left {
+        letter-spacing: 11px;
+        
+        span {
+            margin: 5px 0;
+            padding-left: 7px;
+            padding-top: 3px;
+        }
+    }
+    
+    .ui-lightbox-nav-right {
+        letter-spacing: 11px;
+        
+        span {
+            margin: 5px 0;
+            padding-left: 7px;
+            padding-top: 3px;
+        }
+    }
+}
+
+/* Button Colors */
+/* Colored Buttons */
+/*Green Button*/
+.ui-button {
+    &.ui-state-default {
+        &.green-button {
+            background-color: $greenButton;
+            border-color: $greenButtonBorder;
+            
+            &.ui-state-hover {
+                background-color: $greenButtonHover;
+            }
+            
+            &.ui-state-active {
+                background-color: $greenButtonActive;
+            }
+        }
+    }
+}
+
+/*Yellow Button*/
+.ui-button {
+    &.ui-state-default {
+        &.yellow-button {
+            background-color: $yellowButton;
+            border-color: $yellowButtonBorder;
+            
+            &.ui-state-hover {
+                background-color: $yellowButtonHover;
+            }
+            
+            &.ui-state-active {
+                background-color: $yellowButtonActive;
+            }
+        }
+    }
+}
+
+/*Red Button*/
+.ui-button {
+    &.ui-state-default {
+        &.red-button {
+            background-color: $redButton;
+            border-color: $redButtonBorder;
+            
+            &.ui-state-hover {
+                background-color: $redButtonHover;
+            }
+            
+            &.ui-state-active {
+                background-color: $redButtonActive;
+            }
+        }
+    }
+}
+
+/*Aqua Button*/
+.ui-button {
+    &.ui-state-default {
+        &.aqua-button {
+            background-color: $aquaButton;
+            border-color: $aquaButtonBorder;
+            
+            &.ui-state-hover {
+                background-color: $aquaButtonHover;
+            }
+            
+            &.ui-state-active {
+                background-color: $aquaButtonActive;
+            }
+        }
+    }    
+}
+
+/*Navy Button*/
+.ui-button {
+    &.ui-state-default {
+        &.navy-button {
+            background-color: $navyButton;
+            border-color: $navyButtonBorder;
+            
+            &.ui-state-hover {
+                background-color: $navyButtonHover;
+            }
+            
+            &.ui-state-active {
+                background-color: $navyButtonActive;
+            }
+        }
+    }
+}
+
+/*Black Button*/
+.ui-button {
+    &.ui-state-default {
+        &.black-button {
+            background-color: $blackButton;
+            border-color: $blackButtonBorder;
+            
+            &.ui-state-hover {
+                background-color: $blackButtonHover;
+            }
+            
+            &.ui-state-active {
+                background-color: $blackButtonActive;
+            }
+        }
+    }
+}
+
+/*Grey Button*/
+.ui-button {
+    &.ui-state-default {
+        &.gray-button {
+            background-color: $greyButton;
+            border-color: $greyButtonBorder;
+            
+            &.ui-button {
+                span.ui-button-text {
+                    color: $greyButtonText;
+                }
+            }
+            
+            &.ui-state-hover {
+                background-color: $greyButtonHover;
+            }
+            
+            &.ui-state-active {
+                background-color: $greyButtonActive;
+            }
+        }
+    }
+}
+
+.ui-fluid {
+    .ui-wizard-navbar { 
+        .ui-button {
+            width: auto;
+        }
+    }
+}

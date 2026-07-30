@@ -1,0 +1,285 @@
+#!/bin/bash
+# ═══════════════════════════════════════════════════════════════
+#  DEV RUNNER - Quick Command TUI (shared via plaintext-scripts)
+#  Simple menu for common dev workflow actions.
+#
+#  Reads configuration from build-conf.txt in the project root:
+#    WEBAPP_MODULE, TUI_TITLE, AUTOLOGIN_URL (optional)
+#
+#  Copy this file to your project root as ./start
+# ═══════════════════════════════════════════════════════════════
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+source "$HOME/codeplain/plaintext-scripts/tui-common.sh"
+
+# ── Load build-conf.txt (from plaintext-config or local) ─────
+source "$HOME/codeplain/plaintext-scripts/common-functions.sh"
+load_build_conf "$SCRIPT_DIR"
+
+: "${WEBAPP_MODULE:?WEBAPP_MODULE must be set in build-conf.txt}"
+: "${TUI_TITLE:=DEV RUNNER}"
+
+source "$HOME/codeplain/plaintext-scripts/tui-start-logic.sh"
+
+# ── Non-interactive mode (CLI args) ─────────────────────────
+
+if [[ -n "$1" ]]; then
+    case "$1" in
+        start|s)        do_start; exit $? ;;
+        kill|k)         do_kill; exit 0 ;;
+        install|i)      do_clean_install; exit $? ;;
+        logs|l)         do_logs; exit 0 ;;
+        modules|m)      PROJECT_DIR="$SCRIPT_DIR" exec "$HOME/codeplain/plaintext-scripts/modules" ;;
+        build|b)        exec "$SCRIPT_DIR/build.sh" ;;
+        start-pg|pg)    exec "$HOME/codeplain/plaintext-scripts/start-postgres.sh" ;;
+        stop-pg)        exec "$HOME/codeplain/plaintext-scripts/stop-postgres.sh" ;;
+        flywaynr|f)     do_flywaynr; exit $? ;;
+        help|-h|--help)
+            echo -e "${FG_BLUE}${BOLD}${TUI_TITLE}${RESET}"
+            echo ""
+            echo -e "  ${FG_CYAN}./start${RESET}              Interactive TUI"
+            echo ""
+            echo -e "  ${FG_CYAN}./start start${RESET}    ${FG_DIM}s${RESET}   Build + start"
+            echo -e "  ${FG_CYAN}./start kill${RESET}     ${FG_DIM}k${RESET}   Kill all Java processes"
+            echo -e "  ${FG_CYAN}./start install${RESET}  ${FG_DIM}i${RESET}   mvn clean install"
+            echo -e "  ${FG_CYAN}./start logs${RESET}     ${FG_DIM}l${RESET}   Open logs in new iTerm"
+            echo -e "  ${FG_CYAN}./start modules${RESET}  ${FG_DIM}m${RESET}   Open module manager"
+            echo -e "  ${FG_CYAN}./start build${RESET}    ${FG_DIM}b${RESET}   Run build system"
+            echo -e "  ${FG_CYAN}./start start-pg${RESET} ${FG_DIM}pg${RESET}  Start PostgreSQL"
+            echo -e "  ${FG_CYAN}./start stop-pg${RESET}       Stop PostgreSQL"
+            echo -e "  ${FG_CYAN}./start flywaynr${RESET} ${FG_DIM}f${RESET}   Next Flyway version number"
+            exit 0
+            ;;
+        *)
+            echo -e "${FG_RED}Unknown command: $1${RESET}"
+            echo "Use: ./start help"
+            exit 1
+            ;;
+    esac
+fi
+
+# ── TUI ──────────────────────────────────────────────────────
+
+# Menu items
+MENU_LABELS=()
+MENU_LABELS+=("Start (build + run)")
+MENU_LABELS+=("Kill (stop app)")
+MENU_LABELS+=("Clean Install (mvn)")
+MENU_LABELS+=("Logs (tail in new terminal)")
+MENU_LABELS+=("Modules (toggle modules)")
+MENU_LABELS+=("Build (build.sh)")
+MENU_LABELS+=("Start Postgres")
+MENU_LABELS+=("Stop Postgres")
+MENU_LABELS+=("Flyway Version Nr.")
+MENU_TOTAL=${#MENU_LABELS[@]}
+MENU_MAX_IDX=$((MENU_TOTAL - 1))
+
+CURSOR=0
+STATUS_MSG=""
+STATUS_COLOR=""
+
+trap tui_cleanup EXIT
+tui_init
+
+# ── Drawing ──────────────────────────────────────────────────
+
+draw() {
+    tput clear
+
+    local app_status
+    app_status=$(get_status_line)
+
+    local total_lines=$((1 + 3 + 1 + 1 + 1 + MENU_TOTAL + 1 + 1 + 1 + 1))
+    [[ -n "$STATUS_MSG" ]] && total_lines=$((total_lines + 1))
+
+    tui_center $total_lines
+
+    # ── Top border ──
+    tui_hline "┌" "─" "┐"
+
+    # ── Header band ──
+    tui_nr; tui_band_row
+    tui_nr; tui_band_title "$TUI_TITLE"
+    tui_nr; tui_band_row
+
+    # ── App status ──
+    local status_color="$FG_GREEN"
+    if [[ "$app_status" == "stopped" ]]; then
+        status_color="$FG_DIM"
+    fi
+    tui_nr; tui_row "  App: ${app_status}" "${status_color}"
+
+    # ── Status message (action feedback) ──
+    if [[ -n "$STATUS_MSG" ]]; then
+        tui_nr; tui_row "  ${STATUS_MSG}" "${STATUS_COLOR}"
+    fi
+
+    # ── Separator ──
+    tui_nr; tui_hline "├" "─" "┤"
+
+    # ── Blank line ──
+    tui_nr; tui_row "" ""
+
+    # ── Menu items ──
+    local i
+    for ((i=0; i<MENU_TOTAL; i++)); do
+        tui_nr
+        if [[ $CURSOR -eq $i ]]; then
+            tui_item_on "${MENU_LABELS[$i]}"
+        else
+            tui_item_off "${MENU_LABELS[$i]}"
+        fi
+    done
+
+    # ── Blank line ──
+    tui_nr; tui_row "" ""
+
+    # ── Footer ──
+    tui_nr; tui_hline "├" "─" "┤"
+    tui_nr; tui_row "  Up/Down Navigate  ENTER Run  H Help  Q Quit" "${FG_DIM}"
+    tui_nr; tui_hline "└" "─" "┘"
+}
+
+# ── Help Screen ──────────────────────────────────────────────
+
+show_help() {
+    tput clear
+
+    tui_center 23
+    tui_hline "┌" "─" "┐"
+    tui_nr; tui_row "" ""
+    tui_nr; tui_row "  ${TUI_TITLE} - HELP" "${FG_WHITE}${BOLD}"
+    tui_nr; tui_row "" ""
+    tui_nr; tui_hline "├" "─" "┤"
+    tui_nr; tui_row "  Tastatur:" "${FG_CYAN}${BOLD}"
+    tui_nr; tui_row "    Up Down   Navigieren" "${FG_CYAN}"
+    tui_nr; tui_row "    ENTER     Auswahl ausfuehren" "${FG_CYAN}"
+    tui_nr; tui_row "    Q         Beenden" "${FG_CYAN}"
+    tui_nr; tui_row "" ""
+    tui_nr; tui_row "  CLI:" "${FG_CYAN}${BOLD}"
+    tui_nr; tui_row "    ./start start     Bauen + Starten" "${FG_CYAN}"
+    tui_nr; tui_row "    ./start kill      Java beenden" "${FG_CYAN}"
+    tui_nr; tui_row "    ./start install   mvn clean install" "${FG_CYAN}"
+    tui_nr; tui_row "    ./start logs      Logs oeffnen" "${FG_CYAN}"
+    tui_nr; tui_row "    ./start modules   Module verwalten" "${FG_CYAN}"
+    tui_nr; tui_row "    ./start build     Build System" "${FG_CYAN}"
+    tui_nr; tui_row "    ./start start-pg  PostgreSQL starten" "${FG_CYAN}"
+    tui_nr; tui_row "    ./start stop-pg   PostgreSQL stoppen" "${FG_CYAN}"
+    tui_nr; tui_row "    ./start flywaynr  Flyway Versionsnr." "${FG_CYAN}"
+    tui_nr; tui_row "" ""
+    tui_nr; tui_hline "├" "─" "┤"
+    tui_nr; tui_row "  Beliebige Taste zum Schliessen..." "${FG_DIM}"
+    tui_nr; tui_hline "└" "─" "┘"
+    IFS= read -rsn1
+}
+
+# ── Command Execution ────────────────────────────────────────
+
+execute_command() {
+    local idx="$1"
+    case "$idx" in
+        0) # Start - open in new terminal
+            osascript << EOF 2>/dev/null &
+tell application "iTerm"
+    create window with default profile command "cd \"${SCRIPT_DIR}\" && ./start start; exit"
+end tell
+EOF
+            STATUS_MSG="Build+Start opened in new iTerm"
+            STATUS_COLOR="$FG_GREEN"
+            ;;
+        1) # Kill
+            do_kill
+            STATUS_MSG="Application stopped"
+            STATUS_COLOR="$FG_RED"
+            ;;
+        2) # Clean Install - open in new terminal
+            osascript << EOF 2>/dev/null &
+tell application "iTerm"
+    create window with default profile command "cd \"${SCRIPT_DIR}\" && ./start install; exit"
+end tell
+EOF
+            STATUS_MSG="Clean Install opened in new iTerm"
+            STATUS_COLOR="$FG_GREEN"
+            ;;
+        3) # Logs
+            do_logs
+            STATUS_MSG="Logs opened"
+            STATUS_COLOR="$FG_GREEN"
+            ;;
+        4) # Modules - open in new terminal
+            osascript << EOF 2>/dev/null &
+tell application "iTerm"
+    create window with default profile command "cd \"${SCRIPT_DIR}\" && PROJECT_DIR='${SCRIPT_DIR}' ~/codeplain/plaintext-scripts/modules; exit"
+end tell
+EOF
+            STATUS_MSG="Modules opened in new iTerm"
+            STATUS_COLOR="$FG_GREEN"
+            ;;
+        5) # Build - open in new terminal
+            osascript -e "tell application \"iTerm\" to create window with default profile command \"cd \\\"${SCRIPT_DIR}\\\" && ./build.sh\"" 2>/dev/null || true
+            STATUS_MSG="Build opened in new iTerm"
+            STATUS_COLOR="$FG_GREEN"
+            ;;
+        6) # Start Postgres
+            osascript << EOF 2>/dev/null &
+tell application "iTerm"
+    create window with default profile command "cd \"${SCRIPT_DIR}\" && ~/codeplain/plaintext-scripts/start-postgres.sh; exit"
+end tell
+EOF
+            STATUS_MSG="Start Postgres opened in new iTerm"
+            STATUS_COLOR="$FG_GREEN"
+            ;;
+        7) # Stop Postgres
+            osascript << EOF 2>/dev/null &
+tell application "iTerm"
+    create window with default profile command "cd \"${SCRIPT_DIR}\" && ~/codeplain/plaintext-scripts/stop-postgres.sh; exit"
+end tell
+EOF
+            STATUS_MSG="Stop Postgres opened in new iTerm"
+            STATUS_COLOR="$FG_GREEN"
+            ;;
+        8) # Flyway Version Nr.
+            osascript -e "tell application \"iTerm\" to create window with default profile command \"cd \\\"${SCRIPT_DIR}\\\" && ./start flywaynr\"" 2>/dev/null || true
+            STATUS_MSG="Flyway Nr. opened in new iTerm"
+            STATUS_COLOR="$FG_GREEN"
+            ;;
+    esac
+}
+
+# ── Main loop ────────────────────────────────────────────────
+
+draw
+
+while true; do
+    IFS= read -rsn1 key
+
+    case "$key" in
+        $'\x1b')
+            read -rsn2 -t 1 seq || seq=""
+            case "$seq" in
+                '[A') # Up
+                    [[ $CURSOR -gt 0 ]] && CURSOR=$((CURSOR - 1))
+                    ;;
+                '[B') # Down
+                    [[ $CURSOR -lt $MENU_MAX_IDX ]] && CURSOR=$((CURSOR + 1))
+                    ;;
+            esac
+            ;;
+        '') # Enter
+            execute_command "$CURSOR"
+            ;;
+        'h'|'H'|'?')
+            show_help
+            ;;
+        'q'|'Q')
+            tui_cleanup
+            echo ""
+            exit 0
+            ;;
+    esac
+
+    draw
+done

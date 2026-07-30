@@ -1,0 +1,112 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">API Tokens (Admin)</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{adminApiTokenBean.onLoad()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="5000"/>
+
+            <p:fieldset id="fs1" legend="API Tokens - Mandatsübersicht">
+
+                <h:panelGrid columns="1" style="width: 100%; margin-bottom: 20px;">
+                    <h:outputText value="Übersicht aller aktiven API-Tokens in Ihrem Mandat. Sie können Tokens invalidieren, aber nicht löschen (Audit-Trail)."
+                                  style="font-style: italic; color: #666;"/>
+                </h:panelGrid>
+
+                <p:outputPanel id="tokenTable">
+
+                    <h:panelGrid columns="1" style="width: 100%;" rendered="#{!adminApiTokenBean.hasTokens()}">
+                        <h:outputText value="Es gibt keine aktiven API-Tokens in diesem Mandat." style="color: #666; font-style: italic;"/>
+                    </h:panelGrid>
+
+                    <p:dataTable value="#{adminApiTokenBean.tokens}"
+                                 var="t"
+                                 rendered="#{adminApiTokenBean.hasTokens()}"
+                                 styleClass="token-table"
+                                 rowStyleClass="#{t.expired ? 'expired-row' : (t.expiresSoon ? 'warning-row' : '')}">
+
+                        <p:column headerText="Benutzer" style="width: 180px;">
+                            <h:outputText value="#{t.userEmail}"/>
+                            <br/>
+                            <h:outputText value="(ID: #{t.userId})" style="font-size: 11px; color: #666;"/>
+                        </p:column>
+
+                        <p:column headerText="Token-Name" style="width: 180px;">
+                            <h:outputText value="#{t.tokenName}" style="font-weight: bold;"/>
+                        </p:column>
+
+                        <p:column headerText="Gültig bis" style="width: 140px;">
+                            <h:panelGroup rendered="#{t.expired}">
+                                <i class="pi pi-exclamation-circle" style="color: #dc3545;"/>
+                                <h:outputText value=" Abgelaufen" style="color: #dc3545; font-weight: bold;"/>
+                            </h:panelGroup>
+                            <h:panelGroup rendered="#{!t.expired and t.expiresSoon}">
+                                <i class="pi pi-exclamation-triangle" style="color: #ffc107;"/>
+                                <h:outputText value=" #{t.expiresAt}" style="color: #856404;"/>
+                                <br/>
+                                <h:outputText value="(#{t.daysUntilExpiry} Tage)" style="font-size: 11px; color: #856404;"/>
+                            </h:panelGroup>
+                            <h:panelGroup rendered="#{!t.expired and !t.expiresSoon}">
+                                <h:outputText value="#{t.expiresAt}"/>
+                                <br/>
+                                <h:outputText value="(#{t.daysUntilExpiry} Tage)" style="font-size: 11px; color: #666;"/>
+                            </h:panelGroup>
+                        </p:column>
+
+                        <p:column headerText="Zuletzt verwendet" style="width: 140px;">
+                            <h:outputText value="#{t.lastUsedAt}"/>
+                        </p:column>
+
+                        <p:column headerText="Verwendet" style="width: 90px; text-align: center;">
+                            <h:outputText value="#{t.useCount}x"/>
+                        </p:column>
+
+                        <p:column headerText="Erstellt" style="width: 140px;">
+                            <h:outputText value="#{t.createdAt}"/>
+                        </p:column>
+
+                        <p:column headerText="Aktion" style="width: 100px;">
+                            <p:commandButton icon="pi pi-ban"
+                                             styleClass="ui-button-danger ui-button-rounded"
+                                             title="Token invalidieren"
+                                             action="#{adminApiTokenBean.invalidateToken(t.id)}"
+                                             update=":fm:tokenTable,:fm:messages"
+                                             process="@this">
+                                <p:confirm header="Token invalidieren?"
+                                           message="Der Token '#{t.tokenName}' von Benutzer #{t.userEmail} wird unwiderruflich invalidiert. Fortfahren?"
+                                           icon="pi pi-exclamation-triangle"/>
+                            </p:commandButton>
+                        </p:column>
+
+                    </p:dataTable>
+
+                </p:outputPanel>
+
+            </p:fieldset>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes ui-button-danger"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+        </h:form>
+
+        <style>
+            .token-table .expired-row {
+                background-color: #f8d7da !important;
+            }
+            .token-table .warning-row {
+                background-color: #fff3cd !important;
+            }
+        </style>
+    </ui:define>
+</ui:composition>

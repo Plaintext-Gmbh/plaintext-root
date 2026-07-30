@@ -1,0 +1,34 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: false
+    out-of-order: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  security:
+    user:
+      name: admin
+      password: admin
+      roles: ADMIN
+
+server:
+  port: 0
+
+mad:
+  autologin: false
+
+logging:
+  level:
+    root: WARN
+    org.flywaydb: INFO
+    ch.plaintext: INFO

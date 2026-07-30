@@ -1,0 +1,89 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Mailtexte</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{mailTemplateBean.refresh()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="5000"/>
+
+            <p style="color:#666; max-width:900px;">
+                Hier hinterlegte Overrides ersetzen den im Code fest hinterlegten Standardtext für den
+                jeweiligen Versand (identifiziert über den Template-Key). Ohne Eintrag gilt weiterhin der
+                Code-Default. Platzhalter im Text stehen als <code>{platzhalter}</code>.
+            </p>
+
+            <!-- ══ 1. VORHANDENE OVERRIDES ═══════════════════════════════════════════ -->
+            <p:fieldset legend="1 · Mailtext-Overrides" toggleable="true" collapsed="false" style="margin-bottom:16px;">
+                <p:dataTable id="tbl" var="t" value="#{mailTemplateBean.templates}" styleClass="ui-datatable-sm"
+                             emptyMessage="Noch keine Overrides — es gelten überall die Code-Defaults" paginator="true" rows="25"
+                             rowsPerPageTemplate="20,25,50,100,200,300,500">
+                    <p:column headerText="Template-Key" sortBy="#{t.templateKey}" filterBy="#{t.templateKey}" filterMatchMode="contains">
+                        <h:outputText value="#{t.templateKey}" style="font-weight:600;"/>
+                    </p:column>
+                    <p:column headerText="Betreff" sortBy="#{t.betreff}">
+                        <h:outputText value="#{t.betreff}"/>
+                    </p:column>
+                    <p:column headerText="Format" style="width:90px;">
+                        <span class="ui-tag">#{t.html ? 'HTML' : 'Text'}</span>
+                    </p:column>
+                    <p:column headerText="Geändert" sortBy="#{t.lastModifiedDate}" style="width:150px;">
+                        <h:outputText value="#{t.lastModifiedDate}">
+                            <f:convertDateTime pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+                    </p:column>
+                    <p:column headerText="" style="width:110px; text-align:center;">
+                        <p:commandButton icon="pi pi-pencil" title="Override ändern" process="@this"
+                                         actionListener="#{mailTemplateBean.edit(t)}" update="fm"
+                                         styleClass="ui-button-flat" style="margin-right:2px;"/>
+                        <p:commandButton icon="pi pi-trash" title="Override entfernen (Code-Default gilt wieder)" process="@this"
+                                         actionListener="#{mailTemplateBean.delete(t)}" update="fm"
+                                         styleClass="ui-button-flat ui-button-danger">
+                            <p:confirm header="Entfernen" message="Override '#{t.templateKey}' entfernen — künftig gilt wieder der Code-Default?"
+                                       icon="pi pi-exclamation-triangle"/>
+                        </p:commandButton>
+                    </p:column>
+                </p:dataTable>
+            </p:fieldset>
+
+            <!-- ══ 2. OVERRIDE ANLEGEN / ÄNDERN ══════════════════════════════════════ -->
+            <p:fieldset legend="2 · Override anlegen / ändern" toggleable="true" collapsed="false">
+                <p style="color:#666;">Zum Ändern eines bestehenden Overrides oben in der Liste auf
+                    <i class="pi pi-pencil"/> klicken — Felder werden hier vorbelegt.</p>
+                <h:panelGrid columns="2" cellpadding="6" styleClass="ui-fluid" style="max-width:900px;">
+                    <p:outputLabel for="key" value="Template-Key:"/>
+                    <p:inputText id="key" value="#{mailTemplateBean.templateKey}"/>
+
+                    <p:outputLabel for="betreff" value="Betreff:"/>
+                    <p:inputText id="betreff" value="#{mailTemplateBean.betreff}"/>
+
+                    <p:outputLabel for="body" value="Body:"/>
+                    <p:inputTextarea id="body" value="#{mailTemplateBean.body}" rows="10" style="font-family:monospace;"/>
+
+                    <p:outputLabel for="html" value="HTML:"/>
+                    <p:selectBooleanCheckbox id="html" value="#{mailTemplateBean.html}"/>
+                </h:panelGrid>
+                <div style="margin-top:14px;">
+                    <p:commandButton value="Speichern" icon="pi pi-check"
+                                     actionListener="#{mailTemplateBean.save()}" update="fm"
+                                     styleClass="ui-button-success" style="margin-right:4mm;"/>
+                    <p:commandButton value="Abbrechen" icon="pi pi-times" type="reset"
+                                     styleClass="ui-button-secondary"/>
+                </div>
+            </p:fieldset>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes ui-button-danger"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no ui-button-secondary"/>
+            </p:confirmDialog>
+        </h:form>
+    </ui:define>
+</ui:composition>

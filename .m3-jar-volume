@@ -1,0 +1,3 @@
+# M3: Jar-im-Volume-Deploy aktiviert (plaintext-scripts erkennt diesen Marker).
+# Compose-Slots laufen auf plaintext-runtime:jre25 + Volume-Jar (INT+PROD zero-downtime migriert).
+# Deploy stage't nur das Jar (kein docker build/save/load). Marker entfernen = klassischer Image-Deploy.

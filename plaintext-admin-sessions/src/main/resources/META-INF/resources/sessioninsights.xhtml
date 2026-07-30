@@ -1,0 +1,138 @@
+<ui:composition xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml"
+                template="/includes/template.xhtml">
+
+    <ui:define name="title">Session Insights (Root)</ui:define>
+
+    <ui:define name="page">
+        <f:metadata>
+            <f:event type="preRenderView" listener="#{sessionInspectorBackingBean.init()}"/>
+        </f:metadata>
+
+        <style>
+            .action-buttons {
+                margin-bottom: 15px;
+                padding: 10px;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                border-radius: 8px;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+
+            .total-size-panel {
+                margin-bottom: 20px;
+            }
+
+            .size-column {
+                text-align: right;
+            }
+
+            /* Mobile optimizations */
+            @media screen and (max-width: 768px) {
+                .action-buttons {
+                    flex-direction: column;
+                }
+
+                .action-buttons .ui-button {
+                    width: 100% !important;
+                }
+            }
+
+            /* Dark mode support */
+            @media (prefers-color-scheme: dark) {
+                .action-buttons {
+                    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+                }
+            }
+        </style>
+
+        <h:outputScript>
+            history.pushState(null, null, '/sessioninsights.html');
+        </h:outputScript>
+
+        <p:growl id="messages" showDetail="true" life="3000"/>
+
+        <!-- User Selection and Action Buttons -->
+        <div class="action-buttons">
+            <h:form id="actionForm">
+                <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+                <p:outputLabel for="userSelect" value="#{i18n.t('Benutzer-Session')}:" style="margin-right: 10px; font-weight: bold;"/>
+                <p:selectOneMenu id="userSelect"
+                                 value="#{sessionInspectorBackingBean.selectedSessionId}"
+                                 style="margin-right: 10px; min-width: 250px;">
+                    <f:selectItem itemLabel="-- #{i18n.t('Bitte wählen')} --" itemValue=""/>
+                    <f:selectItems value="#{sessionInspectorBackingBean.activeSessions}"
+                                   var="userSession"
+                                   itemLabel="#{userSession.displayName}"
+                                   itemValue="#{userSession.sessionId}"/>
+                    <p:ajax event="change"
+                            listener="#{sessionInspectorBackingBean.onUserChange()}"
+                            update="sessionTable totalSizePanel"/>
+                </p:selectOneMenu>
+
+                <p:commandButton value="#{i18n.t('Aktualisieren')}"
+                                 icon="pi pi-refresh"
+                                 action="#{sessionInspectorBackingBean.refresh()}"
+                                 update="sessionTable totalSizePanel userSelect"
+                                 styleClass="ui-button-success"/>
+            </h:form>
+        </div>
+
+        <!-- Total Size Panel -->
+        <div class="total-size-panel">
+            <p:panel id="totalSizePanel" header="#{i18n.t('Session Übersicht')}">
+                <h:panelGrid columns="2" cellpadding="10">
+                    <h:outputLabel value="#{i18n.t('Anzahl Objekte')}:" style="font-weight: bold;"/>
+                    <h:outputText value="#{sessionInspectorBackingBean.sessionAttributes.size()}"/>
+
+                    <h:outputLabel value="#{i18n.t('Gesamtgrösse')}:" style="font-weight: bold;"/>
+                    <h:outputText value="#{sessionInspectorBackingBean.formattedTotalSize}"/>
+                </h:panelGrid>
+            </p:panel>
+        </div>
+
+        <!-- Session Attributes Table -->
+        <h:form id="tableForm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:dataTable id="sessionTable"
+                         value="#{sessionInspectorBackingBean.sessionAttributes}"
+                         var="attr"
+                         paginator="true"
+                         rows="25"
+                         rowsPerPageTemplate="10,20,25,50,100,200,300,500"
+                         paginatorPosition="both"
+                         paginatorTemplate="{CurrentPageReport} {FirstPageLink} {PreviousPageLink} {PageLinks} {NextPageLink} {LastPageLink} {RowsPerPageDropdown}"
+                         currentPageReportTemplate="#{i18n.t('Zeige')} {startRecord} #{i18n.t('bis')} {endRecord} #{i18n.t('von')} {totalRecords} #{i18n.t('Objekten')}"
+                         emptyMessage="#{i18n.t('Keine Session-Objekte gefunden')}"
+                         styleClass="ui-table-striped"
+                         reflow="true">
+
+                <p:column headerText="Name" sortBy="#{attr.name}" filterBy="#{attr.name}" filterMatchMode="contains">
+                    <h:outputText value="#{attr.name}"/>
+                </p:column>
+
+                <p:column headerText="Typ" sortBy="#{attr.type}" filterBy="#{attr.type}" filterMatchMode="contains">
+                    <h:outputText value="#{attr.type}"/>
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Grösse')} (Bytes)" sortBy="#{attr.sizeInBytes}" styleClass="size-column">
+                    <h:outputText value="#{attr.sizeInBytes}">
+                        <f:convertNumber pattern="#,##0"/>
+                    </h:outputText>
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Grösse')}" sortBy="#{attr.sizeInBytes}" styleClass="size-column">
+                    <h:outputText value="#{attr.formattedSize}"/>
+                </p:column>
+
+            </p:dataTable>
+        </h:form>
+
+    </ui:define>
+
+</ui:composition>

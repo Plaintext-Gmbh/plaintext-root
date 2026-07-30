@@ -1,0 +1,26 @@
+target/
+*.iml
+.idea/
+.DS_Store
+*.log
+/logs/
+**/logs/
+buildTimestamp.txt
+version.txt
+versionRelease.txt
+build-conf.txt
+plaintext-scripts/
+plaintext-config/
+.projectmind/
+
+# Privates Schluesselmaterial gehoert NIE ins Repo (Karte 305): es landet sonst im JAR und wird
+# ueber das NAS-Maven-Repo an alle Apps verteilt -> jeder mit Artefakt-Zugriff koennte damit
+# ROOT-Tokens signieren. Private Keys kommen ausschliesslich aus dem Vault
+# (plaintext.jwt.private-key-vault-item) bzw. aus einem gemounteten Secret
+# (plaintext.jwt.private-key-file). Oeffentliche Schluessel duerfen ausgeliefert werden.
+**/src/main/resources/**/private*.pem
+**/src/test/resources/**/private*.pem
+*.key
+id_rsa
+id_ecdsa
+id_ed25519

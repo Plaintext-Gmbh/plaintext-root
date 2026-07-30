@@ -1,0 +1,104 @@
+name: housekeeping
+
+# Manually-triggered chores. Pick a task from the dropdown:
+#
+#  * **deleteLogs5**  — keep the latest 5 completed runs *per workflow*.
+#  * **deleteLogAll** — delete every completed run for every workflow.
+#
+# Currently-running and queued runs are always left alone.
+# Add new tasks by extending the `task` choice and the corresponding step.
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to run'
+        required: true
+        default: 'deleteLogs5'
+        type: choice
+        options:
+          - deleteLogs5
+          - deleteLogAll
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  run:
+    name: ${{ inputs.task }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: deleteLogs5 — keep latest 5 runs per workflow
+        if: inputs.task == 'deleteLogs5'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mapfile -t workflow_ids < <(
+            gh api --paginate "repos/${REPO}/actions/workflows?per_page=100" \
+              --jq '.workflows[].id'
+          )
+          total_deleted=0
+          total_failed=0
+          total_kept=0
+          for wf in "${workflow_ids[@]}"; do
+            mapfile -t ids < <(
+              gh api --paginate "repos/${REPO}/actions/workflows/${wf}/runs?per_page=100" \
+                --jq '.workflow_runs
+                      | map(select(.conclusion != null))
+                      | sort_by(.created_at) | reverse
+                      | .[].id'
+            )
+            count=${#ids[@]}
+            keep=5
+            if [ "$count" -le "$keep" ]; then
+              echo "::notice::workflow=${wf} only ${count} completed — keeping all"
+              total_kept=$((total_kept + count))
+              continue
+            fi
+            wf_deleted=0
+            wf_failed=0
+            for id in "${ids[@]:$keep}"; do
+              if gh api -X DELETE "repos/${REPO}/actions/runs/${id}" 2>/dev/null; then
+                wf_deleted=$((wf_deleted + 1))
+              else
+                wf_failed=$((wf_failed + 1))
+              fi
+            done
+            echo "::notice::workflow=${wf} deleted=${wf_deleted} failed=${wf_failed} kept=${keep}"
+            total_deleted=$((total_deleted + wf_deleted))
+            total_failed=$((total_failed + wf_failed))
+            total_kept=$((total_kept + keep))
+          done
+          echo "::notice::TOTAL deleted=${total_deleted} failed=${total_failed} kept=${total_kept}"
+
+      - name: deleteLogAll — delete every completed run for every workflow
+        if: inputs.task == 'deleteLogAll'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mapfile -t ids < <(
+            gh api --paginate "repos/${REPO}/actions/runs?per_page=100" \
+              --jq '.workflow_runs
+                    | map(select(.conclusion != null))
+                    | .[].id'
+          )
+          total=${#ids[@]}
+          if [ "$total" -eq 0 ]; then
+            echo "::notice::no completed runs to delete"
+            exit 0
+          fi
+          deleted=0
+          failed=0
+          for id in "${ids[@]}"; do
+            if gh api -X DELETE "repos/${REPO}/actions/runs/${id}" 2>/dev/null; then
+              deleted=$((deleted + 1))
+            else
+              failed=$((failed + 1))
+            fi
+          done
+          echo "::notice::deleted=${deleted} failed=${failed} total=${total}"

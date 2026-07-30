@@ -1,0 +1,164 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{settingsBackingBean.onLoad()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="3000"/>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="#{i18n.t('Nein')}" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+            <p:fieldset legend="#{i18n.t('Settings')}">
+
+                <div style="margin-bottom: 10px;">
+                    <p:inputText value="#{settingsBackingBean.searchFilter}" placeholder="#{i18n.t('Suchen...')}"
+                                 style="width: 300px; margin-right: 10px;">
+                        <p:ajax event="keyup" update="tbl" process="@this"/>
+                    </p:inputText>
+
+                    <p:commandButton value="#{i18n.t('Neue Einstellung')}" icon="pi pi-plus"
+                                     actionListener="#{settingsBackingBean.newSetting()}"
+                                     oncomplete="PF('dlg').show()"
+                                     update="fm" process="@this"/>
+
+                    <p:commandButton value="#{i18n.t('Bearbeiten')}" icon="pi pi-pencil"
+                                     actionListener="#{settingsBackingBean.select()}"
+                                     oncomplete="PF('dlg').show()"
+                                     update="fm" process="@this"
+                                     disabled="#{settingsBackingBean.selected == null}"
+                                     style="margin-left: 5px;"/>
+
+                    <p:commandButton value="#{i18n.t('Löschen')}" icon="pi pi-trash" styleClass="ui-button-danger"
+                                     actionListener="#{settingsBackingBean.delete()}"
+                                     update="messages,tbl" process="@this"
+                                     disabled="#{settingsBackingBean.selected == null}"
+                                     style="margin-left: 5px;">
+                        <p:confirm header="#{i18n.t('Bestätigung')}"
+                                   message="#{i18n.t('Einstellung wirklich löschen?')}"
+                                   icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+                </div>
+
+                <p:dataTable id="tbl" var="obj" value="#{settingsBackingBean.filteredSettings}"
+                             selectionMode="single" selection="#{settingsBackingBean.selected}"
+                             rowKey="#{obj.key}#{obj.mandat}" emptyMessage="-" paginator="true" rows="20">
+
+                    <p:ajax event="rowSelect" listener="#{settingsBackingBean.select()}" update="fm"/>
+                    <p:ajax event="rowUnselect" listener="#{settingsBackingBean.clearSelection()}" update="fm"/>
+
+                    <p:column headerText="#{i18n.t('Schlüssel')}" sortBy="#{obj.key}" filterBy="#{obj.key}">
+                        <h:outputText value="#{obj.key}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Wert')}" sortBy="#{obj.value}">
+                        <h:outputText value="#{obj.value}" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;"/>
+                    </p:column>
+
+                    <p:column headerText="Typ" sortBy="#{obj.valueType}">
+                        <h:outputText value="#{obj.valueType}"/>
+                    </p:column>
+
+                    <p:column headerText="Mandat" sortBy="#{obj.mandat}">
+                        <h:outputText value="#{obj.mandat}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Ebene')}" style="width: 80px;">
+                        <h:outputText value="#{obj.level}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Letzte Änderung')}">
+                        <h:outputText value="#{obj.lastModifiedDate}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                        </h:outputText>
+                    </p:column>
+                </p:dataTable>
+
+            </p:fieldset>
+
+            <p:dialog header="#{i18n.t('Einstellung Details')}" widgetVar="dlg" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe" id="settingDialog">
+
+                <h:panelGroup id="dialogContent" rendered="#{settingsBackingBean.selected != null}">
+                    <h:panelGrid columns="2" style="width: 100%;" id="settingPanel">
+                        <h:outputText value="#{i18n.t('Schlüssel')}:"/>
+                        <p:inputText value="#{settingsBackingBean.selected.key}" required="true"
+                                     disabled="#{settingsBackingBean.selected.createdDate != null}"
+                                     style="width: 500px;"/>
+
+                        <h:outputText value="Mandat:"/>
+                        <p:selectOneMenu value="#{settingsBackingBean.selected.mandat}"
+                                         editable="#{settingsBackingBean.root}"
+                                         disabled="#{!settingsBackingBean.root}"
+                                         style="width: 500px;">
+                            <f:selectItem itemLabel="-- Mandat wählen --" itemValue="" noSelectionOption="true"/>
+                            <f:selectItems value="#{settingsBackingBean.allMandate}"
+                                         var="m" itemLabel="#{m}" itemValue="#{m}"/>
+                        </p:selectOneMenu>
+
+                        <h:outputText value="Typ:"/>
+                        <p:selectOneMenu value="#{settingsBackingBean.selected.valueType}" style="width: 500px;">
+                            <f:selectItems value="#{settingsBackingBean.valueTypes}"
+                                         var="t" itemLabel="#{t}" itemValue="#{t}"/>
+                            <p:ajax update="valueInput" process="@this"/>
+                        </p:selectOneMenu>
+
+                        <h:outputText value="#{i18n.t('Wert')}:"/>
+                        <h:panelGroup id="valueInput">
+                            <!-- STRING or LIST: Textarea -->
+                            <p:inputTextarea value="#{settingsBackingBean.selected.value}" rows="4"
+                                           style="width: 500px;"
+                                           rendered="#{settingsBackingBean.selected.valueType == 'STRING' or settingsBackingBean.selected.valueType == 'LIST'}"/>
+
+                            <!-- INTEGER: Number input -->
+                            <p:inputText value="#{settingsBackingBean.selected.value}"
+                                       style="width: 500px;"
+                                       placeholder="#{i18n.t('Ganze Zahl eingeben')}"
+                                       rendered="#{settingsBackingBean.selected.valueType == 'INTEGER'}">
+                                <p:keyFilter regEx="/[0-9\-]/"/>
+                            </p:inputText>
+
+                            <!-- BOOLEAN: Checkbox -->
+                            <h:panelGroup rendered="#{settingsBackingBean.selected.valueType == 'BOOLEAN'}">
+                                <p:selectBooleanCheckbox value="#{settingsBackingBean.booleanValue}">
+                                    <p:ajax update="valueInput"/>
+                                </p:selectBooleanCheckbox>
+                                <h:outputText value=" Ja" style="margin-left: 10px;"/>
+                            </h:panelGroup>
+
+                            <!-- DATE: Calendar with time -->
+                            <p:datePicker value="#{settingsBackingBean.dateValue}"
+                                      pattern="dd.MM.yyyy HH:mm"
+                                      showTime="true"
+                                      timeOnly="false"
+                                      style="width: 500px;"
+                                      rendered="#{settingsBackingBean.selected.valueType == 'DATE'}"/>
+                        </h:panelGroup>
+
+                        <h:outputText value="#{i18n.t('Beschreibung')}:"/>
+                        <p:inputTextarea value="#{settingsBackingBean.selected.description}" rows="3"
+                                         style="width: 500px;"/>
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check"
+                                     action="#{settingsBackingBean.save()}"
+                                     update="messages,fm:tbl"
+                                     process="settingDialog"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
+                </h:panelGroup>
+            </p:dialog>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

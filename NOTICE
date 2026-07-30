@@ -1,0 +1,65 @@
+Plaintext Root
+Copyright (c) Plaintext GmbH and contributors
+
+This product is licensed under the Mozilla Public License, Version 2.0.
+A copy of the license is provided in the file LICENSE, and is also
+available at https://mozilla.org/MPL/2.0/.
+
+--------------------------------------------------------------------------
+Third-party components bundled in this repository
+--------------------------------------------------------------------------
+
+The following files are NOT covered by the MPL 2.0 and remain under the
+license of their respective upstream projects. They are redistributed
+unmodified (or with only path adjustments for JSF resource loading).
+
+1) marked
+   File:    plaintext-admin-requirements/src/main/resources/META-INF/
+            resources/js/marked.min.js
+   Version: 15.0.12
+   License: MIT
+   Copyright (c) 2011-2025, Christopher Jeffrey
+   https://github.com/markedjs/marked
+
+2) PrimeFlex
+   File:    plaintext-root-template/src/main/resources/META-INF/
+            resources/plaintext-layout/css/primeflex.min.css
+   License: MIT
+   Copyright (c) 2018-2024 PrimeTek
+   https://github.com/primefaces/primeflex
+
+3) PrimeIcons
+   Files:   plaintext-root-template/src/main/resources/META-INF/
+            resources/plaintext-layout/css/primeicons.css
+            plaintext-root-template/src/main/resources/META-INF/
+            resources/plaintext-layout/icons/primeicons.{eot,svg,ttf,woff}
+   License: MIT
+   Copyright (c) 2018-2024 PrimeTek
+   https://github.com/primefaces/primeicons
+
+   Note: primeicons.css has been adapted so the font files resolve through
+   the JSF resource mechanism (#{resource[...]}). The adaptation is limited
+   to the url() references; the MIT license continues to apply.
+
+--------------------------------------------------------------------------
+Runtime dependencies
+--------------------------------------------------------------------------
+
+Maven dependencies are not bundled in this repository; they are resolved at
+build time and keep their own licenses. The main ones are Spring Boot
+(Apache-2.0), Jakarta Faces / Mojarra (EPL-2.0 with GPL-2.0-with-classpath-
+exception), PrimeFaces Community (Apache-2.0 / MIT), JoinFaces (Apache-2.0),
+Flyway Community (Apache-2.0), Lombok (MIT), PostgreSQL JDBC (BSD-2-Clause),
+H2 (MPL-2.0 / EPL-1.0) and cron4j (LGPL-2.1, used unmodified as a library).
+
+Dependencies worth pointing out explicitly, because their license differs
+from the usual Apache-2.0/MIT baseline. All of them are used as unmodified
+libraries resolved from Maven Central and are only linked against, never
+copied into or derived from this source tree:
+
+  * it.sauronsoftware.cron4j:cron4j        LGPL-2.1
+  * org.jodreports:jodreports             LGPL-2.1
+
+A machine-readable overview can be produced with:
+
+    mvn license:aggregate-add-third-party

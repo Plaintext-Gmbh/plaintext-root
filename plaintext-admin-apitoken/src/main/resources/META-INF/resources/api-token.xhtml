@@ -1,0 +1,247 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:pe="http://primefaces.org/ui/extensions"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">API Tokens</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{apiTokenBean.onLoad()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="5000"/>
+
+            <p:fieldset id="fs1" legend="API Tokens">
+
+                <h:panelGrid columns="1" style="width: 100%; margin-bottom: 20px;">
+                    <h:outputText value="Erstellen Sie API-Tokens um Daten über die REST-API abzurufen. Tokens werden nur einmalig angezeigt und können danach nicht mehr abgerufen werden."
+                                  style="font-style: italic; color: #666;"/>
+                </h:panelGrid>
+
+                <!-- One-time token display dialog -->
+                <p:dialog id="newTokenDialog"
+                          header="Token erstellt - Jetzt kopieren!"
+                          widgetVar="newTokenDialog"
+                          modal="true"
+                          closable="true"
+                          visible="#{apiTokenBean.hasNewlyCreatedToken()}"
+                          styleClass="mobile-safe"
+                          onHide="PF('newTokenDialog').hide();">
+
+                    <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin-bottom: 15px;">
+                        <i class="pi pi-exclamation-triangle" style="color: #856404; margin-right: 5px;"/>
+                        <h:outputText value="Kopieren Sie dieses Token jetzt! Es wird nach dem Schliessen dieses Dialogs nicht mehr angezeigt."
+                                      style="color: #856404; font-weight: bold;"/>
+                    </div>
+
+                    <h:panelGrid columns="1" style="width: 100%;">
+                        <p:outputLabel value="Token-Name:" style="font-weight: bold;"/>
+                        <h:outputText value="#{apiTokenBean.newlyCreatedTokenName}" style="margin-bottom: 10px; display: block;"/>
+
+                        <p:outputLabel value="Ihr neues Token:" style="font-weight: bold;"/>
+                        <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 10px;">
+                            <p:inputTextarea id="newTokenValue"
+                                         value="#{apiTokenBean.newlyCreatedToken}"
+                                         readonly="true"
+                                         rows="3"
+                                         style="font-family: monospace; font-size: 11px; width: 100%;"/>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <p:commandButton value="Token kopieren"
+                                             icon="pi pi-copy"
+                                             styleClass="ui-button-success"
+                                             type="button">
+                                <pe:clipboard target=":fm:newTokenValue"/>
+                            </p:commandButton>
+                            <p:commandButton value="curl kopieren"
+                                             icon="pi pi-copy"
+                                             styleClass="ui-button-info"
+                                             type="button">
+                                <pe:clipboard text="#{apiTokenBean.newTokenCurlExample}"/>
+                            </p:commandButton>
+                        </div>
+
+                        <p:separator/>
+
+                        <p:outputLabel value="Beispiel curl-Befehl:" style="font-weight: bold;"/>
+                        <h:outputText value="#{apiTokenBean.newTokenCurlExample}"
+                                      style="font-family: monospace; font-size: 11px; word-break: break-all; display: block; background: #f8f9fa; padding: 10px;"/>
+                    </h:panelGrid>
+
+                    <f:facet name="footer">
+                        <p:commandButton value="Verstanden, Dialog schliessen"
+                                         icon="pi pi-check"
+                                         action="#{apiTokenBean.dismissNewToken()}"
+                                         update=":fm"
+                                         oncomplete="PF('newTokenDialog').hide();"
+                                         styleClass="ui-button-warning"/>
+                    </f:facet>
+                </p:dialog>
+
+                <!-- Neues Token erstellen -->
+                <p:panel header="Neues Token erstellen" style="margin-bottom: 20px;">
+                    <h:panelGrid columns="2" cellpadding="10" style="width: 100%;">
+                        <p:outputLabel value="Name:" for="tokenName"/>
+                        <p:inputText id="tokenName"
+                                     value="#{apiTokenBean.newTokenName}"
+                                     placeholder="z.B. Mein API-Client, Backup-Script..."
+                                     style="width: 300px;"/>
+
+                        <p:outputLabel value="Gültigkeit:" for="tokenValidity"/>
+                        <h:panelGroup>
+                            <p:slider id="tokenValiditySlider"
+                                      for="tokenValidity"
+                                      minValue="#{apiTokenBean.minValidityDays}"
+                                      maxValue="#{apiTokenBean.maxValidityDays}"
+                                      style="width: 200px; display: inline-block;"/>
+                            <p:inputText id="tokenValidity"
+                                         value="#{apiTokenBean.newTokenValidityDays}"
+                                         style="width: 50px; margin-left: 10px; text-align: center;"/>
+                            <h:outputText value=" Tage" style="margin-left: 5px;"/>
+                        </h:panelGroup>
+
+                        <!-- Karte 312: Zugriffsumfang MUSS beim Erstellen gewählt werden. Ohne diese
+                             Auswahl trugen Tokens gar keinen scope-Claim, und der MCP-Filter wertete
+                             das als Vollzugriff. Default READ — mehr nur, wenn bewusst gewählt. -->
+                        <p:outputLabel value="Zugriff:" for="tokenScope"/>
+                        <h:panelGroup>
+                            <p:selectOneMenu id="tokenScope" value="#{apiTokenBean.newTokenScope}"
+                                             style="width: 200px;">
+                                <f:selectItems value="#{apiTokenBean.verfuegbareScopes}"/>
+                            </p:selectOneMenu>
+                            <h:outputText value=" READ = nur lesen · EINTRAGEN = erfassen/ändern · ADMIN = inkl. löschen"
+                                          style="margin-left: 10px; color: #666; font-size: .85rem;"/>
+                        </h:panelGroup>
+
+                        <h:outputText value=""/>
+                        <p:commandButton value="Token erstellen"
+                                         icon="pi pi-plus"
+                                         action="#{apiTokenBean.createToken()}"
+                                         update=":fm"
+                                         process="@this,:fm:tokenName,:fm:tokenValidity"
+                                         styleClass="ui-button-success"/>
+                    </h:panelGrid>
+                </p:panel>
+
+                <!-- Token Liste -->
+                <p:panel header="Ihre API-Tokens" style="margin-bottom: 20px;">
+                    <p:outputPanel id="tokenTable">
+
+                        <h:panelGrid columns="1" style="width: 100%;" rendered="#{!apiTokenBean.hasTokens()}">
+                            <h:outputText value="Sie haben noch keine API-Tokens erstellt." style="color: #666; font-style: italic;"/>
+                        </h:panelGrid>
+
+                        <p:dataTable value="#{apiTokenBean.tokens}"
+                                     var="t"
+                                     rendered="#{apiTokenBean.hasTokens()}"
+                                     styleClass="token-table"
+                                     rowStyleClass="#{t.expired ? 'expired-row' : (t.expiresSoon ? 'warning-row' : '')}">
+
+                            <p:column headerText="Name" style="width: 200px;">
+                                <h:outputText value="#{t.tokenName}" style="font-weight: bold;"/>
+                            </p:column>
+
+                            <p:column headerText="E-Mail" style="width: 200px;">
+                                <h:outputText value="#{t.userEmail != null ? t.userEmail : '-'}"/>
+                            </p:column>
+
+                            <p:column headerText="Gültig bis" style="width: 140px;">
+                                <h:panelGroup rendered="#{t.expired}">
+                                    <i class="pi pi-exclamation-circle" style="color: #dc3545;"/>
+                                    <h:outputText value=" Abgelaufen" style="color: #dc3545; font-weight: bold;"/>
+                                </h:panelGroup>
+                                <h:panelGroup rendered="#{!t.expired and t.expiresSoon}">
+                                    <i class="pi pi-exclamation-triangle" style="color: #ffc107;"/>
+                                    <h:outputText value=" #{t.expiresAt}" style="color: #856404;"/>
+                                    <br/>
+                                    <h:outputText value="(#{t.daysUntilExpiry} Tage)" style="font-size: 11px; color: #856404;"/>
+                                </h:panelGroup>
+                                <h:panelGroup rendered="#{!t.expired and !t.expiresSoon}">
+                                    <h:outputText value="#{t.expiresAt}"/>
+                                    <br/>
+                                    <h:outputText value="(#{t.daysUntilExpiry} Tage)" style="font-size: 11px; color: #666;"/>
+                                </h:panelGroup>
+                            </p:column>
+
+                            <p:column headerText="Zuletzt verwendet" style="width: 140px;">
+                                <h:outputText value="#{t.lastUsedAt}"/>
+                            </p:column>
+
+                            <p:column headerText="Verwendet" style="width: 90px; text-align: center;">
+                                <h:outputText value="#{t.useCount}x"/>
+                            </p:column>
+
+                            <p:column headerText="Erstellt" style="width: 140px;">
+                                <h:outputText value="#{t.createdAt}"/>
+                            </p:column>
+
+                            <p:column headerText="Aktionen" style="width: 150px;">
+                                <p:commandButton icon="pi pi-refresh"
+                                                 styleClass="ui-button-warning ui-button-rounded"
+                                                 title="Token erneuern"
+                                                 action="#{apiTokenBean.regenerateToken(t.id)}"
+                                                 update=":fm"
+                                                 process="@this">
+                                    <p:confirm header="Token erneuern?"
+                                               message="Der alte Token wird ungültig. Ein neues Token wird erstellt. Fortfahren?"
+                                               icon="pi pi-exclamation-triangle"/>
+                                </p:commandButton>
+
+                                <p:commandButton icon="pi pi-ban"
+                                                 styleClass="ui-button-danger ui-button-rounded"
+                                                 title="Token invalidieren"
+                                                 action="#{apiTokenBean.invalidateToken(t.id)}"
+                                                 update=":fm"
+                                                 process="@this"
+                                                 style="margin-left: 5px;">
+                                    <p:confirm header="Token invalidieren?"
+                                               message="Der Token '#{t.tokenName}' wird unwiderruflich invalidiert. Fortfahren?"
+                                               icon="pi pi-exclamation-triangle"/>
+                                </p:commandButton>
+                            </p:column>
+
+                        </p:dataTable>
+
+                    </p:outputPanel>
+                </p:panel>
+
+                <!-- JWT Info -->
+                <p:panel header="Token-Details" style="margin-bottom: 20px;" toggleable="true" collapsed="true">
+                    <h:panelGrid columns="1" style="width: 100%;">
+                        <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #17a2b8;">
+                            <h:outputText value="Technische Details:" style="font-weight: bold; display: block; margin-bottom: 10px;"/>
+                            <ul style="margin: 0; padding-left: 20px;">
+                                <li>Format: JWT (JSON Web Token, RFC 7519)</li>
+                                <li>Signatur: RS256 (RSA mit SHA-256, RFC 7518)</li>
+                                <li>Gültigkeit: 7-365 Tage (konfigurierbar)</li>
+                                <li>Sicherheit: Token wird nur einmalig angezeigt, nur der Hash wird gespeichert</li>
+                                <li>Enthält: User-ID, Mandat, E-Mail, Token-Name</li>
+                            </ul>
+                        </div>
+                    </h:panelGrid>
+                </p:panel>
+
+            </p:fieldset>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes ui-button-danger"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+        </h:form>
+
+        <style>
+            .token-table .expired-row {
+                background-color: #f8d7da !important;
+            }
+            .token-table .warning-row {
+                background-color: #fff3cd !important;
+            }
+        </style>
+    </ui:define>
+</ui:composition>

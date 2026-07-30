@@ -1,0 +1,569 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns:p="http://primefaces.org/ui">
+
+    <header class="layout-topbar">
+        <nav class="layout-topbar-wrapper" role="navigation">
+
+            <div class="layout-topbar-left">
+                <ui:fragment rendered="#{brandingBean.hasAnyLogo()}">
+                    <a href="#{request.contextPath}/index.html" class="topbar-logo" style="display:flex; align-items:center; margin-right:10px;">
+                        <img id="branding-logo"
+                             src="#{request.contextPath}/api/branding/logo?theme=#{userPreferencesBackingBean.darkMode}"
+                             width="#{userPreferencesBackingBean.darkMode == 'dark' ? brandingBean.darkLogoWidth : brandingBean.lightLogoWidth}"
+                             height="#{userPreferencesBackingBean.darkMode == 'dark' ? brandingBean.darkLogoHeight : brandingBean.lightLogoHeight}"
+                             alt="Logo" style="object-fit:contain;"/>
+                    </a>
+                </ui:fragment>
+                <a href="#" class="menu-button" aria-label="Menu">
+                    <i class="pi pi-bars"/>
+                </a>
+            </div>
+
+            <!-- Globale Suche (Cmd+K): reines JS + fetch gegen /api/search, entkoppelt vom JSF-Lifecycle -->
+            <div class="global-search" id="global-search"
+                 data-ctx="#{request.contextPath}"
+                 data-placeholder="#{i18n.t('Suchen… (⌘K)')}"
+                 data-empty="#{i18n.t('Keine Treffer')}"
+                 data-hint="#{i18n.t('Tippen zum Suchen')}">
+                <div class="global-search-box">
+                    <i class="pi pi-search global-search-icon"/>
+                    <input type="text" id="global-search-input" class="global-search-input"
+                           autocomplete="off" spellcheck="false" role="combobox"
+                           aria-expanded="false" aria-controls="global-search-results"
+                           aria-label="#{i18n.t('Suchen… (⌘K)')}"
+                           placeholder="#{i18n.t('Suchen… (⌘K)')}"/>
+                    <span class="global-search-kbd" aria-hidden="true">⌘K</span>
+                    <button type="button" class="global-search-close" aria-label="Suche schliessen" tabindex="-1">✕</button>
+                </div>
+                <div id="global-search-results" class="global-search-results" style="display:none;"
+                     role="listbox" aria-label="#{i18n.t('Suchergebnisse')}"/>
+            </div>
+
+            <ui:include src="/menu.xhtml"/>
+
+            <div class="layout-topbar-right">
+                <ul class="layout-topbar-actions">
+
+                    <ui:fragment rendered="#{plaintextSecurity.impersonating}">
+                        <li class="topbar-item">
+                            <h:form id="impersonationFm" style="margin:0; padding:0; display:inline;">
+                                <p:commandLink actionListener="#{myUserBackingBean.stopImpersonation()}"
+                                               update="@none" process="@this"
+                                               title="Impersonation beenden"
+                                               style="text-decoration:none;">
+                                    <i class="topbar-icon pi pi-circle-fill" style="font-size:1.5rem"/>
+                                </p:commandLink>
+                                <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                            </h:form>
+                        </li>
+                    </ui:fragment>
+
+                    <ui:fragment rendered="#{plaintextSecurity.canSwitchMandat}">
+                        <li class="topbar-item">
+                            <h:form id="mandatSwitchForm" style="margin:0;">
+                                <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                                <p:selectOneMenu value="#{plaintextSecurity.activeMandat}"
+                                                 style="min-width:160px;" title="Mandant wechseln">
+                                    <f:selectItems value="#{plaintextSecurity.allowedMandate}"
+                                                   var="dt" itemLabel="#{dt}" itemValue="#{dt}"/>
+                                    <p:ajax event="change" process="@this" update="@none"
+                                            oncomplete="sessionStorage.removeItem('openSubmenuLabel'); window.location.reload();"/>
+                                </p:selectOneMenu>
+                            </h:form>
+                        </li>
+                    </ui:fragment>
+
+                    <ui:fragment rendered="#{p:ifGranted('ROLE_ADMIN') or p:ifGranted('ROLE_ROOT')}">
+                        <li class="topbar-item">
+                            <a href="useradmin.xhtml" title="Benutzer verwalten">
+                                <i class="topbar-icon pi pi-users" style="font-size:1.5rem"/>
+                            </a>
+                        </li>
+                    </ui:fragment>
+
+                    <ui:fragment rendered="#{i18nService != null and i18nService.i18nEnabled}">
+                        <li class="topbar-item" style="position: relative;">
+                            <a href="#" id="i18n-lang-button" title="Sprache wechseln"
+                               aria-haspopup="true" aria-expanded="false">
+                                <i class="topbar-icon #{brandingBean.i18nIcon}" style="font-size: 1.5rem; color: var(--primary-color);"/>
+                            </a>
+                            <ul id="i18n-lang-dropdown" class="topbar-dropdown" role="menu"
+                                style="display:none; position:absolute; right:0; top:100%; min-width:150px;
+                                       background:var(--surface-card, #ffffff); border-radius:6px;
+                                       box-shadow:0 2px 12px rgba(0,0,0,0.1); z-index:1000;
+                                       list-style:none; padding:0.5rem 0; margin:0;">
+                                <h:form id="i18nLangFm" style="margin:0; padding:0;">
+                                    <ui:repeat value="#{i18nService.availableLanguages}" var="lang">
+                                        <li role="menuitem">
+                                            <p:commandLink styleClass="topbar-dropdown-item"
+                                                           actionListener="#{userPreferencesBackingBean.setLanguage(lang)}"
+                                                           update="@none" process="@this"
+                                                           oncomplete="window.location.reload();">
+                                                <i class="pi pi-flag"/>
+                                                <span style="text-transform: uppercase;">#{lang}</span>
+                                            </p:commandLink>
+                                        </li>
+                                    </ui:repeat>
+                                    <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                                </h:form>
+                            </ul>
+                            <script>
+                                (function() {
+                                    var btn = document.getElementById('i18n-lang-button');
+                                    var dd = document.getElementById('i18n-lang-dropdown');
+                                    if (!btn || !dd) return;
+                                    btn.addEventListener('click', function(e) {
+                                        e.preventDefault(); e.stopPropagation();
+                                        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+                                    });
+                                    document.addEventListener('click', function(e) {
+                                        if (!btn.contains(e.target) &amp;&amp; !dd.contains(e.target)) dd.style.display = 'none';
+                                    });
+                                })();
+                            </script>
+                        </li>
+                    </ui:fragment>
+
+                    <ui:fragment rendered="#{notificationTopbarBean != null}">
+                        <li class="topbar-item" style="position: relative;">
+                            <h:form id="notifFm" style="margin:0; padding:0; display:contents;">
+                                <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                                <a href="#" id="notif-bell-button" title="Benachrichtigungen"
+                                   aria-haspopup="true" aria-expanded="false">
+                                    <i class="topbar-icon pi pi-bell" style="font-size:1.5rem"/>
+                                    <ui:fragment rendered="#{notificationTopbarBean.ungelesenCount > 0}">
+                                        <span class="topbar-badge">#{notificationTopbarBean.ungelesenCount > 99 ? '99+' : notificationTopbarBean.ungelesenCount}</span>
+                                    </ui:fragment>
+                                </a>
+                                <ul id="notif-dropdown" class="topbar-dropdown" role="menu"
+                                    style="display:none; position:absolute; right:0; top:100%; min-width:320px; max-width:380px;
+                                           background:var(--surface-card, #ffffff); border-radius:6px;
+                                           box-shadow:0 2px 12px rgba(0,0,0,0.1); z-index:1000;
+                                           list-style:none; padding:0.5rem 0; margin:0; max-height:420px; overflow-y:auto;">
+                                    <ui:fragment rendered="#{empty notificationTopbarBean.letzte}">
+                                        <li style="padding:0.75rem 1rem; opacity:0.6; font-size:0.85rem;">Keine Benachrichtigungen</li>
+                                    </ui:fragment>
+                                    <ui:repeat value="#{notificationTopbarBean.letzte}" var="n">
+                                        <li role="menuitem" style="display:flex; align-items:flex-start; gap:0.4rem; padding:0.5rem 1rem;">
+                                            <a href="#{not empty n.link ? n.link : '#'}" class="topbar-dropdown-item"
+                                               style="flex:1 1 auto; padding:0; display:block; white-space:normal;#{n.gelesenAm == null ? ' font-weight:600;' : ' opacity:0.65;'}">
+                                                <span style="display:block; font-size:0.85rem;">#{n.titel}</span>
+                                                <span style="display:block; font-size:0.72rem; opacity:0.6;">#{n.text}</span>
+                                            </a>
+                                            <p:commandLink actionListener="#{notificationTopbarBean.markiereGelesen(n.id)}"
+                                                           update="@form" process="@this" rendered="#{n.gelesenAm == null}"
+                                                           title="Als gelesen markieren" style="flex:0 0 auto; padding-top:0.2rem;">
+                                                <i class="pi pi-check" style="font-size:0.8rem; opacity:0.5;"/>
+                                            </p:commandLink>
+                                        </li>
+                                    </ui:repeat>
+                                    <li class="topbar-dropdown-divider"/>
+                                    <ui:fragment rendered="#{notificationTopbarBean.ungelesenCount > 0}">
+                                        <li role="menuitem" style="padding:0.4rem 1rem; text-align:right;">
+                                            <p:commandLink actionListener="#{notificationTopbarBean.markiereAlleGelesen()}"
+                                                           update="@form" process="@this" styleClass="topbar-dropdown-item"
+                                                           style="display:inline; padding:0; font-size:0.78rem; opacity:0.7;">
+                                                Alle als gelesen markieren
+                                            </p:commandLink>
+                                        </li>
+                                    </ui:fragment>
+                                    <li role="menuitem">
+                                        <a href="notifications.xhtml" class="topbar-dropdown-item">
+                                            <i class="pi pi-list"/>
+                                            <span>Alle anzeigen</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                                <p:poll interval="60" update="@form" process="@this"/>
+                            </h:form>
+                            <script>
+                                (function() {
+                                    var btn = document.getElementById('notif-bell-button');
+                                    var dd = document.getElementById('notif-dropdown');
+                                    if (!btn || !dd) return;
+                                    btn.addEventListener('click', function(e) {
+                                        e.preventDefault(); e.stopPropagation();
+                                        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+                                    });
+                                    document.addEventListener('click', function(e) {
+                                        if (!btn.contains(e.target) &amp;&amp; !dd.contains(e.target)) dd.style.display = 'none';
+                                    });
+                                })();
+                            </script>
+                        </li>
+                    </ui:fragment>
+
+                    <li class="topbar-item">
+                        <a href="#" id="layout-config-button" title="Einstellungen">
+                            <i class="topbar-icon pi pi-cog" style="font-size:1.5rem"/>
+                        </a>
+                    </li>
+
+                    <li class="topbar-item" style="position:relative;">
+                        <a href="#" id="user-menu-button" aria-haspopup="true" aria-expanded="false"
+                           style="display:flex; align-items:center; justify-content:center;">
+                            <i class="topbar-icon pi pi-user" style="font-size:1.5rem"/>
+                        </a>
+                        <ul id="user-menu-dropdown" class="topbar-dropdown" role="menu"
+                            style="display:none; position:absolute; left:0; top:100%; min-width:180px;
+                                   background:var(--surface-card, #ffffff); border-radius:6px;
+                                   box-shadow:0 2px 12px rgba(0,0,0,0.1); z-index:1000;
+                                   list-style:none; padding:0.5rem 0; margin:0;">
+                            <li role="menuitem">
+                                <a href="myuser.xhtml" class="topbar-dropdown-item">
+                                    <i class="pi pi-user"/>
+                                    <span>Mein Profil</span>
+                                </a>
+                            </li>
+                            <li role="menuitem">
+                                <a href="api-token.xhtml" class="topbar-dropdown-item">
+                                    <i class="pi pi-key"/>
+                                    <span>API Token</span>
+                                </a>
+                            </li>
+                        </ul>
+                        <script>
+                            (function() {
+                                var btn = document.getElementById('user-menu-button');
+                                var dd = document.getElementById('user-menu-dropdown');
+                                if (!btn || !dd) return;
+                                btn.addEventListener('click', function(e) {
+                                    e.preventDefault(); e.stopPropagation();
+                                    var hidden = dd.style.display === 'none';
+                                    dd.style.display = hidden ? 'block' : 'none';
+                                    if (hidden) {
+                                        dd.style.left = '0'; dd.style.right = 'auto';
+                                        var r = dd.getBoundingClientRect();
+                                        if (r.right > window.innerWidth) dd.style.left = (-(r.right - window.innerWidth + 8)) + 'px';
+                                    }
+                                });
+                                document.addEventListener('click', function(e) {
+                                    if (!btn.contains(e.target) &amp;&amp; !dd.contains(e.target)) dd.style.display = 'none';
+                                });
+                            })();
+                        </script>
+                    </li>
+
+                    <li class="topbar-item">
+                        <a href="#" title="Abmelden" id="logoutLink"
+                           style="display:flex; align-items:center; justify-content:center; padding:8px; cursor:pointer;">
+                            <i class="topbar-icon pi pi-sign-out" style="font-size:1.5rem"/>
+                        </a>
+                    </li>
+
+                </ul>
+
+            <!-- Logout form outside topbar to avoid PrimeFaces interference -->
+            <form id="logoutForm" method="post" action="#{request.contextPath}/logout" style="display:none;">
+                <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            </form>
+            <script>
+                document.getElementById('logoutLink').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var form = document.getElementById('logoutForm');
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', form.action, true);
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4) {
+                            var loginUrl = form.action.replace('/logout', '/login.html');
+                            // Bei Erfolg folgt der XHR dem 302 -> responseURL zeigt auf /login.html.
+                            // Bei einem Fehler (z.B. 403) bleibt responseURL die /logout-URL -> NICHT dorthin
+                            // navigieren (GET /logout = 404), sondern auf die Login-Seite.
+                            var ok = xhr.status >= 200 &amp;&amp; xhr.status &lt; 400
+                                     &amp;&amp; xhr.responseURL &amp;&amp; xhr.responseURL.indexOf('/logout') === -1;
+                            window.location.href = ok ? xhr.responseURL : loginUrl;
+                        }
+                    };
+                    var csrf = form.querySelector('input[name="_csrf"]');
+                    xhr.send('_csrf=' + encodeURIComponent(csrf.value));
+                });
+            </script>
+
+            </div>
+        </nav>
+    </header>
+
+    <style>
+        .topbar-dropdown {
+            background-color: var(--surface-card, #ffffff) !important;
+            border: 1px solid var(--surface-border);
+        }
+        .topbar-dropdown-item {
+            display: flex; align-items: center; padding: 0.75rem 1rem;
+            color: var(--text-color); text-decoration: none; gap: 0.75rem;
+            transition: background-color 0.2s;
+        }
+        .topbar-dropdown-item:hover { background-color: var(--surface-hover); }
+        .topbar-dropdown-item small {
+            font-size: 0.7rem; opacity: 0.6; text-transform: uppercase; margin-left: auto;
+        }
+        .topbar-dropdown-divider {
+            border-top: 1px solid var(--surface-border); margin: 0.25rem 0;
+        }
+        .topbar-badge {
+            position: absolute; top: 8px; right: 8px;
+            background-color: #dc3545; color: white; border-radius: 50%;
+            width: 18px; height: 18px; font-size: 0.7rem;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+
+        /* ── Globale Suche (Cmd+K) ─────────────────────────────────────── */
+        .global-search {
+            position: relative; flex: 1 1 auto; max-width: 480px;
+            margin: 0 1rem; min-width: 0;
+        }
+        .global-search-box {
+            display: flex; align-items: center; gap: 0.5rem;
+            background: var(--surface-b, rgba(0,0,0,0.04));
+            border: 1px solid var(--surface-border, rgba(0,0,0,0.1));
+            border-radius: 6px; padding: 0.35rem 0.6rem; height: 36px;
+        }
+        .global-search-box:focus-within {
+            border-color: var(--primary-color, #2196F3);
+        }
+        .global-search-icon { opacity: 0.6; font-size: 0.9rem; }
+        .global-search-input {
+            flex: 1 1 auto; min-width: 0;
+            border: none; outline: none; background: transparent;
+            color: var(--text-color, inherit); font-size: 0.9rem;
+        }
+        .global-search-kbd {
+            font-size: 0.7rem; opacity: 0.5; border: 1px solid var(--surface-border, rgba(0,0,0,0.15));
+            border-radius: 4px; padding: 0.05rem 0.35rem; white-space: nowrap;
+        }
+        .global-search-results {
+            position: absolute; left: 0; right: 0; top: calc(100% + 6px);
+            background: var(--surface-card, #ffffff);
+            border: 1px solid var(--surface-border, rgba(0,0,0,0.1));
+            border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            z-index: 1200; max-height: 70vh; overflow-y: auto; padding: 0.35rem 0;
+        }
+        .global-search-group-title {
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
+            opacity: 0.55; padding: 0.5rem 1rem 0.25rem; font-weight: 700;
+        }
+        .global-search-item {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.5rem 1rem; text-decoration: none; cursor: pointer;
+            color: var(--text-color, inherit);
+        }
+        .global-search-item:hover, .global-search-item.active {
+            background: var(--surface-hover, rgba(0,0,0,0.06));
+        }
+        .global-search-item .gs-icon { opacity: 0.6; width: 1.1rem; text-align: center; }
+        .global-search-item .gs-text { display: flex; flex-direction: column; min-width: 0; }
+        .global-search-item .gs-title { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .global-search-item .gs-sub { font-size: 0.72rem; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .global-search-empty { padding: 0.75rem 1rem; opacity: 0.6; font-size: 0.85rem; }
+        .global-search-close {
+            display: none; align-items: center; justify-content: center;
+            border: none; background: transparent; color: inherit; cursor: pointer;
+            font-size: 1.1rem; opacity: 0.6; padding: 0 0.15rem; line-height: 1;
+        }
+        /* ── Mobile: Suche eingeklappt zu Tap-Lupe, aufgetippt Vollbreiten-Leiste ── */
+        @media (max-width: 640px) {
+            .global-search { max-width: none; margin: 0 0.25rem; flex: 0 0 auto; }
+            .global-search-kbd { display: none; }
+            .global-search:not(.gs-open) .global-search-box {
+                width: 42px; padding: 0; justify-content: center; cursor: pointer;
+            }
+            .global-search:not(.gs-open) .global-search-input { display: none; }
+            .global-search:not(.gs-open) .global-search-icon { font-size: 1.15rem; opacity: 0.85; }
+            .global-search.gs-open {
+                position: fixed; left: 0; right: 0; top: 0; z-index: 1300;
+                margin: 0; padding: 0.5rem; box-sizing: border-box;
+                background: var(--surface-card, #ffffff);
+                box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            }
+            .global-search.gs-open .global-search-box { height: 46px; padding: 0.5rem 0.75rem; }
+            .global-search.gs-open .global-search-input { display: block; font-size: 1rem; }
+            .global-search.gs-open .global-search-close { display: inline-flex; }
+            .global-search.gs-open .global-search-results {
+                position: fixed; left: 0.5rem; right: 0.5rem; top: 64px;
+                max-height: calc(100vh - 76px);
+            }
+        }
+    </style>
+
+    <script>
+        //<![CDATA[
+        (function () {
+            var root = document.getElementById('global-search');
+            if (!root) return;
+            var input = document.getElementById('global-search-input');
+            var box = document.getElementById('global-search-results');
+            if (!input || !box) return;
+
+            var ctx = root.getAttribute('data-ctx') || '';
+            var EMPTY = root.getAttribute('data-empty') || 'Keine Treffer';
+            var HINT = root.getAttribute('data-hint') || '';
+            var debounceTimer = null;
+            var activeIndex = -1;
+            var items = [];      // flache Liste der aktuell gerenderten Treffer-Elemente
+            var lastQuery = '';
+
+            function esc(s) {
+                if (s == null) return '';
+                return String(s).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                });
+            }
+
+            function close() {
+                box.style.display = 'none';
+                box.innerHTML = '';
+                items = [];
+                activeIndex = -1;
+                input.setAttribute('aria-expanded', 'false');
+                root.classList.remove('gs-open'); // Mobile-Vollbreiten-Overlay einklappen (Desktop: no-op)
+            }
+
+            function openBox() {
+                box.style.display = 'block';
+                input.setAttribute('aria-expanded', 'true');
+            }
+
+            function navigate(link) {
+                if (!link) return;
+                var sep = link.charAt(0) === '/' ? '' : '/';
+                window.location.href = ctx + sep + link;
+            }
+
+            function render(groups) {
+                box.innerHTML = '';
+                items = [];
+                activeIndex = -1;
+                if (!groups || groups.length === 0) {
+                    var e = document.createElement('div');
+                    e.className = 'global-search-empty';
+                    e.textContent = EMPTY;
+                    box.appendChild(e);
+                    openBox();
+                    return;
+                }
+                groups.forEach(function (g) {
+                    var title = document.createElement('div');
+                    title.className = 'global-search-group-title';
+                    title.textContent = g.module;
+                    box.appendChild(title);
+                    (g.hits || []).forEach(function (h) {
+                        var a = document.createElement('a');
+                        a.className = 'global-search-item';
+                        a.setAttribute('role', 'option');
+                        a.href = '#';
+                        var iconCls = h.icon ? esc(h.icon) : 'pi pi-angle-right';
+                        a.innerHTML = '<i class="gs-icon ' + iconCls + '"></i>'
+                            + '<span class="gs-text">'
+                            + '<span class="gs-title">' + esc(h.title) + '</span>'
+                            + (h.subtitle ? '<span class="gs-sub">' + esc(h.subtitle) + '</span>' : '')
+                            + '</span>';
+                        var link = h.link;
+                        a.addEventListener('click', function (ev) { ev.preventDefault(); navigate(link); });
+                        box.appendChild(a);
+                        items.push(a);
+                    });
+                });
+                openBox();
+            }
+
+            function setActive(idx) {
+                if (items.length === 0) return;
+                if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].classList.remove('active');
+                activeIndex = (idx + items.length) % items.length;
+                var el = items[activeIndex];
+                el.classList.add('active');
+                el.scrollIntoView({ block: 'nearest' });
+            }
+
+            function doSearch(q) {
+                fetch(ctx + '/api/search?q=' + encodeURIComponent(q), {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'same-origin'
+                }).then(function (r) {
+                    if (!r.ok) throw new Error('search failed: ' + r.status);
+                    return r.json();
+                }).then(function (data) {
+                    // Nur rendern, wenn die Antwort noch zur aktuellen Eingabe passt
+                    if (input.value.trim() !== q) return;
+                    render(data && data.groups ? data.groups : []);
+                }).catch(function () { close(); });
+            }
+
+            input.addEventListener('input', function () {
+                var q = input.value.trim();
+                if (debounceTimer) clearTimeout(debounceTimer);
+                if (q.length < 2) {
+                    if (q.length === 0) { close(); }
+                    else {
+                        box.innerHTML = '<div class="global-search-empty">' + esc(HINT) + '</div>';
+                        openBox();
+                    }
+                    lastQuery = q;
+                    return;
+                }
+                lastQuery = q;
+                debounceTimer = setTimeout(function () { doSearch(q); }, 200);
+            });
+
+            input.addEventListener('keydown', function (ev) {
+                if (ev.key === 'ArrowDown') { ev.preventDefault(); setActive(activeIndex + 1); }
+                else if (ev.key === 'ArrowUp') { ev.preventDefault(); setActive(activeIndex - 1); }
+                else if (ev.key === 'Enter') {
+                    if (activeIndex >= 0 && items[activeIndex]) { ev.preventDefault(); items[activeIndex].click(); }
+                } else if (ev.key === 'Escape') {
+                    input.blur(); close();
+                }
+            });
+
+            input.addEventListener('focus', function () {
+                if (items.length > 0) openBox();
+            });
+
+            document.addEventListener('click', function (ev) {
+                if (!root.contains(ev.target)) close();
+            });
+
+            // ── Mobile: eingeklappte Lupe antippen → Vollbreiten-Suchleiste öffnen ──
+            var mq = window.matchMedia('(max-width: 640px)');
+            function isMobile() { return mq.matches; }
+            var boxEl = root.querySelector('.global-search-box');
+            if (boxEl) {
+                boxEl.addEventListener('click', function () {
+                    if (isMobile() && !root.classList.contains('gs-open')) {
+                        root.classList.add('gs-open');
+                        input.focus();
+                    }
+                });
+            }
+            var closeBtn = root.querySelector('.global-search-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function (ev) {
+                    ev.preventDefault(); ev.stopPropagation();
+                    input.value = '';
+                    input.blur();
+                    close();
+                });
+            }
+            // Beim Wechsel zurück auf Desktop-Breite das Overlay sicher einklappen
+            if (mq.addEventListener) {
+                mq.addEventListener('change', function (e) { if (!e.matches) root.classList.remove('gs-open'); });
+            }
+
+            // Globaler Cmd/Ctrl+K → Fokus auf das Suchfeld (auf Mobile zusätzlich Leiste öffnen)
+            document.addEventListener('keydown', function (ev) {
+                if ((ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K')) {
+                    ev.preventDefault();
+                    if (isMobile()) root.classList.add('gs-open');
+                    input.focus();
+                    input.select();
+                }
+            });
+        })();
+        //]]>
+    </script>
+
+</ui:composition>

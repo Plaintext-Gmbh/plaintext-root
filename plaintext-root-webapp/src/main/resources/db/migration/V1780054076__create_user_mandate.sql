@@ -1,0 +1,13 @@
+-- Zusätzliche Mandate je Benutzer (Mehrfach-Mandant-Zuordnung).
+-- Additiv: der Heimat-Mandant bleibt in der PROPERTY_MANDAT_-Rolle des Users;
+-- diese Tabelle listet die WEITEREN Mandate, zwischen denen der Benutzer wechseln darf.
+CREATE TABLE IF NOT EXISTS USER_MANDATE (
+  ID BIGSERIAL,
+  USERNAME VARCHAR(255) NOT NULL,
+  MANDAT VARCHAR(100) NOT NULL,
+  ACTIVE BOOLEAN NOT NULL DEFAULT TRUE,
+  PRIMARY KEY (ID),
+  CONSTRAINT UQ_USER_MANDATE UNIQUE (USERNAME, MANDAT)
+);
+
+CREATE INDEX IF NOT EXISTS IDX_USER_MANDATE_USERNAME ON USER_MANDATE(USERNAME);

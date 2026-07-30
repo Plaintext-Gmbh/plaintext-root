@@ -1,0 +1,195 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{i18nBackingBean.onLoad()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="3000"/>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+            <p:fieldset legend="#{i18n.t('Übersetzungen')} (i18n)">
+
+                <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <p:selectOneMenu value="#{i18nBackingBean.filterLanguage}" style="width: 200px;">
+                        <f:selectItem itemLabel="-- Alle Sprachen --" itemValue="" noSelectionOption="true"/>
+                        <f:selectItems value="#{i18nBackingBean.availableLanguages}"
+                                       var="lang" itemLabel="#{lang}" itemValue="#{lang}"/>
+                        <p:ajax event="change" listener="#{i18nBackingBean.filterByLanguage()}"
+                                update="tbl" process="@this"/>
+                    </p:selectOneMenu>
+
+                    <p:commandButton value="#{i18n.t('Neue Übersetzung')}" icon="pi pi-plus"
+                                     actionListener="#{i18nBackingBean.prepareNew()}"
+                                     oncomplete="PF('newDlg').show()"
+                                     update="newDialogContent" process="@this"/>
+
+                    <p:commandButton value="#{i18n.t('Bearbeiten')}" icon="pi pi-pencil"
+                                     oncomplete="PF('editDlg').show()"
+                                     update="editDialogContent" process="@this"
+                                     disabled="#{i18nBackingBean.selected == null}"/>
+
+                    <p:commandButton value="#{i18n.t('Löschen')}" icon="pi pi-trash" styleClass="ui-button-danger"
+                                     actionListener="#{i18nBackingBean.delete()}"
+                                     update="messages,tbl" process="@this"
+                                     disabled="#{i18nBackingBean.selected == null}">
+                        <p:confirm header="#{i18n.t('Bestätigung')}"
+                                   message="#{i18n.t('Übersetzung wirklich löschen?')}"
+                                   icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+
+                    <p:separator style="width: 1px; height: 20px; margin: 0 5px;"/>
+
+                    <p:linkButton value="CSV Export" icon="pi pi-download"
+                                  href="/api/i18n/export" target="_blank"
+                                  styleClass="ui-button-info"/>
+
+                    <p:linkButton value="Nur X_ Export" icon="pi pi-download"
+                                  href="/api/i18n/export?untranslated=true" target="_blank"
+                                  styleClass="ui-button-warning"/>
+
+                    <p:commandButton value="CSV Import" icon="pi pi-upload"
+                                     oncomplete="PF('importDlg').show()"
+                                     process="@this" type="button"/>
+
+                    <p:commandButton value="#{i18n.t('Cache leeren')}" icon="pi pi-refresh"
+                                     actionListener="#{i18nBackingBean.clearCache()}"
+                                     update="messages" process="@this"
+                                     style="margin-left: auto;"/>
+                </div>
+
+                <p:dataTable id="tbl" var="obj" value="#{i18nBackingBean.translations}"
+                             selectionMode="single" selection="#{i18nBackingBean.selected}"
+                             rowKey="#{obj.id}" emptyMessage="Keine Übersetzungen vorhanden"
+                             paginator="true" rows="20">
+
+                    <p:ajax event="rowSelect" listener="#{i18nBackingBean.select()}" update="fm"/>
+                    <p:ajax event="rowUnselect" listener="#{i18nBackingBean.clearSelection()}" update="fm"/>
+
+                    <p:column headerText="Default Label" sortBy="#{obj.defaultLabel}" filterBy="#{obj.defaultLabel}">
+                        <h:outputText value="#{obj.defaultLabel}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Sprache')}" sortBy="#{obj.languageCode}" style="width: 100px;">
+                        <h:outputText value="#{obj.languageCode}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Übersetzung')}" sortBy="#{obj.translatedText}">
+                        <h:outputText value="#{obj.translatedText}"
+                                      style="#{obj.translatedText.startsWith('X_') ? 'color: #e74c3c; font-weight: bold;' : ''}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Aktionen')}" style="width: 80px; text-align: center;">
+                        <p:commandButton icon="pi pi-trash" styleClass="ui-button-danger ui-button-sm"
+                                         actionListener="#{i18nBackingBean.delete()}"
+                                         update="messages,tbl" process="@this"
+                                         title="Löschen">
+                            <f:setPropertyActionListener target="#{i18nBackingBean.selected}" value="#{obj}"/>
+                            <p:confirm header="Bestätigung"
+                                       message="Übersetzung '#{obj.defaultLabel}' (#{obj.languageCode}) wirklich löschen?"
+                                       icon="pi pi-exclamation-triangle"/>
+                        </p:commandButton>
+                    </p:column>
+                </p:dataTable>
+
+            </p:fieldset>
+
+            <!-- Dialog: Neue Übersetzung -->
+            <p:dialog header="Neue Übersetzung" widgetVar="newDlg" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe" id="newDialog">
+
+                <h:panelGroup id="newDialogContent">
+                    <h:panelGrid columns="2" style="width: 100%;">
+                        <h:outputText value="Default Label:"/>
+                        <p:autoComplete value="#{i18nBackingBean.newDefaultLabel}"
+                                        completeMethod="#{i18nBackingBean.getAllMenuLabels()}"
+                                        dropdown="true" style="width: 400px;"
+                                        placeholder="Label eingeben oder aus Menü wählen"/>
+
+                        <h:outputText value="Sprache:"/>
+                        <p:selectOneMenu value="#{i18nBackingBean.newLanguageCode}" style="width: 400px;">
+                            <f:selectItem itemLabel="-- Sprache wählen --" itemValue="" noSelectionOption="true"/>
+                            <f:selectItems value="#{i18nBackingBean.availableLanguages}"
+                                           var="lang" itemLabel="#{lang}" itemValue="#{lang}"/>
+                        </p:selectOneMenu>
+
+                        <h:outputText value="Übersetzung:"/>
+                        <p:inputTextarea value="#{i18nBackingBean.newTranslatedText}" rows="3"
+                                         style="width: 400px;" placeholder="Übersetzten Text eingeben"/>
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <p:commandButton value="Speichern" icon="pi pi-check"
+                                     action="#{i18nBackingBean.saveNew()}"
+                                     update="messages,fm:tbl,newDialogContent"
+                                     process="newDialog"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('newDlg').hide()"/>
+                </h:panelGroup>
+            </p:dialog>
+
+            <!-- Dialog: Übersetzung bearbeiten -->
+            <p:dialog header="Übersetzung bearbeiten" widgetVar="editDlg" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe" id="editDialog">
+
+                <h:panelGroup id="editDialogContent" rendered="#{i18nBackingBean.selected != null}">
+                    <h:panelGrid columns="2" style="width: 100%;">
+                        <h:outputText value="Default Label:"/>
+                        <p:inputText value="#{i18nBackingBean.selected.defaultLabel}" disabled="true"
+                                     style="width: 400px;"/>
+
+                        <h:outputText value="Sprache:"/>
+                        <p:inputText value="#{i18nBackingBean.selected.languageCode}" disabled="true"
+                                     style="width: 400px;"/>
+
+                        <h:outputText value="Übersetzung:"/>
+                        <p:inputTextarea value="#{i18nBackingBean.selected.translatedText}" rows="3"
+                                         style="width: 400px;"/>
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 10px 0;"/>
+
+                    <p:commandButton value="Speichern" icon="pi pi-check"
+                                     action="#{i18nBackingBean.saveSelected()}"
+                                     update="messages,fm:tbl"
+                                     process="editDialog"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('editDlg').hide()"/>
+                </h:panelGroup>
+            </p:dialog>
+
+            <!-- Dialog: CSV Import -->
+            <p:dialog header="CSV Import" widgetVar="importDlg" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe" id="importDialog">
+
+                <h:panelGroup id="importDialogContent">
+                    <p style="margin-bottom: 10px;">
+                        CSV-Datei hochladen (Format: defaultLabel;languageCode;translatedText).
+                        Bestehende Übersetzungen werden überschrieben.
+                    </p>
+
+                    <p:fileUpload id="csvUpload"
+                                  mode="advanced"
+                                  auto="true"
+                                  allowTypes="/(\.|\/)(csv|txt)$/"
+                                  label="CSV wählen"
+                                  uploadLabel="Importieren"
+                                  cancelLabel="Abbrechen"
+                                  listener="#{i18nBackingBean.handleCsvImport}"
+                                  update="messages,fm:tbl"
+                                  oncomplete="PF('importDlg').hide()"/>
+                </h:panelGroup>
+            </p:dialog>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

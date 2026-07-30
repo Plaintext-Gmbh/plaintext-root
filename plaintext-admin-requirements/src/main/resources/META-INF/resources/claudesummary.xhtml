@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:ui="http://java.sun.com/jsf/facelets">
+<h:head>
+    <title>Claude Summary - #{claudeSummaryBackingBean.anforderung.titel}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+    <!-- Marked.js for Markdown rendering (local) -->
+    <script src="#{request.contextPath}/js/marked.min.js"></script>
+
+    <!-- GitHub Markdown CSS (local) -->
+    <link rel="stylesheet" href="#{request.contextPath}/css/github-markdown-light.min.css"/>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f6f8fa;
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+            background-color: white;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+
+        .header {
+            border-bottom: 1px solid #d0d7de;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #24292f;
+        }
+
+        .meta-info {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .meta-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background-color: #f6f8fa;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #57606a;
+        }
+
+        .meta-label {
+            font-weight: 600;
+        }
+
+        .markdown-body {
+            box-sizing: border-box;
+            min-width: 200px;
+        }
+
+        .no-summary {
+            text-align: center;
+            padding: 40px;
+            color: #57606a;
+            font-style: italic;
+        }
+    </style>
+</h:head>
+
+<h:body>
+    <f:metadata>
+        <f:viewParam name="id" value="#{claudeSummaryBackingBean.anforderungId}"/>
+        <f:event type="preRenderView" listener="#{claudeSummaryBackingBean.onLoad()}"/>
+    </f:metadata>
+
+    <div class="container">
+        <div class="header">
+            <h1>#{claudeSummaryBackingBean.anforderung.titel}</h1>
+
+            <div class="meta-info">
+                <span class="meta-item">
+                    <span class="meta-label">ID:</span>
+                    <span>#{claudeSummaryBackingBean.anforderung.id}</span>
+                </span>
+                <span class="meta-item">
+                    <span class="meta-label">Status:</span>
+                    <span>#{claudeSummaryBackingBean.anforderung.status}</span>
+                </span>
+                <span class="meta-item">
+                    <span class="meta-label">Priorität:</span>
+                    <span>#{claudeSummaryBackingBean.anforderung.priority}</span>
+                </span>
+                <h:panelGroup rendered="#{not empty claudeSummaryBackingBean.anforderung.kategorie}">
+                    <span class="meta-item">
+                        <span class="meta-label">Kategorie:</span>
+                        <span>#{claudeSummaryBackingBean.anforderung.kategorie}</span>
+                    </span>
+                </h:panelGroup>
+                <h:panelGroup rendered="#{not empty claudeSummaryBackingBean.anforderung.lastModifiedDate}">
+                    <span class="meta-item">
+                        <span class="meta-label">Letzte Änderung:</span>
+                        <span>
+                            <h:outputText value="#{claudeSummaryBackingBean.anforderung.lastModifiedDate}">
+                                <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                            </h:outputText>
+                        </span>
+                    </span>
+                </h:panelGroup>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <h:panelGroup rendered="#{claudeSummaryBackingBean.anforderung != null and claudeSummaryBackingBean.anforderung.claudeSummary != null}">
+            <div id="markdown-content" class="markdown-body">
+                <!-- Rendered markdown will be inserted here by JavaScript -->
+            </div>
+
+            <!-- Hidden div to store the markdown content.
+                 SECURITY (Karte 304): hier stand escape="false". Das war doppelt falsch:
+                 (1) HTML im Summary landete ungefiltert im DOM — ein <img src=x onerror=...>
+                     feuert auch in einem display:none-Div, ein <script> im initialen HTML laeuft.
+                 (2) Funktional: das JS unten liest den Inhalt per textContent wieder aus, um ihn
+                     durch marked.parse() zu schicken. Wird der Markdown-Text vom Browser als
+                     Markup geparst, kommt er verstuemmelt zurueck.
+                 Escaping ist also die richtige Wahl (kein jsoup-Sanitizing): der Transport bleibt
+                 reiner Text, das Rendern zu HTML passiert wie bisher clientseitig. -->
+            <div id="markdown-data" style="display: none;"><h:outputText value="#{claudeSummaryBackingBean.anforderung.claudeSummary}" /></div>
+        </h:panelGroup>
+
+        <h:panelGroup rendered="#{empty claudeSummaryBackingBean.anforderung or empty claudeSummaryBackingBean.anforderung.claudeSummary}">
+            <div class="no-summary">
+                Keine Claude Summary für diese Anforderung vorhanden.
+            </div>
+        </h:panelGroup>
+    </div>
+
+    <!-- JavaScript for markdown rendering -->
+    <script type="text/javascript">
+        //<![CDATA[
+        // Render an error message into a target node *without* string-concatenating
+        // user-controlled values into innerHTML (CodeQL js/xss-through-dom and
+        // js/xss-through-exception findings, alerts #12, #13).
+        function renderErrorMessage(target, text) {
+            var p = document.createElement('p');
+            p.style.color = 'red';
+            p.textContent = text;          // textContent escapes any HTML
+            target.replaceChildren(p);
+        }
+
+        function renderMarkdown() {
+            console.log('renderMarkdown() called');
+
+            // Configure marked.js
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true,
+                    headerIds: true,
+                    mangle: false
+                });
+                console.log('marked.js configured');
+            } else {
+                console.warn('marked.js not loaded, retrying...');
+                setTimeout(renderMarkdown, 100);
+                return;
+            }
+
+            // Get the markdown content from the hidden div
+            var markdownDataElement = document.getElementById('markdown-data');
+            var markdownContentElement = document.getElementById('markdown-content');
+
+            console.log('markdownDataElement:', markdownDataElement);
+            console.log('markdownContentElement:', markdownContentElement);
+
+            if (markdownDataElement && markdownContentElement) {
+                try {
+                    var markdownContent = markdownDataElement.textContent || markdownDataElement.innerText;
+                    markdownContent = markdownContent.trim();
+
+                    console.log('Markdown content length:', markdownContent.length);
+                    console.log('Markdown content preview:', markdownContent.substring(0, 100));
+
+                    if (!markdownContent) {
+                        console.error('No markdown content found!');
+                        renderErrorMessage(markdownContentElement, 'Kein Markdown-Inhalt gefunden!');
+                        return;
+                    }
+
+                    // Render markdown to HTML. The markdown comes from our own
+                    // backend (admin-only requirements summary), so trusted —
+                    // we still avoid string-concatenation of user-controlled
+                    // values into innerHTML (see renderErrorMessage below).
+                    var html = marked.parse ? marked.parse(markdownContent) : marked(markdownContent);
+                    console.log('Rendered HTML length:', html.length);
+                    markdownContentElement.innerHTML = html;
+                    console.log('Markdown rendered successfully');
+                } catch (e) {
+                    console.error('Error rendering markdown:', e);
+                    renderErrorMessage(markdownContentElement,
+                        'Fehler beim Rendern des Markdown-Inhalts: ' + e.message);
+                }
+            } else {
+                console.log('Elements not ready, retrying...');
+                setTimeout(renderMarkdown, 100);
+            }
+        }
+
+        // Render when document is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderMarkdown);
+        } else {
+            renderMarkdown();
+        }
+        //]]>
+    </script>
+</h:body>
+</html>

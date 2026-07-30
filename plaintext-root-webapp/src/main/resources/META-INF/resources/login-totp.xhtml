@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:ui="http://java.sun.com/jsf/facelets">
+
+<h:head>
+    <title>Plaintext - Zwei-Faktor-Authentifizierung</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+    <style type="text/css">
+        :root {
+            --primary-color: #2c84d8;
+            --primary-dark: #1976D2;
+            --text-color: #333333;
+            --text-secondary: #6c757d;
+            --surface-card: #ffffff;
+            --border-color: #dee2e6;
+            --bg-gradient-start: #f8fbff;
+            --bg-gradient-end: #e8f4fd;
+        }
+        [data-theme="dark"] {
+            --primary-color: #5eb3f6;
+            --text-color: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --surface-card: #2a2b3d;
+            --border-color: #3c3d4f;
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-end: #16213e;
+        }
+        * { box-sizing: border-box; }
+        html { font-size: 14px; height: 100%; }
+        body {
+            font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0; min-height: 100%;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: var(--text-color);
+        }
+        .login-body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; }
+        .login-panel {
+            background-color: var(--surface-card); border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 100%; max-width: 450px; padding: 3rem;
+        }
+        .login-header { text-align: center; margin-bottom: 2rem; }
+        .login-header h1 { font-size: 1.8rem; font-weight: 600; margin: 0 0 0.5rem 0; }
+        .login-header p { color: var(--text-secondary); margin: 0; font-size: 0.95rem; }
+        .field { margin-bottom: 1.5rem; }
+        .field label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .ui-inputfield {
+            width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color);
+            border-radius: 6px; font-size: 1.4rem; letter-spacing: 0.4rem; text-align: center;
+            background-color: var(--surface-card); color: var(--text-color);
+        }
+        .ui-inputfield:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(33,150,243,0.1); }
+        .error-message {
+            background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
+            border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.5rem;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        [data-theme="dark"] .error-message { background-color: #5a1a1a; color: #f8d7da; border-color: #721c24; }
+        .hint { color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem; text-align: center; }
+    </style>
+    <script type="text/javascript">
+        //<![CDATA[
+        function initTheme() {
+            var m = document.cookie.match(/plaintext-theme=(\w+)/);
+            var theme = m ? m[1] : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTheme);
+        } else { initTheme(); }
+        //]]>
+    </script>
+</h:head>
+
+<h:body styleClass="login-body">
+    <div class="login-panel">
+        <div class="login-header">
+            <h1>#{i18n.t('Zwei-Faktor-Authentifizierung')}</h1>
+            <p>#{i18n.t('Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein')}</p>
+        </div>
+
+        <!-- Fehler-Meldung (ungültiger Code / Lockout) -->
+        <div class="error-message" style="display: #{param.error != null ? 'flex' : 'none'}">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>#{param.error == 'totp_locked'
+                ? i18n.t('Zu viele Fehlversuche. Bitte später erneut anmelden.')
+                : i18n.t('Ungültiger Code. Bitte versuchen Sie es erneut.')}</span>
+        </div>
+
+        <form action="#{request.contextPath}/login/totp" method="post" class="login-form" autocomplete="off">
+            <!-- CSRF Token (CSRF-Schutz bleibt aktiv) -->
+            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+
+            <div class="field">
+                <label for="code">#{i18n.t('Code')}</label>
+                <input type="text"
+                       id="code"
+                       name="code"
+                       class="ui-inputfield"
+                       inputmode="numeric"
+                       autocomplete="one-time-code"
+                       placeholder="000000"
+                       required="required"
+                       autofocus="autofocus"/>
+            </div>
+
+            <button type="submit"
+                    style="width: 100%; padding: 0.75rem 1rem; font-size: 1rem; font-weight: 500; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background-color: #4CAF50; color: white; border: none;">
+                <i class="pi pi-check"></i> #{i18n.t('Bestätigen')}
+            </button>
+        </form>
+
+        <div class="hint">
+            #{i18n.t('Kein Zugriff auf die App? Geben Sie stattdessen einen Ihrer Recovery-Codes ein.')}
+        </div>
+        <div class="hint" style="margin-top: 1.5rem;">
+            <a href="#{request.contextPath}/logout-link" style="color: var(--primary-color); text-decoration: none;"
+               onclick="event.preventDefault(); document.getElementById('abbrechen-form').submit();">
+                #{i18n.t('Abbrechen und zurück zur Anmeldung')}
+            </a>
+        </div>
+        <form id="abbrechen-form" action="#{request.contextPath}/logout" method="post" style="display:none;">
+            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+        </form>
+    </div>
+</h:body>
+</html>

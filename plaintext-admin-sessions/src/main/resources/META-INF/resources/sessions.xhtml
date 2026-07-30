@@ -1,0 +1,150 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                template="/includes/template.xhtml">
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <f:metadata>
+                <f:event type="preRenderView" listener="#{sessionsBackingBean.onLoad()}"/>
+            </f:metadata>
+
+            <p:growl id="messages" showDetail="true" life="3000"/>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="#{i18n.t('Nein')}" type="button" styleClass="ui-confirmdialog-no"/>
+            </p:confirmDialog>
+
+            <p:fieldset legend="#{i18n.t('Aktive Sitzungen')}">
+
+                <div style="margin-bottom: 10px;">
+                    <p:commandButton value="#{i18n.t('Aktualisieren')}" icon="pi pi-refresh"
+                                     actionListener="#{sessionsBackingBean.refresh()}"
+                                     update="fm" process="@this"/>
+
+                    <p:commandButton value="#{i18n.t('Details anzeigen')}" icon="pi pi-info-circle"
+                                     actionListener="#{sessionsBackingBean.select()}"
+                                     oncomplete="PF('sessionDlg').show()"
+                                     update="sessionDialog" process="@this"
+                                     disabled="#{sessionsBackingBean.selected == null}"
+                                     style="margin-left: 5px;"/>
+
+                    <p:commandButton value="#{i18n.t('Abmelden')}" icon="pi pi-sign-out" styleClass="ui-button-danger"
+                                     actionListener="#{sessionsBackingBean.forceLogout()}"
+                                     update="messages,tbl" process="@this"
+                                     disabled="#{sessionsBackingBean.selected == null}"
+                                     style="margin-left: 5px;">
+                        <p:confirm header="#{i18n.t('Bestätigung')}"
+                                   message="#{i18n.t('Benutzer wirklich abmelden?')}"
+                                   icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+                </div>
+
+                <p:dataTable id="tbl" var="userSession" value="#{sessionsBackingBean.sessions}"
+                             selectionMode="single" selection="#{sessionsBackingBean.selected}"
+                             rowKey="#{userSession.id}" emptyMessage="#{i18n.t('Keine aktiven Sitzungen')}">
+
+                    <p:ajax event="rowSelect" listener="#{sessionsBackingBean.select()}" update="fm"/>
+                    <p:ajax event="rowUnselect" listener="#{sessionsBackingBean.clearSelection()}" update="fm"/>
+
+                    <p:column headerText="User ID" sortBy="#{userSession.userId}" style="width: 70px;">
+                        <h:outputText value="#{userSession.userId}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Benutzername')}" sortBy="#{userSession.username}">
+                        <h:outputText value="#{userSession.username}"/>
+                    </p:column>
+
+                    <p:column headerText="Mandat" sortBy="#{userSession.mandat}">
+                        <h:outputText value="#{userSession.mandat}"/>
+                    </p:column>
+
+                    <p:column headerText="Session ID" style="max-width: 150px;">
+                        <h:outputText value="#{userSession.sessionId}"
+                                      style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; font-size: 11px;"
+                                      title="#{userSession.sessionId}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Aktiv')}" sortBy="#{userSession.active}" style="width: 60px;">
+                        <h:outputText value="#{userSession.active ? '✓' : '✗'}"
+                                      style="font-size: 16px; color: #{userSession.active ? 'green' : 'red'}"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Anmeldung')}" sortBy="#{userSession.loginTime}">
+                        <h:outputText value="#{userSession.loginTime}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm:ss"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Letzte Aktivität')}" sortBy="#{userSession.lastActivityTime}">
+                        <h:outputText value="#{userSession.lastActivityTime}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm:ss"/>
+                        </h:outputText>
+                    </p:column>
+
+                    <p:column headerText="User Agent" style="max-width: 300px;">
+                        <h:outputText value="#{userSession.userAgent}"
+                                      style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                                      title="#{userSession.userAgent}"/>
+                    </p:column>
+
+                </p:dataTable>
+
+            </p:fieldset>
+
+            <p:dialog header="#{i18n.t('Sitzung Details')}" widgetVar="sessionDlg" modal="true"
+                      showEffect="fade" hideEffect="fade" styleClass="mobile-safe" id="sessionDialog">
+
+                <h:panelGroup id="dialogContent" rendered="#{sessionsBackingBean.selected != null}">
+                    <h:panelGrid columns="2" style="width: 100%;" columnClasses="label-column,value-column">
+
+                        <h:outputText value="User ID:" style="font-weight: bold;"/>
+                        <h:outputText value="#{sessionsBackingBean.selected.userId}"/>
+
+                        <h:outputText value="#{i18n.t('Benutzername')}:" style="font-weight: bold;"/>
+                        <h:outputText value="#{sessionsBackingBean.selected.username}"/>
+
+                        <h:outputText value="Mandat:" style="font-weight: bold;"/>
+                        <h:outputText value="#{sessionsBackingBean.selected.mandat}"/>
+
+                        <h:outputText value="Session ID:" style="font-weight: bold;"/>
+                        <h:outputText value="#{sessionsBackingBean.selected.sessionId}"
+                                      style="font-family: monospace; font-size: 11px; word-break: break-all;"/>
+
+                        <h:outputText value="#{i18n.t('Aktiv')}:" style="font-weight: bold;"/>
+                        <h:outputText value="#{sessionsBackingBean.selected.active ? '✓ Ja' : '✗ Nein'}"
+                                      style="color: #{sessionsBackingBean.selected.active ? 'green' : 'red'}; font-weight: bold;"/>
+
+                        <h:outputText value="#{i18n.t('Anmeldung')}:" style="font-weight: bold;"/>
+                        <h:outputText value="#{sessionsBackingBean.selected.loginTime}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm:ss"/>
+                        </h:outputText>
+
+                        <h:outputText value="#{i18n.t('Letzte Aktivität')}:" style="font-weight: bold;"/>
+                        <h:outputText value="#{sessionsBackingBean.selected.lastActivityTime}">
+                            <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm:ss"/>
+                        </h:outputText>
+
+                        <h:outputText value="User Agent:" style="font-weight: bold;"/>
+                        <h:outputText value="#{sessionsBackingBean.selected.userAgent}"
+                                      style="font-size: 12px; word-break: break-word;"/>
+
+                    </h:panelGrid>
+
+                    <p:separator style="margin: 15px 0;"/>
+
+                    <div style="text-align: right;">
+                        <p:commandButton value="#{i18n.t('Schließen')}" icon="pi pi-times"
+                                         onclick="PF('sessionDlg').hide()"
+                                         type="button"
+                                         styleClass="ui-button-secondary"/>
+                    </div>
+                </h:panelGroup>
+            </p:dialog>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

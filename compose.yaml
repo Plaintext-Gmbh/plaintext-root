@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:18.3-alpine
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: plaintext_root
+      POSTGRES_USER: plaintext
+      POSTGRES_PASSWORD: plaintext
+    volumes:
+      - ~/plaintext-root-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plaintext -d plaintext_root"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

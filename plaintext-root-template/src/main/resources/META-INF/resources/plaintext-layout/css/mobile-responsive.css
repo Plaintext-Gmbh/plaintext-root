@@ -1,0 +1,134 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+/*
+ * Zentrales Mobile-Responsive-Stylesheet fuer ALLE Plaintext-Apps.
+ *
+ * Wird vom gemeinsamen Template (includes/template.xhtml) als LETZTES Stylesheet
+ * geladen und gewinnt damit die Kaskade. Ziel: p:dialog / Formulare / breite Inputs
+ * laufen auf schmalen Viewports (Handy, ~390px) NICHT mehr aus dem Bildschirm.
+ *
+ * Design-Prinzip: konservativ. Auf Desktop (>= 769px) greifen nur die harmlosen
+ * Viewport-Deckel; die aggressiveren 100%-Regeln stehen hinter @media (max-width: 768px)
+ * und beruehren Desktop-Layouts nicht.
+ */
+
+/* ------------------------------------------------------------------ */
+/* 1. Viewport-Deckel fuer JEDEN Dialog (auch Desktop).                */
+/*    Deckelt fixe px-Breiten (z. B. p:dialog width="700") auf den     */
+/*    Viewport; der Content scrollt statt rechts rauszulaufen.         */
+/* ------------------------------------------------------------------ */
+.ui-dialog {
+    max-width: 96vw !important;
+    max-height: 92vh;
+    box-sizing: border-box;
+}
+
+/* Flex-Column NUR fuer den SICHTBAREN Dialog. PrimeFaces steuert die Dialog-Sichtbarkeit ueber
+ * inline display:none/block + aria-hidden="true"/"false". Ein festes `display: flex !important`
+ * auf .ui-dialog wuerde PF's inline display:none UEBERSCHREIBEN -> der Dialog bleibt sichtbar und
+ * laesst sich nicht mehr schliessen ("Formular immer aktiv"); zusaetzlich haelt PF ihn dann
+ * faelschlich fuer sichtbar (computed != none), sodass show()/hide() sich verheddern. Deshalb an
+ * aria-hidden="false" (setzt PF beim Zeigen) binden: das Verstecken bleibt intakt, und der offene
+ * Dialog bekommt flex-column, damit der Content in der 92vh-Deckelung scrollt und der Footer
+ * (Buttons!) auf schmalen Viewports IMMER erreichbar bleibt. */
+.ui-dialog[aria-hidden="false"] {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.ui-dialog .ui-dialog-titlebar,
+.ui-dialog .ui-dialog-footer {
+    flex: 0 0 auto;
+}
+
+.ui-dialog .ui-dialog-content {
+    /* flex:1 + min-height:0 laesst den Content schrumpfen und scrollen statt den Footer zu verdraengen. */
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+/* PrimeFaces-DynamicDialog / OverlayPanels teilen dieselbe Gefahr. */
+.ui-overlaypanel {
+    max-width: 96vw !important;
+    box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------------ */
+/* 1b. Helfer-Klasse "mobile-safe" fuer p:dialog.                      */
+/*     Ersetzt fixe width="NNN": Desktop bekommt eine sinnvolle,       */
+/*     inhaltsbasierte Breite (bis 700px), Handy schrumpft via 96vw.   */
+/* ------------------------------------------------------------------ */
+.ui-dialog.mobile-safe {
+    width: auto !important;
+    max-width: min(700px, 96vw) !important;
+}
+
+.ui-dialog.mobile-safe .ui-dialog-content {
+    min-width: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. Phone-Breakpoint: alles fluide machen.                           */
+/* ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+
+    /* Dialog nimmt (fast) den ganzen Viewport ein, statt fixer px-Breite. */
+    .ui-dialog {
+        width: 96vw !important;
+        max-width: 96vw !important;
+    }
+
+    /* Inputs/Textareas/Selects nie breiter als ihr Container.
+     * Faengt auch fixe Inline-Breiten wie style="width: 700px" ab. */
+    .ui-inputfield,
+    .ui-inputtext,
+    .ui-selectonemenu,
+    .ui-selectcheckboxmenu,
+    .ui-inputnumber,
+    .ui-textarea,
+    input,
+    textarea,
+    select {
+        max-width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    /* h:panelGrid / p:panelGrid: Zellen duerfen umbrechen statt zu ueberlaufen.
+     * Kein forciertes display:block (das zerstoert 2-Spalten-Label/Feld-Layouts);
+     * nur Overflow entschaerfen und lange Inhalte umbrechen lassen. */
+    .ui-panelgrid td,
+    .ui-panelgrid-cell {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    /* Volle-Breite-Buttons in Dialog-Footern greifen sonst ueber den Rand. */
+    .ui-dialog .ui-dialog-footer .ui-button {
+        max-width: 100%;
+    }
+
+    /* Umbrechende Button-Leisten: vertikaler Abstand zwischen den Zeilen.
+       Die Inline-margin-left in den Seiten wirken nur horizontal — ohne diese
+       Regel kleben umgebrochene Buttons vertikal aneinander (Screenshot Daniel,
+       Rechnungen-Toolbar mobil). Global, damit es fuer alle Formulare gilt. */
+    .ui-button,
+    .ui-splitbutton {
+        margin-bottom: .45rem;
+    }
+
+    /* Ausnahmen: in Tabellenzellen (Aktions-Buttons pro Zeile) und Dialog-Footern
+       (Ja/Nein-Confirms) keine Extra-Margins — sonst verschieben sich Zeilenhoehen
+       bzw. das Footer-Layout. */
+    .ui-datatable .ui-button,
+    .ui-datatable .ui-splitbutton,
+    .ui-dialog-footer .ui-button {
+        margin-bottom: 0;
+    }
+}

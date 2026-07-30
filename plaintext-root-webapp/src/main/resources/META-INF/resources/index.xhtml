@@ -1,0 +1,191 @@
+<ui:composition
+        xmlns:ui="http://java.sun.com/jsf/facelets"
+        xmlns:f="http://java.sun.com/jsf/core"
+        xmlns:p="http://primefaces.org/ui"
+        xmlns:h="http://java.sun.com/jsf/html"
+        xmlns="http://www.w3.org/1999/xhtml" template="includes/template.xhtml">
+
+    <ui:define name="title">Dashboard</ui:define>
+
+    <ui:define name="content">
+        <style>
+            .dashboard-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 1.5rem;
+                margin-top: 0.5rem;
+            }
+
+            .dashboard-tile.ui-card {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                border: 1px solid var(--pt-surface-border);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .dashboard-tile.ui-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+            }
+
+            .dashboard-tile-head {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .dashboard-tile-icon {
+                font-size: 2rem;
+                color: var(--pt-primary-color);
+                line-height: 1;
+            }
+
+            .dashboard-tile-image {
+                width: 100%;
+                max-height: 140px;
+                object-fit: cover;
+                border-radius: 6px;
+                margin-bottom: 0.75rem;
+            }
+
+            .dashboard-tile-title {
+                font-size: 1.2rem;
+                font-weight: 700;
+                color: var(--pt-text-dark);
+            }
+
+            .dashboard-status {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin: 0.5rem 0;
+                font-weight: 600;
+            }
+
+            .dashboard-status-dot {
+                display: inline-block;
+                width: 0.7rem;
+                height: 0.7rem;
+                border-radius: 50%;
+                flex: 0 0 auto;
+            }
+
+            .dashboard-info {
+                color: var(--pt-text-color-secondary);
+                font-size: 0.9rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .dashboard-footer {
+                margin-top: auto;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                align-items: center;
+                padding-top: 0.75rem;
+            }
+
+            .dashboard-action {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.4rem;
+                padding: 0.45rem 0.9rem;
+                border-radius: 6px;
+                background: var(--pt-primary-color);
+                color: var(--pt-primary-color-text) !important;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 0.9rem;
+                border: none;
+                cursor: pointer;
+            }
+
+            .dashboard-action:hover {
+                filter: brightness(0.93);
+            }
+
+            .dashboard-dropdown {
+                padding: 0.45rem 0.7rem;
+                border-radius: 6px;
+                border: 1px solid var(--pt-surface-border);
+                background: var(--pt-surface-0);
+                color: var(--pt-text-color);
+                font-size: 0.9rem;
+                cursor: pointer;
+            }
+
+            .dashboard-empty {
+                padding: 2rem;
+                text-align: center;
+                color: var(--pt-text-color-secondary);
+            }
+        </style>
+
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <h2 style="margin-bottom: 0.25rem;">
+                <i class="pi pi-th-large" style="margin-right: 0.5rem;"></i>Dashboard
+            </h2>
+
+            <h:panelGroup layout="block" styleClass="dashboard-empty" rendered="#{empty dashboardBean.tiles}">
+                <i class="pi pi-inbox" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                Keine Module verfügbar.
+            </h:panelGroup>
+
+            <div class="dashboard-grid">
+                <ui:repeat value="#{dashboardBean.tiles}" var="tile">
+                    <p:card styleClass="dashboard-tile">
+
+                        <h:graphicImage value="#{tile.image}" styleClass="dashboard-tile-image"
+                                        rendered="#{not empty tile.image}"/>
+
+                        <div class="dashboard-tile-head">
+                            <h:panelGroup rendered="#{not empty tile.icon}">
+                                <i class="#{tile.icon} dashboard-tile-icon"></i>
+                            </h:panelGroup>
+                            <span class="dashboard-tile-title">#{tile.title}</span>
+                        </div>
+
+                        <h:panelGroup layout="block" styleClass="dashboard-status"
+                                      rendered="#{not empty tile.statusText}">
+                            <span class="dashboard-status-dot"
+                                  style="background: #{empty tile.safeStatusColor ? '#888888' : tile.safeStatusColor};"></span>
+                            <span>#{tile.statusText}</span>
+                        </h:panelGroup>
+
+                        <h:panelGroup layout="block" styleClass="dashboard-info"
+                                      rendered="#{not empty tile.infoText}">
+                            <h:outputText value="#{tile.infoText}"/>
+                        </h:panelGroup>
+
+                        <div class="dashboard-footer">
+                            <ui:repeat value="#{tile.actions}" var="action">
+                                <a href="#{empty action.safeLink ? '#' : action.safeLink}" class="dashboard-action">
+                                    <h:panelGroup rendered="#{not empty action.icon}">
+                                        <i class="#{action.icon}"></i>
+                                    </h:panelGroup>
+                                    <span>#{action.label}</span>
+                                </a>
+                            </ui:repeat>
+
+                            <h:panelGroup rendered="#{tile.dropdown != null and not empty tile.dropdown.options}">
+                                <select class="dashboard-dropdown"
+                                        onchange="if(this.value){window.location.href=this.value;}">
+                                    <option value="">#{empty tile.dropdown.label ? 'Auswählen…' : tile.dropdown.label}</option>
+                                    <ui:repeat value="#{tile.dropdown.options}" var="opt">
+                                        <option value="#{empty opt.safeLink ? '' : opt.safeLink}">#{opt.label}</option>
+                                    </ui:repeat>
+                                </select>
+                            </h:panelGroup>
+                        </div>
+
+                    </p:card>
+                </ui:repeat>
+            </div>
+        </h:form>
+    </ui:define>
+</ui:composition>

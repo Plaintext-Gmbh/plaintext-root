@@ -1,0 +1,79 @@
+<ui:composition xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:p="http://primefaces.org/ui"
+                template="/includes/template.xhtml">
+
+    <ui:define name="title">Flyway</ui:define>
+
+    <ui:define name="page">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <p:dataTable emptyMessage="-" var="row" value="#{flywayService.infoFromDatabase()}" rowIndexVar="ri"
+                         paginator="true"
+                         rows="100"
+                         rowsPerPageTemplate="20,50,100,200,300,500,1000"
+                         paginatorPosition="both"
+                         sortBy="#{row.getInstalledRank()}"
+                         sortOrder="descending"
+                         filterDelay="300">
+
+                <p:column headerText="Nr" style="width:4%">
+                    <h:outputText value="#{ri+1}"/>
+                </p:column>
+
+                <p:column headerText="Success" style="width:8%">
+                    <h:outputText value="#{row.getSuccess()}"/>
+                </p:column>
+
+                <p:column headerText="Description" style="width:8%" filterBy="#{row.getDescription()}" filterMatchMode="contains">
+                    <h:outputText value="#{row.getDescription()}"/>
+                </p:column>
+
+                <p:column headerText="Version" style="width:8%">
+                    <h:outputText value="#{row.getVersion()}"/>
+                </p:column>
+
+                <p:column headerText="Script" style="width:8%">
+                    <h:outputText value="#{row.getScript()}"/>
+                </p:column>
+
+                <p:column headerText="InstalledOn" style="width:8%">
+                    <h:outputText value="#{row.getInstalledOn()}"/>
+                </p:column>
+
+                <p:column headerText="InstalledBy" style="width:8%">
+                    <h:outputText value="#{row.getInstalledBy()}"/>
+                </p:column>
+
+                <p:column headerText="InstalledRank" style="width:8%">
+                    <h:outputText value="#{row.getInstalledRank()}"/>
+                </p:column>
+
+                <p:column headerText="Type" style="width:8%">
+                    <h:outputText value="#{row.getType()}"/>
+                </p:column>
+
+                <p:column headerText="Actions" style="width:8%">
+                    <p:commandButton value="Delete"
+                                     action="#{flywayService.deleteHistoryEntry(row.getInstalledRank())}"
+                                     update="fm"
+                                     styleClass="ui-button-danger"
+                                     icon="pi pi-trash">
+                        <p:confirm header="Confirmation"
+                                   message="Are you sure you want to delete migration entry for version #{row.getVersion()}? This action cannot be undone!"
+                                   icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+                </p:column>
+
+            </p:dataTable>
+
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Yes" type="button" styleClass="ui-confirmdialog-yes" icon="pi pi-check"/>
+                <p:commandButton value="No" type="button" styleClass="ui-confirmdialog-no ui-button-secondary" icon="pi pi-times"/>
+            </p:confirmDialog>
+
+        </h:form>
+    </ui:define>
+
+</ui:composition>

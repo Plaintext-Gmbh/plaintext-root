@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:p="http://primefaces.org/ui"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets">
+<h:head>
+    <title>Anforderung Detail - #{anforderungDetailBackingBean.anforderung.titel}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        .mobile-header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .mobile-header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .back-button {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 15px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-content {
+            font-size: 16px;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-OFFEN {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .status-IN_BEARBEITUNG {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .status-ERLEDIGT {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .status-FEEDBACK {
+            background-color: #9b59b6;
+            color: white;
+        }
+
+        .status-ABGELEHNT {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .priority-NIEDRIG {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        .priority-MITTEL {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .priority-HOCH {
+            background-color: #e67e22;
+            color: white;
+        }
+
+        .priority-KRITISCH {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-success {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        .description-text {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .edit-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .edit-controls .btn {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+
+        .btn-edit {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+
+        textarea.input-field {
+            min-height: 120px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        select.input-field {
+            background-color: white;
+        }
+
+        .checkbox-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .checkbox-field input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .checkbox-field label {
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .howto-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .howto-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .howto-item-with-button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .btn-small {
+            padding: 6px 12px !important;
+            font-size: 14px !important;
+            min-width: 90px !important;
+        }
+
+        .howto-content {
+            flex: 1;
+        }
+
+        .howto-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .howto-description {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .selected-howtos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .howto-badge {
+            background-color: #3498db;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        @media (min-width: 768px) {
+            .content {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 30px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</h:head>
+
+<h:body>
+    <f:metadata>
+        <f:viewParam name="id" value="#{anforderungDetailBackingBean.anforderungId}"/>
+        <f:event type="preRenderView" listener="#{anforderungDetailBackingBean.onLoad()}"/>
+    </f:metadata>
+
+    <div class="mobile-header">
+        <a href="anforderungen.xhtml" class="back-button">← Zurück</a>
+        <h1>Anforderung ##{anforderungDetailBackingBean.anforderung.id}</h1>
+    </div>
+
+    <h:form id="detailForm">
+        <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+        <p:messages id="messages" showDetail="false" closable="true" autoUpdate="true"/>
+
+        <div class="content">
+        <div class="card">
+            <div class="card-title">Titel</div>
+            <h:panelGroup rendered="#{not anforderungDetailBackingBean.editingTitle}">
+                <div class="card-content">#{anforderungDetailBackingBean.anforderung.titel}</div>
+                <p:commandButton value="Bearbeiten" styleClass="btn-edit"
+                                 action="#{anforderungDetailBackingBean.startEditTitle()}"
+                                 update="@form" process="@this" ajax="true"/>
+            </h:panelGroup>
+            <h:panelGroup rendered="#{anforderungDetailBackingBean.editingTitle}">
+                <p:inputText value="#{anforderungDetailBackingBean.tempTitle}"
+                            styleClass="input-field" placeholder="Titel eingeben"/>
+                <div class="edit-controls">
+                    <p:commandButton value="Speichern" styleClass="btn btn-success"
+                                     action="#{anforderungDetailBackingBean.saveTitle()}"
+                                     update="@form" process="@form" ajax="true"/>
+                    <p:commandButton value="Abbrechen" styleClass="btn btn-secondary"
+                                     action="#{anforderungDetailBackingBean.cancelEditTitle()}"
+                                     update="@form" process="@this" ajax="true"/>
+                </div>
+            </h:panelGroup>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Status</div>
+            <h:panelGroup rendered="#{not anforderungDetailBackingBean.editingStatus}">
+                <div class="card-content">
+                    <span class="status-badge status-#{anforderungDetailBackingBean.anforderung.status}">
+                        #{anforderungDetailBackingBean.anforderung.status}
+                    </span>
+                </div>
+                <p:commandButton value="Bearbeiten" styleClass="btn-edit"
+                                 action="#{anforderungDetailBackingBean.startEditStatus()}"
+                                 update="@form" process="@this" ajax="true"/>
+            </h:panelGroup>
+            <h:panelGroup rendered="#{anforderungDetailBackingBean.editingStatus}">
+                <p:selectOneMenu value="#{anforderungDetailBackingBean.tempStatus}"
+                                styleClass="input-field">
+                    <f:selectItems value="#{anforderungDetailBackingBean.statusValues}"
+                                  var="status" itemLabel="#{status}" itemValue="#{status}"/>
+                </p:selectOneMenu>
+                <div class="edit-controls">
+                    <p:commandButton value="Speichern" styleClass="btn btn-success"
+                                     action="#{anforderungDetailBackingBean.saveStatus()}"
+                                     update="@form" process="@form" ajax="true"/>
+                    <p:commandButton value="Abbrechen" styleClass="btn btn-secondary"
+                                     action="#{anforderungDetailBackingBean.cancelEditStatus()}"
+                                     update="@form" process="@this" ajax="true"/>
+                </div>
+            </h:panelGroup>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Priorität</div>
+            <h:panelGroup rendered="#{not anforderungDetailBackingBean.editingPriority}">
+                <div class="card-content">
+                    <span class="priority-badge priority-#{anforderungDetailBackingBean.anforderung.priority}">
+                        #{anforderungDetailBackingBean.anforderung.priority}
+                    </span>
+                </div>
+                <p:commandButton value="Bearbeiten" styleClass="btn-edit"
+                                 action="#{anforderungDetailBackingBean.startEditPriority()}"
+                                 update="@form" process="@this" ajax="true"/>
+            </h:panelGroup>
+            <h:panelGroup rendered="#{anforderungDetailBackingBean.editingPriority}">
+                <p:selectOneMenu value="#{anforderungDetailBackingBean.tempPriority}"
+                                styleClass="input-field">
+                    <f:selectItems value="#{anforderungDetailBackingBean.priorityValues}"
+                                  var="priority" itemLabel="#{priority}" itemValue="#{priority}"/>
+                </p:selectOneMenu>
+                <div class="edit-controls">
+                    <p:commandButton value="Speichern" styleClass="btn btn-success"
+                                     action="#{anforderungDetailBackingBean.savePriority()}"
+                                     update="@form" process="@form" ajax="true"/>
+                    <p:commandButton value="Abbrechen" styleClass="btn btn-secondary"
+                                     action="#{anforderungDetailBackingBean.cancelEditPriority()}"
+                                     update="@form" process="@this" ajax="true"/>
+                </div>
+            </h:panelGroup>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Wiederkehrend</div>
+            <h:panelGroup rendered="#{not anforderungDetailBackingBean.editingWiederkehrend}">
+                <div class="card-content">
+                    <span class="status-badge #{anforderungDetailBackingBean.anforderung.wiederkehrend ? 'status-ERLEDIGT' : 'status-ABGELEHNT'}">
+                        #{anforderungDetailBackingBean.anforderung.wiederkehrend ? 'Ja' : 'Nein'}
+                    </span>
+                </div>
+                <p:commandButton value="Bearbeiten" styleClass="btn-edit"
+                                 action="#{anforderungDetailBackingBean.startEditWiederkehrend()}"
+                                 update="@form" process="@this" ajax="true"/>
+            </h:panelGroup>
+            <h:panelGroup rendered="#{anforderungDetailBackingBean.editingWiederkehrend}">
+                <div class="checkbox-field">
+                    <p:selectBooleanCheckbox value="#{anforderungDetailBackingBean.tempWiederkehrend}"
+                                            id="wiederkehrendCheckbox"/>
+                    <label for="wiederkehrendCheckbox">Wiederkehrende Aufgabe</label>
+                </div>
+                <div class="edit-controls">
+                    <p:commandButton value="Speichern" styleClass="btn btn-success"
+                                     action="#{anforderungDetailBackingBean.saveWiederkehrend()}"
+                                     update="@form" process="@form" ajax="true"/>
+                    <p:commandButton value="Abbrechen" styleClass="btn btn-secondary"
+                                     action="#{anforderungDetailBackingBean.cancelEditWiederkehrend()}"
+                                     update="@form" process="@this" ajax="true"/>
+                </div>
+            </h:panelGroup>
+        </div>
+
+        <h:panelGroup rendered="#{not empty anforderungDetailBackingBean.anforderung.kategorie}">
+            <div class="card">
+                <div class="card-title">Kategorie</div>
+                <div class="card-content">#{anforderungDetailBackingBean.anforderung.kategorie}</div>
+            </div>
+        </h:panelGroup>
+
+        <div class="card">
+            <div class="card-title">Beschreibung</div>
+            <h:panelGroup rendered="#{not anforderungDetailBackingBean.editingDescription}">
+                <div class="card-content description-text">#{anforderungDetailBackingBean.anforderung.beschreibung}</div>
+                <p:commandButton value="Bearbeiten" styleClass="btn-edit"
+                                 action="#{anforderungDetailBackingBean.startEditDescription()}"
+                                 update="@form" process="@this" ajax="true"/>
+            </h:panelGroup>
+            <h:panelGroup rendered="#{anforderungDetailBackingBean.editingDescription}">
+                <p:inputTextarea value="#{anforderungDetailBackingBean.tempDescription}"
+                                styleClass="input-field" placeholder="Beschreibung eingeben"
+                                rows="6"/>
+                <div class="edit-controls">
+                    <p:commandButton value="Speichern" styleClass="btn btn-success"
+                                     action="#{anforderungDetailBackingBean.saveDescription()}"
+                                     update="@form" process="@form" ajax="true"/>
+                    <p:commandButton value="Abbrechen" styleClass="btn btn-secondary"
+                                     action="#{anforderungDetailBackingBean.cancelEditDescription()}"
+                                     update="@form" process="@this" ajax="true"/>
+                </div>
+            </h:panelGroup>
+        </div>
+
+        <p:outputPanel id="howtoCard">
+            <div class="card">
+                <div class="card-title">Wichtige Todos (Howtos)</div>
+                <h:panelGroup rendered="#{not anforderungDetailBackingBean.editingHowtos}">
+                    <h:panelGroup rendered="#{not empty anforderungDetailBackingBean.selectedHowtos}">
+                        <div class="selected-howtos">
+                            <ui:repeat value="#{anforderungDetailBackingBean.selectedHowtos}" var="howto">
+                                <span class="howto-badge">#{howto.name}</span>
+                            </ui:repeat>
+                        </div>
+                    </h:panelGroup>
+                    <h:panelGroup rendered="#{empty anforderungDetailBackingBean.selectedHowtos}">
+                        <div class="card-content" style="color: #999;">Keine Howtos ausgewählt</div>
+                    </h:panelGroup>
+                    <p:commandButton value="Bearbeiten" styleClass="btn-edit"
+                                     action="#{anforderungDetailBackingBean.startEditHowtos()}"
+                                     update="@form" process="@this" ajax="true"/>
+                </h:panelGroup>
+                <h:panelGroup rendered="#{anforderungDetailBackingBean.editingHowtos}">
+                    <div class="howto-list">
+                        <ui:repeat value="#{anforderungDetailBackingBean.availableHowtos}" var="howto">
+                            <div class="howto-item-with-button">
+                                <div class="howto-content">
+                                    <div class="howto-name">#{howto.name}</div>
+                                    <h:panelGroup rendered="#{not empty howto.text}">
+                                        <div class="howto-description">#{howto.text}</div>
+                                    </h:panelGroup>
+                                </div>
+                                <h:panelGroup rendered="#{anforderungDetailBackingBean.selectedHowtoIds.contains(howto.id)}">
+                                    <p:commandButton value="Abwählen"
+                                                    action="#{anforderungDetailBackingBean.toggleHowto(howto.id)}"
+                                                    update="@form"
+                                                    process="@this"
+                                                    ajax="true"
+                                                    styleClass="btn btn-secondary btn-small"/>
+                                </h:panelGroup>
+                                <h:panelGroup rendered="#{not anforderungDetailBackingBean.selectedHowtoIds.contains(howto.id)}">
+                                    <p:commandButton value="Auswählen"
+                                                    action="#{anforderungDetailBackingBean.toggleHowto(howto.id)}"
+                                                    update="@form"
+                                                    process="@this"
+                                                    ajax="true"
+                                                    styleClass="btn btn-primary btn-small"/>
+                                </h:panelGroup>
+                            </div>
+                        </ui:repeat>
+                    </div>
+                    <div class="edit-controls">
+                        <p:commandButton value="Speichern" styleClass="btn btn-success"
+                                         action="#{anforderungDetailBackingBean.saveHowtos()}"
+                                         update="@form" process="@form" ajax="true"/>
+                        <p:commandButton value="Abbrechen" styleClass="btn btn-secondary"
+                                         action="#{anforderungDetailBackingBean.cancelEditHowtos()}"
+                                         update="@form" process="@this" ajax="true"/>
+                    </div>
+                </h:panelGroup>
+            </div>
+        </p:outputPanel>
+
+        <h:panelGroup rendered="#{anforderungDetailBackingBean.hasClaudeQuestion()}">
+            <div class="card">
+                <div class="card-title">Claude Frage (Status: FEEDBACK)</div>
+                <div class="card-content description-text">#{anforderungDetailBackingBean.lastClaudeQuestion}</div>
+            </div>
+        </h:panelGroup>
+
+        <div class="card">
+            <div class="card-title">Claude Summary</div>
+            <div class="card-content">
+                <h:panelGroup rendered="#{not empty anforderungDetailBackingBean.anforderung.claudeSummary}">
+                    <a href="claudesummary.xhtml?id=#{anforderungDetailBackingBean.anforderung.id}"
+                       target="_blank" class="btn btn-primary" style="display: block; text-align: center;">
+                        Summary anzeigen
+                    </a>
+                </h:panelGroup>
+                <h:panelGroup rendered="#{empty anforderungDetailBackingBean.anforderung.claudeSummary}">
+                    <div style="color: #999; font-style: italic; text-align: center; padding: 10px;">
+                        Noch kein Summary von Claude verfügbar
+                    </div>
+                </h:panelGroup>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Ersteller</div>
+            <div class="card-content">#{anforderungDetailBackingBean.anforderung.ersteller}</div>
+        </div>
+
+        <h:panelGroup rendered="#{not empty anforderungDetailBackingBean.anforderung.createdDate}">
+            <div class="card">
+                <div class="card-title">Erstellt am</div>
+                <div class="card-content">
+                    <h:outputText value="#{anforderungDetailBackingBean.anforderung.createdDate}">
+                        <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                    </h:outputText>
+                </div>
+            </div>
+        </h:panelGroup>
+
+        <h:panelGroup rendered="#{not empty anforderungDetailBackingBean.anforderung.lastModifiedDate}">
+            <div class="card">
+                <div class="card-title">Letzte Änderung</div>
+                <div class="card-content">
+                    <h:outputText value="#{anforderungDetailBackingBean.anforderung.lastModifiedDate}">
+                        <f:convertDateTime type="localDateTime" pattern="dd.MM.yyyy HH:mm"/>
+                    </h:outputText>
+                </div>
+            </div>
+        </h:panelGroup>
+
+        <div class="action-buttons">
+            <a href="anforderungen.xhtml" class="btn btn-secondary">Zurück</a>
+        </div>
+        </div>
+    </h:form>
+</h:body>
+</html>

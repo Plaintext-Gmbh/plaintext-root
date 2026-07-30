@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:p="http://primefaces.org/ui"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:ui="http://java.sun.com/jsf/facelets">
+
+<h:head>
+    <title>Plaintext - Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <f:facet name="first">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+        <meta name="apple-mobile-web-app-capable" content="yes"/>
+    </f:facet>
+
+    <style type="text/css">
+        :root {
+            --primary-color: #2c84d8;
+            --primary-dark: #1976D2;
+            --primary-light: #BBDEFB;
+            --text-color: #333333;
+            --text-secondary: #6c757d;
+            --surface-ground: #f8f9fa;
+            --surface-card: #ffffff;
+            --border-color: #dee2e6;
+            --bg-gradient-start: #f8fbff;
+            --bg-gradient-end: #e8f4fd;
+        }
+
+        /* Dark Mode Variables */
+        [data-theme="dark"] {
+            --primary-color: #5eb3f6;
+            --primary-dark: #1E88E5;
+            --primary-light: #1565C0;
+            --text-color: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --surface-ground: #1e1e2f;
+            --surface-card: #2a2b3d;
+            --border-color: #3c3d4f;
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-end: #16213e;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 14px;
+            height: 100%;
+        }
+
+        body {
+            font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 1rem;
+            font-weight: normal;
+            padding: 0;
+            margin: 0;
+            min-height: 100%;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: var(--text-color);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .login-body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .login-panel {
+            background-color: var(--surface-card);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            padding: 3rem;
+            position: relative;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin: 0 0 0.5rem 0;
+            color: var(--text-color);
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .login-form {
+            margin-top: 2rem;
+        }
+
+        .field {
+            margin-bottom: 1.5rem;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .ui-inputfield {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            background-color: var(--surface-card);
+            color: var(--text-color);
+        }
+
+        .ui-inputfield:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+
+        .ui-button {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .remember-forgot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .ui-chkbox-label {
+            margin-left: 0.5rem;
+            color: var(--text-color);
+            font-size: 0.9rem;
+        }
+
+        .forgot-password {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .forgot-password:hover {
+            color: var(--primary-dark);
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+        }
+
+        .theme-toggle-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.2rem;
+        }
+
+        .theme-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        [data-theme="dark"] .error-message {
+            background-color: #5a1a1a;
+            color: #f8d7da;
+            border-color: #721c24;
+        }
+
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        [data-theme="dark"] .success-message {
+            background-color: #1a4d2e;
+            color: #d4edda;
+            border-color: #155724;
+        }
+
+        @media (max-width: 576px) {
+            .login-panel {
+                padding: 2rem;
+            }
+
+            .login-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .remember-forgot {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        /* Custom PrimeFaces Checkbox Styling */
+        .ui-chkbox {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* Password Toggle */
+        .ui-password {
+            width: 100%;
+        }
+
+        .ui-password input {
+            width: 100%;
+        }
+    </style>
+
+    <script type="text/javascript">
+        //<![CDATA[
+        // Theme Management
+        function initTheme() {
+            const savedTheme = getCookie('plaintext-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            applyTheme(theme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            applyTheme(newTheme);
+            setCookie('plaintext-theme', newTheme, 365);
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.className = theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon';
+            }
+        }
+
+        function setCookie(name, value, days) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + '=';
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        // Clean up URL parameters (remove ?logout=true)
+        function cleanUrl() {
+            if (window.history.replaceState && window.location.search.indexOf('logout') !== -1) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        // Apply saved color from cookie to login page
+        function initColor() {
+            var savedColor = getCookie('plaintext-color');
+            if (savedColor) {
+                // Color palette (matching ThemeColorProvider)
+                var palettes = {
+                    'blue': '#2196F3', 'green': '#4CAF50', 'orange': '#FF9800', 'turquoise': '#00BCD4',
+                    'avocado': '#AEC523', 'purple': '#7B1FA2', 'red': '#F44336', 'yellow': '#FFC107',
+                    'lime': '#8BC34A', 'crimson': '#B71C1C'
+                };
+                var hex = palettes[savedColor];
+                if (savedColor === 'custom') {
+                    hex = getCookie('plaintext-custom-color');
+                }
+                if (hex) {
+                    document.documentElement.style.setProperty('--primary-color', hex);
+                    // Derive darker shade for dark mode
+                    document.documentElement.style.setProperty('--primary-dark', hex);
+                }
+            }
+        }
+
+        // Initialize theme and color on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() { initTheme(); initColor(); cleanUrl(); });
+        } else {
+            initTheme();
+            initColor();
+            cleanUrl();
+        }
+        //]]>
+    </script>
+</h:head>
+
+<h:body styleClass="login-body">
+    <!-- Theme Toggle Button -->
+    <div class="theme-toggle">
+        <button class="theme-toggle-btn" onclick="toggleTheme()" type="button" title="#{i18n.t('Theme wechseln')}">
+            <i id="theme-icon" class="pi pi-moon"></i>
+        </button>
+    </div>
+
+    <div class="login-panel">
+        <div class="login-header">
+            <h1>#{i18n.t('Willkommen')}</h1>
+            <p>#{i18n.t('Melden Sie sich an, um fortzufahren')}</p>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" style="display: #{param.error != null ? 'flex' : 'none'}">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>#{param.error == 'oidc' ? i18n.t('OIDC-Anmeldung fehlgeschlagen')
+                : param.error == 'magic_link' ? i18n.t('Anmelde-Link ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.')
+                : i18n.t('Ungültiger Benutzername oder Passwort')}</span>
+        </div>
+
+        <!-- Logout Success Message -->
+        <div class="success-message" style="display: #{param.logout != null ? 'flex' : 'none'}">
+            <i class="pi pi-check-circle"></i>
+            <span>#{i18n.t('Sie wurden erfolgreich abgemeldet')}</span>
+        </div>
+
+        <h:panelGroup rendered="#{loginSetupBean.passwordManagementActive}">
+        <form action="#{request.contextPath}/login" method="post" class="login-form">
+            <!-- CSRF Token -->
+            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+
+            <div class="field">
+                <label for="username">#{i18n.t('Benutzername')}</label>
+                <input type="text"
+                       id="username"
+                       name="username"
+                       class="ui-inputfield"
+                       placeholder="#{i18n.t('Benutzername eingeben')}"
+                       required="required"
+                       autofocus="autofocus"/>
+            </div>
+
+            <div class="field">
+                <label for="password">#{i18n.t('Passwort')}</label>
+                <input type="password"
+                       id="password"
+                       name="password"
+                       class="ui-inputfield"
+                       placeholder="#{i18n.t('Passwort eingeben')}"
+                       required="required"/>
+            </div>
+
+            <div class="remember-forgot">
+                <div style="display: flex; align-items: center;">
+                    <input type="checkbox"
+                           id="remember-me"
+                           name="remember-me"
+                           style="margin-right: 0.5rem;"/>
+                    <label for="remember-me" style="margin: 0; font-weight: normal; cursor: pointer;">
+                        #{i18n.t('Angemeldet bleiben')}
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit"
+                    class="ui-button ui-button-primary"
+                    style="width: 100%; padding: 0.75rem 1rem; font-size: 1rem; font-weight: 500; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background-color: #4CAF50; color: white; border: none;">
+                <i class="pi pi-sign-in"></i> #{i18n.t('Anmelden')}
+            </button>
+
+            <div style="margin-top: 1rem; text-align: center; font-size: 0.9rem;">
+                <h:panelGroup rendered="#{loginSetupBean.passwordResetLinkActive}">
+                    <a href="#{request.contextPath}/password-reset" id="password-reset-link"
+                       style="color: var(--primary-color); text-decoration: none;">
+                        #{i18n.t('Passwort vergessen?')}
+                    </a>
+                </h:panelGroup>
+                <h:panelGroup rendered="#{loginSetupBean.selfRegistrationActive and loginSetupBean.passwordResetLinkActive}">
+                    <span style="margin: 0 0.5rem; color: var(--text-secondary);">·</span>
+                </h:panelGroup>
+                <h:panelGroup rendered="#{loginSetupBean.selfRegistrationActive}">
+                    <a href="#{request.contextPath}/register" id="register-link"
+                       style="color: var(--primary-color); text-decoration: none;">
+                        #{i18n.t('Konto anlegen')}
+                    </a>
+                </h:panelGroup>
+            </div>
+        </form>
+        </h:panelGroup>
+
+        <!-- OIDC Auto-Redirect (only when no error/logout parameter) -->
+        <h:panelGroup rendered="#{loginSetupBean.oidcAutoRedirectActive and empty param.error and empty param.logout}">
+            <script type="text/javascript">
+                //<![CDATA[
+                window.location.href = '#{request.contextPath}/oauth2/authorization/#{loginSetupBean.oidcAutoRedirectRegistrationId}';
+                //]]>
+            </script>
+        </h:panelGroup>
+
+        <!-- Magic Link Section -->
+        <h:panelGroup rendered="#{loginSetupBean.magicLinkActive}">
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color);"/>
+                    <span style="padding: 0 1rem; color: var(--text-secondary); font-size: 0.9rem;">#{i18n.t('oder')}</span>
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color);"/>
+                </div>
+            </div>
+
+            <!-- Erfolgs-/Info-Meldung nach Link-Anforderung -->
+            <div class="success-message" style="display: #{param.magic_link_sent != null ? 'flex' : 'none'}">
+                <i class="pi pi-envelope"></i>
+                <span>#{i18n.t('Falls ein Konto mit dieser Adresse existiert, erhalten Sie gleich einen Anmelde-Link per E-Mail.')}</span>
+            </div>
+
+            <form action="#{request.contextPath}/ott/generate" method="post" class="login-form"
+                  id="magic-link-form">
+                <!-- CSRF Token -->
+                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                <div class="field">
+                    <label for="magic-link-username">#{i18n.t('Anmelde-Link per E-Mail anfordern')}</label>
+                    <input type="text"
+                           id="magic-link-username"
+                           name="username"
+                           class="ui-inputfield"
+                           placeholder="#{i18n.t('E-Mail-Adresse / Benutzername')}"
+                           autocomplete="username email"/>
+                </div>
+                <button type="submit"
+                        class="ui-button"
+                        style="width: 100%; padding: 0.75rem 1rem; font-size: 1rem; font-weight: 500; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background-color: var(--primary-color); color: white; border: none;">
+                    <i class="pi pi-envelope"></i> #{i18n.t('Link senden')}
+                </button>
+            </form>
+        </h:panelGroup>
+
+        <!-- OIDC Login Buttons -->
+        <h:panelGroup rendered="#{oidcConfigService.oidcEnabled}">
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color);"/>
+                    <span style="padding: 0 1rem; color: var(--text-secondary); font-size: 0.9rem;">#{i18n.t('oder')}</span>
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color);"/>
+                </div>
+                <ui:repeat value="#{oidcConfigService.activeConfigs}" var="oidc">
+                    <a href="#{request.contextPath}/oauth2/authorization/#{oidc.registrationId}"
+                       style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; padding: 0.75rem 1rem; font-size: 1rem; font-weight: 500; border-radius: 6px; cursor: pointer; background-color: var(--primary-color); color: white; border: none; text-decoration: none; margin-bottom: 0.5rem;">
+                        <i class="#{oidc.buttonIcon != null ? oidc.buttonIcon : 'pi pi-sign-in'}"></i>
+                        #{oidc.buttonLabel != null ? oidc.buttonLabel : oidc.name}
+                    </a>
+                </ui:repeat>
+            </div>
+        </h:panelGroup>
+    </div>
+
+</h:body>
+</html>
