@@ -5,17 +5,19 @@ package ch.plaintext.boot.web;
 
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
+import ch.plaintext.boot.plugins.security.totp.TotpPendingAuthentication;
 import ch.plaintext.settings.ISetupConfigService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -24,19 +26,28 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.web.context.SecurityContextRepository;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
- * Test class for AutoLoginController - security-critical auto-login functionality.
+ * Tests fuer den {@link AutoLoginController} — sicherheitskritischer Anmeldeweg.
+ *
+ * <p>Der Session-Aufbau laeuft ueber einen <b>echten</b> {@code SessionLoginFinalizer} inkl. echtem
+ * {@code PlaintextAuthenticationSuccessHandler} (siehe {@link LoginTestSupport}), damit die Karte-309-
+ * Invarianten (neue Session-Id, Lockout, 2FA) hier auch wirklich geprueft werden.</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -46,21 +57,14 @@ class AutoLoginControllerTest {
     private UserDetailsService userDetailsService;
 
     @Mock
-    private SecurityContextRepository securityContextRepository;
-
-    @Mock
     private MyUserRepository userRepository;
 
     @Mock
     private ISetupConfigService setupConfigService;
 
-    @Mock
-    private HttpServletRequest request;
-
-    @Mock
-    private HttpServletResponse response;
-
-    @InjectMocks
+    private LoginTestSupport.Aufbau aufbau;
+    private MockHttpServletRequest request;
+    private MockHttpServletResponse response;
     private AutoLoginController autoLoginController;
 
     private MyUserEntity testUser;
@@ -68,323 +72,234 @@ class AutoLoginControllerTest {
 
     @BeforeEach
     void setUp() {
-        // Setup test user
+        aufbau = LoginTestSupport.baueAuf();
+        request = new MockHttpServletRequest();
+        response = new MockHttpServletResponse();
+        autoLoginController = new AutoLoginController(userDetailsService, userRepository, setupConfigService,
+                aufbau.finalizer());
+
         testUser = new MyUserEntity();
         testUser.setId(123L);
         testUser.setUsername("test@example.com");
         testUser.setPassword("encodedPassword");
         testUser.setAutologinKey("validKey123");
 
-        // Setup user details with mandat authority
-        List<GrantedAuthority> authorities = Arrays.asList(
-                new SimpleGrantedAuthority("ROLE_USER"),
-                new SimpleGrantedAuthority("PROPERTY_MYUSERID_123"),
-                new SimpleGrantedAuthority("PROPERTY_MANDAT_default")
-        );
-        userDetails = new User("test@example.com", "encodedPassword", authorities);
+        userDetails = new User("test@example.com", "encodedPassword", authorities());
 
-        // Default: autologin enabled
         when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-
-        // Clear security context before each test
         SecurityContextHolder.clearContext();
     }
 
-    // ==================== Successful Auto-Login Tests ====================
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private static List<GrantedAuthority> authorities() {
+        return Arrays.asList(
+                new SimpleGrantedAuthority("ROLE_USER"),
+                new SimpleGrantedAuthority("PROPERTY_MYUSERID_123"),
+                new SimpleGrantedAuthority("PROPERTY_MANDAT_default"));
+    }
+
+    private void gueltigerKey() {
+        when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
+        when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
+    }
+
+    // ==================== Erfolgsfall (legitimer, produktiv genutzter Flow) ====================
 
     @Test
+    @DisplayName("gueltiger Key -> Vollsession und Redirect auf die Startseite")
     void autoLogin_shouldSucceed_whenValidKeyAndFeatureEnabled() {
-        // Given: Auto-login is enabled
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
+        gueltigerKey();
 
-        // Mock repository to return test user for auto-login key
-        when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
-
-        // Mock repository findAll (for the debug code in controller)
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
-
-        // Mock userDetailsService
-        when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
-
-        // When
         String result = autoLoginController.autoLogin("validKey123", request, response);
 
-        // Then
-        assertEquals("redirect:/index.html", result);
+        // Der SuccessHandler schreibt den Redirect selbst -> kein View-Name mehr.
+        assertNull(result);
+        assertEquals("/index.html", response.getRedirectedUrl());
 
-        // Verify user was looked up by key
         verify(userRepository).findByAutologinKey("validKey123");
-
-        // Verify user details were loaded
         verify(userDetailsService).loadUserByUsername("test@example.com");
+        verify(aufbau.securityContextRepository()).saveContext(any(SecurityContext.class), any(), any());
 
-        // Verify security context was saved
-        verify(securityContextRepository).saveContext(any(SecurityContext.class), eq(request), eq(response));
-
-        // Verify authentication was set
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
         assertTrue(SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
     }
 
     @Test
     void autoLogin_shouldSetCorrectAuthorities() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
-        when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
+        gueltigerKey();
 
-        // When
         autoLoginController.autoLogin("validKey123", request, response);
 
-        // Then
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         assertNotNull(authentication);
         assertEquals("test@example.com", ((UserDetails) authentication.getPrincipal()).getUsername());
-
-        // Check authorities are correctly set
-        var authorities = authentication.getAuthorities();
-        assertTrue(authorities.stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_USER")));
-        assertTrue(authorities.stream()
+        assertTrue(authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_USER")));
+        assertTrue(authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("PROPERTY_MYUSERID_123")));
     }
 
-    // ==================== Feature Disabled Tests ====================
+    @Test
+    @DisplayName("individuelle Startseite wird weiterhin angesteuert (jetzt validiert)")
+    void autoLogin_shouldRedirectToStartpage() {
+        userDetails = new User("test@example.com", "encodedPassword",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"),
+                        new SimpleGrantedAuthority("PROPERTY_MANDAT_default"),
+                        new SimpleGrantedAuthority("PROPERTY_STARTPAGE_dashboard.html")));
+        gueltigerKey();
+
+        autoLoginController.autoLogin("validKey123", request, response);
+
+        assertEquals("/dashboard.html", response.getRedirectedUrl());
+    }
+
+    // ==================== Karte 309: Session-Fixation ====================
+
+    @Test
+    @DisplayName("Session-Id wird beim Autologin erneuert (Session-Fixation-Schutz)")
+    void autoLogin_erneuertSessionId() {
+        gueltigerKey();
+        // Angreifer-Szenario: dem Opfer ist vorab eine bekannte Session untergeschoben worden.
+        String vorherigeId = request.getSession(true).getId();
+
+        autoLoginController.autoLogin("validKey123", request, response);
+
+        assertNotEquals(vorherigeId, request.getSession(false).getId(),
+                "Die Session-Id muss sich beim Login aendern, sonst ist die untergeschobene Session "
+                        + "danach voll authentifiziert");
+    }
+
+    // ==================== Karte 309: Lockout ====================
+
+    @Test
+    @DisplayName("gesperrter Account (Brute-Force-Lockout) kommt auch per Autologin nicht durch")
+    void autoLogin_gesperrterAccount_wirdAbgelehnt() {
+        userDetails = new User("test@example.com", "encodedPassword",
+                true, true, true, /* accountNonLocked */ false, authorities());
+        gueltigerKey();
+
+        String result = autoLoginController.autoLogin("validKey123", request, response);
+
+        assertEquals("redirect:/login.html", result);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(aufbau.securityContextRepository(), never()).saveContext(any(), any(), any());
+    }
+
+    // ==================== Karte 309: 2FA ====================
+
+    @Test
+    @DisplayName("TOTP-User landet auch per Autologin im zweiten Schritt, nicht in einer Vollsession")
+    void autoLogin_totpUser_landetImPendingFlow() {
+        gueltigerKey();
+        when(aufbau.totpAuthenticationService().isTotpRequired("test@example.com")).thenReturn(true);
+
+        String result = autoLoginController.autoLogin("validKey123", request, response);
+
+        assertNull(result);
+        assertEquals("/login/totp", response.getRedirectedUrl());
+        assertNull(SecurityContextHolder.getContext().getAuthentication(),
+                "Ohne zweiten Faktor darf keine Authentication im Context stehen");
+        assertNotNull(request.getSession(false).getAttribute(TotpPendingAuthentication.SESSION_ATTRIBUTE));
+    }
+
+    // ==================== Feature-Schalter ====================
 
     @Test
     void autoLogin_shouldRedirectToLogin_whenFeatureDisabled() {
-        // Given: Auto-login is disabled for the user's mandat
         when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(false);
-        when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
-        when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
+        gueltigerKey();
 
-        // When
         String result = autoLoginController.autoLogin("validKey123", request, response);
 
-        // Then
         assertEquals("redirect:/login.html", result);
-
-        // Verify user was looked up but authentication was not completed
         verify(userRepository).findByAutologinKey("validKey123");
-        verify(securityContextRepository, never()).saveContext(any(), any(), any());
-
-        // Verify no authentication was set
+        verify(aufbau.securityContextRepository(), never()).saveContext(any(), any(), any());
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
-    // ==================== Invalid Key Tests ====================
+    // ==================== Ungueltige Keys ====================
 
     @Test
     void autoLogin_shouldRedirectToLogin_whenKeyIsNull() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-
-        // When
         String result = autoLoginController.autoLogin(null, request, response);
 
-        // Then
         assertEquals("redirect:/login.html", result);
-
-        // Verify no user lookup was performed
         verify(userRepository, never()).findByAutologinKey(any());
         verify(userDetailsService, never()).loadUserByUsername(any());
     }
 
     @Test
     void autoLogin_shouldRedirectToLogin_whenKeyIsEmpty() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-
-        // When
         String result = autoLoginController.autoLogin("", request, response);
 
-        // Then
         assertEquals("redirect:/login.html", result);
-
-        // Verify no user lookup was performed
         verify(userRepository, never()).findByAutologinKey(any());
     }
 
     @Test
     void autoLogin_shouldRedirectToLogin_whenUserNotFoundForKey() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
         when(userRepository.findByAutologinKey("invalidKey")).thenReturn(null);
 
-        // When
         String result = autoLoginController.autoLogin("invalidKey", request, response);
 
-        // Then
         assertEquals("redirect:/login.html", result);
-
-        // Verify user was looked up but not found
         verify(userRepository).findByAutologinKey("invalidKey");
-
-        // Verify no authentication was performed
         verify(userDetailsService, never()).loadUserByUsername(any());
-        verify(securityContextRepository, never()).saveContext(any(), any(), any());
+        verify(aufbau.securityContextRepository(), never()).saveContext(any(), any(), any());
     }
 
-    // ==================== Error Handling Tests ====================
+    // ==================== Fehlerbehandlung ====================
 
     @Test
     void autoLogin_shouldRedirectToLogin_whenUserDetailsServiceThrowsException() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
         when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
         when(userDetailsService.loadUserByUsername("test@example.com"))
                 .thenThrow(new UsernameNotFoundException("User not found"));
 
-        // When
         String result = autoLoginController.autoLogin("validKey123", request, response);
 
-        // Then
         assertEquals("redirect:/login.html", result);
-
-        // Verify security context was not saved
-        verify(securityContextRepository, never()).saveContext(any(), any(), any());
+        verify(aufbau.securityContextRepository(), never()).saveContext(any(), any(), any());
     }
 
     @Test
     void autoLogin_shouldRedirectToLogin_whenRepositoryThrowsException() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
-        when(userRepository.findByAutologinKey("validKey123"))
-                .thenThrow(new RuntimeException("Database error"));
+        when(userRepository.findByAutologinKey("validKey123")).thenThrow(new RuntimeException("Database error"));
 
-        // When
         String result = autoLoginController.autoLogin("validKey123", request, response);
 
-        // Then
         assertEquals("redirect:/login.html", result);
-
-        // Verify no authentication was performed
         verify(userDetailsService, never()).loadUserByUsername(any());
     }
 
-    @Test
-    void autoLogin_shouldRedirectToLogin_whenSecurityContextSaveThrowsException() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
-        when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
-        when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
-        doThrow(new RuntimeException("Session error"))
-                .when(securityContextRepository).saveContext(any(), any(), any());
-
-        // When
-        String result = autoLoginController.autoLogin("validKey123", request, response);
-
-        // Then
-        assertEquals("redirect:/login.html", result);
-    }
-
-    // ==================== Security Context Tests ====================
+    // ==================== Security-Context ====================
 
     @Test
-    void autoLogin_shouldClearExistingSecurityContext() {
-        // Given: Existing authentication in security context
+    void autoLogin_shouldReplaceExistingSecurityContext() {
         SecurityContext existingContext = SecurityContextHolder.createEmptyContext();
         existingContext.setAuthentication(
                 new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                        "olduser", "oldpass"
-                )
-        );
+                        "olduser", "oldpass"));
         SecurityContextHolder.setContext(existingContext);
+        gueltigerKey();
 
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
-        when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
-        when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
-
-        // When
         autoLoginController.autoLogin("validKey123", request, response);
 
-        // Then: New authentication should be set
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         assertNotNull(authentication);
         assertEquals("test@example.com", ((UserDetails) authentication.getPrincipal()).getUsername());
     }
 
     @Test
-    void autoLogin_shouldCreateNewSecurityContext() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
-        when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
-        when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
-
-        // When
-        autoLoginController.autoLogin("validKey123", request, response);
-
-        // Then: Verify a new context was created and saved
-        verify(securityContextRepository).saveContext(any(SecurityContext.class), eq(request), eq(response));
-    }
-
-    // ==================== Integration Scenario Tests ====================
-
-    @Test
-    void autoLogin_shouldWorkEndToEnd_withCompleteFlow() {
-        // Given: Complete setup
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-
-        MyUserEntity user = new MyUserEntity();
-        user.setId(999L);
-        user.setUsername("integration@test.com");
-        user.setAutologinKey("integrationKey");
-
-        UserDetails integrationUser = new User(
-                "integration@test.com",
-                "password",
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
-        );
-
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(user));
-        when(userRepository.findByAutologinKey("integrationKey")).thenReturn(user);
-        when(userDetailsService.loadUserByUsername("integration@test.com")).thenReturn(integrationUser);
-
-        // When
-        String result = autoLoginController.autoLogin("integrationKey", request, response);
-
-        // Then
-        assertEquals("redirect:/index.html", result);
-
-        // Verify complete flow
-        verify(userRepository).findByAutologinKey("integrationKey");
-        verify(userDetailsService).loadUserByUsername("integration@test.com");
-        verify(securityContextRepository).saveContext(any(), eq(request), eq(response));
-
-        // Verify authentication
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        assertTrue(authentication.isAuthenticated());
-        assertEquals("integration@test.com", ((UserDetails) authentication.getPrincipal()).getUsername());
-    }
-
-    @Test
     void autoLogin_shouldHandleMultipleConsecutiveCalls() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
-        when(userRepository.findByAutologinKey("validKey123")).thenReturn(testUser);
-        when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
+        gueltigerKey();
 
-        // When: First call
-        String result1 = autoLoginController.autoLogin("validKey123", request, response);
+        assertNull(autoLoginController.autoLogin("validKey123", request, response));
+        assertNull(autoLoginController.autoLogin("validKey123", request, new MockHttpServletResponse()));
 
-        // Then
-        assertEquals("redirect:/index.html", result1);
-
-        // When: Second call (simulating repeated auto-login)
-        String result2 = autoLoginController.autoLogin("validKey123", request, response);
-
-        // Then
-        assertEquals("redirect:/index.html", result2);
-
-        // Verify both calls were processed
         verify(userRepository, times(2)).findByAutologinKey("validKey123");
         verify(userDetailsService, times(2)).loadUserByUsername("test@example.com");
     }
@@ -393,50 +308,40 @@ class AutoLoginControllerTest {
 
     @Test
     void autoLogin_shouldHandleWhitespaceKey() {
-        // Given
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
         when(userRepository.findByAutologinKey("   ")).thenReturn(null);
 
-        // When
         String result = autoLoginController.autoLogin("   ", request, response);
 
-        // Then: Whitespace is not considered empty by isEmpty(), so it proceeds to lookup
         assertEquals("redirect:/login.html", result);
         verify(userRepository).findByAutologinKey("   ");
     }
 
     @Test
     void autoLogin_shouldHandleVeryLongKey() {
-        // Given: Very long key
         String longKey = "a".repeat(1000);
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
         when(userRepository.findByAutologinKey(longKey)).thenReturn(testUser);
         when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
 
-        // When
-        String result = autoLoginController.autoLogin(longKey, request, response);
-
-        // Then
-        assertEquals("redirect:/index.html", result);
+        assertNull(autoLoginController.autoLogin(longKey, request, response));
         verify(userRepository).findByAutologinKey(longKey);
     }
 
     @Test
     void autoLogin_shouldHandleSpecialCharactersInKey() {
-        // Given: Key with special characters
         String specialKey = "key!@#$%^&*()_+-=[]{}|;':\",./<>?";
-        when(setupConfigService.isAutologinEnabled(anyString())).thenReturn(true);
-        when(userRepository.findAll()).thenReturn(Collections.singletonList(testUser));
         when(userRepository.findByAutologinKey(specialKey)).thenReturn(testUser);
         when(userDetailsService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
 
-        // When
-        String result = autoLoginController.autoLogin(specialKey, request, response);
-
-        // Then
-        assertEquals("redirect:/index.html", result);
+        assertNull(autoLoginController.autoLogin(specialKey, request, response));
         verify(userRepository).findByAutologinKey(specialKey);
+    }
+
+    @Test
+    void autoLogin_setztNoStoreHeader() {
+        when(userRepository.findByAutologinKey(anyString())).thenReturn(null);
+
+        autoLoginController.autoLogin("x", request, response);
+
+        assertTrue(String.valueOf(response.getHeader("Cache-Control")).contains("no-store"));
     }
 }

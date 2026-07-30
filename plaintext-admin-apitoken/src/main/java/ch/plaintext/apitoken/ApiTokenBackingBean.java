@@ -63,9 +63,16 @@ public class ApiTokenBackingBean implements Serializable {
     @Setter
     private String newTokenScope = "READ";
 
-    /** Auswahlwerte für den Scope, aufsteigend nach Berechtigung. */
+    /**
+     * Auswahlwerte für den Scope, aufsteigend nach Berechtigung.
+     *
+     * <p>{@code SESSION} (Karte 309) ist kein MCP-Berechtigungsgrad, sondern der Marker dafür, dass aus
+     * dem Token per {@code /token-login} eine Browser-Session gebaut werden darf. Der MCP-Bearer-Filter
+     * kennt den Wert nicht und vergibt dafür nur {@code SCOPE_READ} (least privilege) — genau richtig:
+     * ein Session-Token soll nicht nebenbei zum API-Vollzugriff werden.</p>
+     */
     @Getter
-    private final List<String> verfuegbareScopes = List.of("READ", "EINTRAGEN", "ADMIN");
+    private final List<String> verfuegbareScopes = List.of("READ", "EINTRAGEN", "SESSION", "ADMIN");
 
     @Getter
     private int minValidityDays = JwtTokenService.MIN_VALIDITY_DAYS;

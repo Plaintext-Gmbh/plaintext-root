@@ -3,45 +3,48 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.web;
 
-import ch.plaintext.boot.plugins.security.PlaintextLoginEvent;
+import ch.plaintext.boot.plugins.security.SessionLoginFinalizer;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.settings.ISetupConfigService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+/**
+ * Anmeldung ueber einen statischen Autologin-Key ({@code GET /autologin?key=}).
+ *
+ * <p><b>Karte 309:</b> Der Controller baute die Session frueher selbst zusammen und umging damit
+ * Session-Erneuerung, Account-Lockout und das TOTP-Gate. Der Session-Aufbau laeuft jetzt ueber
+ * {@link SessionLoginFinalizer}, also ueber dieselben Komponenten wie der Form-Login. Der Weg als
+ * solcher bleibt bestehen — er wird produktiv genutzt (PageTester/Playwright/ZAP, {@code MAD_AUTOLOGIN}
+ * in mehreren Deploy-Umgebungen, Autologin-Links). Der Rueckbau des Endpunkts ist Sache der Karte
+ * „autologin-endpoint-vollrueckbau" und braucht vorher die Umstellung dieser Konsumenten.</p>
+ */
 @Controller
 @Slf4j
 public class AutoLoginController {
 
     private final UserDetailsService userDetailsService;
-    private final SecurityContextRepository securityContextRepository;
     private final MyUserRepository userRepository;
-    private final ApplicationEventPublisher eventPublisher;
     private final ISetupConfigService setupConfigService;
+    private final SessionLoginFinalizer sessionLoginFinalizer;
 
     public AutoLoginController(UserDetailsService userDetailsService,
-                               SecurityContextRepository securityContextRepository,
                                MyUserRepository userRepository,
-                               ApplicationEventPublisher eventPublisher,
-                               ISetupConfigService setupConfigService) {
+                               ISetupConfigService setupConfigService,
+                               SessionLoginFinalizer sessionLoginFinalizer) {
         this.userDetailsService = userDetailsService;
-        this.securityContextRepository = securityContextRepository;
         this.userRepository = userRepository;
-        this.eventPublisher = eventPublisher;
         this.setupConfigService = setupConfigService;
+        this.sessionLoginFinalizer = sessionLoginFinalizer;
     }
 
     /** Maskiert den Autologin-Key fuers Logging (keine Klartext-Keys in Logs/Graylog). */
@@ -88,74 +91,22 @@ public class AutoLoginController {
                 return "redirect:/login.html";
             }
 
-            // Create an authenticated token using the 3-parameter constructor
-            // This constructor automatically sets authenticated=true
-            UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    userDetails.getAuthorities()
-                );
+            // Karte 309: Account-Status (Lockout!), Session-Erneuerung, 2FA-Gate, Startseite und
+            // Login-Event laufen jetzt zentral -- exakt wie beim Form-Login. Der SuccessHandler
+            // schreibt den Redirect selbst, deshalb hier kein View-Name mehr.
+            sessionLoginFinalizer.finalizeLogin(userDetails, userDetails.getAuthorities(), "AutoLogin",
+                    request, response);
+            return null;
 
-            // Create security context
-            SecurityContext context = SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(authToken);
-            SecurityContextHolder.setContext(context);
-
-            // Save to session
-            securityContextRepository.saveContext(context, request, response);
-
-            log.info("AutoLogin successful for user: {}", user.getUsername());
-
-            // Publish login event (generic hook, currently no consumer)
-            try {
-                Long userId = extractUserId(userDetails);
-                String baseUrl = extractBaseUrl(request);
-                eventPublisher.publishEvent(new PlaintextLoginEvent(this, user.getUsername(), userId, user.getUsername(), mandat, baseUrl));
-                log.debug("Published PlaintextLoginEvent for auto-login user: {} baseUrl: {}", user.getUsername(), baseUrl);
-            } catch (Exception e) {
-                log.warn("Failed to publish login event for auto-login: {}", e.getMessage());
-            }
-
-            // Check if user has a startpage configured
-            String redirectUrl = "index.html";
-            if (user.getStartpage() != null && !user.getStartpage().isEmpty()) {
-                redirectUrl = user.getStartpage();
-                log.info("Redirecting to user's startpage: {}", redirectUrl);
-            }
-
-            return "redirect:/" + redirectUrl;
-
+        } catch (AccountStatusException e) {
+            // Gesperrt (Brute-Force-Lockout) oder deaktiviert -> derselbe Ausgang wie ein
+            // fehlgeschlagener Form-Login.
+            log.warn("AutoLogin abgelehnt (Account-Status): {}", e.getMessage());
+            return "redirect:/login.html";
         } catch (Exception e) {
             log.error("AutoLogin failed", e);
             return "redirect:/login.html";
         }
-    }
-
-    private Long extractUserId(UserDetails userDetails) {
-        for (GrantedAuthority ga : userDetails.getAuthorities()) {
-            String a = ga.getAuthority();
-            if (a != null && a.startsWith("PROPERTY_MYUSERID_")) {
-                try {
-                    return Long.parseLong(a.substring("PROPERTY_MYUSERID_".length()));
-                } catch (NumberFormatException e) { /* ignore */ }
-            }
-        }
-        return -1L;
-    }
-
-    private String extractBaseUrl(HttpServletRequest request) {
-        String scheme = request.getHeader("X-Forwarded-Proto");
-        if (scheme == null) scheme = request.getScheme();
-        String host = request.getHeader("X-Forwarded-Host");
-        if (host == null) host = request.getServerName();
-        int port = request.getServerPort();
-        String forwardedPort = request.getHeader("X-Forwarded-Port");
-        if (forwardedPort != null) {
-            try { port = Integer.parseInt(forwardedPort); } catch (NumberFormatException e) { /* ignore */ }
-        }
-        boolean defaultPort = ("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443);
-        return scheme + "://" + host + (defaultPort ? "" : ":" + port);
     }
 
     private String extractMandat(UserDetails userDetails) {

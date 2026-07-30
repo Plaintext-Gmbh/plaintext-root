@@ -5,17 +5,15 @@ package ch.plaintext.boot.web;
 
 import ch.plaintext.apitoken.IApiTokenService;
 import ch.plaintext.apitoken.IApiTokenService.ApiTokenValidationResult;
-import ch.plaintext.boot.plugins.security.PlaintextLoginEvent;
+import ch.plaintext.boot.plugins.security.PlaintextSecurityProperties;
+import ch.plaintext.boot.plugins.security.SessionLoginFinalizer;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -31,15 +29,29 @@ import java.util.Optional;
  * <p>Sauberer Ersatz fuer den statischen {@code /autologin?key=} (Task 013b, Option B): statt eines
  * unbegrenzt gueltigen Klartext-Keys aus {@code my_user_entity.autologin_key} wird hier ein
  * kryptografisch signiertes, ablaufendes und JEDERZEIT WIDERRUFBARES ApiToken-JWT
- * ({@link IApiTokenService#validateToken}) geprueft. Bei Erfolg wird — 1:1 wie im
- * {@code AutoLoginController} — eine Browser-Session aufgebaut ({@link SecurityContextRepository}),
+ * ({@link IApiTokenService#validateToken}) geprueft. Bei Erfolg wird eine Browser-Session aufgebaut,
  * damit scriptgesteuerte/Kiosk-Aufrufer (PageTester, ZAP, Turnier-Kiosk) sich durch JSF-Seiten
  * klicken koennen (ApiToken authentisiert sonst nur per Request-Bearer, ohne Session).</p>
  *
- * <p><b>Sicherheit:</b> Der Zugang wird ueber den Widerruf des Tokens gesteuert (kein separates
- * Enabled-Flag noetig). Der Token reist als Query-Param (bewusst, fuer bookmark-/scriptbare Aufrufer)
- * und wird deshalb im Log NUR maskiert; die Antwort ist {@code no-store}. Zusaetzlich wird geprueft,
- * dass das Mandat im Token zum tatsaechlichen Mandat des Users passt (Defense-in-Depth).</p>
+ * <p><b>Absicherung (Karte 309):</b></p>
+ * <ul>
+ *   <li>Der Session-Aufbau laeuft ueber {@link SessionLoginFinalizer} und damit ueber dieselben
+ *       Gates wie der Form-Login: Session-Id-Erneuerung (Session-Fixation), Account-Lockout und
+ *       zweiter Faktor (TOTP). Vorher wurde der {@link SecurityContextRepository} direkt beschrieben
+ *       und alle drei uebersprungen.</li>
+ *   <li>Der {@code scope}-Claim des Tokens wird <b>erzwungen</b>
+ *       ({@code plaintext.security.token-login.required-scopes}, Default {@code SESSION}/{@code ADMIN}).
+ *       Ein fehlender Claim wird abgelehnt (fail-closed). Vorher vergab der Controller pauschal die
+ *       vollen DB-Rollen des Token-Besitzers — ein fuer Automation ausgestelltes {@code READ}-Token
+ *       ergab damit eine Vollzugriffs-Browser-Session.</li>
+ *   <li>Der Endpunkt laesst sich betrieblich abschalten
+ *       ({@code plaintext.security.token-login.enabled}).</li>
+ *   <li>Zusaetzlich wird geprueft, dass das Mandat im Token zum tatsaechlichen Mandat des Users passt
+ *       (Defense-in-Depth).</li>
+ * </ul>
+ *
+ * <p>Der Token reist als Query-Param (bewusst, fuer bookmark-/scriptbare Aufrufer) und wird deshalb
+ * im Log NUR maskiert; die Antwort ist {@code no-store}.</p>
  */
 @Controller
 @Slf4j
@@ -47,20 +59,20 @@ public class TokenLoginController {
 
     private final IApiTokenService apiTokenService;
     private final UserDetailsService userDetailsService;
-    private final SecurityContextRepository securityContextRepository;
     private final MyUserRepository userRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final SessionLoginFinalizer sessionLoginFinalizer;
+    private final PlaintextSecurityProperties securityProperties;
 
     public TokenLoginController(IApiTokenService apiTokenService,
                                 UserDetailsService userDetailsService,
-                                SecurityContextRepository securityContextRepository,
                                 MyUserRepository userRepository,
-                                ApplicationEventPublisher eventPublisher) {
+                                SessionLoginFinalizer sessionLoginFinalizer,
+                                PlaintextSecurityProperties securityProperties) {
         this.apiTokenService = apiTokenService;
         this.userDetailsService = userDetailsService;
-        this.securityContextRepository = securityContextRepository;
         this.userRepository = userRepository;
-        this.eventPublisher = eventPublisher;
+        this.sessionLoginFinalizer = sessionLoginFinalizer;
+        this.securityProperties = securityProperties;
     }
 
     /** Maskiert das Token fuers Logging (keine Klartext-JWTs in Logs/Graylog). */
@@ -80,6 +92,11 @@ public class TokenLoginController {
         // der Antwort selbst verhindern.
         response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
 
+        if (!securityProperties.getTokenLogin().isEnabled()) {
+            log.warn("Token-Login: Endpunkt ist deaktiviert (plaintext.security.token-login.enabled=false)");
+            return "redirect:/login.html";
+        }
+
         log.info("Token-Login requested with token: {}", mask(token));
 
         if (token == null || token.isEmpty()) {
@@ -95,6 +112,14 @@ public class TokenLoginController {
                 return "redirect:/login.html";
             }
             ApiTokenValidationResult result = validation.get();
+
+            // Scope-Zwang (fail-closed): nur ausdruecklich fuer eine Session gedachte Tokens duerfen
+            // hier eine Browser-Session mit den DB-Rollen des Users eroeffnen.
+            if (!scopeErlaubt(result.scope())) {
+                log.warn("Token-Login: Scope '{}' erlaubt keinen Session-Aufbau (erlaubt: {}), Token '{}'",
+                        result.scope(), securityProperties.getTokenLogin().getRequiredScopes(), result.tokenName());
+                return "redirect:/login.html";
+            }
 
             MyUserEntity user = userRepository.findById(result.userId()).orElse(null);
             if (user == null) {
@@ -115,62 +140,33 @@ public class TokenLoginController {
                 return "redirect:/login.html";
             }
 
-            // Session aufbauen (1:1 wie AutoLoginController). 3-arg-Konstruktor setzt authenticated=true.
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            SecurityContext context = SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(authToken);
-            SecurityContextHolder.setContext(context);
-            securityContextRepository.saveContext(context, request, response);
+            // Karte 309: Lockout, Session-Erneuerung, 2FA-Gate, Startseite und Login-Event zentral --
+            // exakt wie beim Form-Login. Der SuccessHandler schreibt den Redirect selbst.
+            sessionLoginFinalizer.finalizeLogin(userDetails, userDetails.getAuthorities(),
+                    "Token-Login (Token '" + result.tokenName() + "')", request, response);
+            return null;
 
-            log.info("Token-Login erfolgreich fuer User: {} (Token '{}')", user.getUsername(), result.tokenName());
-
-            // Login-Event (generischer Hook, wie im AutoLoginController).
-            try {
-                Long userId = extractUserId(userDetails);
-                String baseUrl = extractBaseUrl(request);
-                eventPublisher.publishEvent(new PlaintextLoginEvent(this, user.getUsername(), userId,
-                        user.getUsername(), userMandat, baseUrl));
-            } catch (Exception e) {
-                log.warn("Token-Login: publish login event fehlgeschlagen: {}", e.getMessage());
-            }
-
-            String redirectUrl = "index.html";
-            if (user.getStartpage() != null && !user.getStartpage().isEmpty()) {
-                redirectUrl = user.getStartpage();
-            }
-            return "redirect:/" + redirectUrl;
-
+        } catch (AccountStatusException e) {
+            log.warn("Token-Login abgelehnt (Account-Status): {}", e.getMessage());
+            return "redirect:/login.html";
         } catch (Exception e) {
             log.error("Token-Login fehlgeschlagen", e);
             return "redirect:/login.html";
         }
     }
 
-    private Long extractUserId(UserDetails userDetails) {
-        for (GrantedAuthority ga : userDetails.getAuthorities()) {
-            String a = ga.getAuthority();
-            if (a != null && a.startsWith("PROPERTY_MYUSERID_")) {
-                try {
-                    return Long.parseLong(a.substring("PROPERTY_MYUSERID_".length()));
-                } catch (NumberFormatException e) { /* ignore */ }
-            }
+    /**
+     * Fail-closed-Pruefung des {@code scope}-Claims: {@code null}/leer wird abgelehnt, ansonsten muss
+     * der Wert (case-insensitiv) in {@code plaintext.security.token-login.required-scopes} stehen.
+     */
+    private boolean scopeErlaubt(String scope) {
+        if (scope == null || scope.isBlank()) {
+            return false;
         }
-        return -1L;
-    }
-
-    private String extractBaseUrl(HttpServletRequest request) {
-        String scheme = request.getHeader("X-Forwarded-Proto");
-        if (scheme == null) scheme = request.getScheme();
-        String host = request.getHeader("X-Forwarded-Host");
-        if (host == null) host = request.getServerName();
-        int port = request.getServerPort();
-        String forwardedPort = request.getHeader("X-Forwarded-Port");
-        if (forwardedPort != null) {
-            try { port = Integer.parseInt(forwardedPort); } catch (NumberFormatException e) { /* ignore */ }
-        }
-        boolean defaultPort = ("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443);
-        return scheme + "://" + host + (defaultPort ? "" : ":" + port);
+        String normalisiert = scope.trim().toUpperCase();
+        return securityProperties.getTokenLogin().getRequiredScopes().stream()
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(s -> s.trim().toUpperCase().equals(normalisiert));
     }
 
     private String extractMandat(UserDetails userDetails) {
