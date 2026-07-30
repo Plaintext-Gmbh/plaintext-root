@@ -9,6 +9,7 @@ import ch.plaintext.boot.plugins.security.oidc.JdbcClientRegistrationRepository;
 import ch.plaintext.boot.plugins.security.oidc.PlaintextOidcUserService;
 import ch.plaintext.boot.plugins.security.service.MyRememberMeRepositoryRepository;
 import ch.plaintext.boot.plugins.security.service.MyUserDetailsService;
+import ch.plaintext.boot.deeplink.DeepLinkService;
 import ch.plaintext.boot.security.PageAccessGuardFilter;
 import ch.plaintext.boot.security.PageAccessGuardService;
 import lombok.extern.slf4j.Slf4j;
@@ -74,7 +75,15 @@ public class PlaintextSecurityConfig {
             // authentifiziert (Passwort ok, zweiter Faktor ausstehend). Die Seite/POST
             // muss daher anonym erreichbar sein. CSRF bleibt aktiv (Token im Formular),
             // der eigentliche Gate steckt im TotpVerificationController (pending-Session).
-            "/login/totp", "/login-totp.xhtml"
+            "/login/totp", "/login-totp.xhtml",
+            // Karte 345: Deep-Link-Einstieg. NICHT offen im Sinne von ungeschuetzt — der
+            // DeepLinkController prueft selbst, ob eine Authentication vorliegt, und schickt
+            // anonyme Aufrufer ausschliesslich zur Login-Seite (das Ziel wird nur als
+            // type/mandat/id in der Server-Session gemerkt, nie als URL durchgereicht). Nur so
+            // laesst sich der Mail-Klick eines abgemeldeten Benutzers nach dem Login fortsetzen;
+            // unter anyRequest().authenticated() waere er verloren. Die eigentlichen Pruefungen
+            // (Mandat-Zugriff, Datensatz-Zugriff) macht der DeepLinkResolver nach dem Login.
+            DeepLinkService.DEEPLINK_PATH
     );
 
     /**
@@ -86,6 +95,11 @@ public class PlaintextSecurityConfig {
      * ungeschuetzt.
      */
     private static final String[] ROOT_ONLY_PAGES = {
+            // Karte 345: Uebersicht der Deep-Link-Ziele. Nur ROOT — die Seite zeigt, auf welche
+            // Module/Datensaetze sich Links bauen lassen, und kann Beispiel-Links fuer beliebige
+            // Mandate erzeugen (die Links selbst verleihen nichts, die Uebersicht ist aber
+            // Verwaltungsinformation).
+            "/deeplinks.*",
             "/mandate*.*",
             "/rootentities.*",
             "/root-api-token.*",
