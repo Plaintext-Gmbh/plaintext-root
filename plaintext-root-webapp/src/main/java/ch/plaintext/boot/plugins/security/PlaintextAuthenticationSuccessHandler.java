@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security;
 
 import ch.plaintext.boot.StartpageResolver;
+import ch.plaintext.boot.deeplink.DeepLinkPendingStore;
 import ch.plaintext.boot.plugins.security.service.MyUserDetailsService;
 import ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService;
 import ch.plaintext.boot.plugins.security.totp.TotpPendingAuthentication;
@@ -82,6 +83,19 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
         // da beide unten dieselbe `page` verwenden.
         if (hasMustChangePassword(authentication)) {
             page = MUST_CHANGE_PASSWORD_PAGE;
+        } else {
+            // Karte 345: Kam der Benutzer ueber einen Deep-Link aus einer Mail und war dabei nicht
+            // angemeldet, hat der DeepLinkController das Ziel in der Session gemerkt. Statt der
+            // Startseite geht es jetzt dorthin zurueck — aber NICHT als durchgereichte URL: aus den
+            // drei gemerkten Bezeichnern wird wieder ein /deeplink-Aufruf gebaut, der die komplette
+            // Pruefkette (Mandat-Zugriff, Datensatz-Zugriff) erneut durchlaeuft. Damit ist das hier
+            // kein offener Umleitungspunkt: das Ziel kann ausschliesslich diese eine Anwendung sein,
+            // und der Login allein oeffnet nichts, was der Benutzer nicht ohnehin sehen darf.
+            // Erzwungener Passwortwechsel geht vor (else-Zweig).
+            String deepLink = deepLinkZielAusSession(request);
+            if (deepLink != null) {
+                page = deepLink;
+            }
         }
         String contextPath = (request.getContextPath() != null) ? request.getContextPath() : "";
 
@@ -180,6 +194,23 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
             log.debug("Published PlaintextLoginEvent (post-TOTP) for user: {}", userEmail);
         } catch (Exception e) {
             log.warn("Failed to publish post-TOTP login event: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Gemerkten Deep-Link (Karte 345) als Seiten-Angabe OHNE fuehrenden Slash — der Aufrufer haengt
+     * {@code contextPath + "/"} davor, genau wie bei einem normalen Seitennamen. Liefert
+     * {@code null}, wenn nichts gemerkt war.
+     */
+    static String deepLinkZielAusSession(HttpServletRequest request) {
+        try {
+            DeepLinkPendingStore.PendingDeepLink pending = DeepLinkPendingStore.entnehme(request);
+            String pfad = DeepLinkPendingStore.alsPfad(pending);
+            // alsPfad liefert "/deeplink?..." — der fuehrende Slash muss weg.
+            return pfad == null ? null : pfad.substring(1);
+        } catch (Exception e) {
+            log.warn("Gemerkter Deep-Link konnte nicht aufgeloest werden: {}", e.getMessage());
+            return null;
         }
     }
 

@@ -1,0 +1,85 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml"
+                template="/includes/template.xhtml">
+
+    <ui:define name="title">#{i18n.t('Deep-Links')}</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <p:growl id="msgs" showDetail="true" life="6000"/>
+
+            <div class="card">
+                <h2>#{i18n.t('Registrierte Deep-Link-Ziele')}</h2>
+                <p style="color: var(--text-color-secondary);">
+                    #{i18n.t('Ein Deep-Link führt aus einer Mail direkt auf einen Datensatz und schaltet dabei auf dessen Mandant um. Er verleiht keine Berechtigung: beim Öffnen wird geprüft, ob der angemeldete Benutzer Zugriff auf Mandant und Datensatz hat.')}
+                </p>
+
+                <p:dataTable id="ziele" value="#{deepLinkBackingBean.ziele}" var="ziel"
+                             emptyMessage="#{i18n.t('Kein Modul hat bisher ein Deep-Link-Ziel registriert.')}">
+                    <p:column headerText="#{i18n.t('Typ')}">
+                        <h:outputText value="#{ziel.type}"/>
+                    </p:column>
+                    <p:column headerText="#{i18n.t('Bezeichnung')}">
+                        <h:outputText value="#{ziel.label}"/>
+                    </p:column>
+                    <p:column headerText="#{i18n.t('Ziel-Seite')}">
+                        <h:outputText value="#{ziel.view}"/>
+                    </p:column>
+                    <p:column headerText="#{i18n.t('Parameter')}">
+                        <h:outputText value="#{ziel.paramName}"/>
+                    </p:column>
+                    <p:column headerText="#{i18n.t('Link-Muster')}">
+                        <h:outputText value="#{deepLinkBackingBean.musterFuer(ziel)}"/>
+                    </p:column>
+                </p:dataTable>
+            </div>
+
+            <div class="card">
+                <h2>#{i18n.t('Link erzeugen')}</h2>
+                <p style="color: var(--text-color-secondary);">
+                    #{i18n.t('Zum Nachvollziehen und Testen. Der erzeugte Link ist kein Token — wer ihn öffnet, braucht weiterhin ein Konto mit Zugriff auf diesen Mandanten und diesen Datensatz.')}
+                </p>
+
+                <div class="p-grid p-fluid">
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="typ" value="#{i18n.t('Typ')}"/>
+                        <p:selectOneMenu id="typ" value="#{deepLinkBackingBean.gewaehlterTyp}">
+                            <f:selectItem itemLabel="#{i18n.t('-- bitte wählen --')}" itemValue="#{null}"
+                                          noSelectionOption="true"/>
+                            <f:selectItems value="#{deepLinkBackingBean.typen}"/>
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="mandat" value="#{i18n.t('Mandant')}"/>
+                        <p:selectOneMenu id="mandat" value="#{deepLinkBackingBean.beispielMandat}">
+                            <f:selectItem itemLabel="#{i18n.t('-- bitte wählen --')}" itemValue="#{null}"
+                                          noSelectionOption="true"/>
+                            <f:selectItems value="#{deepLinkBackingBean.mandate}"/>
+                        </p:selectOneMenu>
+                    </div>
+                    <div class="p-col-12 p-md-3">
+                        <p:outputLabel for="datensatzId" value="#{i18n.t('Datensatz-Id')}"/>
+                        <p:inputText id="datensatzId" value="#{deepLinkBackingBean.beispielId}"/>
+                    </div>
+                    <div class="p-col-12 p-md-3" style="display: flex; align-items: flex-end;">
+                        <p:commandButton value="#{i18n.t('Link erzeugen')}"
+                                         icon="pi pi-link"
+                                         action="#{deepLinkBackingBean.erzeugeLink}"
+                                         update="fm"/>
+                    </div>
+                </div>
+
+                <p:outputPanel id="ergebnis" rendered="#{not empty deepLinkBackingBean.erzeugterLink}">
+                    <p:inputText value="#{deepLinkBackingBean.erzeugterLink}" readonly="true"
+                                 style="width: 100%; margin-top: 1rem;"/>
+                </p:outputPanel>
+            </div>
+        </h:form>
+    </ui:define>
+
+</ui:composition>
