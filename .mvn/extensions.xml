@@ -4,6 +4,18 @@
   Unveränderte Module werden aus dem lokalen Cache (~/.m2/build-cache) restauriert statt neu
   gebaut/getestet — beschleunigt lokale Rebuilds und CI (persistentes ~/.m2 auf den Runnern).
   Korrektheit hängt am Input-Glob in der Config (siehe Kommentar dort).
+
+  MINDESTVERSION 1.2.3 — NICHT auf 1.2.2 zurückstufen (Karte 26, 31.07.2026):
+  Bis einschliesslich 1.2.2 ist der "partial restore" kaputt. Ein Build, der die
+  `package`-Phase nicht erreicht (z.B. `mvn test`, `scripts/coverage-report.sh`,
+  `mvn test-compile`), speichert einen Cache-Eintrag OHNE Jar, aber unter demselben
+  Input-Checksum. Ein späteres `mvn install` findet diesen Eintrag, restauriert
+  "partially" und scheitert reproduzierbar mit
+      "The packaging plugin for project ... did not assign a file to the build artifact"
+  — auch nach `mvn clean install`, weil `clean` den ~/.m2/build-cache nicht anfasst.
+  Das erklärt den "sporadischen" Charakter des Fehlers. 1.2.3 behebt genau das.
+  `maven-jar-plugin` in <runAlways> aufzunehmen hilft NICHT (getestet): jar:jar läuft
+  dabei sogar, die Datei geht trotzdem verloren.
 -->
 <extensions xmlns="http://maven.apache.org/EXTENSIONS/1.0.0"
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -11,6 +23,6 @@
     <extension>
         <groupId>org.apache.maven.extensions</groupId>
         <artifactId>maven-build-cache-extension</artifactId>
-        <version>1.2.2</version>
+        <version>1.2.3</version>
     </extension>
 </extensions>
