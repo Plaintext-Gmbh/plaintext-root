@@ -99,6 +99,7 @@
         <jackson-bom.version>3.1.4</jackson-bom.version>
         <!-- httpcore5: Boot 4.1.0 pinnt erst 5.4.2 -> hochziehen (CVE-2026-54399/54428). -->
         <httpcore5.version>5.4.3</httpcore5.version>
+        <sonar-maven-plugin.version>4.0.0.4121</sonar-maven-plugin.version>
     </properties>
 
     <modules>
@@ -464,6 +465,23 @@
     </distributionManagement>
 
     <build>
+        <plugins>
+            <!--
+              Karte 365 (fuer plaintext-app in 358 bereits so geloest): sonar-maven-plugin explizit
+              deklariert, ohne Execution — es laeuft nur, wenn die Pipeline `sonar:sonar` aufruft.
+              Ohne diese Deklaration muss Maven den Prefix `sonar` ueber <pluginGroups> aus einer
+              settings.xml aufloesen; auf den NAS-Runnern fehlt die settings.xml (Container-Neuanlage),
+              seit dem 20.07.2026 scheiterte die woechentliche Voll-Analyse deshalb mit
+              "No plugin found for prefix 'sonar'". Folge: Das Quality-Gate konnte sich nie mehr selbst
+              zuruecksetzen und meldete ein eingefrorenes "OK" — schlimmer als ein rotes Gate, weil es
+              wie ein bestandener Check aussieht.
+            -->
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>${sonar-maven-plugin.version}</version>
+            </plugin>
+        </plugins>
         <pluginManagement>
             <plugins>
                 <plugin>
