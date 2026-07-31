@@ -2,6 +2,14 @@ name: Build And Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy-target:
+        description: 'Was der manuelle Lauf tun soll'
+        type: choice
+        options:
+          - ci-only
+          - release-all
+        default: ci-only
   schedule:
     - cron: '0 3 * * *'   # Nightly: schneller Test-Build (ci-only, KEIN Sonar)
     - cron: '0 4 * * 1'   # Weekly Mo 04:00: Voll-Analyse (Sonar + OWASP-CVE + SpotBugs + Quality-Gate)
@@ -26,6 +34,7 @@ jobs:
       deploy-target: >-
         ${{ github.event_name == 'schedule' && 'ci-only'
          || github.event_name == 'pull_request' && 'ci-only'
+         || github.event_name == 'workflow_dispatch' && github.event.inputs.deploy-target
          || (github.ref == 'refs/heads/master' && 'release-all' || 'snapshot-dev') }}
       project-name: plaintext-root
       database-name: plaintext_root
@@ -33,7 +42,8 @@ jobs:
       # hier keine umgebungsspezifischen Adressen im oeffentlichen Repo stehen.
       dev-url: ${{ vars.DEPLOY_DEV_URL }}
       prod-url: ${{ vars.DEPLOY_PROD_URL }}
-      # Sonar + Voll-Analyse NUR wöchentlich (Mo 04:00); nightly bleibt schnell. Dispatch = manueller Voll-Lauf.
+      # Sonar + Voll-Analyse NUR wöchentlich (Mo 04:00); nightly bleibt schnell. Dispatch = manueller
+      # Voll-Lauf, standardmässig ohne Deploy (siehe deploy-target oben).
       sonar-enabled: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
       quality-analysis: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
       # Build/Deploy laufen auf einem self-hosted Runner im Zielnetz; der Postgres-Host-Port
