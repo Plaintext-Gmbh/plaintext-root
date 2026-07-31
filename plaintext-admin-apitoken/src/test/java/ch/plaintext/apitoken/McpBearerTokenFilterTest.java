@@ -390,6 +390,34 @@ class McpBearerTokenFilterTest {
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
+    /**
+     * Regression (Karte 349): Die DATABASE-Strategie muss den {@code scope} des Tokens durchreichen.
+     * Tat sie das nicht, kam jedes Token ohne Claim im Filter an und der fail-closed-Default degradierte
+     * es auf READ — ein Umstellen auf {@code validation: DATABASE} hätte damit alle EINTRAGEN-Flows
+     * (Zeiterfassung-Uhr, Juriwagen) stillschweigend auf Lesezugriff gekappt.
+     */
+    @Test
+    void databaseStrategie_reichtScopeDurch() throws Exception {
+        IApiTokenService apiTokenService = mock(IApiTokenService.class);
+        when(apiTokenService.validateToken("dbtok")).thenReturn(Optional.of(
+                new IApiTokenService.ApiTokenValidationResult(
+                        99L, "app", "u@plaintext.ch", "uhr", Instant.now().plusSeconds(60), "EINTRAGEN")));
+
+        HttpServletRequest request = requestWithAuth("Bearer dbtok");
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        AtomicReference<Authentication> waehrendKette = new AtomicReference<>();
+        FilterChain chain = (rq, rs) -> waehrendKette.set(SecurityContextHolder.getContext().getAuthentication());
+
+        McpBearerTokenFilter.withRevocationCheck(apiTokenService, mock(McpUserRoles.class))
+                .doFilter(request, response, chain);
+
+        Authentication auth = waehrendKette.get();
+        assertNotNull(auth);
+        assertTrue(hasAuthority(auth, "SCOPE_EINTRAGEN"));
+        assertTrue(hasAuthority(auth, "SCOPE_READ"));
+        assertFalse(hasAuthority(auth, "SCOPE_ADMIN"));
+    }
+
     @Test
     void databaseStrategie_revoked_wird401() throws Exception {
         IApiTokenService apiTokenService = mock(IApiTokenService.class);
