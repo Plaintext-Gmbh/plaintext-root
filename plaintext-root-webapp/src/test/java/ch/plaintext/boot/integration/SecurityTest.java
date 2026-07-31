@@ -232,8 +232,15 @@ class SecurityTest {
                 "JSF-AJAX-Postback muss eine partial-response liefern");
     }
 
+    /**
+     * BUGFIX Karte 385: Bis dahin lieferte ein JSF-AJAX-Postback ohne gueltiges CSRF-Token
+     * HTTP 403 mit JSON-Body. Die PrimeFaces-Ajax-Engine kann das nicht parsen, meldet nichts
+     * und der Ladeindikator dreht endlos — auf PROD reproduziert als „Klick tut nichts".
+     * Der Request muss statt dessen eine verarbeitbare partial-response mit &lt;redirect&gt;
+     * bekommen (HTTP 200), damit PrimeFaces den Nutzer auf die Anmeldung schickt.
+     */
     @Test
-    void jsfAjaxPostbackOhneCsrfTokenGibt403() {
+    void jsfAjaxPostbackOhneCsrfTokenLiefertPartialResponseMitRedirect() {
         AngemeldeteSession session = meldeTestUserAn();
         JsfSeite seite = holeJsfSeite(session.cookie(), AJAX_ZIEL);
 
@@ -249,8 +256,51 @@ class SecurityTest {
                 .body(body)
                 .retrieve()
                 .toEntity(String.class);
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Nur eine 200-Antwort wird von der Ajax-Engine ueberhaupt geparst");
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().contains("<partial-response"),
+                "Antwort muss XML-partial-response sein, war: " + response.getBody());
+        assertTrue(response.getBody().contains("<redirect url=\"/login.html\"/>"),
+                "Antwort muss den Redirect auf die Anmeldung enthalten, war: " + response.getBody());
+        assertFalse(response.getBody().contains("\"error\""),
+                "Kein JSON-Fehlerbody mehr");
+    }
+
+    /** Karte 385: Ein Nicht-Ajax-POST bleibt beim unveraenderten Spring-Verhalten (403). */
+    @Test
+    void nichtAjaxPostbackOhneCsrfTokenGibtWeiterhin403() {
+        AngemeldeteSession session = meldeTestUserAn();
+        JsfSeite seite = holeJsfSeite(session.cookie(), AJAX_ZIEL);
+
+        ResponseEntity<String> response = lenientClient().post()
+                .uri(AJAX_ZIEL)
+                .header(HttpHeaders.COOKIE, session.cookie())
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body("fm=fm&jakarta.faces.ViewState="
+                        + java.net.URLEncoder.encode(seite.viewState(), java.nio.charset.StandardCharsets.UTF_8))
+                .retrieve()
+                .toEntity(String.class);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
-                "JSF-AJAX-Postback ohne _csrf-Token muss 403 liefern");
+                "Ohne Faces-Request-Header bleibt es beim Spring-Default 403");
+    }
+
+    /**
+     * Karte 385: Auch ohne Session (abgelaufen / nach Blue-Green-Deploy) darf ein Ajax-Request
+     * keine unverarbeitbare Antwort bekommen — der AuthenticationEntryPoint muss ebenfalls eine
+     * partial-response mit Redirect liefern statt eines HTML-Login-Redirects.
+     */
+    @Test
+    void jsfAjaxRequestOhneSessionLiefertPartialResponseMitRedirect() {
+        ResponseEntity<String> response = lenientClient().get()
+                .uri("/access-denied.xhtml")
+                .header("Faces-Request", "partial/ajax")
+                .retrieve()
+                .toEntity(String.class);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().contains("<redirect url=\"/login.html\"/>"),
+                "war: " + response.getBody());
     }
 
     @Test

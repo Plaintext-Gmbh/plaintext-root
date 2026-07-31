@@ -3,6 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security;
 
+import ch.plaintext.boot.plugins.security.ajax.JsfAjaxAwareAccessDeniedHandler;
+import ch.plaintext.boot.plugins.security.ajax.JsfAjaxAwareAuthenticationEntryPoint;
+import ch.plaintext.boot.plugins.security.ajax.JsfAjaxResponses;
 import ch.plaintext.boot.plugins.security.magiclink.HashedOneTimeTokenService;
 import ch.plaintext.boot.plugins.security.magiclink.MagicLinkGenerationSuccessHandler;
 import ch.plaintext.boot.plugins.security.oidc.JdbcClientRegistrationRepository;
@@ -23,6 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.authentication.rememberme.*;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -37,6 +41,9 @@ import java.util.List;
 @Configuration
 @Slf4j
 public class PlaintextSecurityConfig {
+
+    /** Anmeldeseite — Form-Login, OIDC-Login und die Ajax-Redirects (Karte 385) zeigen hierhin. */
+    private static final String LOGIN_PAGE = "/login.html";
 
     private final String rememberMeSigningKey;
 
@@ -324,22 +331,38 @@ public class PlaintextSecurityConfig {
                 // Action-Methode damit schon ausgefuehrt. Hier laeuft er direkt nach der
                 // Autorisierung und damit vor dem FacesServlet.
                 .addFilterAfter(new PageAccessGuardFilter(pageAccessGuardService), AuthorizationFilter.class)
+                // BUGFIX (Karte 385): Ein JSF-/PrimeFaces-Ajax-POST mit abgelaufenem CSRF-Token
+                // oder abgelaufener Session bekam bisher HTTP 403 mit JSON-Body. Die Ajax-Engine
+                // erwartet zwingend eine XML-partial-response, kann JSON nicht verarbeiten, meldet
+                // nichts — und der Ladeindikator dreht endlos ("Klick tut nichts"). Das trifft ALLE
+                // Ajax-Aktionen der App, nicht nur einzelne Seiten, und passiert nach jedem
+                // Blue/Green-Deploy sowie nach jedem Re-Login in einem anderen Tab.
+                // Die Handler liefern statt dessen eine gueltige partial-response mit <redirect>
+                // (HTTP 200); PrimeFaces fuehrt den Redirect aus, der Nutzer landet auf der
+                // Anmeldung. Nicht-Ajax-Requests bleiben beim Spring-Default-Verhalten.
+                .exceptionHandling(ex -> ex
+                        .defaultAuthenticationEntryPointFor(
+                                new JsfAjaxAwareAuthenticationEntryPoint(
+                                        new LoginUrlAuthenticationEntryPoint(LOGIN_PAGE), LOGIN_PAGE),
+                                JsfAjaxResponses::isJsfAjaxRequest)
+                        .accessDeniedHandler(new JsfAjaxAwareAccessDeniedHandler(LOGIN_PAGE))
+                )
                 .formLogin(form -> form
-                        .loginPage("/login.html")
+                        .loginPage(LOGIN_PAGE)
                         .loginProcessingUrl("/login")
                         .defaultSuccessUrl("/index.html", true)
-                        .failureUrl("/login.html?error=true")
+                        .failureUrl(LOGIN_PAGE + "?error=true")
                         .successHandler(authenticationSuccessHandler)
                         .permitAll()
                 )
                 .oauth2Login(oauth2 -> oauth2
-                        .loginPage("/login.html")
+                        .loginPage(LOGIN_PAGE)
                         .clientRegistrationRepository(clientRegistrationRepository)
                         .userInfoEndpoint(userInfo -> userInfo
                                 .oidcUserService(oidcUserService)
                         )
                         .successHandler(authenticationSuccessHandler)
-                        .failureUrl("/login.html?error=oidc")
+                        .failureUrl(LOGIN_PAGE + "?error=oidc")
                 )
                 .logout(logout -> logout
                         .logoutRequestMatcher(PathPatternRequestMatcher.pathPattern(org.springframework.http.HttpMethod.POST, "/logout"))

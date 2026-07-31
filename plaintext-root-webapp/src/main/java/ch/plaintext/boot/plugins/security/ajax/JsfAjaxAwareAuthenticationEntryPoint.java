@@ -1,0 +1,42 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+package ch.plaintext.boot.plugins.security.ajax;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.AuthenticationEntryPoint;
+
+import java.io.IOException;
+
+/**
+ * {@link AuthenticationEntryPoint}, der einen JSF-/PrimeFaces-Ajax-Request mit einer gueltigen
+ * XML-{@code partial-response} samt {@code <redirect>} beantwortet (Karte 385). Alle anderen
+ * Requests gehen an den regulaeren Entry-Point (Form-Login-Redirect) weiter.
+ *
+ * <p>Ohne das erhaelt die Ajax-Engine bei abgelaufener Session einen HTML-Redirect auf die
+ * Login-Seite bzw. einen JSON-Fehler und kann beides nicht verarbeiten — der Ladeindikator
+ * dreht endlos.</p>
+ */
+public class JsfAjaxAwareAuthenticationEntryPoint implements AuthenticationEntryPoint {
+
+    private final AuthenticationEntryPoint delegate;
+    private final String loginUrl;
+
+    public JsfAjaxAwareAuthenticationEntryPoint(AuthenticationEntryPoint delegate, String loginUrl) {
+        this.delegate = delegate;
+        this.loginUrl = loginUrl;
+    }
+
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response,
+                         AuthenticationException authException) throws IOException, ServletException {
+        if (JsfAjaxResponses.isJsfAjaxRequest(request)) {
+            JsfAjaxResponses.sendPartialRedirect(response, request.getContextPath() + loginUrl);
+            return;
+        }
+        delegate.commence(request, response, authException);
+    }
+}
