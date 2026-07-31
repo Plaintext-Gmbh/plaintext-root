@@ -23,13 +23,6 @@ public class SetupConfigService implements ISetupConfigService {
     private final SetupConfigRepository repository;
 
     @Override
-    public boolean isAutologinEnabled(String mandat) {
-        return repository.findByMandat(mandat)
-                .map(SetupConfig::isAutologinEnabled)
-                .orElse(false);
-    }
-
-    @Override
     public boolean isOidcAutoRedirectEnabled(String mandat) {
         return repository.findByMandat(mandat)
                 .map(SetupConfig::isOidcAutoRedirectEnabled)
@@ -97,10 +90,6 @@ public class SetupConfigService implements ISetupConfigService {
         return repository.findFirstByOidcAutoRedirectEnabledTrue();
     }
 
-    public Optional<SetupConfig> findFirstWithAutologin() {
-        return repository.findFirstByAutologinEnabledTrue();
-    }
-
     public boolean isPasswordManagementDisabledAnywhere() {
         return repository.findFirstByPasswordManagementEnabledFalse().isPresent();
     }
@@ -125,8 +114,8 @@ public class SetupConfigService implements ISetupConfigService {
     @Transactional
     public SetupConfig save(SetupConfig config) {
         SetupConfig saved = repository.save(config);
-        log.info("SetupConfig saved: id={}, mandat={}, autologin={}, oidcRedirect={}, rootUser={}, totp={}",
-                saved.getId(), saved.getMandat(), saved.isAutologinEnabled(), saved.isOidcAutoRedirectEnabled(), saved.isRootUserEnabled(), saved.isTotpEnabled());
+        log.info("SetupConfig saved: id={}, mandat={}, oidcRedirect={}, rootUser={}, totp={}",
+                saved.getId(), saved.getMandat(), saved.isOidcAutoRedirectEnabled(), saved.isRootUserEnabled(), saved.isTotpEnabled());
         return saved;
     }
 

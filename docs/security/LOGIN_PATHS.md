@@ -1,21 +1,22 @@
-# Alternative Anmeldewege: `/autologin` und `/token-login`
+# Alternativer Anmeldeweg: `/token-login`
 
-Neben Form-Login, OAuth2/OIDC und One-Time-Token kennt das Framework zwei Wege, die
-eine Browser-Session **ohne Passworteingabe** aufbauen. Beide sind für
-scriptgesteuerte bzw. Kiosk-Aufrufer gedacht (UI-Tests, PageTester, ZAP,
-Turnier-Kiosk) und beide sind sicherheitskritisch.
+Neben Form-Login, OAuth2/OIDC und One-Time-Token kennt das Framework einen Weg, der
+eine Browser-Session **ohne Passworteingabe** aufbaut. Er ist für scriptgesteuerte
+bzw. Kiosk-Aufrufer gedacht (UI-Tests, PageTester, ZAP, Turnier-Kiosk) und
+sicherheitskritisch.
 
 | Weg | Credential | Widerrufbar | Ablauf | Abschaltbar |
 |---|---|---|---|---|
-| `GET /autologin?key=` | statischer Key in `my_user_entity.autologin_key` (Klartext) | nur durch Löschen des Keys | nein | `mad.autologin` je Mandat (Setup-UI / `MAD_AUTOLOGIN`) |
 | `GET /token-login?token=` | ApiToken-JWT (RS256, gehasht in `api_token`) | ja (Invalidierung) | ja | `plaintext.security.token-login.enabled` |
 
-`/token-login` ist der vorgesehene Nachfolger von `/autologin`.
+Der frühere `GET /autologin?key=` (statischer Klartext-Key in
+`my_user_entity.autologin_key`, weder ablaufend noch widerrufbar) ist
+**entfernt** — Endpunkt, Spalte und Konfiguration.
 
-## Gemeinsame Absicherung
+## Absicherung
 
-Beide Controller finalisieren die Anmeldung über `SessionLoginFinalizer` und
-durchlaufen damit **dieselben Gates wie der Form-Login**:
+`TokenLoginController` finalisiert die Anmeldung über `SessionLoginFinalizer` und
+durchläuft damit **dieselben Gates wie der Form-Login**:
 
 1. **Account-Status** (`AccountStatusUserDetailsChecker`) – ein wegen Brute-Force
    gesperrter Account (`AccountLockoutService`) kommt auch hier nicht durch.
@@ -27,10 +28,10 @@ durchlaufen damit **dieselben Gates wie der Form-Login**:
    in den Pending-Flow (`/login/totp`) statt in eine Vollsession; ebenso greift
    der erzwungene Passwortwechsel.
 
-Zusätzlich sind beide Pfade im `RateLimitFilter` gedrosselt, ihre Antwort ist
-`no-store`, und Key bzw. Token erscheinen im Log nur maskiert.
+Zusätzlich ist der Pfad im `RateLimitFilter` gedrosselt, seine Antwort ist
+`no-store`, und das Token erscheint im Log nur maskiert.
 
-## Scope-Zwang bei `/token-login`
+## Scope-Zwang
 
 Ein ApiToken trägt einen `scope`-Claim (`READ`/`EINTRAGEN`/`ADMIN`/`SESSION`).
 Für den Session-Aufbau sind nur die Scopes aus
@@ -50,10 +51,10 @@ nicht nebenbei zum API-Vollzugriff.
 
 * Deployments ohne Token-Login-Nutzer sollten `plaintext.security.token-login.enabled: false`
   setzen.
-* `/autologin` ist weiterhin in mehreren Umgebungen aktiv (`MAD_AUTOLOGIN=true`)
-  und wird von UI-Test-/Kiosk-Skripten benutzt. Der Rückbau (Entfernen von
-  Endpunkt, Spalte und Bestands-Keys) setzt voraus, dass diese Aufrufer vorher auf
-  `/token-login` umgestellt sind.
-* Key und Token reisen heute als Query-Parameter (Bookmark-/Script-Tauglichkeit)
-  und landen damit in Proxy-Logs und Browser-History. Die Umstellung auf
+* Das Token reist heute als Query-Parameter (Bookmark-/Script-Tauglichkeit)
+  und landet damit in Proxy-Logs und Browser-History. Die Umstellung auf
   POST/Header ist eine offene Folgeaufgabe.
+* Ein vorab ausgestelltes Token validiert nur gegen Instanzen mit **stabilem**
+  JWT-Signaturschlüssel (`plaintext.jwt.private-key-vault-item` bzw.
+  `-file`). Eine lokal ohne Schlüssel gestartete Instanz erzeugt bei jedem Start
+  ein flüchtiges RSA-Paar — dort ist der Form-Login der Weg für Skripte.

@@ -185,7 +185,7 @@ public class RateLimitFilter implements Filter {
             return;
         }
 
-        if (path.startsWith("/autologin") || path.startsWith("/token-login")) {
+        if (path.startsWith("/token-login")) {
             String clientIp = getClientIp(request);
             if (!loginLimiter.tryConsume(clientIp)) {
                 rejectLogin(response, path, clientIp);

@@ -86,8 +86,8 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void shouldRateLimitAutologin() throws Exception {
-        when(request.getRequestURI()).thenReturn("/autologin");
+    void shouldRateLimitTokenLogin() throws Exception {
+        when(request.getRequestURI()).thenReturn("/token-login");
         when(request.getRemoteAddr()).thenReturn("10.0.0.2");
         lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
 

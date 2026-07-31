@@ -57,13 +57,8 @@ The application starts at **http://localhost:8080**.
 
 On first startup, Flyway automatically creates the database schema. A root user is created by the `PlaintextInitLoader`.
 
-Check the application logs for the initial credentials, or configure auto-login for development:
-
-```yaml
-# application.yml
-mad:
-  autologin: true
-```
+Check the application logs for the initial credentials. For scripted/kiosk access there is
+`/token-login?token=<ApiToken-JWT>` (scope `SESSION`); see `docs/security/LOGIN_PATHS.md`.
 
 ## Project Structure
 

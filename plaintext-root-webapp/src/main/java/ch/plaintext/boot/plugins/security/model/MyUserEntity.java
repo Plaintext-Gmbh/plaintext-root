@@ -22,7 +22,6 @@ public class MyUserEntity {
     private String username;
     private String password = "";
     private String startpage = "";
-    private String autologinKey = "";
 
     @Column(name = "OIDC_SUBJECT")
     private String oidcSubject;

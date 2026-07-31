@@ -40,8 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
                 "spring.flyway.enabled=true",
                 "spring.flyway.baseline-on-migrate=true",
                 "spring.flyway.out-of-order=true",
-                "spring.flyway.validate-on-migrate=false",
-                "mad.autologin=false"
+                "spring.flyway.validate-on-migrate=false"
         }
 )
 @ActiveProfiles("test")

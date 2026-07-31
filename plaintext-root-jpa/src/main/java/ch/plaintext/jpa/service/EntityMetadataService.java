@@ -39,7 +39,7 @@ public class EntityMetadataService {
      */
     private static final Set<String> SENSITIVE_FIELDS = new HashSet<>(Arrays.asList(
             "wertencrypted", "password", "passwordhash", "tokenhash", "token", "secret",
-            "totpsecret", "recoverycodes", "autologinkey"
+            "totpsecret", "recoverycodes"
     ));
 
     public EntityDescriptor analyzeEntity(Class<?> entityClass) {

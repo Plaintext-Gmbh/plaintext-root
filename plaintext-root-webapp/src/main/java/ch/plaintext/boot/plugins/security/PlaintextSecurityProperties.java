@@ -115,7 +115,7 @@ public class PlaintextSecurityProperties {
          * ungueltigen Token (Redirect auf die Login-Seite).
          *
          * <p>Default bewusst {@code true}: der Endpunkt ist ein produktiv gedachter Anmeldeweg
-         * (Ersatz fuer {@code /autologin}), und ein stiller Default-Aus haette bestehende Links
+         * (Ersatz fuer den entfernten {@code /autologin}), und ein stiller Default-Aus haette bestehende Links
          * ohne Vorwarnung gebrochen. Die eigentliche Absicherung leisten der erzwungene Scope
          * ({@link #getRequiredScopes()}) sowie Lockout-/2FA-Gate. Deployments ohne Token-Login-Nutzer
          * sollten das Flag dennoch auf {@code false} setzen.</p>

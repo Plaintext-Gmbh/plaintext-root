@@ -23,7 +23,6 @@ class MyUserEntityTest {
         assertNull(user.getUsername());
         assertEquals("", user.getPassword());
         assertEquals("", user.getStartpage());
-        assertEquals("", user.getAutologinKey());
         assertNotNull(user.getRoles());
         assertTrue(user.getRoles().isEmpty());
     }
@@ -172,13 +171,11 @@ class MyUserEntityTest {
         user.setUsername("test@example.com");
         user.setPassword("hashed");
         user.setStartpage("dashboard.html");
-        user.setAutologinKey("abc123");
 
         assertEquals(42L, user.getId());
         assertEquals("test@example.com", user.getUsername());
         assertEquals("hashed", user.getPassword());
         assertEquals("dashboard.html", user.getStartpage());
-        assertEquals("abc123", user.getAutologinKey());
     }
 
     @Test

@@ -62,7 +62,6 @@ public class SetupBackingBean implements Serializable {
     private String i18nIcon;
 
     // Login settings fields
-    private boolean autologinEnabled;
     private boolean oidcAutoRedirectEnabled;
     private Long oidcAutoRedirectConfigId;
     private boolean passwordManagementEnabled = true;
@@ -139,7 +138,6 @@ public class SetupBackingBean implements Serializable {
 
         // Login settings
         setupConfigService.findByMandat(mandat).ifPresent(config -> {
-            autologinEnabled = config.isAutologinEnabled();
             oidcAutoRedirectEnabled = config.isOidcAutoRedirectEnabled();
             oidcAutoRedirectConfigId = config.getOidcAutoRedirectConfigId();
             passwordManagementEnabled = config.isPasswordManagementEnabled();
@@ -284,7 +282,6 @@ public class SetupBackingBean implements Serializable {
             String mandat = security.getMandat();
             SetupConfig config = setupConfigService.getOrCreate(mandat);
             boolean rootUserChanged = config.isRootUserEnabled() != rootUserEnabled;
-            config.setAutologinEnabled(autologinEnabled);
             config.setOidcAutoRedirectEnabled(oidcAutoRedirectEnabled);
             config.setOidcAutoRedirectConfigId(oidcAutoRedirectConfigId);
             config.setPasswordManagementEnabled(passwordManagementEnabled);
