@@ -149,7 +149,11 @@ public class McpBearerTokenFilter implements Filter {
         Objects.requireNonNull(apiTokenService, "apiTokenService");
         return new McpBearerTokenFilter(
                 token -> apiTokenService.validateToken(token)
-                        .map(r -> new ValidatedToken(r.userId(), r.mandat(), r.email(), null, null)),
+                        // scope MUSS durchgereicht werden (Karte 349): sonst käme jedes Token in dieser
+                        // Strategie ohne Claim an und der fail-closed-Default degradierte es auf READ —
+                        // ein Umstellen auf validation: DATABASE würde damit alle EINTRAGEN-Flows
+                        // (Zeiterfassung-Uhr, Juriwagen) stillschweigend auf Lesezugriff kappen.
+                        .map(r -> new ValidatedToken(r.userId(), r.mandat(), r.email(), r.scope(), null)),
                 mcpUserRoles, revocationChecker);
     }
 
@@ -254,8 +258,8 @@ public class McpBearerTokenFilter implements Filter {
      * @param userId Benutzer-ID aus dem Token
      * @param mandat Mandat aus dem Token
      * @param email  E-Mail des Token-Users (wird Principal-Name)
-     * @param scope  {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, oder {@code null} (Alt-Token bzw.
-     *               DATABASE-Strategie, die aktuell keinen scope-Claim kennt)
+     * @param scope  {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, oder {@code null} (Alt-Token ohne
+     *               scope-Claim; dann greift der fail-closed-Default)
      * @param jti    Token-ID für die Revocation-Prüfung, oder {@code null} (Alt-Token bzw.
      *               DATABASE-Strategie, die eigene Hash-basierte Revocation nutzt)
      */
