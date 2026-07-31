@@ -6,6 +6,7 @@ package ch.plaintext.boot.plugins.security.ajax;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
@@ -20,6 +21,7 @@ import java.io.IOException;
  * Login-Seite bzw. einen JSON-Fehler und kann beides nicht verarbeiten — der Ladeindikator
  * dreht endlos.</p>
  */
+@Slf4j
 public class JsfAjaxAwareAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final AuthenticationEntryPoint delegate;
@@ -34,6 +36,16 @@ public class JsfAjaxAwareAuthenticationEntryPoint implements AuthenticationEntry
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException, ServletException {
         if (JsfAjaxResponses.isJsfAjaxRequest(request)) {
+            // LOGGING (Karte 385, Manager-Review): siehe JsfAjaxAwareAccessDeniedHandler. Hier
+            // bewusst INFO statt WARN: dieser Zweig ist der Normalfall einer abgelaufenen bzw.
+            // nach einem Blue/Green-Deploy verlorenen Session. Als WARN wuerde er das Log bei
+            // jedem Deploy fluten und die echten CSRF-Ablehnungen darin unsichtbar machen — genau
+            // den Effekt, den dieser Fix beseitigen soll. Die Sichtbarkeit bleibt erhalten, die
+            // Dringlichkeit ist eine andere.
+            // Bewusst NICHT geloggt: Token, Session-Id, Benutzername, Request-Parameter.
+            log.info("Ajax-Request ohne gueltige Authentifizierung (Session abgelaufen): {} {} "
+                            + "— beantwortet mit JSF-partial-response, Redirect auf {}",
+                    request.getMethod(), request.getRequestURI(), loginUrl);
             JsfAjaxResponses.sendPartialRedirect(response, request.getContextPath() + loginUrl);
             return;
         }

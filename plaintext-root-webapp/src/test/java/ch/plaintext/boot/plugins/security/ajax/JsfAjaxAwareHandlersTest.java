@@ -3,6 +3,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.ajax;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -94,6 +98,65 @@ class JsfAjaxAwareHandlersTest {
 
         assertEquals(302, response.getStatus());
         assertTrue(response.getRedirectedUrl().endsWith("/login.html"));
+    }
+
+    /**
+     * Karte 385 (Manager-Review): Die Antwort ist jetzt HTTP 200 statt 403 — ohne eigenen
+     * Log-Eintrag waeren abgewiesene Requests und echte CSRF-Angriffsversuche unsichtbar.
+     * Der Eintrag muss die URI und den Grund nennen und darf kein Token enthalten.
+     */
+    @Test
+    void csrfFailureOnAjax_wirdGeloggtOhneToken() throws Exception {
+        ListAppender<ILoggingEvent> appender = attach(JsfAjaxAwareAccessDeniedHandler.class);
+        try {
+            new JsfAjaxAwareAccessDeniedHandler("/login.html")
+                    .handle(ajaxRequest(), new MockHttpServletResponse(),
+                            new MissingCsrfTokenException("geheimes-token-123"));
+
+            assertEquals(1, appender.list.size());
+            ILoggingEvent event = appender.list.get(0);
+            assertEquals(Level.WARN, event.getLevel());
+            String meldung = event.getFormattedMessage();
+            assertTrue(meldung.contains("/wiki.xhtml"), meldung);
+            assertTrue(meldung.contains("CSRF"), meldung);
+            assertTrue(meldung.contains("partial-response"), meldung);
+            assertFalse(meldung.contains("geheimes-token-123"), "Kein Token ins Log: " + meldung);
+        } finally {
+            detach(JsfAjaxAwareAccessDeniedHandler.class, appender);
+        }
+    }
+
+    /** Karte 385: Die abgelaufene Session ist der Normalfall — sichtbar, aber nur INFO. */
+    @Test
+    void entryPointOnAjax_wirdAufInfoGeloggt() throws Exception {
+        ListAppender<ILoggingEvent> appender = attach(JsfAjaxAwareAuthenticationEntryPoint.class);
+        try {
+            new JsfAjaxAwareAuthenticationEntryPoint(
+                    new LoginUrlAuthenticationEntryPoint("/login.html"), "/login.html")
+                    .commence(ajaxRequest(), new MockHttpServletResponse(),
+                            new BadCredentialsException("nope"));
+
+            assertEquals(1, appender.list.size());
+            ILoggingEvent event = appender.list.get(0);
+            assertEquals(Level.INFO, event.getLevel());
+            assertTrue(event.getFormattedMessage().contains("/wiki.xhtml"));
+            assertTrue(event.getFormattedMessage().contains("partial-response"));
+        } finally {
+            detach(JsfAjaxAwareAuthenticationEntryPoint.class, appender);
+        }
+    }
+
+    private static ListAppender<ILoggingEvent> attach(Class<?> typ) {
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(typ);
+        logger.setLevel(Level.INFO);
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    private static void detach(Class<?> typ, ListAppender<ILoggingEvent> appender) {
+        ((Logger) org.slf4j.LoggerFactory.getLogger(typ)).detachAppender(appender);
     }
 
     @Test
