@@ -17,6 +17,9 @@ import java.util.Optional;
  * pro Backend-Typ die Wert-Operation delegiert. Werte werden NIE zurückgelesen/angezeigt (one-way):
  * LOCAL_DB verschlüsselt der Service selbst, VAULTWARDEN geht an {@link VaultwardenSecretBackend}.
  *
+ * <p>Einzige Ausnahme vom one-way-Prinzip ist {@link #resolve(String)} aus {@link SecretResolver} —
+ * Klartext für technische Verwender, ausdrücklich nicht fürs UI. Siehe dort.
+ *
  * @author info@plaintext.ch
  * @since 2026
  */
@@ -24,7 +27,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class SecretService {
+public class SecretService implements SecretResolver {
 
     private final SecretEntryRepository entryRepo;
     private final SecretBackendConfigRepository configRepo;
@@ -93,6 +96,43 @@ public class SecretService {
                     e.setDeleted(true);
                     entryRepo.save(e);
                 });
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Massgeblich ist das Backend <b>des Eintrags</b>, nicht {@link #activeBackend()}: Letzteres ist
+     * nur die Vorgabe für neu angelegte Secrets. Nach einem Backend-Wechsel ohne
+     * {@link #migrate(SecretBackendType, String)} liegen die Werte weiterhin dort, wo sie angelegt
+     * wurden — würde hier das aktive Backend gefragt, lieferte die Auflösung stillschweigend nichts.
+     *
+     * <p>Fehler eines Backends werden zu {@link Optional#empty()} gedämpft und protokolliert. Ein nicht
+     * erreichbarer Tresor soll den Aufrufer auf seinen Fallback führen, nicht die aufrufende Funktion
+     * abbrechen.
+     */
+    @Override
+    public Optional<String> resolve(String name) {
+        if (name == null || name.isBlank()) {
+            return Optional.empty();
+        }
+        String mandat = PlaintextSecurityHolder.getMandat();
+        return entryRepo.findByMandatAndName(mandat, name.trim())
+                .filter(e -> !Boolean.TRUE.equals(e.getDeleted()))
+                .flatMap(this::readValue)
+                .filter(v -> !v.isEmpty());
+    }
+
+    private Optional<String> readValue(SecretEntry entry) {
+        try {
+            return Optional.ofNullable(switch (entry.getBackendType()) {
+                case LOCAL_DB -> entry.getWertEncrypted() == null ? null : crypto.decrypt(entry.getWertEncrypted());
+                case VAULTWARDEN -> vaultwarden.readValue(entry.getName());
+                case HASHICORP -> hashicorp.readValue(entry.getName());
+            });
+        } catch (RuntimeException ex) {
+            log.warn("Secret '{}' ({}) nicht lesbar: {}", entry.getName(), entry.getBackendType(), ex.getMessage());
+            return Optional.empty();
+        }
     }
 
     /** Interne Wert-Auflösung für LOCAL_DB (Entschlüsselung) — NICHT fürs UI. */

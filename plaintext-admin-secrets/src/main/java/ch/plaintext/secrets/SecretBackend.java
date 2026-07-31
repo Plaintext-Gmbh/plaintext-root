@@ -29,8 +29,12 @@ public interface SecretBackend {
     void set(String name, String value, String note);
 
     /**
-     * INTERN — liest den Klartext-Wert eines Secrets. NUR für die Migration (Backend→Backend-Zügeln),
-     * NIE fürs UI. {@code null}, wenn nicht lesbar. Der one-way-Charakter des UI bleibt gewahrt.
+     * INTERN — liest den Klartext-Wert eines Secrets. NIE fürs UI; der one-way-Charakter der Anzeige
+     * bleibt gewahrt. {@code null}, wenn nicht lesbar.
+     *
+     * <p>Zulässige Verwender sind die Migration (Backend→Backend-Zügeln) und
+     * {@link SecretService#resolve(String)}, über das technische Verbraucher ein gepflegtes Secret zur
+     * Laufzeit beziehen.
      */
     String readValue(String name);
 }
