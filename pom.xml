@@ -465,7 +465,8 @@
     </distributionManagement>
 
     <build>
-        <plugins>
+        <pluginManagement>
+            <plugins>
             <!--
               Karte 365 (fuer plaintext-app in 358 bereits so geloest): sonar-maven-plugin explizit
               deklariert, ohne Execution — es laeuft nur, wenn die Pipeline `sonar:sonar` aufruft.
@@ -481,9 +482,6 @@
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>${sonar-maven-plugin.version}</version>
             </plugin>
-        </plugins>
-        <pluginManagement>
-            <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
