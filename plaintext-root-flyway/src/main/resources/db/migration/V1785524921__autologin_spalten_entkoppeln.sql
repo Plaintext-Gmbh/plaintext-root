@@ -1,13 +1,14 @@
 -- Karte 30 — Rueckbau von /autologin?key=, Schritt 1 von 2 (Postgres).
 --
--- Diese Migration entfernt NICHTS. Sie loest nur die Kopplung, damit der neue Code (ohne die
--- Felder MyUserEntity.autologinKey und SetupConfig.autologinEnabled) und eine noch laufende alte
--- Instanz GLEICHZEITIG arbeiten koennen:
---   * alte Instanz liest die Spalten weiter  -> darf also noch nicht gedroppt werden
---   * neue Instanz schreibt sie nicht mehr   -> braucht Default bzw. NULL-Erlaubnis beim INSERT
+-- Diese Migration entfernt NICHTS. Sie stellt nur sicher, dass neuer Code (kennt die Spalten
+-- nicht mehr) und eine noch laufende alte Instanz (liest sie noch) im Deploy-Fenster
+-- nebeneinander arbeiten koennen: die Spalten muessen NULL-bar sein bzw. einen Default haben,
+-- sonst scheitert ein INSERT der neuen Version.
 --
--- Der eigentliche DROP folgt in einer zweiten Migration, NACHDEM der neue Code ueberall
--- ausgerollt ist.
+-- Nach heutigem Stand der Basis-DDL ist beides bereits erfuellt
+-- (MY_USER_ENTITY.AUTOLOGIN_KEY ist nullable, SETUP_CONFIG.AUTOLOGIN_ENABLED hat DEFAULT FALSE) —
+-- die Migration ist dort ein bewusster No-Op. Sie steht hier, damit die Bedingung auch auf
+-- abweichend gewachsenen Instanzen nachweislich gilt, bevor Schritt 2 die Spalten droppt.
 
 DO $$
 BEGIN
