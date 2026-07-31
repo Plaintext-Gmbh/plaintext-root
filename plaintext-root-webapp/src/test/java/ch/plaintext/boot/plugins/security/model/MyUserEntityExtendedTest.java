@@ -113,7 +113,6 @@ class MyUserEntityExtendedTest {
         MyUserEntity entity = new MyUserEntity();
         assertEquals("", entity.getPassword());
         assertEquals("", entity.getStartpage());
-        assertEquals("", entity.getAutologinKey());
         assertNotNull(entity.getRoles());
         assertTrue(entity.getRoles().isEmpty());
     }
@@ -156,12 +155,10 @@ class MyUserEntityExtendedTest {
         entity.setUsername("test@test.com");
         entity.setPassword("secret");
         entity.setStartpage("dashboard.html");
-        entity.setAutologinKey("key123");
 
         assertEquals(42L, entity.getId());
         assertEquals("test@test.com", entity.getUsername());
         assertEquals("secret", entity.getPassword());
         assertEquals("dashboard.html", entity.getStartpage());
-        assertEquals("key123", entity.getAutologinKey());
     }
 }

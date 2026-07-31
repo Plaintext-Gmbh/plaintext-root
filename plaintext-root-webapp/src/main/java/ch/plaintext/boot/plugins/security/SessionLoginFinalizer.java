@@ -71,7 +71,7 @@ public class SessionLoginFinalizer {
      * <p>Der Handler schreibt den Redirect selbst; der aufrufende Controller gibt danach {@code null}
      * zurueck (die Response ist dann bereits committed).</p>
      *
-     * @param userDetails geprueftes Benutzerprofil (Herkunft: Autologin-Key bzw. ApiToken)
+     * @param userDetails geprueftes Benutzerprofil (Herkunft: Form-Login bzw. ApiToken)
      * @param authorities Authorities, die die Session bekommen soll — als eigener Parameter, damit ein
      *                    Aufrufer sie kuenftig einschraenken kann, ohne die Session-Logik zu duplizieren
      * @param quelle      Kurzbezeichnung des Login-Wegs fuers Logging

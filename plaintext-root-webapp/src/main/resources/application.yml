@@ -103,9 +103,6 @@ springdoc:
   show-actuator: false
   default-produces-media-type: application/json
 
-mad:
-  autologin: true
-
 plaintext:
   version: '@project.version@'
   stage: ${PLAINTEXT_ENV:dev}

@@ -21,9 +21,6 @@
                             <h:outputText value="#{i18n.t('Root-Benutzer aktivieren')}:" style="font-weight:bold;"/>
                             <p:toggleSwitch id="rootUserEnabled" value="#{setupBackingBean.rootUserEnabled}"/>
 
-                            <h:outputText value="#{i18n.t('Auto-Login Link aktivieren')}:" style="font-weight:bold;"/>
-                            <p:toggleSwitch id="autologinEnabled" value="#{setupBackingBean.autologinEnabled}"/>
-
                             <h:outputText value="#{i18n.t('Passwort-Verwaltung aktivieren')}:" style="font-weight:bold;"/>
                             <p:toggleSwitch id="passwordManagementEnabled" value="#{setupBackingBean.passwordManagementEnabled}"/>
 
@@ -67,7 +64,7 @@
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveLoginSettings()}"
                                          update="messages"
-                                         process="rootUserEnabled autologinEnabled passwordManagementEnabled totpEnabled oidcAutoRedirectEnabled oidcAutoRedirectConfigId selfRegistrationEnabled passwordResetLinkEnabled magicLinkEnabled systemMailAccountId @this"
+                                         process="rootUserEnabled passwordManagementEnabled totpEnabled oidcAutoRedirectEnabled oidcAutoRedirectConfigId selfRegistrationEnabled passwordResetLinkEnabled magicLinkEnabled systemMailAccountId @this"
                                          style="margin-top:10px;"/>
 
                         <div style="margin-top:15px;">

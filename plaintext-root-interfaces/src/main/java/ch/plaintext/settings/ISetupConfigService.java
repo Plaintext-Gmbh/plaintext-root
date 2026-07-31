@@ -5,7 +5,6 @@ package ch.plaintext.settings;
 
 public interface ISetupConfigService {
 
-    boolean isAutologinEnabled(String mandat);
 
     boolean isOidcAutoRedirectEnabled(String mandat);
 

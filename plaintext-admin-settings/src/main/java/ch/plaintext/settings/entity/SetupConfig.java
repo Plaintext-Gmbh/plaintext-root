@@ -26,9 +26,6 @@ public class SetupConfig {
     @Column(nullable = false, length = 100)
     private String mandat;
 
-    @Column(name = "AUTOLOGIN_ENABLED", nullable = false)
-    private boolean autologinEnabled = false;
-
     @Column(name = "OIDC_AUTO_REDIRECT_ENABLED", nullable = false)
     private boolean oidcAutoRedirectEnabled = false;
 

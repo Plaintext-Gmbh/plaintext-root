@@ -61,12 +61,11 @@ public class PlaintextSecurityConfig {
     // haengen das Token bereits an (params.append('_csrf', ...)) — der Fix ist deshalb rein
     // konfigurativ und bricht keinen produktiven Flow.
     private static final List<String> DEFAULT_CSRF_IGNORE = List.of(
-            "/autologin", "/token-login", "/nosec/**"
+            "/token-login", "/nosec/**"
     );
 
     // Framework-Defaults: Ohne Authentication erreichbar
     private static final List<String> DEFAULT_PERMIT_ALL = List.of(
-            "/autologin", "/autologin/**",
             "/token-login", "/token-login/**",
             "/login.xhtml", "/login.html", "/jakarta.faces.resource/**",
             "/actuator/health",

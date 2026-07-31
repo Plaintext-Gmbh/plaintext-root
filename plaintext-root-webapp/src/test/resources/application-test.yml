@@ -24,9 +24,6 @@ spring:
 server:
   port: 0
 
-mad:
-  autologin: false
-
 logging:
   level:
     root: WARN

@@ -85,18 +85,4 @@ class RepositoryIT {
         assertEquals("testmandat", found.getMandat());
     }
 
-    @Test
-    void autologinKeyLookupWorks() {
-        MyUserEntity user = new MyUserEntity();
-        user.setUsername("autouser");
-        user.setPassword("$2a$10$dummyhash");
-        user.setAutologinKey("secret-key-123");
-        user.addRole("ROLE_USER");
-
-        userRepository.save(user);
-
-        MyUserEntity found = userRepository.findByAutologinKey("secret-key-123");
-        assertNotNull(found);
-        assertEquals("autouser", found.getUsername());
-    }
 }

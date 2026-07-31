@@ -49,8 +49,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
-                "spring.docker.compose.enabled=false",
-                "mad.autologin=false"
+                "spring.docker.compose.enabled=false"
         }
 )
 @Testcontainers
