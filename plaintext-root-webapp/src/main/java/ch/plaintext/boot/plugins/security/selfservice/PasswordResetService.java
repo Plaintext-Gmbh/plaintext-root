@@ -51,6 +51,12 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final SelfServiceProperties properties;
     private final IMailTemplateProvider mailTemplateProvider;
+    /**
+     * SECURITY (Karte 314, Punkt 9): Registry der aktiven HTTP-Sessions. Als
+     * {@link ObjectProvider}, weil das Modul plaintext-admin-sessions optional ist — fehlt es,
+     * bleibt der Reset funktionsfaehig und nur die Session-Invalidierung entfaellt.
+     */
+    private final ObjectProvider<ch.plaintext.sessions.service.HttpSessionRegistry> sessionRegistryProvider;
 
     @Transactional
     public ResetOutcome startReset(String username, String mandat, String publicBaseUrl) {
@@ -113,6 +119,20 @@ public class PasswordResetService {
         // Remember-Me-Cookie nicht ueber den Reset hinweg weiterlebt. (HTTP-Sessions sind kurzlebig
         // und ohne Session-Registry nicht enumerierbar; der persistente Vektor ist Remember-Me.)
         rememberMeRepository.deleteAllByUsername(token.getUsername());
+
+        // SECURITY (Karte 314, Punkt 9): zusaetzlich die noch AKTIVEN HTTP-Sessions beenden.
+        // Bisher wurden nur die persistenten Remember-Me-Tokens geloescht — wer bereits eine
+        // offene Session auf dem Konto hatte (genau der Fall, in dem ein Betroffener sein
+        // Passwort zuruecksetzt), behielt seinen Zugriff bis zum Session-Timeout und der Reset
+        // war als Wiederherstellungsmassnahme wirkungslos.
+        ch.plaintext.sessions.service.HttpSessionRegistry sessionRegistry =
+                sessionRegistryProvider.getIfAvailable();
+        if (sessionRegistry != null) {
+            sessionRegistry.invalidateSessionsOfUser(token.getUsername());
+        } else {
+            log.warn("Session-Registry nicht verfuegbar — aktive Sessions von '{}' konnten nach dem "
+                    + "Passwort-Reset nicht invalidiert werden.", token.getUsername());
+        }
 
         log.info("Password reset completed for {} on mandat={}", token.getUsername(), token.getMandat());
         return ResetResult.success(token.getUsername());

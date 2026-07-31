@@ -27,8 +27,17 @@ public class BrandingService {
     private static final String KEY_I18N_ENABLED = "branding.i18n.enabled";
     private static final String KEY_I18N_ENABLED_OLD = "i18n.enabled";
 
+    /**
+     * SECURITY (Karte 314, Punkt 14): {@code image/svg+xml} ist NICHT mehr erlaubt.
+     *
+     * <p>Ein SVG ist ein XML-Dokument und darf {@code <script>} sowie Event-Handler enthalten.
+     * Das Logo wurde ueber {@code GET /api/branding/logo} same-origin und mit genau dem
+     * gespeicherten Content-Type ausgeliefert — ein hochgeladenes SVG war damit gespeichertes
+     * XSS im Anwendungs-Origin. Ein Sanitizer (jsoup o.ae.) waere die aufwendigere Alternative;
+     * fuer ein Logo genuegen die Rasterformate, deshalb faellt SVG ersatzlos weg.</p>
+     */
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/png", "image/svg+xml", "image/webp", "image/jpeg"
+            "image/png", "image/webp", "image/jpeg"
     );
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
 
@@ -54,10 +63,18 @@ public class BrandingService {
                          Integer width, Integer height) {
         if (!ALLOWED_CONTENT_TYPES.contains(contentType)) {
             throw new IllegalArgumentException("Ungültiges Bildformat: " + contentType
-                    + ". Erlaubt: PNG, SVG, WEBP, JPEG");
+                    + ". Erlaubt: PNG, WEBP, JPEG");
         }
         if (imageData.length > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("Datei zu gross (max. 2 MB)");
+        }
+        // SECURITY (Karte 314, Punkt 14): der Content-Type kommt vom Client und ist frei
+        // waehlbar. Ohne Inhaltspruefung liesse sich ein SVG (oder HTML) als "image/png"
+        // deklariert hochladen und spaeter same-origin ausliefern. Deshalb zusaetzlich die
+        // Magic Bytes gegen den behaupteten Typ pruefen.
+        if (!matchesMagicBytes(contentType, imageData)) {
+            throw new IllegalArgumentException("Dateiinhalt passt nicht zum Bildformat " + contentType
+                    + ". Erlaubt: PNG, WEBP, JPEG");
         }
 
         BrandingLogo logo = logoRepository.findByMandatAndTheme(mandat, theme)
@@ -150,5 +167,43 @@ public class BrandingService {
 
     public boolean hasLogo(String mandat, String theme) {
         return logoRepository.findByMandatAndTheme(mandat, theme).isPresent();
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 14): prueft den tatsaechlichen Dateiinhalt (Magic Bytes) gegen
+     * den vom Client behaupteten Content-Type.
+     *
+     * @param contentType der behauptete Content-Type
+     * @param data        die hochgeladenen Bytes
+     * @return {@code true}, wenn der Inhalt zum Typ passt
+     */
+    static boolean matchesMagicBytes(String contentType, byte[] data) {
+        if (data == null || data.length < 12) {
+            return false;
+        }
+        return switch (contentType) {
+            // 89 50 4E 47 0D 0A 1A 0A
+            case "image/png" -> (data[0] & 0xFF) == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G'
+                    && (data[4] & 0xFF) == 0x0D && (data[5] & 0xFF) == 0x0A
+                    && (data[6] & 0xFF) == 0x1A && (data[7] & 0xFF) == 0x0A;
+            // FF D8 FF
+            case "image/jpeg" -> (data[0] & 0xFF) == 0xFF && (data[1] & 0xFF) == 0xD8 && (data[2] & 0xFF) == 0xFF;
+            // "RIFF" .... "WEBP"
+            case "image/webp" -> data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F'
+                    && data[8] == 'W' && data[9] == 'E' && data[10] == 'B' && data[11] == 'P';
+            default -> false;
+        };
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 14): darf dieser gespeicherte Content-Type ausgeliefert werden?
+     * Deckt Alt-Bestand ab — vor diesem Fix hochgeladene SVG-Logos liegen weiterhin in der
+     * Datenbank und duerfen nicht mehr same-origin gerendert werden.
+     *
+     * @param contentType der gespeicherte Content-Type
+     * @return {@code true}, wenn die Auslieferung erlaubt ist
+     */
+    public static boolean isDeliverableContentType(String contentType) {
+        return contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType);
     }
 }

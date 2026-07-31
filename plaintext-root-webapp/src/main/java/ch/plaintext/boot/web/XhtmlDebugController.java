@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -21,6 +22,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * SECURITY (Karte 314, Punkt 5): Diagnose-Endpunkt, nur im dev-Profil registriert.
+ * Er legt absolute Dateisystempfade und JAR-Namen der laufenden Installation offen und war bis dahin fuer JEDEN
+ * eingeloggten Benutzer erreichbar. Zusaetzlich greift in der SecurityConfig
+ * {@code /debug/** -> hasRole("ROOT")}.
+ */
+@Profile("dev")
 @Controller
 @Slf4j
 public class XhtmlDebugController {

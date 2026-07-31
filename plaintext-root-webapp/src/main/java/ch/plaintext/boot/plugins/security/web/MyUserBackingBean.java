@@ -20,7 +20,6 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -44,7 +43,14 @@ public class MyUserBackingBean implements Serializable {
             "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
     );
 
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    /**
+     * SECURITY (Karte 314, Punkt 7): zentrale {@link PasswordEncoder}-Bean statt eines lokalen
+     * {@code new BCryptPasswordEncoder()}. Der lokale Aufruf haette den Spring-Default-Kostenfaktor
+     * 10 behalten, waehrend die Bean in {@code PlaintextSecurityConfig} auf 12 steht — die
+     * Kostenfaktoren waeren also je nach Codepfad auseinandergedriftet.
+     */
+    @Autowired
+    private transient PasswordEncoder passwordEncoder;
     private boolean remlistcolapsed = false;
     private MyUserEntity selected;
     private String myUserPw;

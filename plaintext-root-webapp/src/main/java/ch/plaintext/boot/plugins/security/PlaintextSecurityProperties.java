@@ -64,6 +64,23 @@ public class PlaintextSecurityProperties {
     private boolean rememberMeOnOauth = true;
 
     /**
+     * SECURITY (Karte 314, Punkt 13): Gueltigkeitsdauer des persistenten Remember-Me-Cookies.
+     * Vorher hart auf 14 Tage verdrahtet. Weil {@link #rememberMeOnOauth} in dieser Installation
+     * {@code true} ist und damit JEDER Login — auch der Form-Login ohne Haekchen — einen
+     * persistenten Cookie erhaelt, ist eine kuerzere Standardgueltigkeit die risikoaermere
+     * Voreinstellung. Ueber {@code plaintext.security.remember-me-validity} anpassbar.
+     */
+    private java.time.Duration rememberMeValidity = java.time.Duration.ofDays(7);
+
+    /**
+     * SECURITY (Karte 314, Punkt 12): verlangt beim ERSTMALIGEN Verlinken eines bestehenden
+     * lokalen Kontos mit einem OIDC-Subject den Claim {@code email_verified=true}. Fail-closed
+     * (Default {@code true}); nur abschalten, wenn der eingesetzte IdP den Claim nachweislich
+     * nicht liefert. Bereits verlinkte Konten und Auto-Create sind nicht betroffen.
+     */
+    private boolean oidcRequireVerifiedEmail = true;
+
+    /**
      * TOTP / Zwei-Faktor-Authentifizierung (nur fuer lokale Passwort-User).
      * Additive Sub-Konfiguration; Default-OFF (siehe {@link TotpProperties}).
      */

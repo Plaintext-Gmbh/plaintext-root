@@ -7,6 +7,7 @@ import ch.plaintext.menuesteuerung.model.MandateMenuConfig;
 import ch.plaintext.menuesteuerung.persistence.MandateMenuConfigRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -14,6 +15,13 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * SECURITY (Karte 314, Punkt 5): Diagnose-Endpunkt, nur im dev-Profil registriert.
+ * Er legt die Menuekonfiguration ALLER Mandanten (repository.findAll()) offen und war bis dahin fuer JEDEN
+ * eingeloggten Benutzer erreichbar. Zusaetzlich greift in der SecurityConfig
+ * {@code /debug/** -> hasRole("ROOT")}.
+ */
+@Profile("dev")
 @Controller
 @Slf4j
 public class MandateMenuDebugController {

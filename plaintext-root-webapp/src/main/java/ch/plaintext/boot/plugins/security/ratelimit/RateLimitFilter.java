@@ -40,6 +40,8 @@ public class RateLimitFilter implements Filter {
     private final RateLimiter loginLimiter;
     private final RateLimiter claudeLimiter;
     private final RateLimiter nosecTokenLimiter;
+    /** SECURITY (Karte 314, Punkt 16): Auffang-Limit fuer alle uebrigen /nosec/-Pfade. */
+    private final RateLimiter nosecPublicLimiter;
     private final ClientIpResolver clientIpResolver;
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -52,6 +54,8 @@ public class RateLimitFilter implements Filter {
             @Value("${plaintext.rate-limit.claude.window-seconds:60}") int claudeWindowSeconds,
             @Value("${plaintext.rate-limit.nosec-token.max-requests:20}") int nosecTokenMaxRequests,
             @Value("${plaintext.rate-limit.nosec-token.window-seconds:60}") int nosecTokenWindowSeconds,
+            @Value("${plaintext.rate-limit.nosec-public.max-requests:60}") int nosecPublicMaxRequests,
+            @Value("${plaintext.rate-limit.nosec-public.window-seconds:60}") int nosecPublicWindowSeconds,
             @Value("${plaintext.rate-limit.trusted-proxies:" + ClientIpResolver.DEFAULT_TRUSTED_PROXIES + "}")
             String trustedProxies,
             @Value("${plaintext.rate-limit.max-buckets:" + RateLimiter.DEFAULT_MAX_BUCKETS + "}") int maxBuckets) {
@@ -59,12 +63,13 @@ public class RateLimitFilter implements Filter {
         this.loginLimiter = new RateLimiter(loginMaxRequests, loginWindowSeconds * 1000L, maxBuckets);
         this.claudeLimiter = new RateLimiter(claudeMaxRequests, claudeWindowSeconds * 1000L, maxBuckets);
         this.nosecTokenLimiter = new RateLimiter(nosecTokenMaxRequests, nosecTokenWindowSeconds * 1000L, maxBuckets);
+        this.nosecPublicLimiter = new RateLimiter(nosecPublicMaxRequests, nosecPublicWindowSeconds * 1000L, maxBuckets);
         this.clientIpResolver = new ClientIpResolver(trustedProxies);
         log.info("Rate limiting enabled: API={} req/{}s, Login={} req/{}s, Claude-Automation={} req/{}s, "
-                        + "Nosec-Token={} req/{}s, max-buckets={}, trusted-proxies={}",
+                        + "Nosec-Token={} req/{}s, Nosec-Public={} req/{}s, max-buckets={}, trusted-proxies={}",
                 apiMaxRequests, apiWindowSeconds, loginMaxRequests, loginWindowSeconds,
                 claudeMaxRequests, claudeWindowSeconds, nosecTokenMaxRequests, nosecTokenWindowSeconds,
-                maxBuckets, trustedProxies);
+                nosecPublicMaxRequests, nosecPublicWindowSeconds, maxBuckets, trustedProxies);
     }
 
     /** Bequemer Konstruktor fuer Tests: Default-Trusted-Proxies und Default-Bucket-Deckel. */
@@ -74,6 +79,18 @@ public class RateLimitFilter implements Filter {
                     int nosecTokenMaxRequests, int nosecTokenWindowSeconds) {
         this(apiMaxRequests, apiWindowSeconds, loginMaxRequests, loginWindowSeconds,
                 claudeMaxRequests, claudeWindowSeconds, nosecTokenMaxRequests, nosecTokenWindowSeconds,
+                60, 60);
+    }
+
+    /** Bequemer Konstruktor fuer Tests inkl. des generischen /nosec-Limits (Karte 314, Punkt 16). */
+    RateLimitFilter(int apiMaxRequests, int apiWindowSeconds,
+                    int loginMaxRequests, int loginWindowSeconds,
+                    int claudeMaxRequests, int claudeWindowSeconds,
+                    int nosecTokenMaxRequests, int nosecTokenWindowSeconds,
+                    int nosecPublicMaxRequests, int nosecPublicWindowSeconds) {
+        this(apiMaxRequests, apiWindowSeconds, loginMaxRequests, loginWindowSeconds,
+                claudeMaxRequests, claudeWindowSeconds, nosecTokenMaxRequests, nosecTokenWindowSeconds,
+                nosecPublicMaxRequests, nosecPublicWindowSeconds,
                 ClientIpResolver.DEFAULT_TRUSTED_PROXIES, RateLimiter.DEFAULT_MAX_BUCKETS);
     }
 
@@ -109,14 +126,44 @@ public class RateLimitFilter implements Filter {
             }
         }
 
-        // Haertung: weitere tokenbasierte /nosec-Endpunkte ohne Login (z.B. schuetu
-        // /nosec/schiri-mobile/** -- QR-Code-Token auf gedrucktem Schirizettel, kein Account/Login
-        // moeglich). Ohne Limit koennte eine IP den Token unbegrenzt durchprobieren.
         if (path.startsWith("/nosec/schiri-mobile")) {
             String clientIp = getClientIp(request);
             if (!nosecTokenLimiter.tryConsume(clientIp)) {
                 log.warn("Rate limit exceeded for nosec-token endpoint {} from IP: {}", path, clientIp);
                 rejectJson(response);
+                return;
+            }
+        } else if (path.startsWith("/nosec/") && !path.startsWith("/nosec/api/claude")) {
+            // SECURITY (Karte 314, Punkt 16): generischer Auffangzweig fuer ALLE uebrigen
+            // /nosec/-Pfade. Bisher waren nur /nosec/api/claude und /nosec/schiri-mobile
+            // namentlich abgedeckt; /nosec/wiki und /nosec/challenge (plaintext-app) hatten
+            // trotz gegenteiliger Zusage in ihren Controller-Javadocs KEIN Limit. Weil
+            // /nosec/** permitAll ist, muss der Default fail-closed sein: neue /nosec-Endpunkte
+            // einer konsumierenden App sind ab sofort automatisch limitiert, statt bis zum
+            // naechsten Audit unbemerkt offen zu stehen.
+            //
+            // Bewusst ein EIGENER, grosszuegigerer Limiter statt des strengen Token-Limits:
+            // hinter /nosec/wiki stehen oeffentlich lesbare Seiten, die mehrere Besucher
+            // hinter derselben NAT-Adresse abrufen koennen. Das strenge Limit gilt weiterhin
+            // fuer die tokenratenden Pfade oben.
+            String clientIp = getClientIp(request);
+            if (!nosecPublicLimiter.tryConsume(clientIp)) {
+                log.warn("Rate limit exceeded for public nosec endpoint {} from IP: {}", path, clientIp);
+                rejectJson(response);
+                return;
+            }
+        }
+
+        // SECURITY (Karte 314, Punkt 10): /password-reset und /register sind permitAll und
+        // versenden beide Mails an eine vom Aufrufer gewaehlte Adresse. Ohne Limit laesst sich
+        // darueber sowohl der Mailversand als Spam-Relais missbrauchen als auch die
+        // Existenz von Konten durchprobieren. Sie laufen auf dem Login-Limiter, weil sie
+        // demselben Missbrauchsmuster folgen (Anmelde-/Kontooperationen pro IP).
+        if (("POST".equalsIgnoreCase(request.getMethod()))
+                && (path.startsWith("/password-reset") || path.startsWith("/register"))) {
+            String clientIp = getClientIp(request);
+            if (!loginLimiter.tryConsume(clientIp)) {
+                rejectLogin(response, path, clientIp);
                 return;
             }
         }
@@ -222,5 +269,6 @@ public class RateLimitFilter implements Filter {
         loginLimiter.cleanup();
         claudeLimiter.cleanup();
         nosecTokenLimiter.cleanup();
+        nosecPublicLimiter.cleanup();
     }
 }

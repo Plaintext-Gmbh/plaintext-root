@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -17,6 +18,13 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * SECURITY (Karte 314, Punkt 5): Diagnose-Endpunkt, nur im dev-Profil registriert.
+ * Er legt die vollstaendige Seiten-/Rollenmatrix der Anwendung offen und war bis dahin fuer JEDEN
+ * eingeloggten Benutzer erreichbar. Zusaetzlich greift in der SecurityConfig
+ * {@code /debug/** -> hasRole("ROOT")}.
+ */
+@Profile("dev")
 @Controller
 @Slf4j
 public class MenuDebugController {

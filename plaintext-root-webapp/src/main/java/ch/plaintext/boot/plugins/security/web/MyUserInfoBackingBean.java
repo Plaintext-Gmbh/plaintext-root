@@ -19,7 +19,6 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -46,7 +45,13 @@ public class MyUserInfoBackingBean implements Serializable {
     private final transient PlaintextSecurityProperties securityProperties;
     private final transient MagicLinkService magicLinkService;
 
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    /**
+     * SECURITY (Karte 314, Punkt 7): zentrale {@link PasswordEncoder}-Bean statt eines lokalen
+     * {@code new BCryptPasswordEncoder()}. Der lokale Aufruf haette den Spring-Default-Kostenfaktor
+     * 10 behalten, waehrend die Bean in {@code PlaintextSecurityConfig} auf 12 steht — die
+     * Kostenfaktoren waeren also je nach Codepfad auseinandergedriftet.
+     */
+    private final transient PasswordEncoder passwordEncoder;
 
     // Advanced mode flag (activated via Ctrl+Shift+D)
     private boolean advancedMode = false;

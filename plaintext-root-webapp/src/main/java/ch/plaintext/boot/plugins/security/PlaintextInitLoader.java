@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -29,11 +28,19 @@ public class PlaintextInitLoader {
 
     private final MyUserRepository userRepository;
     private final ISetupConfigService setupConfigService;
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    /**
+     * SECURITY (Karte 314, Punkt 7): zentrale {@link PasswordEncoder}-Bean statt eines lokalen
+     * {@code new BCryptPasswordEncoder()}. Der lokale Aufruf haette den Spring-Default-Kostenfaktor
+     * 10 behalten, waehrend die Bean in {@code PlaintextSecurityConfig} auf 12 steht — die
+     * Kostenfaktoren waeren also je nach Codepfad auseinandergedriftet.
+     */
+    private final PasswordEncoder passwordEncoder;
 
-    public PlaintextInitLoader(MyUserRepository userRepository, ISetupConfigService setupConfigService) {
+    public PlaintextInitLoader(MyUserRepository userRepository, ISetupConfigService setupConfigService,
+                               PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.setupConfigService = setupConfigService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Async

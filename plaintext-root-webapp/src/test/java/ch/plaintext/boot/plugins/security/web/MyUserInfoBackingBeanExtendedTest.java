@@ -65,6 +65,14 @@ class MyUserInfoBackingBeanExtendedTest {
     @Mock
     private MagicLinkService magicLinkService;
 
+    /**
+     * SECURITY (Karte 314, Punkt 7): der PasswordEncoder wird jetzt injiziert (zentrale Bean mit
+     * Kostenfaktor 12) statt lokal instanziiert. Als @Spy, damit die Tests weiterhin gegen echtes
+     * BCrypt pruefen koennen.
+     */
+    @org.mockito.Spy
+    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     @InjectMocks
     private MyUserInfoBackingBean bean;
 
