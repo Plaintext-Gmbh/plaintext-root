@@ -54,9 +54,14 @@ public class PlaintextSecurityConfig {
     // State-Management und KEIN CSRF-Schutz. Jedes <h:form> muss deshalb das Token als
     // <input type="hidden" name="_csrf" value="#{_csrf.token}"/> einbetten (Konvention, siehe
     // CsrfFormInvariantTest). PrimeFaces serialisiert das Hidden-Feld auch bei AJAX-Submits mit.
+    // SECURITY (Karte 314, Punkt 4): /api/preferences/** ist NICHT mehr CSRF-befreit. Die
+    // Endpunkte sind session-authentifiziert; ohne CSRF-Schutz konnte eine fremde Seite per
+    // Formular-POST die Theme-/Farbeinstellungen des eingeloggten Benutzers ueberschreiben.
+    // Die einzigen Aufrufer sind die vier fetch()-Aufrufe in includes/config.xhtml, und die
+    // haengen das Token bereits an (params.append('_csrf', ...)) — der Fix ist deshalb rein
+    // konfigurativ und bricht keinen produktiven Flow.
     private static final List<String> DEFAULT_CSRF_IGNORE = List.of(
-            "/autologin", "/token-login", "/nosec/**",
-            "/api/preferences/**"
+            "/autologin", "/token-login", "/nosec/**"
     );
 
     // Framework-Defaults: Ohne Authentication erreichbar
@@ -144,7 +149,8 @@ public class PlaintextSecurityConfig {
                                    JdbcClientRegistrationRepository clientRegistrationRepository,
                                    PlaintextOidcUserService oidcUserService,
                                    HashedOneTimeTokenService hashedOneTimeTokenService,
-                                   MagicLinkGenerationSuccessHandler magicLinkGenerationSuccessHandler) {
+                                   MagicLinkGenerationSuccessHandler magicLinkGenerationSuccessHandler,
+                                   org.springframework.core.env.Environment environment) {
         this.tokenRepository = tokenRepository;
         this.userDetail = detail;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
@@ -153,12 +159,43 @@ public class PlaintextSecurityConfig {
         this.oidcUserService = oidcUserService;
         this.hashedOneTimeTokenService = hashedOneTimeTokenService;
         this.magicLinkGenerationSuccessHandler = magicLinkGenerationSuccessHandler;
-        this.rememberMeSigningKey = resolveRememberMeKey(securityProperties.getRememberMeKey());
+        this.rememberMeSigningKey = resolveRememberMeKey(securityProperties.getRememberMeKey(),
+                isProduction(environment));
     }
 
-    private static String resolveRememberMeKey(String configured) {
+    /**
+     * SECURITY (Karte 314, Punkt 13): erkennt die Produktivumgebung am aktiven Spring-Profil
+     * {@code prod} (so setzt es das Dockerfile per {@code SPRING_PROFILES_ACTIVE}).
+     */
+    static boolean isProduction(org.springframework.core.env.Environment environment) {
+        if (environment == null) {
+            return false;
+        }
+        for (String profile : environment.getActiveProfiles()) {
+            if ("prod".equalsIgnoreCase(profile)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 13): der Signierschluessel des Remember-Me-Cookies ist in PROD
+     * Pflicht. Bisher wurde bei fehlendem Schluessel nur eine WARN geloggt und ein fluechtiger
+     * Zufallsschluessel erzeugt — funktional unauffaellig (die Cookies verfielen bei jedem
+     * Neustart), aber genau deshalb faellt ein versehentlich fehlender Schluessel im Betrieb nie
+     * auf. In dev/test bleibt der Zufallsschluessel erhalten, damit ein lokaler Start weiterhin
+     * ohne Env-Setup funktioniert.
+     */
+    private static String resolveRememberMeKey(String configured, boolean production) {
         if (configured != null && !configured.isBlank()) {
             return configured;
+        }
+        if (production) {
+            throw new IllegalStateException(
+                    "plaintext.security.remember-me-key (Env PLAINTEXT_SECURITY_REMEMBER_ME_KEY) ist in "
+                            + "PROD Pflicht. Ohne stabilen Schluessel werden alle Remember-Me-Cookies bei "
+                            + "jedem Neustart ungueltig.");
         }
         byte[] random = new byte[32];
         new SecureRandom().nextBytes(random);
@@ -208,9 +245,23 @@ public class PlaintextSecurityConfig {
                     headers.referrerPolicy(ref -> ref.policy(
                             org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
                     headers.permissionsPolicy(pp -> pp.policy("camera=(), microphone=(), geolocation=(), payment=()"));
+                    // SECURITY (Karte 314, Punkt 2): HSTS explizit statt implizitem Spring-Default.
+                    // Spring schreibt den Header nur auf als sicher erkannten Requests; hinter dem
+                    // Reverse-Proxy haengt das an forward-headers-strategy=FRAMEWORK (oben gesetzt).
+                    // preload bleibt bewusst aus: ein Preload-Eintrag ist praktisch nicht mehr
+                    // ruecknehmbar und wuerde ALLE Subdomains dauerhaft auf HTTPS zwingen.
+                    headers.httpStrictTransportSecurity(hsts -> hsts
+                            .includeSubDomains(true)
+                            .preload(false)
+                            .maxAgeInSeconds(31536000L)); // 1 Jahr
                     headers.contentSecurityPolicy(csp -> csp
                             .policyDirectives("default-src 'self'; " +
-                                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; " +
+                                    // SECURITY (Karte 314, Punkt 3): 'unsafe-eval' entfernt. Weder eigener
+                                    // JS-Code noch PrimeFaces 15 brauchen es (im Repo kein eval()/new Function()).
+                                    // 'unsafe-inline' bleibt vorerst: JSF/PrimeFaces rendert Inline-Handler und
+                                    // Inline-<script>-Bloecke; die Ablösung per Nonce ist ein eigener Umbau
+                                    // (siehe PR-Beschreibung, bewusst zurueckgestellt).
+                                    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; " +
                                     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; " +
                                     "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org https://server.arcgisonline.com https://raw.githubusercontent.com https://wmts.geo.admin.ch https://unpkg.com; " +
                                     "font-src 'self' data:; " +
@@ -218,7 +269,12 @@ public class PlaintextSecurityConfig {
                                     "worker-src 'self' blob:; " +
                                     "frame-ancestors 'self'; " +
                                     "base-uri 'self'; " +
-                                    "form-action 'self' https://*.plaintext.ch"));
+                                    // SECURITY (Karte 314, Punkt 3): form-action auf 'self' reduziert.
+                                    // Im gesamten Repo existiert kein Formular mit absoluter action-URL
+                                    // auf eine andere Domain; der OIDC-Flow verlaesst die Anwendung per
+                                    // 302-Redirect (GET), nicht per Formular-POST, und ist von
+                                    // form-action daher nicht betroffen.
+                                    "form-action 'self'"));
                 })
                 .authorizeHttpRequests(authorize -> {
                     authorize
@@ -235,6 +291,16 @@ public class PlaintextSecurityConfig {
                             .requestMatchers("/api/i18n/**").hasAnyRole("ADMIN", "ROOT")
                             .requestMatchers("/api/branding/logo").authenticated()
                             .requestMatchers("/api/preferences/**").authenticated()
+                            // SECURITY (Karte 314, Punkt 5): die vier /debug/*-Endpoints lagen bisher
+                            // nur unter anyRequest().authenticated() — jeder eingeloggte USER sah
+                            // absolute Dateisystempfade und JAR-Namen (/debug/xhtml-resources), die
+                            // vollstaendige Seiten-/Rollenmatrix (/debug/menu-scan) und die
+                            // Menuekonfiguration ALLER Mandanten (/debug/mandate-menu-config).
+                            // Achtung: das bestehende ADMIN_PAGES-Pattern "/debug.*" trifft nur eine
+                            // View "debug.<ext>" und greift fuer diese Pfade NICHT.
+                            // Zusaetzlich sind die Controller selbst auf @Profile("dev") gesetzt, in
+                            // PROD existieren die Endpunkte also gar nicht mehr (Defense in Depth).
+                            .requestMatchers("/debug/**").hasRole("ROOT")
                             // SECURITY (Karte 308): Defense in Depth fuer die Admin-/ROOT-Seiten des
                             // Frameworks. Bisher war der EINZIGE Zugriffsschutz dieser Seiten die
                             // Menue-Sichtbarkeit (PageAccessGuardService) — und die war fail-open:
@@ -287,7 +353,8 @@ public class PlaintextSecurityConfig {
                 .rememberMe(rememberMe -> rememberMe
                         .rememberMeServices(rememberMeServices())
                         .tokenRepository(tokenRepository)
-                        .tokenValiditySeconds(1209600) // 2 weeks
+                        // SECURITY (Karte 314, Punkt 13): vorher hart 1209600s (2 Wochen).
+                        .tokenValiditySeconds((int) securityProperties.getRememberMeValidity().toSeconds())
                         .key(rememberMeSigningKey)
                 )
                 .oneTimeTokenLogin(ott -> ott
@@ -320,9 +387,19 @@ public class PlaintextSecurityConfig {
         return handler;
     }
 
+    /**
+     * SECURITY (Karte 314, Punkt 7): BCrypt-Kostenfaktor {@value #BCRYPT_STRENGTH} statt des
+     * Spring-Defaults 10. Der Default stammt aus 2010er-Hardware; 12 vervierfacht den Aufwand
+     * eines Offline-Angriffs auf einen erbeuteten Hash und kostet beim Login weiterhin nur
+     * einen Bruchteil einer Sekunde. BCrypt-Hashes tragen ihren Kostenfaktor im String
+     * ({@code $2a$10$...}), bestehende Passwoerter bleiben deshalb ohne Migration gueltig —
+     * sie werden lediglich erst beim naechsten Passwortwechsel auf 12 angehoben.
+     */
+    static final int BCRYPT_STRENGTH = 12;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(BCRYPT_STRENGTH);
     }
 
     @Bean

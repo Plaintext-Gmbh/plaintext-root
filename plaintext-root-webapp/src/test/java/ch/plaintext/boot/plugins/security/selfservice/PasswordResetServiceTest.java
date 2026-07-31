@@ -45,6 +45,13 @@ class PasswordResetServiceTest {
     private final IMailTemplateProvider mailTemplateProvider = new MailTemplateService(mock(MailTemplateRepository.class));
 
     private SelfServiceProperties properties;
+    /** SECURITY (Karte 314, Punkt 9): Registry zum Beenden aktiver Sessions nach dem Reset. */
+    @Mock
+    private ObjectProvider<ch.plaintext.sessions.service.HttpSessionRegistry> sessionRegistryProvider;
+
+    @Mock
+    private ch.plaintext.sessions.service.HttpSessionRegistry sessionRegistry;
+
     private PasswordResetService service;
 
     @BeforeEach
@@ -54,7 +61,8 @@ class PasswordResetServiceTest {
         properties.setDefaultMandat("default");
         service = new PasswordResetService(
                 tokenRepository, userRepository, rememberMeRepository, setupConfigService,
-                systemMailSenderProvider, passwordEncoder, properties, mailTemplateProvider);
+                systemMailSenderProvider, passwordEncoder, properties, mailTemplateProvider,
+                sessionRegistryProvider);
 
         when(systemMailSenderProvider.getIfAvailable()).thenReturn(systemMailSender);
         when(setupConfigService.getSystemMailAccountId()).thenReturn(1L);
@@ -127,6 +135,48 @@ class PasswordResetServiceTest {
         verify(tokenRepository).consumeToken(anyString(), any(Instant.class));
         verify(userRepository).save(user);
         // Remember-Me / PERSISTENT_LOGINS des Users muss invalidiert werden.
+        verify(rememberMeRepository).deleteAllByUsername("u@example.com");
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 9): der Reset muss auch die noch AKTIVEN HTTP-Sessions beenden.
+     * Vorher wurden nur die persistenten Remember-Me-Tokens geloescht — wer bereits eine offene
+     * Session hatte (genau der Fall, in dem jemand sein Passwort zuruecksetzt), behielt seinen
+     * Zugriff bis zum Session-Timeout.
+     */
+    @Test
+    void completeReset_invalidatesActiveSessions() {
+        PasswordResetToken token = newToken("u@example.com", "default", Duration.ofHours(1));
+        MyUserEntity user = new MyUserEntity();
+        user.setUsername("u@example.com");
+        when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(token));
+        when(tokenRepository.consumeToken(anyString(), any(Instant.class))).thenReturn(1);
+        when(userRepository.findByUsername("u@example.com")).thenReturn(user);
+        when(passwordEncoder.encode(anyString())).thenReturn("BCRYPT::x");
+        when(sessionRegistryProvider.getIfAvailable()).thenReturn(sessionRegistry);
+
+        assertTrue(service.completeReset("good", "new-strong-pw").ok());
+
+        verify(sessionRegistry).invalidateSessionsOfUser("u@example.com");
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 9): fehlt das optionale Sessions-Modul, muss der Reset trotzdem
+     * durchlaufen — ein fehlender Baustein darf den Wiederherstellungsweg nicht blockieren.
+     */
+    @Test
+    void completeReset_worksWithoutSessionRegistry() {
+        PasswordResetToken token = newToken("u@example.com", "default", Duration.ofHours(1));
+        MyUserEntity user = new MyUserEntity();
+        user.setUsername("u@example.com");
+        when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(token));
+        when(tokenRepository.consumeToken(anyString(), any(Instant.class))).thenReturn(1);
+        when(userRepository.findByUsername("u@example.com")).thenReturn(user);
+        when(passwordEncoder.encode(anyString())).thenReturn("BCRYPT::x");
+        when(sessionRegistryProvider.getIfAvailable()).thenReturn(null);
+
+        assertTrue(service.completeReset("good", "new-strong-pw").ok());
+
         verify(rememberMeRepository).deleteAllByUsername("u@example.com");
     }
 

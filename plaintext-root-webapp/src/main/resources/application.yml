@@ -45,8 +45,22 @@ server:
   forward-headers-strategy: FRAMEWORK
   servlet:
     session:
+      # SECURITY (Karte 314, Punkt 1): Session-Lebensdauer explizit statt implizitem
+      # Servlet-Default (30 min). Wert unveraendert 30 min -> kein Verhaltensbruch, aber
+      # jetzt sichtbar und pro Umgebung ueberschreibbar.
+      timeout: ${PLAINTEXT_SESSION_TIMEOUT:30m}
       cookie:
+        # same-site bleibt bewusst 'lax' und wird NICHT auf 'strict' gezogen: der
+        # OIDC-Ruecklaeufer (Keycloak -> /login/oauth2/code/*) ist eine cross-site
+        # Top-Level-Navigation. Unter 'strict' schickt der Browser JSESSIONID dabei nicht
+        # mit, die in der Session hinterlegte OAuth2-'state' waere weg und jeder
+        # SSO-Login schluege fehl. 'lax' deckt den relevanten CSRF-Fall (cross-site POST)
+        # bereits ab; POSTs sind zusaetzlich CSRF-token-geschuetzt.
         same-site: lax
+        http-only: true
+        # SECURITY (Karte 314, Punkt 1): Cookie nur ueber TLS. Default an; das dev-Profil
+        # unten schaltet es ab, damit der lokale http://localhost-Start weiter funktioniert.
+        secure: ${PLAINTEXT_COOKIE_SECURE:true}
 
 management:
   endpoints:
@@ -114,6 +128,11 @@ plaintext:
     # too — intended for this personal-admin use case). Set false for the legacy
     # opt-in behaviour.
     remember-me-on-oauth: ${PLAINTEXT_SECURITY_REMEMBER_ME_ON_OAUTH:true}
+    # SECURITY (Karte 314, Punkt 13): Gueltigkeit des persistenten Remember-Me-Cookies.
+    # Vorher hart 14 Tage im Code. Default jetzt 7 Tage und konfigurierbar; in Verbindung
+    # mit remember-me-on-oauth=true bekommt JEDER Login einen Cookie, deshalb ist die
+    # kuerzere Standardgueltigkeit die risikoaermere Voreinstellung.
+    remember-me-validity: ${PLAINTEXT_SECURITY_REMEMBER_ME_VALIDITY:7d}
     page-guard:
       # SECURITY (Karte 308): Seiten-Zugriffsschutz fail-closed fuer DIESE App.
       # Der Framework-Default in PlaintextSecurityProperties ist bewusst REPORT: jede
@@ -124,3 +143,17 @@ plaintext:
       # deshalb schon jetzt in STRICT: kein Menuetreffer -> verweigern, plus Vererbung der
       # Eltern-Rollen.
       mode: ${PLAINTEXT_SECURITY_PAGE_GUARD_MODE:STRICT}
+
+---
+# SECURITY (Karte 314, Punkt 1): dev laeuft ueber http://localhost — ein Secure-Cookie
+# wuerde dort gar nicht erst gesetzt und der Login schlaege fehl. Nur hier abschalten,
+# die Voreinstellung oben bleibt secure=true.
+spring:
+  config:
+    activate:
+      on-profile: dev
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false

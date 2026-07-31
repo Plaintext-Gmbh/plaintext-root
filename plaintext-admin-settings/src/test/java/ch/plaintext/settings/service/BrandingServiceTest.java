@@ -63,7 +63,7 @@ class BrandingServiceTest {
         when(logoRepository.findByMandatAndTheme("mandatA", "light")).thenReturn(Optional.empty());
         when(logoRepository.save(any(BrandingLogo.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        byte[] imageData = "PNG DATA".getBytes();
+        byte[] imageData = png();
         service.saveLogo("mandatA", "light", imageData, "image/png", "logo.png", 200, 50);
 
         ArgumentCaptor<BrandingLogo> captor = ArgumentCaptor.forClass(BrandingLogo.class);
@@ -87,8 +87,8 @@ class BrandingServiceTest {
         when(logoRepository.findByMandatAndTheme("mandatA", "dark")).thenReturn(Optional.of(existing));
         when(logoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        byte[] imageData = "NEW DATA".getBytes();
-        service.saveLogo("mandatA", "dark", imageData, "image/svg+xml", "new.svg", null, null);
+        byte[] imageData = jpeg();
+        service.saveLogo("mandatA", "dark", imageData, "image/jpeg", "new.jpg", null, null);
 
         ArgumentCaptor<BrandingLogo> captor = ArgumentCaptor.forClass(BrandingLogo.class);
         verify(logoRepository).save(captor.capture());
@@ -120,18 +120,50 @@ class BrandingServiceTest {
         when(logoRepository.findByMandatAndTheme(any(), any())).thenReturn(Optional.empty());
         when(logoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        byte[] data = "small".getBytes();
+        service.saveLogo("m", "light", png(), "image/png", "f.png", null, null);
+        service.saveLogo("m", "light", webp(), "image/webp", "f.webp", null, null);
+        service.saveLogo("m", "light", jpeg(), "image/jpeg", "f.jpg", null, null);
 
-        // PNG
-        service.saveLogo("m", "light", data, "image/png", "f.png", null, null);
-        // SVG
-        service.saveLogo("m", "light", data, "image/svg+xml", "f.svg", null, null);
-        // WEBP
-        service.saveLogo("m", "light", data, "image/webp", "f.webp", null, null);
-        // JPEG
-        service.saveLogo("m", "light", data, "image/jpeg", "f.jpg", null, null);
+        verify(logoRepository, times(3)).save(any());
+    }
 
-        verify(logoRepository, times(4)).save(any());
+    /**
+     * SECURITY (Karte 314, Punkt 14): SVG ist als Logo-Format nicht mehr zulaessig. Ein SVG ist
+     * ein XML-Dokument mit erlaubtem {@code <script>} und wurde same-origin mit gespeichertem
+     * Content-Type ausgeliefert — also gespeichertes XSS im Anwendungs-Origin.
+     */
+    @Test
+    void saveLogoRejectsSvg() {
+        byte[] svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>x()</script></svg>".getBytes();
+
+        assertThatThrownBy(() -> service.saveLogo("m", "light", svg, "image/svg+xml", "x.svg", null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ungültiges Bildformat");
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 14): der Content-Type ist client-kontrolliert. Ein als
+     * "image/png" deklariertes SVG darf nicht durchrutschen — sonst waere die Typ-Allowlist
+     * durch blosses Umdeklarieren umgehbar.
+     */
+    @Test
+    void saveLogoRejectsSvgDisguisedAsPng() {
+        byte[] svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>x()</script></svg>".getBytes();
+
+        assertThatThrownBy(() -> service.saveLogo("m", "light", svg, "image/png", "x.png", null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Dateiinhalt passt nicht");
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 14): bereits gespeicherte SVG-Logos (Alt-Bestand) duerfen nicht
+     * mehr ausgeliefert werden.
+     */
+    @Test
+    void svgIsNotDeliverable() {
+        assertThat(BrandingService.isDeliverableContentType("image/svg+xml")).isFalse();
+        assertThat(BrandingService.isDeliverableContentType("image/png")).isTrue();
+        assertThat(BrandingService.isDeliverableContentType(null)).isFalse();
     }
 
     // --- getLogoBytes ---
@@ -286,5 +318,31 @@ class BrandingServiceTest {
         service.updateLogoDimensions(logo);
 
         verify(logoRepository).save(logo);
+    }
+
+    // --- SECURITY (Karte 314, Punkt 14): Testdaten mit echten Magic Bytes ---------------------
+    // saveLogo prueft den Dateiinhalt gegen den behaupteten Content-Type. Die Tests muessen
+    // deshalb Bytes liefern, die wie das jeweilige Format aussehen.
+
+    private static byte[] png() {
+        byte[] b = new byte[32];
+        byte[] sig = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+        System.arraycopy(sig, 0, b, 0, sig.length);
+        return b;
+    }
+
+    private static byte[] jpeg() {
+        byte[] b = new byte[32];
+        b[0] = (byte) 0xFF;
+        b[1] = (byte) 0xD8;
+        b[2] = (byte) 0xFF;
+        return b;
+    }
+
+    private static byte[] webp() {
+        byte[] b = new byte[32];
+        byte[] sig = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P'};
+        System.arraycopy(sig, 0, b, 0, sig.length);
+        return b;
     }
 }

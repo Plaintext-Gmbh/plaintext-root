@@ -58,7 +58,8 @@ class PlaintextSecurityConfigTest2 {
         return new PlaintextSecurityConfig(
                 tokenRepository, userDetail, authenticationSuccessHandler,
                 securityProperties, clientRegistrationRepository, oidcUserService,
-                hashedOneTimeTokenService, magicLinkGenerationSuccessHandler);
+                hashedOneTimeTokenService, magicLinkGenerationSuccessHandler,
+                new org.springframework.mock.env.MockEnvironment());
     }
 
     @Test

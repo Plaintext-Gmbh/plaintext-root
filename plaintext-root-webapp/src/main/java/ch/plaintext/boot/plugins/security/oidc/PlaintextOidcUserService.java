@@ -30,7 +30,35 @@ public class PlaintextOidcUserService implements OAuth2UserService<OidcUserReque
 
     private final MyUserRepository userRepository;
     private final OidcConfigService oidcConfigService;
+    private final ch.plaintext.boot.plugins.security.PlaintextSecurityProperties securityProperties;
     private final OidcUserService delegate = new OidcUserService();
+
+    /**
+     * SECURITY (Karte 314, Punkt 12): verlangt {@code email_verified=true}, bevor ein bestehendes
+     * lokales Konto erstmalig an einen IdP-{@code sub} gebunden wird. Fail-closed: ein fehlender
+     * Claim gilt als "nicht verifiziert". Ueber
+     * {@code plaintext.security.oidc-require-verified-email=false} abschaltbar, falls ein IdP den
+     * Claim nachweislich nicht liefert.
+     */
+    private void requireVerifiedEmail(OidcUser oidcUser, String username, String usernameAttr) {
+        if (!securityProperties.isOidcRequireVerifiedEmail()) {
+            return;
+        }
+        Object claim = oidcUser.getClaim("email_verified");
+        boolean verified = (claim instanceof Boolean b && b)
+                || (claim instanceof String s && Boolean.parseBoolean(s));
+        if (verified) {
+            return;
+        }
+        log.warn("OIDC-Verlinkung abgelehnt: email_verified={} fuer bestehenden Benutzer '{}' "
+                        + "(Attribut '{}'). Ein bestehendes Konto wird nur mit verifizierter Adresse "
+                        + "an einen IdP-Subject gebunden.",
+                claim, username, usernameAttr);
+        throw new OAuth2AuthenticationException(
+                new OAuth2Error("email_not_verified"),
+                "Die E-Mail-Adresse ist beim Identity-Provider nicht als verifiziert markiert. "
+                        + "Das bestehende Konto wird deshalb nicht verknuepft.");
+    }
 
     @Override
     @Transactional
@@ -61,6 +89,16 @@ public class PlaintextOidcUserService implements OAuth2UserService<OidcUserReque
         if (localUser == null) {
             localUser = userRepository.findByUsername(username);
             if (localUser != null) {
+                // SECURITY (Karte 314, Punkt 12): Kontouebernahme-Schutz beim Verlinken.
+                // Hier wird ein BESTEHENDES lokales Konto allein aufgrund der vom IdP
+                // gelieferten Mailadresse an einen IdP-'sub' gebunden. Laesst der IdP
+                // unverifizierte Adressen zu, koennte sich jemand dort mit der Adresse eines
+                // bestehenden Benutzers registrieren und danach dessen Konto uebernehmen.
+                // Beim erstmaligen Verlinken verlangen wir deshalb email_verified=true.
+                // Bewusst NUR an dieser Stelle: bereits verlinkte Konten (findByOidcSubject)
+                // und Auto-Create sind nicht betroffen, ein IdP ohne den Claim wird nicht
+                // stillschweigend akzeptiert, sondern mit klarer Meldung abgelehnt.
+                requireVerifiedEmail(oidcUser, username, usernameAttr);
                 // Link existing user with OIDC subject
                 localUser.setOidcSubject(oidcSubject);
                 userRepository.save(localUser);

@@ -34,7 +34,7 @@ class RateLimitFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new RateLimitFilter(5, 60, 3, 60, 4, 60, 2, 60);
+        filter = new RateLimitFilter(5, 60, 3, 60, 4, 60, 2, 60, 3, 60);
     }
 
     @Test
@@ -283,5 +283,113 @@ class RateLimitFilterTest {
         filter.doFilter(request, response, filterChain);
         verify(response).setStatus(429);
         verify(filterChain, times(3)).doFilter(request, response);
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 16): {@code /nosec/wiki} hatte trotz gegenteiliger Zusage im
+     * Controller-Javadoc kein Rate-Limit — der Filter kannte den Pfad schlicht nicht. Der
+     * generische {@code /nosec/}-Auffangzweig deckt ihn jetzt ab.
+     */
+    @Test
+    void shouldRateLimitGenericNosecPaths() throws Exception {
+        when(request.getRequestURI()).thenReturn("/nosec/wiki/seite");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.10");
+        StringWriter sw = new StringWriter();
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        for (int i = 0; i < 3; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(3)).doFilter(request, response);
+
+        filter.doFilter(request, response, filterChain);
+        verify(filterChain, times(3)).doFilter(request, response);
+        verify(response).setStatus(429);
+    }
+
+    /** Analog fuer /nosec/challenge — derselbe generische Zweig. */
+    @Test
+    void shouldRateLimitNosecChallenge() throws Exception {
+        when(request.getRequestURI()).thenReturn("/nosec/challenge/eintrag");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.11");
+        StringWriter sw = new StringWriter();
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        for (int i = 0; i < 4; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(3)).doFilter(request, response);
+        verify(response).setStatus(429);
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 16): der generische Zweig darf {@code /nosec/api/claude} nicht
+     * zusaetzlich zaehlen, sonst verbraucht ein Request zwei Kontingente.
+     */
+    @Test
+    void claudeEndpointShouldNotBeCountedTwice() throws Exception {
+        when(request.getRequestURI()).thenReturn("/nosec/api/claude/status");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.12");
+        StringWriter sw = new StringWriter();
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        // claudeLimiter erlaubt 4, der generische Limiter nur 3 — kaeme beides zum Zug,
+        // waere schon der 4. Request blockiert.
+        for (int i = 0; i < 4; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(4)).doFilter(request, response);
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 10): {@code POST /password-reset} ist permitAll und verschickt
+     * Mails an eine vom Aufrufer gewaehlte Adresse — ohne Limit ein Spam-Relais und ein
+     * Werkzeug zur Konto-Enumeration.
+     */
+    @Test
+    void shouldRateLimitPasswordReset() throws Exception {
+        when(request.getRequestURI()).thenReturn("/password-reset");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.20");
+        StringWriter sw = new StringWriter();
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        for (int i = 0; i < 3; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(3)).doFilter(request, response);
+
+        filter.doFilter(request, response, filterChain);
+        verify(filterChain, times(3)).doFilter(request, response);
+        verify(response).setStatus(429);
+    }
+
+    /** SECURITY (Karte 314, Punkt 10): dasselbe fuer die Selbstregistrierung. */
+    @Test
+    void shouldRateLimitRegister() throws Exception {
+        when(request.getRequestURI()).thenReturn("/register");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.21");
+        StringWriter sw = new StringWriter();
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        for (int i = 0; i < 4; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(3)).doFilter(request, response);
+        verify(response).setStatus(429);
+    }
+
+    /** GET /password-reset (Formularanzeige) darf NICHT limitiert werden. */
+    @Test
+    void shouldNotRateLimitPasswordResetForm() throws Exception {
+        when(request.getRequestURI()).thenReturn("/password-reset");
+        when(request.getMethod()).thenReturn("GET");
+        lenient().when(request.getRemoteAddr()).thenReturn("203.0.113.22");
+
+        for (int i = 0; i < 10; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(10)).doFilter(request, response);
     }
 }

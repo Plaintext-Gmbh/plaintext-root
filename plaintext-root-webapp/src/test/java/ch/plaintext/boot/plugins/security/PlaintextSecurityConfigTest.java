@@ -55,10 +55,20 @@ class PlaintextSecurityConfigTest {
     private MagicLinkGenerationSuccessHandler magicLinkGenerationSuccessHandler;
 
     private PlaintextSecurityConfig createConfig() {
+        return createConfig(new org.springframework.mock.env.MockEnvironment());
+    }
+
+    private PlaintextSecurityConfig createConfig(org.springframework.core.env.Environment environment) {
         return new PlaintextSecurityConfig(
                 tokenRepository, userDetailsService, successHandler,
                 securityProperties, clientRegistrationRepository, oidcUserService,
-                hashedOneTimeTokenService, magicLinkGenerationSuccessHandler);
+                hashedOneTimeTokenService, magicLinkGenerationSuccessHandler, environment);
+    }
+
+    private static org.springframework.core.env.Environment prodEnvironment() {
+        org.springframework.mock.env.MockEnvironment env = new org.springframework.mock.env.MockEnvironment();
+        env.setActiveProfiles("prod");
+        return env;
     }
 
     @Test
@@ -122,5 +132,65 @@ class PlaintextSecurityConfigTest {
 
         PersistentTokenBasedRememberMeServices services = config.rememberMeServices();
         assertNotNull(services);
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 7): der BCrypt-Kostenfaktor muss 12 sein, nicht der
+     * Spring-Default 10. Der Faktor steht im Hash-Präfix ({@code $2a$12$...}) und laesst sich
+     * dort direkt ablesen.
+     */
+    @Test
+    void passwordEncoder_shouldUseCostFactor12() {
+        PasswordEncoder encoder = createConfig().passwordEncoder();
+
+        String encoded = encoder.encode("testPassword123");
+
+        assertTrue(encoded.startsWith("$2a$12$"),
+                "Erwartet BCrypt-Kostenfaktor 12, war: " + encoded.substring(0, 7));
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 13): in PROD ist ein stabiler Remember-Me-Key Pflicht. Bisher
+     * gab es nur eine WARN und einen fluechtigen Zufallsschluessel — funktional unauffaellig,
+     * deshalb faellt ein fehlender Schluessel im Betrieb nie auf.
+     */
+    @Test
+    void rememberMeKey_shouldFailFastInProductionWhenMissing() {
+        when(securityProperties.getRememberMeKey()).thenReturn("");
+
+        IllegalStateException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class, () -> createConfig(prodEnvironment()));
+
+        assertTrue(ex.getMessage().contains("remember-me-key"));
+    }
+
+    /** In dev/test bleibt der Zufallsschluessel erhalten — lokaler Start ohne Env muss gehen. */
+    @Test
+    void rememberMeKey_shouldNotFailOutsideProduction() {
+        when(securityProperties.getRememberMeKey()).thenReturn("");
+
+        assertNotNull(createConfig().rememberMeServices());
+    }
+
+    /**
+     * SECURITY (Karte 314, Punkt 4): {@code /api/preferences/**} darf NICHT mehr in der
+     * CSRF-Ausnahmeliste stehen — die Endpunkte sind session-authentifiziert und waren damit
+     * per cross-site-POST ansteuerbar.
+     */
+    @Test
+    void csrfIgnoreList_shouldNotContainPreferencesApi() {
+        assertFalse(defaultCsrfIgnore().contains("/api/preferences/**"),
+                "/api/preferences/** ist session-authentifiziert und braucht CSRF-Schutz");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static java.util.List<String> defaultCsrfIgnore() {
+        try {
+            java.lang.reflect.Field f = PlaintextSecurityConfig.class.getDeclaredField("DEFAULT_CSRF_IGNORE");
+            f.setAccessible(true);
+            return (java.util.List<String>) f.get(null);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }
