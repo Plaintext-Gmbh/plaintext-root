@@ -4,7 +4,6 @@
 package ch.plaintext.secrets;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -35,45 +34,15 @@ public class SecretCrypto {
     private final SecretKeySpec key;
     private final boolean devFallback;
 
-    public SecretCrypto(Environment environment) {
-        this(environment != null && isProduction(environment));
-    }
-
-    /** Test-Konstruktor: erzwingt den Dev-Fallback ohne Spring-Kontext. */
-    SecretCrypto() {
-        this(false);
-    }
-
-    private SecretCrypto(boolean production) {
+    public SecretCrypto() {
         byte[] raw = ladeKey();
         this.devFallback = raw == null;
         if (devFallback) {
-            // SECURITY (Karte 314, Punkt 8): der Dev-Fallback leitet den Schluessel aus
-            // sha256("plaintext-dev-fallback-" + HOSTNAME) ab. Ist HOSTNAME nicht gesetzt
-            // (weder Dockerfile noch compose.yaml setzen die Variable), ist der Wert der
-            // konstante String "null" und der Schluessel damit oeffentlich berechenbar —
-            // jeder, der die abgelegten Secrets in die Haende bekommt, kann sie entschluesseln.
-            // In PROD deshalb Fail-Fast beim Start statt einer leicht zu uebersehenden WARN.
-            if (production) {
-                throw new IllegalStateException(ENV_KEY + " ist in PROD Pflicht (base64, 32 Byte). "
-                        + "Der deterministische Dev-Fallback-Schluessel ist oeffentlich berechenbar "
-                        + "und darf nicht fuer produktive Secrets verwendet werden.");
-            }
             log.warn("{} nicht gesetzt — verwende DETERMINISTISCHEN Dev-Fallback-Key. NUR fuer Dev/Test! "
                     + "In PROD {} als base64(32 Byte) per Env setzen.", ENV_KEY, ENV_KEY);
             raw = sha256(("plaintext-dev-fallback-" + System.getenv("HOSTNAME")).getBytes(StandardCharsets.UTF_8));
         }
         this.key = new SecretKeySpec(raw, "AES");
-    }
-
-    /** Produktivumgebung = aktives Spring-Profil {@code prod} (so setzt es das Dockerfile). */
-    private static boolean isProduction(Environment environment) {
-        for (String profile : environment.getActiveProfiles()) {
-            if ("prod".equalsIgnoreCase(profile)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static byte[] ladeKey() {
