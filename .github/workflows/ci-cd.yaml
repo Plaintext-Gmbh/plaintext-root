@@ -27,8 +27,37 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
+  # Karte 433: Die alte Bedingung prueft die GANZE Commit-Message. Beim Squash-Merge zieht
+  # GitHub saemtliche Einzel-Commit-Messages des Branches in den Body — stand in irgendeiner
+  # davon "[skip-ci]" (etwa im automatischen Quality-Gate-Commit), wurde der komplette Deploy
+  # lautlos uebersprungen: Lauf "skipped", nicht "failed", also ohne rote Markierung. So blieb
+  # am 02.08.2026 ein CVE-Fix mit CVSS 9.1 ungerollt.
+  #
+  # Die Absicht steht in der Betreffzeile, nicht im geerbten Body. Die Ausdruckssprache von
+  # GitHub Actions kann Strings nicht zerlegen (kein split, keine Regex, kein Feld nur fuer die
+  # Betreffzeile) — deshalb dieser Shell-Schritt, dessen Ergebnis die Bedingung unten liest.
+  skip-pruefung:
+    runs-on: ['self-hosted', 'nas']
+    outputs:
+      skip: ${{ steps.pruefung.outputs.skip }}
+    steps:
+      - id: pruefung
+        env:
+          # Ueber env, nicht per Interpolation in den Skripttext: eine Commit-Message darf
+          # Anfuehrungszeichen und Backticks enthalten.
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          BETREFF="$(printf '%s' "$MSG" | head -1)"
+          if printf '%s' "$BETREFF" | grep -qF '[skip-ci]'; then
+            echo "Betreffzeile traegt [skip-ci] — Lauf wird uebersprungen: $BETREFF"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   pipeline:
-    if: ${{ !contains(github.event.head_commit.message, '[skip-ci]') }}
+    needs: skip-pruefung
+    if: needs.skip-pruefung.outputs.skip != 'true'
     uses: Plaintext-Gmbh/plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml@master
     with:
       deploy-target: >-
