@@ -75,10 +75,29 @@ jobs:
       # Voll-Lauf, standardmässig ohne Deploy (siehe deploy-target oben).
       sonar-enabled: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
       quality-analysis: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
-      # Build/Deploy laufen auf einem self-hosted Runner im Zielnetz; der Postgres-Host-Port
-      # ist projektspezifisch gewaehlt, damit sich parallele Integrationstest-DBs auf einem
-      # geteilten Docker-Daemon nicht in die Quere kommen.
-      runner: '["self-hosted", "nas"]'
+      # SICHERHEIT (Karte 426, Entscheidung Daniel 02.08.2026): Pull-Request-Laeufe laufen NICHT
+      # mehr auf den self-hosted NAS-Runnern — nur noch master und die Deploys.
+      #
+      # Grund: Die NAS-Runner haben den Docker-Socket schreibend eingehaengt und laufen als root.
+      # Der Socket ist root-aequivalent: wer dort einen Job ausfuehren kann, startet einen
+      # Container mit beliebigem Host-Mount und liest JEDE Datei des NAS — auch die .env-Dateien
+      # mit Vault-Master-Passwort, Keycloak- und Datenbank-Zugangsdaten. Dieses Repo ist
+      # OEFFENTLICH; ein Pull Request war damit ein Weg dorthin. Der Hinweis weiter unten, dass
+      # GitHub bei Fork-PRs keine Secrets bereitstellt, schuetzt hier NICHT: wer root auf dem Host
+      # ist, braucht keine injizierten Secrets, er liest sie direkt von der Platte.
+      #
+      # Deploy-Laeufe (master, Feature-Branch-Push, workflow_dispatch) bleiben self-hosted — sie
+      # brauchen das Zielnetz, und sie ausloesen kann nur, wer Schreibrecht auf das Repo hat.
+      #
+      # Auf ubuntu-latest funktioniert die Pipeline unveraendert: sie verbindet sich dort selbst
+      # per Twingate ("Connect to Twingate", if: runner.environment != 'self-hosted'), erzeugt
+      # ihre settings.xml job-lokal und startet den Test-Postgres per docker run — auf einem
+      # Wegwerf-Runner ist der Docker-Zugriff unbedenklich.
+      #
+      # Der Postgres-Host-Port ist projektspezifisch gewaehlt, damit sich parallele
+      # Integrationstest-DBs auf einem geteilten Docker-Daemon nicht in die Quere kommen.
+      runner: >-
+        ${{ github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted", "nas"]' }}
       postgres-port: '5434'
     # Caller und reusable Workflow haben denselben Owner -> `secrets: inherit` funktioniert und
     # reicht alle benoetigten Secrets durch, ohne sie einzeln pflegen zu muessen.

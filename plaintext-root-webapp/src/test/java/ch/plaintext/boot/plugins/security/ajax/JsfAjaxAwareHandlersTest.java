@@ -14,6 +14,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.csrf.MissingCsrfTokenException;
@@ -47,8 +48,16 @@ class JsfAjaxAwareHandlersTest {
 
     @Test
     void accessDeniedForAuthenticatedUserOnAjax_yieldsParsableErrorInsteadOfJson() throws Exception {
-        SecurityContextHolder.getContext().setAuthentication(
+        // Bewusst ein FRISCHER Kontext statt getContext().setAuthentication(...): laesst eine zuvor
+        // gelaufene Testklasse einen Mock-SecurityContext im Holder stehen, landet das
+        // setAuthentication auf dem Mock und verpufft — der Test saehe dann einen abgemeldeten
+        // Benutzer und schlaege fehl. Genau das ist am 02.08.2026 auf ubuntu-latest passiert
+        // (PlaintextSecurityImplExtendedTest raeumte nicht auf, Karte 426); dort ist die Ursache
+        // behoben, hier steht die Absicherung dagegen, dass es wieder jemand einschleppt.
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(
                 new UsernamePasswordAuthenticationToken("u", "p", AuthorityUtils.createAuthorityList("ROLE_USER")));
+        SecurityContextHolder.setContext(context);
         try {
             MockHttpServletResponse response = new MockHttpServletResponse();
 
