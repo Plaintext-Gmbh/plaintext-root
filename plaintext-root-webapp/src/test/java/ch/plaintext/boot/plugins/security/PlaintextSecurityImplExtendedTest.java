@@ -7,6 +7,7 @@ import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.menuesteuerung.model.MandateMenuConfig;
 import ch.plaintext.menuesteuerung.persistence.MandateMenuConfigRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,6 +60,23 @@ class PlaintextSecurityImplExtendedTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Den global gesetzten Mock-Kontext wieder abraeumen.
+     *
+     * <p>Ohne das bleibt der Mockito-{@code SecurityContext} im {@link SecurityContextHolder} stehen
+     * und verschmutzt jede spaeter laufende Testklasse: Ein {@code getContext().setAuthentication(...)}
+     * dort landet auf dem Mock und tut nichts, {@code getAuthentication()} liefert weiterhin
+     * {@code null} — der Test sieht einen abgemeldeten Benutzer, obwohl er einen angemeldeten gesetzt
+     * hat. Genau das hat {@code JsfAjaxAwareHandlersTest} zum Scheitern gebracht, aber nur auf
+     * Maschinen, auf denen Surefire diese Klasse VOR jener ausfuehrt (die Reihenfolge haengt vom
+     * Dateisystem ab — deshalb lief es lokal und auf dem self-hosted Runner gruen und auf
+     * ubuntu-latest rot; Karte 426).</p>
+     */
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     // ==================== getStartpageOrDefault() Tests ====================
