@@ -6,9 +6,9 @@ package ch.plaintext.boot.integration;
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import org.springframework.test.context.DynamicPropertyRegistry;
 
-import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.Locale;
 
@@ -32,19 +32,50 @@ import java.util.Locale;
  */
 public final class EmbeddedPg {
 
-    private static final EmbeddedPostgres PG = starten();
+    /**
+     * Reicht die CI eine Datenbank herein, wird DIESE benutzt statt eines eigenen Servers.
+     *
+     * <p><b>Warum (gemessen am 02.08.2026, PR #22):</b> Die GitHub-Runner laufen als <b>root</b>
+     * — und {@code initdb} verweigert den Dienst als root
+     * ({@code Process [/tmp/embedded-pg/.../initdb …] failed}). Ein eingebetteter Server ist dort
+     * also gar nicht startbar, solange {@code User=root} gilt (genau der zweite Punkt der
+     * Karte 451). Die Pipeline stellt ohnehin schon eine Datenbank bereit und reicht sie als
+     * {@code SPRING_DATASOURCE_URL} herein; die wird hier genutzt.
+     *
+     * <p>Lokal — ohne diese Variable — startet der eingebettete Server wie bisher. Beide Wege
+     * brauchen <b>keinen Docker-Daemon im Testprozess</b>, und darum geht es in Karte 451.
+     */
+    private static final String EXTERNE_URL = umgebung("SPRING_DATASOURCE_URL");
+    private static final String EXTERNER_USER = wertOder(umgebung("SPRING_DATASOURCE_USERNAME"), "plaintext");
+    private static final String EXTERNES_PW = wertOder(umgebung("SPRING_DATASOURCE_PASSWORD"), "plaintext");
+
+    private static EmbeddedPostgres pg;
 
     private EmbeddedPg() {
     }
 
-    private static EmbeddedPostgres starten() {
-        try {
-            return EmbeddedPostgres.builder().start();
-        } catch (IOException e) {
-            throw new IllegalStateException(
-                    "Eingebettetes PostgreSQL liess sich nicht starten — ohne DB ist der Test "
-                            + "nicht aussagekraeftig, deshalb Abbruch statt Ueberspringen.", e);
+    private static String umgebung(String name) {
+        String v = System.getenv(name);
+        return (v == null || v.isBlank()) ? null : v.trim();
+    }
+
+    private static String wertOder(String wert, String ersatz) {
+        return wert != null ? wert : ersatz;
+    }
+
+    private static synchronized EmbeddedPostgres server() {
+        if (pg == null) {
+            try {
+                pg = EmbeddedPostgres.builder().start();
+            } catch (IOException e) {
+                throw new IllegalStateException(
+                        "Eingebettetes PostgreSQL liess sich nicht starten — ohne DB ist der Test "
+                                + "nicht aussagekraeftig, deshalb Abbruch statt Ueberspringen. "
+                                + "Laeuft der Prozess als root? initdb verweigert das; dann gehoert "
+                                + "SPRING_DATASOURCE_URL gesetzt (siehe Klassenkommentar).", e);
+            }
         }
+        return pg;
     }
 
     /**
@@ -55,16 +86,31 @@ public final class EmbeddedPg {
      */
     public static void registrieren(DynamicPropertyRegistry registry, String datenbank) {
         final String db = datenbank.toLowerCase(Locale.ROOT);
-        anlegen(db);
-        registry.add("spring.datasource.url", () -> PG.getJdbcUrl("postgres", db));
-        registry.add("spring.datasource.username", () -> "postgres");
-        registry.add("spring.datasource.password", () -> "postgres");
+        final String url;
+        final String user;
+        final String pw;
+        if (EXTERNE_URL != null) {
+            // Eigene Datenbank auf dem gereichten Server — damit bleibt die Isolation je
+            // Testklasse erhalten, die vorher aus "ein Container je Klasse" kam.
+            anlegen(EXTERNE_URL, EXTERNER_USER, EXTERNES_PW, db);
+            url = EXTERNE_URL.replaceFirst("/[^/?]+(\\?|$)", "/" + db + "$1");
+            user = EXTERNER_USER;
+            pw = EXTERNES_PW;
+        } else {
+            anlegen(server().getJdbcUrl("postgres", "postgres"), "postgres", "postgres", db);
+            url = server().getJdbcUrl("postgres", db);
+            user = "postgres";
+            pw = "postgres";
+        }
+        registry.add("spring.datasource.url", () -> url);
+        registry.add("spring.datasource.username", () -> user);
+        registry.add("spring.datasource.password", () -> pw);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
     }
 
-    private static void anlegen(String db) {
-        DataSource ds = PG.getPostgresDatabase();
-        try (Connection c = ds.getConnection(); Statement s = c.createStatement()) {
+    private static void anlegen(String verwaltungsUrl, String user, String pw, String db) {
+        try (Connection c = DriverManager.getConnection(verwaltungsUrl, user, pw);
+             Statement s = c.createStatement()) {
             s.execute("DROP DATABASE IF EXISTS \"" + db + "\"");
             s.execute("CREATE DATABASE \"" + db + "\"");
         } catch (Exception e) {
