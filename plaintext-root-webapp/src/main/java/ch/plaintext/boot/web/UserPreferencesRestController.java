@@ -339,7 +339,11 @@ public class UserPreferencesRestController {
             Cookie cookie = new Cookie(cookieName, value);
             cookie.setPath("/");
             cookie.setMaxAge(365 * 24 * 60 * 60); // 1 year
-            cookie.setHttpOnly(false); // theme is read client-side via JavaScript
+            // NOSONAR (S3330): Das Cookie traegt ausschliesslich die Themewahl (z.B. "dark") und
+            // MUSS fuer JavaScript lesbar sein, sonst flackert die Seite beim Laden im falschen
+            // Theme. Es enthaelt kein Geheimnis und keine Sitzungskennung; Secure und SameSite=Lax
+            // sind gesetzt (Karte 458).
+            cookie.setHttpOnly(false); // NOSONAR — theme is read client-side via JavaScript
             cookie.setSecure(true);    // HTTPS only; harmless on http://localhost dev
             cookie.setAttribute("SameSite", "Lax");
             response.addCookie(cookie);

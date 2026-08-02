@@ -56,6 +56,27 @@ class DeepLinkServiceImplTest {
     }
 
     @Test
+    @DisplayName("Mehrfache Schraegstriche am Ende der Basis-URL werden alle entfernt (Karte 458)")
+    void mehrfacheEndSchraegstriche() {
+        // Karte 458 (java:S5852): Das frühere replaceAll("/+$", "") wurde durch eine lineare
+        // Schleife ersetzt. Dieser Test hält fest, dass sich das Verhalten dabei nicht ändert —
+        // und deckt gerade den Fall ab, der den Regex ins Backtracking getrieben hätte.
+        DeepLinkService s = service("https://example.com/////", new Ziel("auszahlung", "auszahlungen.html", "id"));
+
+        assertEquals("https://example.com/deeplink?type=auszahlung&mandat=alpha&id=42",
+                s.buildAbsoluteLink("auszahlung", "ALPHA", "42"));
+    }
+
+    @Test
+    @DisplayName("Basis-URL ohne Schraegstrich bleibt unveraendert")
+    void ohneEndSchraegstrich() {
+        DeepLinkService s = service("https://example.com", new Ziel("auszahlung", "auszahlungen.html", "id"));
+
+        assertEquals("https://example.com/deeplink?type=auszahlung&mandat=alpha&id=42",
+                s.buildAbsoluteLink("auszahlung", "ALPHA", "42"));
+    }
+
+    @Test
     @DisplayName("Relativer Link bleibt context-relativ")
     void relativerLink() {
         DeepLinkService s = service("https://example.com", new Ziel("rechnung", "rechnungen.html", "id"));

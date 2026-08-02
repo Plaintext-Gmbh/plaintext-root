@@ -33,7 +33,7 @@ public class DeepLinkServiceImpl implements DeepLinkService {
 
     public DeepLinkServiceImpl(List<DeepLinkTarget> registrierteZiele,
                                @Value("${plaintext.baseurl:http://localhost:8080}") String baseUrl) {
-        this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
+        this.baseUrl = baseUrl == null ? "" : ohneEndSchraegstriche(baseUrl);
         List<DeepLinkTarget> sortiert = new ArrayList<>(registrierteZiele);
         sortiert.sort(Comparator.comparing(t -> String.valueOf(t.getType())));
         for (DeepLinkTarget ziel : sortiert) {
@@ -98,5 +98,19 @@ public class DeepLinkServiceImpl implements DeepLinkService {
             return Optional.empty();
         }
         return Optional.ofNullable(targets.get(type.toLowerCase(Locale.ROOT)));
+    }
+
+    /**
+     * Entfernt abschliessende Schraegstriche ohne regulaeren Ausdruck.
+     *
+     * <p>Karte 458 (java:S5852): {@code replaceAll("/+$", "")} laeuft bei vielen aufeinander
+     * folgenden Schraegstrichen in quadratisches Backtracking. Diese Schleife ist linear.</p>
+     */
+    private static String ohneEndSchraegstriche(String wert) {
+        int ende = wert.length();
+        while (ende > 0 && wert.charAt(ende - 1) == '/') {
+            ende--;
+        }
+        return wert.substring(0, ende);
     }
 }

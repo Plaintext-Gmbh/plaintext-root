@@ -172,7 +172,7 @@ public class HashiCorpVaultBackend implements SecretBackend {
                         if (url == null || token == null || url.isBlank() || token.isBlank()) {
                             return null;
                         }
-                        return new Cfg(url.replaceAll("/+$", ""), token, mount);
+                        return new Cfg(ohneEndSchraegstriche(url), token, mount);
                     } catch (Exception e) {
                         log.warn("HashiCorp-Config nicht lesbar: {}", e.getMessage());
                         return null;
@@ -181,4 +181,18 @@ public class HashiCorpVaultBackend implements SecretBackend {
     }
 
     private record Cfg(String url, String token, String mount) { }
+
+    /**
+     * Entfernt abschliessende Schraegstriche ohne regulaeren Ausdruck.
+     *
+     * <p>Karte 458 (java:S5852): {@code replaceAll("/+$", "")} laeuft bei vielen aufeinander
+     * folgenden Schraegstrichen in quadratisches Backtracking. Diese Schleife ist linear.</p>
+     */
+    private static String ohneEndSchraegstriche(String wert) {
+        int ende = wert.length();
+        while (ende > 0 && wert.charAt(ende - 1) == '/') {
+            ende--;
+        }
+        return wert.substring(0, ende);
+    }
 }

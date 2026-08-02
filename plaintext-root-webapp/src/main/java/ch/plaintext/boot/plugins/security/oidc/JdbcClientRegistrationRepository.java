@@ -43,7 +43,7 @@ public class JdbcClientRegistrationRepository implements ClientRegistrationRepos
     }
 
     private ClientRegistration buildClientRegistration(OidcConfig config) {
-        String issuer = config.getIssuerUrl().replaceAll("/+$", "");
+        String issuer = ohneEndSchraegstriche(config.getIssuerUrl());
 
         String[] scopes = config.getScopes() != null
                 ? config.getScopes().split(",")
@@ -76,5 +76,19 @@ public class JdbcClientRegistrationRepository implements ClientRegistrationRepos
 
     public static String toRegistrationId(OidcConfig config) {
         return config.getRegistrationId();
+    }
+
+    /**
+     * Entfernt abschliessende Schraegstriche ohne regulaeren Ausdruck.
+     *
+     * <p>Karte 458 (java:S5852): {@code replaceAll("/+$", "")} laeuft bei vielen aufeinander
+     * folgenden Schraegstrichen in quadratisches Backtracking. Diese Schleife ist linear.</p>
+     */
+    private static String ohneEndSchraegstriche(String wert) {
+        int ende = wert.length();
+        while (ende > 0 && wert.charAt(ende - 1) == '/') {
+            ende--;
+        }
+        return wert.substring(0, ende);
     }
 }

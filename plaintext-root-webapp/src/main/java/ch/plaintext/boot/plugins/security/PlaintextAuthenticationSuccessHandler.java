@@ -37,7 +37,9 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
      * Selbstservice-Seite mit dem Passwort-Aenderungs-Formular. Ziel bei erzwungenem
      * Passwortwechsel (Karte 306), unabhaengig von einer konfigurierten Startseite.
      */
-    static final String MUST_CHANGE_PASSWORD_PAGE = "myuser.xhtml";
+    // NOSONAR (S2068): kein Passwort, sondern der Dateiname der Selbstservice-Seite. Sonar
+    // schlaegt allein wegen des Bestandteils "PASSWORD" im Konstantennamen an (Karte 458).
+    static final String MUST_CHANGE_PASSWORD_PAGE = "myuser.xhtml"; // NOSONAR
 
     private final ApplicationEventPublisher eventPublisher;
     private final TotpAuthenticationService totpAuthenticationService;
