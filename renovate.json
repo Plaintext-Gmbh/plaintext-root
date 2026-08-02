@@ -2,5 +2,39 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Security-Pin tomcat.version: ueberschreibt die vom Spring-Boot-Parent vorgegebene Tomcat-Version. Steht ohne eigene <dependency>-Deklaration in den Properties und waere fuer Renovate sonst unsichtbar (Karte 389).",
+      "managerFilePatterns": ["/^pom\\.xml$/"],
+      "matchStrings": ["<tomcat\\.version>(?<currentValue>[^<]+)</tomcat\\.version>"],
+      "depNameTemplate": "org.apache.tomcat.embed:tomcat-embed-core",
+      "datasourceTemplate": "maven"
+    },
+    {
+      "customType": "regex",
+      "description": "Security-Pin httpcore5.version (siehe tomcat.version).",
+      "managerFilePatterns": ["/^pom\\.xml$/"],
+      "matchStrings": ["<httpcore5\\.version>(?<currentValue>[^<]+)</httpcore5\\.version>"],
+      "depNameTemplate": "org.apache.httpcomponents.core5:httpcore5",
+      "datasourceTemplate": "maven"
+    },
+    {
+      "customType": "regex",
+      "description": "Security-Pin jackson-bom.version (siehe tomcat.version).",
+      "managerFilePatterns": ["/^pom\\.xml$/"],
+      "matchStrings": ["<jackson-bom\\.version>(?<currentValue>[^<]+)</jackson-bom\\.version>"],
+      "depNameTemplate": "tools.jackson:jackson-bom",
+      "datasourceTemplate": "maven"
+    },
+    {
+      "customType": "regex",
+      "description": "Security-Pin swagger-ui.version: kommt transitiv aus springdoc, das die Version nicht selbst verwaltet (Karte 389).",
+      "managerFilePatterns": ["/^pom\\.xml$/"],
+      "matchStrings": ["<swagger-ui\\.version>(?<currentValue>[^<]+)</swagger-ui\\.version>"],
+      "depNameTemplate": "org.webjars:swagger-ui",
+      "datasourceTemplate": "maven"
+    }
   ]
 }
