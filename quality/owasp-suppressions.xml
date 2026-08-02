@@ -36,25 +36,21 @@
     </suppress>
 
     <!--
-      FRAMEWORK-TRANSITIVE CVEs (Spring Boot 4.1.0): tomcat-embed-core, angus-activation und
+      FRAMEWORK-TRANSITIVE CVEs (Spring Boot 4.1.0): angus-activation und
       micrometer-registry-prometheus. Diese Versionen sind von Spring Boot 4.1.0 zentral gepinnt
       (dependency management) und werden mit dem naechsten Boot-Maintenance-Release gepatcht.
       Bewusst suppressed (Entscheidung 2026-07-15, Weg B) bis zum Boot-Bump.
       WICHTIG: version-gepinnt (exakte @-Version) — sobald Boot eine neue Version zieht, greift die
       Suppression NICHT mehr und der neue Stand muss erneut bewertet werden (kein Dauer-Blindflug).
+
+      ENTFERNT 02.08.2026 (Karte 389): die Suppression fuer tomcat-embed-core@11.0.22 mit ihren
+      acht CVEs. Sie war nicht mehr noetig und ausserdem loechrig — sie deckte nur
+      tomcat-embed-core ab, waehrend das Schwester-Artefakt tomcat-embed-websocket mit
+      denselben acht CVEs (hoechste CVSS 9.1) ungedeckt blieb und genau deshalb das
+      Quality-Gate rot faerbte. Statt die Suppression auf das zweite Artefakt auszuweiten,
+      ist Tomcat auf 11.0.24 hochgezogen (<tomcat.version> in der Parent-POM); alle acht CVEs
+      sind ab 11.0.23 behoben. Damit braucht es hier gar keinen Eintrag mehr.
     -->
-    <suppress>
-        <notes><![CDATA[ Boot-4.1.0-transitiv gepinnter Tomcat 11.0.22; per naechstem Boot-Patch behoben. ]]></notes>
-        <packageUrl>pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@11.0.22</packageUrl>
-        <cve>CVE-2026-50229</cve>
-        <cve>CVE-2026-53404</cve>
-        <cve>CVE-2026-53434</cve>
-        <cve>CVE-2026-55276</cve>
-        <cve>CVE-2026-55955</cve>
-        <cve>CVE-2026-55956</cve>
-        <cve>CVE-2026-59083</cve>
-        <cve>CVE-2026-59084</cve>
-    </suppress>
     <suppress>
         <notes><![CDATA[ Boot-4.1.0-transitiv gepinntes angus-activation 2.0.3; per naechstem Boot-Patch behoben. ]]></notes>
         <packageUrl>pkg:maven/org.eclipse.angus/angus-activation@2.0.3</packageUrl>
