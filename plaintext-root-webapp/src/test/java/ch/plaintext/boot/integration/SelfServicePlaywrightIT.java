@@ -22,11 +22,9 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -39,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * End-to-end Playwright test for the self-registration and password-reset
  * flows added in this PR.
  *
- * <p>Runs against a Testcontainers PostgreSQL on a random port so the test
+ * <p>Runs against an embedded PostgreSQL on a random port so the test
  * is hermetic and works both on CI and on a developer laptop. Browsers are
  * installed by the {@code playwright} GitHub workflow before this test
  * executes; locally the test will skip itself silently if Chromium has not
@@ -52,22 +50,19 @@ import static org.junit.jupiter.api.Assertions.*;
                 "spring.docker.compose.enabled=false"
         }
 )
-@Testcontainers
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SelfServicePlaywrightIT {
 
-    // @ServiceConnection (statt @DynamicPropertySource): Spring Boot löst die DB-Connection-Details
-    // erst beim Erzeugen des DataSource-Beans auf – dann ist der von @Testcontainers gestartete
-    // Container garantiert oben. Mit dem alten @DynamicPropertySource wurde 'spring.datasource.url'
-    // bereits während der frühen Condition-Auswertung (DataSourceAutoConfiguration) gelesen, bevor der
-    // Container lief -> "Mapped port can only be obtained after the container is started".
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine")
-            .withDatabaseName("plaintext_test")
-            .withUsername("test")
-            .withPassword("test");
+    // Frueher lief hier ein Testcontainers-Postgres mit @ServiceConnection: @DynamicPropertySource
+    // hatte 'spring.datasource.url' schon waehrend der Condition-Auswertung gelesen, bevor der
+    // Container oben war ("Mapped port can only be obtained after the container is started").
+    // Mit dem eingebetteten Server entfaellt das Problem — er laeuft bereits, wenn die Registry
+    // gefuellt wird (statischer Start in EmbeddedPg).
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        EmbeddedPg.registrieren(registry, "selfserviceplaywrightit");
+    }
 
     @LocalServerPort int port;
     @Autowired SetupConfigService setupConfigService;

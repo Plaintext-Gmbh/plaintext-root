@@ -152,6 +152,20 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Binaries des eingebetteten PostgreSQL (Karte 451). Ohne diesen BOM zieht
+                 io.zonky.test:embedded-postgres seinen Default-Stand; hier wird die Version
+                 bewusst gepinnt, damit ein Build nicht ueber Nacht die DB-Version wechselt.
+                 17.5.0 ist der neueste zonky-Stand — die frueheren Testcontainers liefen auf
+                 postgres:18-alpine, der Unterschied ist bewusst in Kauf genommen (Daniel,
+                 02.08.2026: "mit dem risiko, dass die db nicht 1:1 ist kann ich leben"). -->
+            <dependency>
+                <groupId>io.zonky.test.postgres</groupId>
+                <artifactId>embedded-postgres-binaries-bom</artifactId>
+                <version>17.5.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- Interne Module -->
             <dependency>
                 <groupId>ch.plaintext</groupId>

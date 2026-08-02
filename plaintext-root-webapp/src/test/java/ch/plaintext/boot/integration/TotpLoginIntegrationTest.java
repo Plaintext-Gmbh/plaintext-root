@@ -21,9 +21,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -48,22 +45,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
 @ActiveProfiles("test")
 class TotpLoginIntegrationTest {
 
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine")
-            .withDatabaseName("plaintext_test")
-            .withUsername("test")
-            .withPassword("test");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        EmbeddedPg.registrieren(registry, "totploginintegrationtest");
         // TOTP-Feature fuer diesen Test global scharf schalten.
         registry.add("plaintext.security.totp.enabled", () -> "true");
     }
