@@ -46,6 +46,8 @@ jobs:
           # Ueber env, nicht per Interpolation in den Skripttext: eine Commit-Message darf
           # Anfuehrungszeichen und Backticks enthalten.
           MSG: ${{ github.event.head_commit.message }}
+          PUSHOVER_APP_TOKEN: ${{ secrets.PUSHOVER_APP_TOKEN }}
+          PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
         run: |
           BETREFF="$(printf '%s' "$MSG" | head -1)"
           if printf '%s' "$BETREFF" | grep -qF '[skip-ci]'; then
@@ -53,6 +55,32 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+          # Karte 445: Auf master ist ein uebersprungener Lauf optisch nicht von einem
+          # erfolgreichen zu unterscheiden — er steht auf "skipped", das Gesamtergebnis auf
+          # "success". Genau so blieb der Merge von root#17 unbemerkt: nichts deployt, alles gruen.
+          # Gemeldet wird NUR, wenn es kein Automatik-Commit ist. Die beiden Automatik-Muster
+          # ("Prepare next development iteration ...", "chore(quality): Quality-Gate-Status ...")
+          # setzen den Marker mit Absicht und machen 206 der 214 uebersprungenen master-Laeufe der
+          # letzten 100 Laeufe je Repo aus. Wer die mitmeldet, gewoehnt sich die Meldung ab.
+          AUTOMATIK='^(Prepare next development iteration|chore\(quality\): Quality-Gate-Status)'
+          if [ "$GITHUB_REF_NAME" = "master" ] \
+             && printf '%s' "$BETREFF" | grep -qF '[skip-ci]' \
+             && ! printf '%s' "$BETREFF" | grep -qE "$AUTOMATIK"; then
+            echo "::warning::Deploy auf master uebersprungen: $BETREFF"
+            if [ -n "$PUSHOVER_APP_TOKEN" ] && [ -n "$PUSHOVER_USER_KEY" ]; then
+              curl -s -o /dev/null --max-time 20 -X POST https://api.pushover.net/1/messages.json \
+                --form-string "token=$PUSHOVER_APP_TOKEN" \
+                --form-string "user=$PUSHOVER_USER_KEY" \
+                --form-string "title=Deploy uebersprungen: $GITHUB_REPOSITORY" \
+                --form-string "message=Auf master wurde wegen [skip-ci] nicht deployt — die gemergte Aenderung laeuft nirgends. Commit: $BETREFF" \
+                --form-string "priority=1" \
+                --form-string "url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+                --form-string "url_title=Lauf ansehen" \
+                || echo "::warning::Pushover-Meldung konnte nicht gesendet werden."
+            else
+              echo "::warning::Keine Pushover-Zugangsdaten — Meldung nur als Warning im Lauf."
+            fi
           fi
 
   pipeline:
