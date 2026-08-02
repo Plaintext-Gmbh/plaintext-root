@@ -77,6 +77,22 @@ class VaultwardenClient {
     private Instant loginExpiry = Instant.EPOCH;
     private Instant cacheExpiry = Instant.EPOCH;
 
+    /**
+     * Zahl der aufeinanderfolgenden fehlgeschlagenen Vaultwarden-Zugriffe — steuert den Backoff
+     * (Karte 395). Wird bei jedem Erfolg auf 0 zurueckgesetzt.
+     */
+    private int fehlversucheInFolge = 0;
+
+    /** Backoff nach dem ersten Fehlschlag; verdoppelt sich je weiterem bis {@link #BACKOFF_MAX_SEK}. */
+    private static final int BACKOFF_START_SEK = 30;
+    /** Obergrenze des Backoffs — 15 Minuten. Danach wird weiter periodisch, aber selten versucht. */
+    private static final int BACKOFF_MAX_SEK = 900;
+    /**
+     * Backoff nach einem HTTP 429. Deutlich laenger als der normale Einstieg: Ein Rate-Limit laeuft
+     * nur ab, wenn man es NICHT weiter fuettert — jeder Versuch waehrend der Sperre verlaengert sie.
+     */
+    private static final int BACKOFF_RATE_LIMIT_SEK = 300;
+
     VaultwardenClient(VaultwardenProperties props, String appName) {
         this.props = props;
         this.http = HttpClient.newBuilder()
@@ -363,17 +379,56 @@ class VaultwardenClient {
             }
             cachedItems = sync();
             cacheExpiry = now.plusSeconds(Math.max(1, props.getCacheTtlSeconds()));
+            fehlversucheInFolge = 0;
             log.debug("Vaultwarden-Sync ok: {} Login-Items, {} Org-Keys",
                     cachedItems.size(), orgKeys.size());
         } catch (Exception e) {
-            // fail-safe: keinen Boot/Consumer brechen; kurze Backoff-Zeit, letzte Daten behalten
-            log.warn("Vaultwarden-Zugriff fehlgeschlagen ({}). Fahre fail-safe fort.",
-                    e.getMessage());
+            // fail-safe: keinen Boot/Consumer brechen; letzte Daten behalten
             if (cachedItems == null) {
                 cachedItems = List.of();
             }
-            cacheExpiry = now.plusSeconds(Math.clamp(props.getCacheTtlSeconds(), 1, 60));
+            cacheExpiry = now.plusSeconds(backoffSekunden(e));
         }
+    }
+
+    /**
+     * Wartezeit bis zum naechsten Vaultwarden-Versuch nach einem Fehlschlag (Karte 395) — und die
+     * Log-Meldung dazu.
+     *
+     * <p><b>Warum das noetig wurde:</b> Vorher wurde nach einem Fehlschlag spaetestens nach 60
+     * Sekunden erneut versucht, und zwar unbegrenzt oft. Bei einem HTTP 429 („Too many login
+     * requests") ist das Dauerfeuer — und zwar selbstverstaerkend: Jeder Versuch waehrend der
+     * Sperre haelt sie am Leben. Am 01.08.2026 hat eine einzige fehlkonfigurierte INT-Instanz im
+     * Crashloop auf diesem Weg den Start ANDERER Anwendungen verhindert, weil Vaultwarden fuer
+     * alle abriegelte.</p>
+     *
+     * <p>Deshalb: exponentiell ab {@value #BACKOFF_START_SEK}s bis {@value #BACKOFF_MAX_SEK}s, und
+     * bei einem erkannten Rate-Limit sofort {@value #BACKOFF_RATE_LIMIT_SEK}s — ein Rate-Limit
+     * laeuft nur ab, wenn man es in Ruhe laesst.</p>
+     *
+     * <p>Die Meldung steht bewusst auf WARN und nennt die Wartezeit: Ein stiller Backoff sieht im
+     * Log aus wie ein haengender Dienst.</p>
+     */
+    private int backoffSekunden(Exception e) {
+        fehlversucheInFolge++;
+        String meldung = e.getMessage() == null ? "" : e.getMessage();
+        boolean rateLimit = meldung.contains("429") || meldung.contains("Too many");
+
+        int wartezeit;
+        if (rateLimit) {
+            wartezeit = BACKOFF_RATE_LIMIT_SEK;
+            log.warn("Vaultwarden riegelt mit einem Rate-Limit ab ({}). Naechster Versuch erst in {}s "
+                            + "— weitere Versuche wuerden die Sperre nur verlaengern. Fehlversuch Nr. {}.",
+                    meldung, wartezeit, fehlversucheInFolge);
+        } else {
+            // 30, 60, 120, 240, ... bis BACKOFF_MAX_SEK
+            long exponentiell = (long) BACKOFF_START_SEK << Math.min(fehlversucheInFolge - 1, 20);
+            wartezeit = (int) Math.min(exponentiell, BACKOFF_MAX_SEK);
+            log.warn("Vaultwarden-Zugriff fehlgeschlagen ({}). Fahre fail-safe fort, "
+                            + "naechster Versuch in {}s (Fehlversuch Nr. {}).",
+                    meldung, wartezeit, fehlversucheInFolge);
+        }
+        return wartezeit;
     }
 
     // ------------------------------------------------------------------
