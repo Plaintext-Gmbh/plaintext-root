@@ -166,6 +166,77 @@ class VaultwardenClientTest {
         assertThat(newClient(props()).getItems()).isEmpty();
     }
 
+    /**
+     * Karte 395: Nach einem HTTP 429 darf NICHT sofort erneut eingeloggt werden.
+     *
+     * <p>Genau das war die Ursache der Kaskade vom 01.08.2026: Der Fehlerpfad setzte die
+     * Cache-Gueltigkeit auf hoechstens 60 Sekunden, danach lief der naechste Login-Versuch — und
+     * hielt damit das Rate-Limit am Leben, das er abwarten wollte. Eine einzige Instanz im
+     * Crashloop konnte so den Start ANDERER Anwendungen verhindern.</p>
+     */
+    @Test
+    void getItems_rateLimit429_versuchtNichtSofortErneut() throws InterruptedException {
+        // cacheTtl = 1s mit Absicht: VOR dem Fix war der Fehler-Backoff clamp(cacheTtl, 1, 60),
+        // also hier 1 Sekunde — nach dem Warten unten waere der naechste Login rausgegangen und
+        // der Test rot. Mit dem Fix greift bei einem 429 der lange Backoff, unabhaengig vom TTL.
+        VaultwardenProperties p = props();
+        p.setCacheTtlSeconds(1);
+        vault.tokenStatus = 429;
+        vault.tokenBody = "{\"message\":\"Too many login requests\"}";
+        VaultwardenClient client = newClient(p);
+
+        assertThat(client.getItems()).isEmpty();
+        assertThat(vault.tokenCalls).isEqualTo(1);
+
+        Thread.sleep(1300);   // laenger als der alte Backoff
+        client.getItems();
+        client.getItems();
+
+        assertThat(vault.tokenCalls)
+                .as("nach einem 429 darf kein weiterer Login-Versuch rausgehen — jeder haelt die Sperre am Leben")
+                .isEqualTo(1);
+    }
+
+    /** Auch ein gewoehnlicher Fehlschlag (kein 429) fuehrt nicht zu Dauerfeuer. */
+    /**
+     * Auch ein gewoehnlicher Fehlschlag fuehrt nicht zu Dauerfeuer: Der Backoff startet bei 30
+     * Sekunden und verdoppelt sich — vor dem Fix waren es hoechstens 60, danach ging es endlos
+     * im selben Takt weiter.
+     */
+    @Test
+    void getItems_fehlschlag_versuchtNichtSofortErneut() throws InterruptedException {
+        VaultwardenProperties p = props();
+        p.setCacheTtlSeconds(1);
+        vault.tokenStatus = 500;
+        vault.tokenBody = "boom";
+        VaultwardenClient client = newClient(p);
+
+        assertThat(client.getItems()).isEmpty();
+        Thread.sleep(1300);
+        client.getItems();
+
+        assertThat(vault.tokenCalls)
+                .as("Backoff greift auch ohne Rate-Limit")
+                .isEqualTo(1);
+    }
+
+    /** Nach einem erfolgreichen Zugriff ist der Fehlerzaehler zurueckgesetzt (kein Dauer-Backoff). */
+    @Test
+    void getItems_nachErfolgKeinBackoffMehr() {
+        vault.tokenStatus = 429;
+        vault.tokenBody = "{\"message\":\"Too many login requests\"}";
+        VaultwardenClient client = newClient(props());
+        assertThat(client.getItems()).isEmpty();
+
+        // Vaultwarden ist wieder da; der Cache wird verworfen, wie es die Rotation auch tut.
+        vault.tokenStatus = 200;
+        vault.tokenBody = tokenJson(3600);
+        client.invalidate();
+
+        assertThat(client.getItems()).hasSize(2);
+        assertThat(vault.tokenCalls).isEqualTo(2);
+    }
+
     @Test
     void getItems_syncError_failsSafeEmpty() {
         vault.syncStatus = 500;
