@@ -8,7 +8,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePatternResolver;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +36,6 @@ import java.util.regex.Pattern;
  * {@code ui:include} bzw. als {@code template=} eingebunden und sind keine aufrufbaren Seiten.
  * Dass sie bei Direktaufruf gesperrt werden, ist gewollt.
  */
-@Component
 @Slf4j
 public class PageAccessGuardStartupReport {
 

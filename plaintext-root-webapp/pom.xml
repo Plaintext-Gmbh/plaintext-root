@@ -31,6 +31,21 @@
             <groupId>ch.plaintext</groupId>
             <artifactId>plaintext-root-menu-visibility</artifactId>
         </dependency>
+
+        <!-- Seiten-Zugriffsschutz aus der Menue-Sichtbarkeit. Eigenes Modul, damit ihn auch Apps
+             nutzen koennen, die nicht auf plaintext-root-webapp aufsetzen. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-pageguard</artifactId>
+        </dependency>
+
+        <!-- Testfabrik des Guards, genutzt von MenuLinkInvariantTest. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-pageguard</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>ch.plaintext</groupId>
             <artifactId>plaintext-root-flyway</artifactId>

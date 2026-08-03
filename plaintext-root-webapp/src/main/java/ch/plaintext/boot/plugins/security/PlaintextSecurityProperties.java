@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security;
 
-import ch.plaintext.boot.security.PageGuardMode;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -86,11 +85,6 @@ public class PlaintextSecurityProperties {
      */
     private TotpProperties totp = new TotpProperties();
 
-    /**
-     * Seiten-Zugriffsschutz auf Basis der Menue-Sichtbarkeit (Karte 308).
-     * Siehe {@link PageGuardProperties}.
-     */
-    private PageGuardProperties pageGuard = new PageGuardProperties();
 
     /**
      * Session-Bootstrap aus einem ApiToken ({@code GET /token-login?token=}), Karte 309.
@@ -135,54 +129,6 @@ public class PlaintextSecurityProperties {
         private List<String> requiredScopes = new ArrayList<>(List.of("SESSION", "ADMIN"));
     }
 
-    /**
-     * Konfiguration des Seiten-Zugriffsschutzes
-     * ({@code ch.plaintext.boot.security.PageAccessGuardService} /
-     * {@code PageAccessGuardFilter}).
-     *
-     * <p><b>Warum der Default {@link PageGuardMode#REPORT} ist:</b> das Framework wird von
-     * mehreren Apps konsumiert, die eigene Views und eigene {@code @MenuAnnotation}s mitbringen.
-     * Ein sofortiges {@link PageGuardMode#STRICT} wuerde dort jede View ohne Menueeintrag
-     * aussperren. {@code REPORT} setzt alle uebrigen Verscharfungen (kanonischer Link-Vergleich,
-     * {@code catch} -> verweigern, Allowlist, Aliase) durch, laesst aber Views ohne Zuordnung mit
-     * einer WARN-Meldung passieren — so bekommt jede App erst ihre Lueckenliste ins Log und kann
-     * dann gezielt auf {@code STRICT} umstellen. Die root-App selbst laeuft in {@code STRICT}
-     * (gesetzt in ihrer {@code application.yml}).
-     */
-    @Data
-    public static class PageGuardProperties {
-
-        /**
-         * Not-Aus. Bei {@code false} prueft weder Filter noch {@code preRenderView}-Guard
-         * (Spring-Security-Regeln in {@code PlaintextSecurityConfig} bleiben davon unberuehrt).
-         * Nur fuer den Fall gedacht, dass der Guard in PROD legitime Seiten sperrt und kein
-         * Rollback moeglich ist.
-         */
-        private boolean enabled = true;
-
-        /**
-         * Verhalten bei Views ohne Menuezuordnung und Eltern-Rollen-Vererbung.
-         * Siehe {@link PageGuardMode}.
-         */
-        private PageGuardMode mode = PageGuardMode.REPORT;
-
-        /**
-         * Zusaetzlich immer erreichbare Views (ergaenzend zu den Framework-Defaults in
-         * {@code PageAccessGuardService}). Endung und fuehrender Slash sind egal
-         * ({@code /myview.xhtml} == {@code myview.html} == {@code myview}). Ein Eintrag, der auf
-         * {@code /**} endet, wirkt als Praefix ({@code nosec/**}).
-         */
-        private List<String> allowlist = new ArrayList<>();
-
-        /**
-         * View-Aliase: „bewache diese View wie diesen Menuelink". Schluessel ist die View, Wert
-         * der Menue-Link, dessen Rollen/Mandanten-Sichtbarkeit gelten sollen. Fuer Detailseiten
-         * ohne eigenen Menueeintrag, z.B.
-         * {@code rechnungdetail.xhtml: rechnungen.html}. Beide Seiten werden kanonisiert, die
-         * Endung ist also egal.
-         */
-        private Map<String, String> aliases = new LinkedHashMap<>();
-    }
 
     /**
      * Konfiguration des optionalen zweiten Faktors (TOTP, Authenticator-App).

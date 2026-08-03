@@ -6,7 +6,6 @@ package ch.plaintext.boot.security;
 import ch.plaintext.boot.menu.MenuItemImpl;
 import ch.plaintext.boot.menu.MenuRegistryImpl;
 import ch.plaintext.boot.menu.SecurityProvider;
-import ch.plaintext.boot.plugins.security.PlaintextSecurityProperties;
 
 import java.util.Arrays;
 import java.util.List;
@@ -76,7 +75,7 @@ final class PageAccessGuardTestFactory {
         return guard(eigenschaften(mode, enabled), items);
     }
 
-    static PageAccessGuardService guard(PlaintextSecurityProperties properties, MenuItemImpl... items) {
+    static PageAccessGuardService guard(PageGuardProperties properties, MenuItemImpl... items) {
         MenuRegistryImpl registry = mock(MenuRegistryImpl.class);
         when(registry.getAllMenuItemsImpl()).thenReturn(new java.util.ArrayList<>(Arrays.asList(items)));
         return new PageAccessGuardService(registry, properties);
@@ -89,10 +88,10 @@ final class PageAccessGuardTestFactory {
         return new PageAccessGuardService(registry, eigenschaften(mode, true));
     }
 
-    static PlaintextSecurityProperties eigenschaften(PageGuardMode mode, boolean enabled) {
-        PlaintextSecurityProperties properties = new PlaintextSecurityProperties();
-        properties.getPageGuard().setMode(mode);
-        properties.getPageGuard().setEnabled(enabled);
+    static PageGuardProperties eigenschaften(PageGuardMode mode, boolean enabled) {
+        PageGuardProperties properties = new PageGuardProperties();
+        properties.setMode(mode);
+        properties.setEnabled(enabled);
         return properties;
     }
 }

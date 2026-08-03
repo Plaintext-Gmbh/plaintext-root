@@ -11,6 +11,25 @@ from `git log` and may not be exhaustive.
 ## [Unreleased]
 
 ### Added
+- `plaintext-root-pageguard`: the page access guard is now its own module instead of
+  living inside `plaintext-root-webapp`. It carries `PageAccessGuardFilter`, the
+  service, the startup report, the `preRenderView` backing bean and `PageGuardMode`.
+  Applications on `plaintext-root-webapp` are unaffected — the module is pulled in
+  transitively and the filter is still registered by `PlaintextSecurityConfig`, where
+  its position in the Spring Security chain is documented. The point of the split is
+  that an application consuming single modules can now have page-level authorization
+  without taking the whole web stack.
+- `PageGuardAutoConfiguration` registers the guard through `AutoConfiguration.imports`
+  rather than through `@Service`/`@Component`, and `MenuAutoConfiguration` now
+  registers `MenuRegistryImpl` the same way. Both were previously reachable only by
+  component-scanning `ch.plaintext`; an application that did not scan it started
+  cleanly and silently had no page guard at all.
+- `plaintext.security.page-guard.startup-report` (default `true`) switches off the
+  boot-time scan that lists views without an access rule.
+- `plaintext-root-pageguard` publishes a `test-jar`. `PageAccessGuardTestFactory`
+  builds a guard over a mocked menu registry, so a consuming application can assert
+  its own views against its own menus — see `MenuLinkInvariantTest` in
+  `plaintext-root-webapp` for the pattern.
 - Menu access policy `STRICT` (`plaintext.menu.access-policy`): a menu item stays
   hidden unless a rule admits the user — `ROLE_ROOT`, `ROLE_ADMIN` outside the Root
   menu, the derived `ROLE_MENU_<menuId>`, one of the declared `roles`, or a prefix
@@ -33,6 +52,16 @@ from `git log` and may not be exhaustive.
 - `CronModuleConfiguration` registers the cron beans explicitly (guarded by
   `@ConditionalOnMissingBean`) and is announced through `AutoConfiguration.imports`
   — the module now works in applications that do not component-scan `ch.plaintext`.
+
+### Changed
+- `PlaintextSecurityProperties.PageGuardProperties` is now the top-level class
+  `ch.plaintext.boot.security.PageGuardProperties`, and `getPageGuard()` is gone from
+  `PlaintextSecurityProperties`. **The configuration prefix is unchanged** —
+  `plaintext.security.page-guard.*` binds exactly as before, so no `application.yml`
+  and no environment variable needs touching; `PageGuardAutoConfigurationTest` pins
+  this down. Only code that referenced the nested Java class has to adjust its import.
+- `PageAccessGuardService` takes `PageGuardProperties` rather than
+  `PlaintextSecurityProperties` in its constructor.
 
 ### Fixed
 - Cron key derivation resolves CGLIB proxies via `ClassUtils.getUserClass`. A job
