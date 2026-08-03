@@ -243,7 +243,14 @@ public class PlaintextSecurityConfig {
                         for (String pattern : csrfIgnore) {
                             matchers.add(PathPatternRequestMatcher.pathPattern(pattern));
                         }
-                        csrf.ignoringRequestMatchers(matchers.toArray(new org.springframework.security.web.util.matcher.RequestMatcher[0]));
+                        // NOSONAR (S4502): Die Ausnahme trifft ausschliesslich tokenbasierte,
+                        // sessionlose Pfade — Framework-Default /token-login und /nosec/**, dazu
+                        // was eine App ausdruecklich in plaintext.security.csrf-ignore-patterns
+                        // eintraegt. CSRF schuetzt gegen das automatische Mitsenden von
+                        // Session-Cookies; wo die Berechtigung aus einem Bearer-Token im Header
+                        // stammt, gibt es nichts, was ein fremdes Formular mitschicken koennte.
+                        // Alle cookie-authentifizierten Pfade bleiben CSRF-geschuetzt (Karte 458).
+                        csrf.ignoringRequestMatchers(matchers.toArray(new org.springframework.security.web.util.matcher.RequestMatcher[0])); // NOSONAR
                 })
                 .headers(headers -> {
                     headers.frameOptions(frame -> frame.sameOrigin());

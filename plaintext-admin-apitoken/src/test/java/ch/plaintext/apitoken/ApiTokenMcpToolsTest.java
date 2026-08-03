@@ -62,14 +62,14 @@ class ApiTokenMcpToolsTest {
 
     @Test
     void ohneAuthentication_keineAusstellung() {
-        assertTrue(tools.create_api_token("t", "READ", 30).startsWith("FEHLER"));
+        assertTrue(tools.createApiToken("t", "READ", 30).startsWith("FEHLER"));
         verifyNoInteractions(service);
     }
 
     @Test
     void ohneScopeAdmin_keineAusstellung() {
         authentifiziereAls("ROLE_ADMIN", "SCOPE_READ", "PROPERTY_MYUSERID_7", "PROPERTY_MANDAT_plaintext");
-        String antwort = tools.create_api_token("t", "ADMIN", 30);
+        String antwort = tools.createApiToken("t", "ADMIN", 30);
         assertTrue(antwort.contains("scope=ADMIN"), antwort);
         verifyNoInteractions(service);
     }
@@ -77,7 +77,7 @@ class ApiTokenMcpToolsTest {
     @Test
     void ohneAdminRolle_keineAusstellung() {
         authentifiziereAls("ROLE_USER", "SCOPE_ADMIN", "PROPERTY_MYUSERID_7", "PROPERTY_MANDAT_plaintext");
-        String antwort = tools.create_api_token("t", "READ", 30);
+        String antwort = tools.createApiToken("t", "READ", 30);
         assertTrue(antwort.contains("Rolle ADMIN oder ROOT"), antwort);
         verifyNoInteractions(service);
     }
@@ -87,13 +87,13 @@ class ApiTokenMcpToolsTest {
         authentifiziereAls("ROLE_ROOT", "SCOPE_ADMIN", "PROPERTY_MYUSERID_7", "PROPERTY_MANDAT_plaintext");
         when(service.createToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), anyString()))
                 .thenReturn("jwt-x");
-        assertTrue(tools.create_api_token("t", "READ", 30).contains("jwt-x"));
+        assertTrue(tools.createApiToken("t", "READ", 30).contains("jwt-x"));
     }
 
     @Test
     void fehlenderScope_wirdNichtStillschweigendGesetzt() {
         authAdmin();
-        String antwort = tools.create_api_token("t", "  ", 30);
+        String antwort = tools.createApiToken("t", "  ", 30);
         assertTrue(antwort.contains("scope fehlt"), antwort);
         verify(service, never()).createToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), anyString());
     }
@@ -101,7 +101,7 @@ class ApiTokenMcpToolsTest {
     @Test
     void unbekannterScope_wirdAbgelehnt() {
         authAdmin();
-        assertTrue(tools.create_api_token("t", "SUPERUSER", 30).contains("ungueltiger scope"));
+        assertTrue(tools.createApiToken("t", "SUPERUSER", 30).contains("ungueltiger scope"));
         verify(service, never()).createToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), anyString());
     }
 
@@ -111,7 +111,7 @@ class ApiTokenMcpToolsTest {
         when(service.createToken(eq(7L), eq("plaintext"), eq("mcpZorin"), eq("u@x.ch"), eq(90), eq("ADMIN")))
                 .thenReturn("jwt-abc");
 
-        String antwort = tools.create_api_token(" mcpZorin ", "admin", null);
+        String antwort = tools.createApiToken(" mcpZorin ", "admin", null);
 
         assertTrue(antwort.contains("jwt-abc"), antwort);
         verify(service).createToken(7L, "plaintext", "mcpZorin", "u@x.ch", 90, "ADMIN");
@@ -120,8 +120,8 @@ class ApiTokenMcpToolsTest {
     @Test
     void gueltigkeitAusserhalbDerGrenzen_wirdAbgelehnt() {
         authAdmin();
-        assertTrue(tools.create_api_token("t", "READ", 1).contains("validityDays"));
-        assertTrue(tools.create_api_token("t", "READ", 9999).contains("validityDays"));
+        assertTrue(tools.createApiToken("t", "READ", 1).contains("validityDays"));
+        assertTrue(tools.createApiToken("t", "READ", 9999).contains("validityDays"));
         verify(service, never()).createToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), anyString());
     }
 
@@ -130,7 +130,7 @@ class ApiTokenMcpToolsTest {
         authAdmin();
         when(service.getAllTokens(7L, "plaintext")).thenReturn(List.of(token(1L, "eigener")));
 
-        String antwort = tools.revoke_api_token(42L);
+        String antwort = tools.revokeApiToken(42L);
 
         assertTrue(antwort.startsWith("FEHLER"), antwort);
         verify(service, never()).invalidateToken(anyLong(), anyLong(), anyString());
@@ -141,7 +141,7 @@ class ApiTokenMcpToolsTest {
         authAdmin();
         when(service.getAllTokens(7L, "plaintext")).thenReturn(List.of(token(1L, "eigener")));
 
-        assertEquals("OK: Token 1 widerrufen.", tools.revoke_api_token(1L));
+        assertEquals("OK: Token 1 widerrufen.", tools.revokeApiToken(1L));
         verify(service).invalidateToken(1L, 7L, "plaintext");
     }
 
@@ -150,7 +150,7 @@ class ApiTokenMcpToolsTest {
         authAdmin();
         when(service.getAllTokens(7L, "plaintext")).thenReturn(List.of(token(1L, "mcpZorin")));
 
-        String antwort = tools.list_api_tokens();
+        String antwort = tools.listApiTokens();
 
         assertTrue(antwort.contains("mcpZorin"), antwort);
         assertTrue(antwort.contains("id=1"), antwort);

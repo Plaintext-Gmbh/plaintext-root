@@ -1,0 +1,58 @@
+/*
+ * Karte 478 — Buttons kleben nie buendig aneinander.
+ *
+ * Vorher war der Abstand Handarbeit der Seitenautoren: 21 Inline-"margin-right: 8px" allein in
+ * plaintext-app. Das hat zwei Schwaechen — es wirkt nur horizontal (beim Umbruch auf schmalen
+ * Geraeten kleben die Zeilen vertikal aufeinander), und wo es jemand vergisst, kleben die Buttons
+ * sofort. Anlass war Gear Management auf dem iPad: "New Category"/"New Item"/"Edit"/"Delete" ohne
+ * jeden Abstand, horizontal wie vertikal.
+ *
+ * Ein Rundum-Margin am .ui-button ist der einzige Ansatz, der ohne Umbau jeder einzelnen Seite
+ * auch den Umbruch-Fall trifft. Der Preis sind Ausnahmen fuer zusammengesetzte Komponenten, die
+ * bewusst buendig sind — die stehen unten und sind am Bestand erhoben, nicht geraten.
+ *
+ * Wirkt in ALLEN Apps (app/guild/schuetu/root), weil plaintext-root-template ueberall das Layout
+ * liefert.
+ */
+
+/* Grundregel: kleiner Abstand rundum. Vertikal knapper als horizontal — in einer Zeile stoert
+   zuviel Luft, beim Umbruch braucht es sichtbare Trennung. */
+.ui-button {
+    margin: 2px 3px;
+}
+
+/*
+ * Ausnahmen: zusammengesetzte Komponenten, deren Buttons als EIN Bedienelement gelesen werden.
+ * Ein Margin dazwischen sieht dort nach Fehler aus.
+ *
+ * Erhoben am Bestand (grep ueber *.xhtml in plaintext-root und plaintext-app):
+ *   p:datePicker      16 Dateien  -> Monats-/Jahresnavigation im Kalenderkopf
+ *   p:selectOneButton  2 Dateien  -> Segmentierte Auswahl
+ *   p:splitButton      1 Datei    -> Hauptaktion + Aufklapp-Pfeil
+ *   p:chips            2 Dateien  -> Loesch-Kreuze in den Chips
+ * Buttonset, Inputgroup und Paginator sind mit aufgenommen, weil sie zur selben Familie gehoeren
+ * und ein spaeterer Einsatz sonst wieder Handarbeit braeuchte.
+ */
+.ui-buttonset .ui-button,
+.ui-splitbutton .ui-button,
+.ui-selectonebutton .ui-button,
+.ui-selectmanybutton .ui-button,
+.ui-inputgroup .ui-button,
+.ui-paginator .ui-button,
+.ui-datepicker .ui-button,
+.ui-chips .ui-button {
+    margin: 0;
+}
+
+/*
+ * Toolbars brechen auf schmalen Geraeten um. Ohne flex-wrap laufen die Gruppen aus dem Viewport,
+ * mit gap sitzt der Abstand auch dann sauber, wenn eine Gruppe nur ein einzelnes Element enthaelt.
+ */
+.ui-toolbar .ui-toolbar-group-left,
+.ui-toolbar .ui-toolbar-group-right,
+.ui-toolbar .ui-toolbar-group-center {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .375rem;
+    align-items: center;
+}

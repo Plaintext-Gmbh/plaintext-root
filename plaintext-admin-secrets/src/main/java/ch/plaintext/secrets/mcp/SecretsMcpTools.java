@@ -29,11 +29,12 @@ public class SecretsMcpTools {
 
     private final SecretService secretService;
 
-    @McpTool(description = "Set (create or overwrite) a secret — ONE-WAY, the value is never read back. "
+    @McpTool(name = "set_secret",
+            description = "Set (create or overwrite) a secret — ONE-WAY, the value is never read back. "
             + "backend = VAULTWARDEN (write to the shared vault), LOCAL_DB (AES-encrypted in this app's DB) "
             + "or HASHICORP (configured HashiCorp Vault). note = optional free-text comment. "
             + "The entry's creation timestamp is recorded automatically.")
-    public String set_secret(
+    public String setSecret(
             @McpToolParam(description = "Secret name / key") String name,
             @McpToolParam(description = "Backend: VAULTWARDEN, LOCAL_DB or HASHICORP") String backend,
             @McpToolParam(description = "The secret value to store (write-only)") String value,

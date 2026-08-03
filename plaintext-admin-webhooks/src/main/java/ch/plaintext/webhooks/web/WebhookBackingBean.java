@@ -170,7 +170,12 @@ public class WebhookBackingBean implements Serializable {
         if (eventTypes == null) {
             return "";
         }
-        return String.join(",", eventTypes.split("\\s*,\\s*"));
+        // Karte 458 (java:S5852): '\\s*,\\s*' kann bei langen Eingaben aus dem UI-Feld in
+        // quadratisches Backtracking laufen. Trennen am Komma und einzeln trimmen ist linear.
+        return java.util.Arrays.stream(eventTypes.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(java.util.stream.Collectors.joining(","));
     }
 
     private void info(String m) {

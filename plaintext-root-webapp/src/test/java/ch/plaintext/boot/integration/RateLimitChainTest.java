@@ -18,9 +18,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.DefaultResponseErrorHandler;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -41,7 +38,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
  * <vom nginx angehaengter Tunnel-Host>}.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
         "plaintext.rate-limit.login.max-requests=5",
@@ -56,18 +52,10 @@ class RateLimitChainTest {
     /** Adresse, die der nginx auf dem NAS anhaengt — vertrauenswuerdiger Hop. */
     private static final String PROXY_HOP = "192.168.1.224";
 
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine")
-            .withDatabaseName("plaintext_test")
-            .withUsername("test")
-            .withPassword("test");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        EmbeddedPg.registrieren(registry, "ratelimitchaintest");
     }
 
     @LocalServerPort
