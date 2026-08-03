@@ -39,6 +39,14 @@
             <artifactId>plaintext-root-pageguard</artifactId>
         </dependency>
 
+        <!-- Wiederverwendbare JSF-/Web-Infrastruktur (URL-Rewriting, MenuBean, Debug-Views).
+             Eigenes Modul, damit auch Apps sie nutzen koennen, die nicht auf
+             plaintext-root-webapp aufsetzen. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-web</artifactId>
+        </dependency>
+
         <!-- Testfabrik des Guards, genutzt von MenuLinkInvariantTest. -->
         <dependency>
             <groupId>ch.plaintext</groupId>
