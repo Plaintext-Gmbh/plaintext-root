@@ -6,9 +6,10 @@
                 xmlns="http://www.w3.org/1999/xhtml" template="includes/template.xhtml">
 
     <ui:define name="content">
-        <h:form id="fm">
-            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
-
+        <!-- VOR dem Formular, nicht darin: ein woertliches CDATA-Ende innerhalb von h:form
+             beendet die CDATA-Sektion jeder Ajax-Antwort vorzeitig; der Browser verwirft sie
+             dann stillschweigend (Karte 502, Ursache belegt in Karte 430). Der Block
+             registriert ohnehin nur globale Listener und gehoert nicht ins Formular. -->
         <script type="text/javascript">
             //<![CDATA[
             // Advanced mode toggle via Ctrl+Shift+D
@@ -20,6 +21,9 @@
             });
             //]]>
         </script>
+
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
         <p:growl id="growl" widgetVar="growl" showDetail="true" life="3000"/>
 
