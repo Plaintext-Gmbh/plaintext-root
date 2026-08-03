@@ -11,6 +11,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ClassUtils;
 
 /**
  * BeanPostProcessor that wraps PlaintextCron implementations into SuperCron at runtime.
@@ -41,7 +42,12 @@ public class CronBeanPostProcessor implements BeanPostProcessor, ApplicationCont
                      beanName, bean.getClass().getName());
 
             PlaintextCron cronLogic = (PlaintextCron) bean;
-            Class<? extends PlaintextCron> originalClass = (Class<? extends PlaintextCron>) bean.getClass();
+            // ClassUtils.getUserClass instead of bean.getClass(): for a proxied bean —
+            // @Transactional, @Async — the latter is the generated proxy name, so the job would be
+            // keyed as "MyCron$$SpringCGLIB$$0", never find its stored configuration again,
+            // silently create a fresh one, and show the proxy name in the admin UI.
+            Class<? extends PlaintextCron> originalClass =
+                    (Class<? extends PlaintextCron>) ClassUtils.getUserClass(bean);
 
             // Create a SuperCron wrapper at runtime
             SuperCron wrapper = new SuperCron() {
@@ -90,6 +96,16 @@ public class CronBeanPostProcessor implements BeanPostProcessor, ApplicationCont
                 public String getDefaultCronExpression() {
                     // Delegate to the wrapped implementation
                     return cronLogic.getDefaultCronExpression();
+                }
+
+                @Override
+                public Boolean isEnabledByDefault() {
+                    return cronLogic.isEnabledByDefault();
+                }
+
+                @Override
+                public Boolean isStartupByDefault() {
+                    return cronLogic.isStartupByDefault();
                 }
             };
 
