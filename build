@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -15,6 +14,127 @@ source "$SCRIPTS_DIR/tui-build-logic.sh"
 
 # ── Initialize versions ──────────────────────────────────────
 init_versions
+
+# ── Spiegelung ins git-basierte Maven-Repo ───────────────────
+#
+# WARUM
+# Die Releases gehen ueber distributionManagement nach GitHub Packages. Deren
+# Maven-Registry verlangt aber bei JEDER Anfrage HTTP-Basic-Auth, auch bei
+# oeffentlichen Paketen (`www-authenticate: Basic realm="GitHub Package Registry"`).
+# Anders als bei ghcr.io gibt es dafuer keinen Schalter. Eine konsumierende App
+# braucht also ein Token mit `read:packages`, nur um eine oeffentliche Bibliothek zu
+# holen - fuer eine offene Produktlinie ist das die falsche Huerde.
+#
+# Plaintext-Gmbh/plaintext-mvn ist deshalb als git-basiertes Maven-Repository
+# angelegt: raw.githubusercontent.com liefert oeffentliche Dateien ohne jede
+# Anmeldung aus. Der README dieses Repos beschreibt genau diesen Bezugsweg. Nur
+# befuellt hat ihn bisher niemand - deshalb diese Funktion.
+#
+# NUR ROOT SPIEGELT
+# Die Konsumenten (app/iot/schuetu/fwtool) erben zwar diesen Parent, rufen aber
+# ihr eigenes ./build. Diese Funktion steht bewusst hier und nicht in
+# plaintext-scripts/tui-build-logic.sh, damit ausschliesslich root in dieses
+# Repository schreibt - dieselbe Ueberlegung wie beim Profil dual-publish-nas.
+mirror_to_plaintext_mvn() {
+    local version klon stage m2 modul verzeichnis anzahl
+
+    # Die Version kommt aus dem Tag, NICHT aus dem POM: do_release hebt die
+    # POM-Version am Ende auf den naechsten SNAPSHOT. Ein help:evaluate an dieser
+    # Stelle liefert also bereits 1.494.0-SNAPSHOT, waehrend soeben 1.493.0
+    # veroeffentlicht wurde.
+    version="${1:-$(git describe --tags --abbrev=0 2>/dev/null)}"
+
+    case "$version" in
+        ""|*-SNAPSHOT)
+            echo -e "${YELLOW}plaintext-mvn: '${version:-kein Tag gefunden}' ist kein Release - uebersprungen.${NC}"
+            return 0
+            ;;
+    esac
+
+    if [ -z "${GITHUB_TOKEN:-}" ]; then
+        echo -e "${YELLOW}plaintext-mvn: kein GITHUB_TOKEN - Spiegelung uebersprungen.${NC}"
+        return 0
+    fi
+
+    m2="${HOME}/.m2/repository/ch/plaintext"
+    if [ ! -d "$m2" ]; then
+        echo -e "${RED}plaintext-mvn: $m2 fehlt - lief das Release wirklich durch?${NC}"
+        return 1
+    fi
+
+    klon="$(mktemp -d)"
+
+    echo -e "${BLUE}=== Spiegele $version nach Plaintext-Gmbh/plaintext-mvn ===${NC}"
+
+    # --depth 1 genuegt: deploy-file liest nur den Arbeitsbaum, um die vorhandene
+    # maven-metadata.xml um die neue Version zu ergaenzen.
+    if ! git clone --quiet --depth 1 \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/Plaintext-Gmbh/plaintext-mvn.git" "$klon"; then
+        echo -e "${RED}plaintext-mvn: Klonen fehlgeschlagen.${NC}"
+        return 1
+    fi
+
+    # Die Artefakte liegen nach dem Release fertig im lokalen Repository. Sie von
+    # dort zu uebernehmen statt neu zu bauen, spart einen kompletten zweiten
+    # Reaktor-Durchlauf - und stellt sicher, dass exakt die veroeffentlichten
+    # Dateien gespiegelt werden und nicht ein zweites, leicht abweichendes Build.
+    #
+    # deploy-file pflegt dabei die maven-metadata.xml je Artefakt fort; genau die
+    # braucht ein Konsument, um "neueste Version" zu bestimmen.
+    # Umweg ueber ein Staging-Verzeichnis: deploy-file weigert sich, eine Datei zu
+    # veroeffentlichen, die im lokalen Repository liegt ("Cannot deploy artifact
+    # from the local repository"). Kopieren ist billiger als neu bauen.
+    stage="$(mktemp -d)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '$klon' '$stage'" RETURN
+
+    anzahl=0
+    for verzeichnis in "$m2"/*/"$version"; do
+        [ -d "$verzeichnis" ] || continue
+        modul="$(basename "$(dirname "$verzeichnis")")"
+        [ -f "$verzeichnis/$modul-$version.pom" ] || continue
+
+        cp "$verzeichnis/$modul-$version.pom" "$stage/" || return 1
+        if [ -f "$verzeichnis/$modul-$version.jar" ]; then
+            cp "$verzeichnis/$modul-$version.jar" "$stage/" || return 1
+            mvn -q org.apache.maven.plugins:maven-deploy-plugin:deploy-file \
+                -Durl="file://$klon" -DrepositoryId=plaintext-mvn \
+                -Dfile="$stage/$modul-$version.jar" \
+                -DpomFile="$stage/$modul-$version.pom" -DgeneratePom=false || return 1
+        else
+            # Parent- und BOM-Artefakte haben kein JAR.
+            mvn -q org.apache.maven.plugins:maven-deploy-plugin:deploy-file \
+                -Durl="file://$klon" -DrepositoryId=plaintext-mvn \
+                -Dfile="$stage/$modul-$version.pom" \
+                -DpomFile="$stage/$modul-$version.pom" \
+                -Dpackaging=pom -DgeneratePom=false || return 1
+        fi
+        anzahl=$((anzahl + 1))
+    done
+
+    if [ "$anzahl" -eq 0 ]; then
+        echo -e "${RED}plaintext-mvn: keine Artefakte fuer $version in $m2 gefunden.${NC}"
+        return 1
+    fi
+
+    (
+        cd "$klon" || exit 1
+        git add -A ch || exit 1
+        if git diff --cached --quiet; then
+            echo "plaintext-mvn: keine Aenderung - nichts zu committen."
+            exit 0
+        fi
+        git -c user.name="plaintext-ci" -c user.email="ci@plaintext.ch" \
+            commit --quiet -m "Release $version" || exit 1
+        git push --quiet origin HEAD:master || exit 1
+    ) || {
+        echo -e "${RED}plaintext-mvn: Commit/Push fehlgeschlagen.${NC}"
+        return 1
+    }
+
+    echo -e "${GREEN}plaintext-mvn: $anzahl Artefakte fuer $version veroeffentlicht.${NC}"
+    return 0
+}
 
 # ── Command execution (digit dispatch) ───────────────────────
 
@@ -137,6 +257,15 @@ if [ -n "$COMMAND" ]; then
 
         release)
             do_release "$2" "$3" || exit 1
+            # Erst nach erfolgreichem Release spiegeln. Schlaegt die Spiegelung
+            # fehl, ist das Release trotzdem gueltig (GitHub Packages und NAS sind
+            # bedient) - deshalb nur eine Warnung statt exit 1. Ein fehlgeschlagener
+            # Spiegel darf keinen Prod-Deploy verhindern, der danach kommt.
+            mirror_to_plaintext_mvn || echo -e "${YELLOW}Spiegelung nach plaintext-mvn fehlgeschlagen - Release bleibt gueltig.${NC}"
+            ;;
+
+        mirror-mvn)
+            mirror_to_plaintext_mvn "$2" || exit 1
             ;;
 
         deploy-prod)
