@@ -70,12 +70,13 @@ public class ApiTokenMcpTools {
 
     private final ApiTokenService apiTokenService;
 
-    @McpTool(description = "Stellt einen neuen API-Token (JWT) fuer den AUFRUFENDEN Benutzer aus — regulaer "
+    @McpTool(name = "create_api_token",
+            description = "Stellt einen neuen API-Token (JWT) fuer den AUFRUFENDEN Benutzer aus — regulaer "
             + "ueber den ApiTokenService, d.h. mit Zeile in api_token (nur SHA-256-Hash), explizitem Scope, "
             + "Ablaufdatum und Widerrufsmoeglichkeit. Der Token-String wird GENAU EINMAL zurueckgegeben und "
             + "ist danach nicht wiederherstellbar. Erfordert einen Aufrufer-Token mit Scope ADMIN sowie die "
             + "Rolle ADMIN oder ROOT. scope ist PFLICHT: READ, EINTRAGEN oder ADMIN.")
-    public String create_api_token(
+    public String createApiToken(
             @McpToolParam(description = "Name des Tokens, z.B. 'mcpZorin' (muss im Mandanten des Benutzers "
                     + "eindeutig sein — bestehenden zuerst per revoke_api_token widerrufen)") String tokenName,
             @McpToolParam(description = "Berechtigungsumfang, PFLICHT: READ, EINTRAGEN oder ADMIN") String scope,
@@ -117,10 +118,11 @@ public class ApiTokenMcpTools {
         }
     }
 
-    @McpTool(description = "Listet die aktiven API-Tokens des aufrufenden Benutzers (Id, Name, Ablauf, "
+    @McpTool(name = "list_api_tokens",
+            description = "Listet die aktiven API-Tokens des aufrufenden Benutzers (Id, Name, Ablauf, "
             + "letzte Nutzung) — ohne Token-Strings, die sind nicht wiederherstellbar. Erfordert Scope ADMIN "
             + "sowie die Rolle ADMIN oder ROOT.")
-    public String list_api_tokens() {
+    public String listApiTokens() {
         Aufrufer aufrufer;
         try {
             aufrufer = aufruferPruefen();
@@ -145,10 +147,11 @@ public class ApiTokenMcpTools {
         return sb.toString();
     }
 
-    @McpTool(description = "Widerruft (invalidiert) einen API-Token des AUFRUFENDEN Benutzers anhand seiner Id "
+    @McpTool(name = "revoke_api_token",
+            description = "Widerruft (invalidiert) einen API-Token des AUFRUFENDEN Benutzers anhand seiner Id "
             + "aus list_api_tokens. Der Token wird sofort ungueltig, sobald der Bearer-Filter im "
             + "DATABASE-Modus laeuft. Erfordert Scope ADMIN sowie die Rolle ADMIN oder ROOT.")
-    public String revoke_api_token(
+    public String revokeApiToken(
             @McpToolParam(description = "Token-Id aus list_api_tokens") Long tokenId) {
         Aufrufer aufrufer;
         try {
