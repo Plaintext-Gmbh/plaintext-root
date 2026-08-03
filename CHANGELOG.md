@@ -11,6 +11,22 @@ from `git log` and may not be exhaustive.
 ## [Unreleased]
 
 ### Added
+- `plaintext-root-web`: reusable JSF/web infrastructure carved out of
+  `plaintext-root-webapp` — `UrlRewriteConfig` (the `.html`/`.htm` → `.xhtml` rewrite
+  filter), `SpringSecurityProvider`, `MenuBean` and the two debug controllers.
+  Applications on `plaintext-root-webapp` are unaffected; the module is pulled in
+  transitively. The point of the split is that `plaintext-root-webapp` is an
+  *application* module — it carries its own `application.yml`, its own
+  `SecurityFilterChain`, its own JPA entities and pulls eighteen `ch.plaintext`
+  modules plus Flyway and PostgreSQL. An application that only wants the URL
+  rewriting cannot take all of that.
+- `WebAutoConfiguration` registers `SpringSecurityProvider` and `UrlRewriteConfig`
+  through `AutoConfiguration.imports`, guarded by `@ConditionalOnWebApplication` and
+  `@ConditionalOnMissingBean`. As with the page guard, these were previously reachable
+  only by component-scanning `ch.plaintext`; an application that did not scan it
+  started cleanly and silently had no URL rewriting, so every `.html` link 404'd.
+  `MenuBean` deliberately keeps its `@Component`: it runs in the JSF `view` scope,
+  which only an application with JoinFaces knows.
 - `plaintext-root-pageguard`: the page access guard is now its own module instead of
   living inside `plaintext-root-webapp`. It carries `PageAccessGuardFilter`, the
   service, the startup report, the `preRenderView` backing bean and `PageGuardMode`.

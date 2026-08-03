@@ -125,6 +125,7 @@
         <module>plaintext-root-menu</module>
         <module>plaintext-root-menu-visibility</module>
         <module>plaintext-root-pageguard</module>
+        <module>plaintext-root-web</module>
         <module>plaintext-root-role-assignment</module>
 
         <!-- template -->
@@ -186,6 +187,11 @@
             <dependency>
                 <groupId>ch.plaintext</groupId>
                 <artifactId>plaintext-root-pageguard</artifactId>
+                <version>${plaintext-root.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.plaintext</groupId>
+                <artifactId>plaintext-root-web</artifactId>
                 <version>${plaintext-root.version}</version>
             </dependency>
             <dependency>

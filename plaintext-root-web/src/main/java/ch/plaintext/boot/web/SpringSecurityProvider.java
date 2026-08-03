@@ -8,12 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 
 /**
  * Spring Security implementation of SecurityProvider for menu role checking
  */
-@Component
 @Slf4j
 public class SpringSecurityProvider implements SecurityProvider {
 
