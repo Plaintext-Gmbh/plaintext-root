@@ -51,7 +51,13 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Slf4j
 @RequiredArgsConstructor
-@Order(Ordered.HIGHEST_PRECEDENCE + 10)
+// Karte 497 (Auflage aus dem Review zu Karte 430): NICHT +10 — dort registriert
+// RateLimitFilterConfig aus Sicherheitsgruenden (Karte 303) den ForwardedHeaderFilter.
+// Zwei Filter auf demselben Order-Wert haben in Spring KEINE definierte Reihenfolge.
+// +9 statt +11, weil dieser Filter nur die Zeit misst und Methode/Pfad protokolliert —
+// er braucht die korrigierten Forwarded-Header nicht, soll aber moeglichst viel von der
+// Kette umfassen.
+@Order(Ordered.HIGHEST_PRECEDENCE + 9)
 public class SlowRequestFilter implements Filter {
 
     private final SlowRequestProperties properties;

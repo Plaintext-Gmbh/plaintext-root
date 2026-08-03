@@ -12,7 +12,7 @@ import org.springframework.core.Ordered;
 /**
  * Registriert den {@link SlowRequestFilter} (Karte 430).
  *
- * <p>Sehr frueh in der Kette ({@code HIGHEST_PRECEDENCE + 10}), damit die gemessene Dauer die
+ * <p>Sehr frueh in der Kette ({@code HIGHEST_PRECEDENCE + 9}), damit die gemessene Dauer die
  * <i>ganze</i> Verarbeitung umfasst — Security, Rate-Limit und Rendering eingeschlossen. Sitzt der
  * Filter weiter hinten, misst er nur den Rest und meldet zu kurze Zeiten; genau das waere fuer die
  * Frage „warum dauert der Klick so lang" wertlos.
@@ -33,7 +33,9 @@ public class SlowRequestConfig {
     public FilterRegistrationBean<SlowRequestFilter> slowRequestFilterRegistration(
             SlowRequestFilter filter) {
         FilterRegistrationBean<SlowRequestFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
+        // Karte 497: +9, nicht +10 — auf +10 sitzt der ForwardedHeaderFilter
+        // (RateLimitFilterConfig.FORWARDED_HEADER_FILTER_ORDER, Karte 303).
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 9);
         registration.addUrlPatterns("/*");
         return registration;
     }
