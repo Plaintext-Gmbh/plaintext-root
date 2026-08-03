@@ -512,7 +512,7 @@
     <distributionManagement>
         <repository>
             <id>plaintext</id>
-            <url>https://maven.pkg.github.com/daniel-marthaler/plaintext-mvn</url>
+            <url>https://maven.pkg.github.com/Plaintext-Gmbh/plaintext-mvn</url>
         </repository>
     </distributionManagement>
 
