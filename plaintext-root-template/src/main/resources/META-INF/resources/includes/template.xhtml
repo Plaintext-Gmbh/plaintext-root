@@ -178,6 +178,9 @@
     <h:outputStylesheet name="css/primeicons.css" library="plaintext-layout"/>
     <h:outputStylesheet name="css/primeflex.min.css" library="plaintext-layout"/>
     <h:outputStylesheet name="css/#{userPreferencesBackingBean.layout}.css" library="plaintext-layout"/>
+    <!-- Karte 478: Buttons kleben nie buendig aneinander. Bewusst VOR mobile-responsive.css, damit
+         dessen Viewport-Regeln weiterhin die Kaskade gewinnen. -->
+    <h:outputStylesheet name="css/button-spacing.css" library="plaintext-layout"/>
     <!-- Zentrales Mobile-Responsive-CSS: MUSS als letztes laden (gewinnt die Kaskade), deckelt Dialoge/Inputs auf den Viewport. -->
     <h:outputStylesheet name="css/mobile-responsive.css" library="plaintext-layout"/>
 
