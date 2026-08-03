@@ -5,6 +5,26 @@
                 xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
 
     <ui:define name="content">
+        <!-- VOR dem Formular, nicht darin: ein woertliches CDATA-Ende innerhalb von h:form
+             beendet die CDATA-Sektion jeder Ajax-Antwort vorzeitig; der Browser verwirft sie
+             dann stillschweigend (Karte 502, Ursache belegt in Karte 430). Der Block
+             registriert ohnehin nur globale Listener und gehoert nicht ins Formular. -->
+        <script type="text/javascript">
+            //<![CDATA[
+            window.addEventListener('load', function() {
+                if (typeof PF === 'function' && PF('blockIt')) {
+                    PF('blockIt').hide();
+                }
+            });
+
+            document.addEventListener('DOMContentLoaded', function() {
+                if (typeof PF === 'function' && PF('blockIt')) {
+                    PF('blockIt').show();
+                }
+            });
+            //]]>
+        </script>
+
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
         <style>
@@ -27,22 +47,6 @@
                 padding: 8px 4px;
             }
         </style>
-
-        <script type="text/javascript">
-            //<![CDATA[
-            window.addEventListener('load', function() {
-                if (typeof PF === 'function' && PF('blockIt')) {
-                    PF('blockIt').hide();
-                }
-            });
-
-            document.addEventListener('DOMContentLoaded', function() {
-                if (typeof PF === 'function' && PF('blockIt')) {
-                    PF('blockIt').show();
-                }
-            });
-            //]]>
-        </script>
 
         <f:event type="preRenderView" listener="#{cronBackingBean.refreshCrons()}"/>
 
