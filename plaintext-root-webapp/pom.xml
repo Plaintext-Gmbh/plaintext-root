@@ -225,21 +225,16 @@
         </dependency>
 
         <!-- === Test === -->
+        <!-- Eingebettetes PostgreSQL statt Testcontainers (Karte 451, Entscheidung Daniels
+             02.08.2026): Testcontainers braucht den Docker-Daemon des Runners, und genau dieser
+             Zugang (/var/run/docker.sock als root gemountet) ist die Luecke, die geschlossen
+             werden soll. Der eingebettete Server laeuft als normaler Prozess im Testlauf.
+             Binaries stehen auf PostgreSQL 17 (neuester zonky-Stand), die CI-DB lief auf 18 —
+             der Unterschied ist bewusst in Kauf genommen. -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-testcontainers</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>1.21.4</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>1.21.4</version>
+            <groupId>io.zonky.test</groupId>
+            <artifactId>embedded-postgres</artifactId>
+            <version>2.2.2</version>
             <scope>test</scope>
         </dependency>
 
