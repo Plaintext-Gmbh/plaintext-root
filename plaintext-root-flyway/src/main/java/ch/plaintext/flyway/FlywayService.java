@@ -14,6 +14,7 @@ import jakarta.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.Date;
 import java.util.List;
@@ -130,12 +131,15 @@ public class FlywayService {
             return;
         }
 
+        // Karte 458 (java:S2077): installedRank wird als Parameter gebunden statt in den
+        // SQL-Text konkateniert. Der Wert ist zwar ein int und damit nicht injizierbar, aber
+        // ein PreparedStatement macht das nachweisbar statt argumentierbar.
         try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement()) {
+             PreparedStatement stmt = conn.prepareStatement(
+                     "DELETE FROM \"flyway_schema_history\" WHERE \"installed_rank\" = ?")) {
 
-            int rowsDeleted = stmt.executeUpdate(
-                "DELETE FROM \"flyway_schema_history\" WHERE \"installed_rank\" = " + installedRank
-            );
+            stmt.setInt(1, installedRank);
+            int rowsDeleted = stmt.executeUpdate();
 
             if (rowsDeleted > 0) {
                 log.info("Deleted Flyway schema history entry with installed_rank: {}", installedRank);
