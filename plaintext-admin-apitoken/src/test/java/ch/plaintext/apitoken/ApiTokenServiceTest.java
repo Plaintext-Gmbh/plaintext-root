@@ -211,4 +211,72 @@ class ApiTokenServiceTest {
         assertFalse(aktiv.getDeleted(), "noch gueltiges Token darf NICHT entfernt werden");
         assertFalse(andererFlow.getDeleted(), "anderer Flow darf nicht angetastet werden");
     }
+
+    // -------------------------------------------------- Scope-Durchgriff (Karte 504)
+
+    /**
+     * Karte 504 verlangt die Gegenprobe in <b>beide</b> Richtungen: Ein gewaehlter Scope muss
+     * ankommen — der weite genauso wie der enge. Ein Test, der nur ADMIN prueft, waere auch gruen,
+     * wenn der Service stur ADMIN setzte.
+     *
+     * <p>Geprueft wird der Weg, den die Maske nimmt: {@code createToken(..., scope)}.</p>
+     */
+    @Test
+    void gewaehlterScopeKommtBeiDerJwtErzeugungAn() {
+        when(jwt.generateToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), any()))
+                .thenReturn(TOKEN);
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        ArgumentCaptor<String> scope = ArgumentCaptor.forClass(String.class);
+
+        service.createToken(7L, "plaintext", "adminToken", "u@x.ch", 365, "ADMIN");
+        service.createToken(7L, "plaintext", "leseToken", "u@x.ch", 90, "READ");
+        service.createToken(7L, "plaintext", "erfassToken", "u@x.ch", 90, "EINTRAGEN");
+
+        verify(jwt, times(3)).generateToken(anyLong(), anyString(), anyString(), anyString(),
+                anyInt(), scope.capture());
+        assertEquals(List.of("ADMIN", "READ", "EINTRAGEN"), scope.getAllValues(),
+                "Der gewaehlte Scope muss unveraendert im JWT landen — in beide Richtungen. "
+                        + "Am 03.08.2026 kam er gar nicht erst in der Bean an (Karte 504); die Ursache "
+                        + "lag in der Maske, dieser Test sichert die Java-Seite dahinter.");
+    }
+
+    /**
+     * <b>Bekannter Mangel, hier festgehalten statt uebersehen (Karte 504, Nebenbefund):</b>
+     * „Token neu erzeugen" reicht <b>keinen</b> Scope durch — {@code regenerateToken} ruft die
+     * Ueberladung ohne Scope, und {@link ApiToken} hat kein Scope-Feld, aus dem sich der alte Wert
+     * wiederherstellen liesse. Der neue Token traegt also gar keinen {@code scope}-Claim.
+     *
+     * <p>Das ist heute <b>nicht</b> gefaehrlich: Ein fehlender Claim gilt seit Karte 312
+     * fail-closed als {@code READ}, und der Rueckschalter
+     * {@code plaintext.mcp.bearer-filter.legacy-scope-admin} ist in keinem Repo gesetzt (geprueft
+     * in root, app, guild, schuetu, iot, fwtool). Wer seinen ADMIN-Token erneuert, bekommt also
+     * einen zu schwachen, keinen zu starken.
+     *
+     * <p><b>Dieser Test schreibt den Ist-Zustand fest, nicht den Sollzustand.</b> Die Behebung
+     * braucht eine Spalte {@code scope} in {@code api_token} — und die Tabelle wird von Karte 349
+     * ({@code validation: DATABASE}) ohnehin angefasst. Wird das dort erledigt, gehoert diese
+     * Erwartung umgedreht.
+     */
+    @Test
+    void regenerateTokenVerliertDenScope_bekannterMangel() {
+        ApiToken alt = new ApiToken();
+        alt.setId(42L);
+        alt.setUserId(7L);
+        alt.setMandat("plaintext");
+        alt.setTokenName("adminToken");
+        alt.setDeleted(false);
+        when(repo.findById(42L)).thenReturn(Optional.of(alt));
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(jwt.generateToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), any()))
+                .thenReturn(TOKEN);
+        ArgumentCaptor<String> scope = ArgumentCaptor.forClass(String.class);
+
+        service.regenerateToken(42L, 7L, "plaintext", "u@x.ch", 365);
+
+        verify(jwt).generateToken(anyLong(), anyString(), anyString(), anyString(), anyInt(),
+                scope.capture());
+        assertEquals(null, scope.getValue(),
+                "Schlaegt dieser Test fehl, wurde der Scope-Erhalt beim Regenerieren nachgeruestet — "
+                        + "dann diese Erwartung auf den erhaltenen Scope umstellen (Karte 504/349).");
+    }
 }
