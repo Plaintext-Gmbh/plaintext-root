@@ -85,4 +85,32 @@ public interface PlaintextCron {
         run(mandant);
     }
 
+    /**
+     * Whether this job should be enabled when its configuration row is created for the first time.
+     * <p>
+     * Returning {@code null} — the default — defers to {@code plaintext.cron.default-enabled}.
+     * Override it where the job itself knows better than the application-wide setting.
+     *
+     * @return true or false to decide, null to defer to the application default
+     * @since 1.480.0
+     */
+    default Boolean isEnabledByDefault() {
+        return null;
+    }
+
+    /**
+     * Whether this job should run once directly after startup when its configuration row is
+     * created for the first time.
+     * <p>
+     * Returning {@code null} — the default — defers to {@code plaintext.cron.default-startup}.
+     * Applications whose jobs call out to external systems usually want that default set to
+     * false, so that the first boot after a deployment does not fire everything at once.
+     *
+     * @return true or false to decide, null to defer to the application default
+     * @since 1.480.0
+     */
+    default Boolean isStartupByDefault() {
+        return null;
+    }
+
 }

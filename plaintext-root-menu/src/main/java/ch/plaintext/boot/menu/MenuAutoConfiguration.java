@@ -43,4 +43,17 @@ public class MenuAutoConfiguration {
         log.info("Registering MenuModelBuilder");
         return new MenuModelBuilder();
     }
+
+    /**
+     * Registered here rather than annotated with {@code @Service}, so that an application which
+     * does not component-scan {@code ch.plaintext} still gets the service.
+     *
+     * @return the menu role service
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public MenuRoleService menuRoleService() {
+        log.info("Registering MenuRoleService");
+        return new MenuRoleService();
+    }
 }

@@ -59,8 +59,15 @@ public class MenuRegistryPostProcessor implements BeanDefinitionRegistryPostProc
             log.info("No MenuVisibilityProvider found, menu visibility will be based on roles only");
         }
 
+        // Default-deny is opt-in: without the property every existing application keeps the
+        // permissive behaviour it was built against.
+        MenuAccessPolicy accessPolicy =
+                MenuAccessPolicy.from(environment.getProperty("plaintext.menu.access-policy"));
+        log.info("Menu access policy: {}", accessPolicy);
+
         // Pass the BeanFactory to scanner so menu items can lazy-load MenuVisibilityProvider
-        MenuAnnotationScanner scanner = new MenuAnnotationScanner(securityProvider, menuVisibilityProvider, beanFactory);
+        MenuAnnotationScanner scanner =
+                new MenuAnnotationScanner(securityProvider, menuVisibilityProvider, beanFactory, accessPolicy);
 
         int count = 0;
         for (String scanPackage : scanPackages) {

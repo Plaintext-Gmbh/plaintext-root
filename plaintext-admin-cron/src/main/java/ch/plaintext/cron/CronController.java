@@ -28,7 +28,10 @@ public class CronController implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Autowired
-    private CronConfigRepository cronConfigRepository;
+    private CronConfigStore cronConfigStore;
+
+    @Autowired
+    private CronProperties cronProperties;
 
     @Autowired
     private ApplicationContext ctx;
@@ -63,7 +66,7 @@ public class CronController implements Serializable {
         // PlaintextSecurity.getAllMandate() has been observed to miss mandants on prod
         // (cause not yet identified) which then silently disables all of their crons.
         // Including stored cron_config mandants closes that gap until the discovery is fixed.
-        cronConfigRepository.findAll().forEach(cfg -> {
+        cronConfigStore.findAll().forEach(cfg -> {
             String m = cfg.getMandat();
             if (m != null && !m.isBlank()) {
                 mandanten.add(m);
@@ -94,7 +97,7 @@ public class CronController implements Serializable {
 
             CronConfigEntity entity = null;
             if (cron.getScope() == ExecutionScope.APPLICATION) {
-                 Optional<CronConfigEntity> config = cronConfigRepository.findByCronNameAndMandat(superCron.getName(),"global");
+                 Optional<CronConfigEntity> config = cronConfigStore.findByCronNameAndMandat(superCron.getName(),"global");
                  if(config.isPresent()){
                      entity = config.get();
                  } else {
@@ -102,7 +105,7 @@ public class CronController implements Serializable {
                      entity.setCronName(superCron.getName());
                      entity.setMandat("global");
                  }
-                entity = cronConfigRepository.save(entity);
+                entity = cronConfigStore.save(entity);
                 entity.setCron(superCron);
                 entity.getCron().setState(entity);
                 entity.getCron().setMandant("global");
@@ -114,7 +117,7 @@ public class CronController implements Serializable {
                     if ("global".equals(mandat)) {
                         continue;
                     }
-                    Optional<CronConfigEntity> config = cronConfigRepository.findByCronNameAndMandat(superCron.getName(),mandat);
+                    Optional<CronConfigEntity> config = cronConfigStore.findByCronNameAndMandat(superCron.getName(),mandat);
                     if(config.isPresent()){
                         entity = config.get();
                     } else {
@@ -134,7 +137,7 @@ public class CronController implements Serializable {
                     PlaintextCron newCronBean = ctx.getBean(beanName, PlaintextCron.class);
                     SuperCron newSuperCron = (SuperCron) newCronBean;
 
-                    entity = cronConfigRepository.save(entity);
+                    entity = cronConfigStore.save(entity);
                     entity.setCron(newSuperCron);
                     entity.getCron().setState(entity);
                     entity.getCron().setMandant(mandat);
@@ -149,8 +152,11 @@ public class CronController implements Serializable {
 
     private CronConfigEntity createCronConfigEntity(SuperCron superCron){
         CronConfigEntity ret = new CronConfigEntity();
-        ret.setEnabled(true);
-        ret.setStartup(true);
+        // The job decides if it has an opinion; otherwise the application-wide default applies.
+        Boolean jobEnabled = superCron.isEnabledByDefault();
+        Boolean jobStartup = superCron.isStartupByDefault();
+        ret.setEnabled(jobEnabled != null ? jobEnabled : cronProperties.isDefaultEnabled());
+        ret.setStartup(jobStartup != null ? jobStartup : cronProperties.isDefaultStartup());
         // Use the default cron expression from the cron job itself
         ret.setCronExpression(superCron.getDefaultCronExpression());
         return ret;
@@ -216,7 +222,7 @@ public class CronController implements Serializable {
                 // Update the entity with the fallback expression
                 entity.setCronExpression(fallbackExpression);
                 entity.setEnabled(false);
-                cronConfigRepository.save(entity);
+                cronConfigStore.save(entity);
             } catch (Exception fallbackException) {
                 log.error("Failed to schedule even with fallback pattern for '{}' (mandant: {}): {}",
                         cronName, mandant, fallbackException.getMessage());
@@ -307,7 +313,7 @@ public class CronController implements Serializable {
 
     public CronConfigEntity save(CronConfigEntity entity) {
         SuperCron cronRef = entity.getCron();
-        CronConfigEntity ret = cronConfigRepository.save(entity);
+        CronConfigEntity ret = cronConfigStore.save(entity);
         ret.setCron(cronRef);
         return ret;
     }
@@ -352,7 +358,7 @@ public class CronController implements Serializable {
                 entity.syncFromCron();
 
                 // Save to DB (this returns a detached entity without @Transient SuperCron!)
-                cronConfigRepository.save(entity);
+                cronConfigStore.save(entity);
 
                 // The original entity still has the SuperCron reference, and it already has
                 // the updated values from ende() which were synced above

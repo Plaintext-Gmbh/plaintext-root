@@ -23,4 +23,20 @@ public interface SecurityProvider {
     default boolean isSecurityEnabled() {
         return true;
     }
+
+    /**
+     * Check whether the current user holds any role starting with the given prefix.
+     * <p>
+     * Needed for {@code roleStartsWith} on {@code MenuAnnotation}, where the role family is not
+     * known at compile time — a team membership like {@code MEMBER_<team>}, for instance. The
+     * default answers {@code false}, so an implementation that does not override it simply never
+     * matches a prefix rule.
+     *
+     * @param prefix the role name prefix to look for
+     * @return true if the user holds at least one matching role
+     * @since 1.480.0
+     */
+    default boolean hasAnyRoleStartingWith(String prefix) {
+        return false;
+    }
 }

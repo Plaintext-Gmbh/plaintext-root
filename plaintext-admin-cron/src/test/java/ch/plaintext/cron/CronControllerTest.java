@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -32,7 +33,10 @@ import static org.mockito.Mockito.*;
 class CronControllerTest {
 
     @Mock
-    private CronConfigRepository cronConfigRepository;
+    private CronConfigStore cronConfigStore;
+
+    @Spy
+    private CronProperties cronProperties = new CronProperties();
 
     @Mock
     private ApplicationContext ctx;
@@ -237,12 +241,12 @@ class CronControllerTest {
         entity.setCron(sc);
 
         CronConfigEntity savedEntity = new CronConfigEntity();
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(savedEntity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(savedEntity);
 
         CronConfigEntity result = cronController.save(entity);
 
         assertThat(result.getCron()).isSameAs(sc);
-        verify(cronConfigRepository).save(entity);
+        verify(cronConfigStore).save(entity);
     }
 
     @Test
@@ -251,12 +255,12 @@ class CronControllerTest {
         entity.setCron(null);
 
         CronConfigEntity savedEntity = new CronConfigEntity();
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(savedEntity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(savedEntity);
 
         CronConfigEntity result = cronController.save(entity);
 
         assertThat(result.getCron()).isNull();
-        verify(cronConfigRepository).save(entity);
+        verify(cronConfigStore).save(entity);
     }
 
     // --- findCronEntity (private) ---
@@ -400,14 +404,14 @@ class CronControllerTest {
         entity.setCron(sc);
         entity.setEnabled(true);
 
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(entity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(entity);
 
         cronController.schedule(entity);
 
         // Should have used fallback expression and disabled the entity
         assertThat(entity.getCronExpression()).isEqualTo("59 23 31 12 2");
         assertThat(entity.isEnabled()).isFalse();
-        verify(cronConfigRepository).save(entity);
+        verify(cronConfigStore).save(entity);
     }
 
     @Test
@@ -580,12 +584,12 @@ class CronControllerTest {
         cronController.getCronsMap().put("mandatA", new ArrayList<>(List.of(entity)));
         cronController.scheduleTheMap();
 
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(entity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(entity);
 
         // Trigger the cron - should succeed
         cronController.trigger("TestCron", "mandatA");
 
-        verify(cronConfigRepository).save(any(CronConfigEntity.class));
+        verify(cronConfigStore).save(any(CronConfigEntity.class));
     }
 
     @Test
@@ -628,9 +632,9 @@ class CronControllerTest {
         savedEntity.setCronExpression("0 0 * * *");
         savedEntity.setEnabled(false);
 
-        when(cronConfigRepository.findByCronNameAndMandat("GlobalCron", "global"))
+        when(cronConfigStore.findByCronNameAndMandat("GlobalCron", "global"))
                 .thenReturn(Optional.empty());
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(savedEntity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(savedEntity);
 
         cronController.init();
 
@@ -655,9 +659,9 @@ class CronControllerTest {
         existingEntity.setCronExpression("30 6 * * *");
         existingEntity.setEnabled(false);
 
-        when(cronConfigRepository.findByCronNameAndMandat("GlobalCron", "global"))
+        when(cronConfigStore.findByCronNameAndMandat("GlobalCron", "global"))
                 .thenReturn(Optional.of(existingEntity));
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(existingEntity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(existingEntity);
 
         cronController.init();
 
@@ -676,7 +680,7 @@ class CronControllerTest {
 
         when(plaintextSecurity.getAllMandate()).thenReturn(Set.of("mandatA"));
 
-        when(cronConfigRepository.findByCronNameAndMandat("LocalCron", "mandatA"))
+        when(cronConfigStore.findByCronNameAndMandat("LocalCron", "mandatA"))
                 .thenReturn(Optional.empty());
 
         CronConfigEntity savedEntity = new CronConfigEntity();
@@ -685,7 +689,7 @@ class CronControllerTest {
         savedEntity.setCronExpression("0 0 * * *");
         savedEntity.setEnabled(false);
 
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(savedEntity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(savedEntity);
 
         // The non-global path clones via ctx.getBean
         SuperCron clonedCron = createTestSuperCron("LocalCron", false);
@@ -714,9 +718,9 @@ class CronControllerTest {
         existingEntity.setCronExpression("15 8 * * *");
         existingEntity.setEnabled(false);
 
-        when(cronConfigRepository.findByCronNameAndMandat("LocalCron", "mandatA"))
+        when(cronConfigStore.findByCronNameAndMandat("LocalCron", "mandatA"))
                 .thenReturn(Optional.of(existingEntity));
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(existingEntity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(existingEntity);
 
         SuperCron clonedCron = createTestSuperCron("LocalCron", false);
         when(ctx.getBean(eq("LocalCronBean"), eq(PlaintextCron.class))).thenReturn(clonedCron);
@@ -766,9 +770,9 @@ class CronControllerTest {
         cronsField.set(cronController, new ArrayList<>(List.of((PlaintextCron) cronWithNullBeanName)));
 
         when(plaintextSecurity.getAllMandate()).thenReturn(Set.of("mandatA"));
-        when(cronConfigRepository.findByCronNameAndMandat("NullBeanCron", "mandatA"))
+        when(cronConfigStore.findByCronNameAndMandat("NullBeanCron", "mandatA"))
                 .thenReturn(Optional.empty());
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenAnswer(i -> i.getArgument(0));
 
         cronController.init();
 
@@ -787,9 +791,9 @@ class CronControllerTest {
 
         when(plaintextSecurity.getAllMandate()).thenReturn(new LinkedHashSet<>(List.of("mandatA", "mandatB")));
 
-        when(cronConfigRepository.findByCronNameAndMandat(anyString(), anyString()))
+        when(cronConfigStore.findByCronNameAndMandat(anyString(), anyString()))
                 .thenReturn(Optional.empty());
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenAnswer(i -> i.getArgument(0));
 
         SuperCron cloned1 = createTestSuperCron("MultiCron", false);
         SuperCron cloned2 = createTestSuperCron("MultiCron", false);
@@ -814,9 +818,9 @@ class CronControllerTest {
         // "global" is added internally; non-global crons skip "global" mandant
         when(plaintextSecurity.getAllMandate()).thenReturn(Set.of("mandatA"));
 
-        when(cronConfigRepository.findByCronNameAndMandat("LocalOnly", "mandatA"))
+        when(cronConfigStore.findByCronNameAndMandat("LocalOnly", "mandatA"))
                 .thenReturn(Optional.empty());
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenAnswer(i -> i.getArgument(0));
 
         SuperCron cloned = createTestSuperCron("LocalOnly", false);
         when(ctx.getBean(eq("LocalOnlyBean"), eq(PlaintextCron.class))).thenReturn(cloned);
@@ -910,7 +914,7 @@ class CronControllerTest {
         cronController.getCronsMap().put("mandatA", new ArrayList<>(List.of(entity)));
         cronController.scheduleTheMap();
 
-        when(cronConfigRepository.save(any(CronConfigEntity.class))).thenReturn(entity);
+        when(cronConfigStore.save(any(CronConfigEntity.class))).thenReturn(entity);
 
         // The trigger method catches exceptions from the scheduled task via scheduler.launch()
         // which is async. The trigger method itself should complete.

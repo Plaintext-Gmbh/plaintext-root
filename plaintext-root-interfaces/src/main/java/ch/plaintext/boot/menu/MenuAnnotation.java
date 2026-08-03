@@ -68,4 +68,27 @@ public @interface MenuAnnotation {
      */
     String moduleId() default "";
 
+    /**
+     * Stable identifier for this menu item, used to derive the automatic role
+     * {@code ROLE_MENU_<menuId>} under the {@code STRICT} access policy.
+     * <p>
+     * When empty (the default) the id is derived from {@code parent} and {@code title}. Set it
+     * explicitly where the title is likely to change: the derived role is persisted against
+     * users, so a renamed title would silently revoke their access.
+     *
+     * @return the stable menu id, or empty to derive it from parent and title
+     */
+    String menuId() default "";
+
+    /**
+     * Role prefixes that grant access to this menu item, for role families that are not known at
+     * compile time — a team membership like {@code MEMBER_<team>}, for instance.
+     * <p>
+     * Evaluated in addition to {@link #roles()}: holding any role that starts with one of these
+     * prefixes is enough.
+     *
+     * @return array of role name prefixes
+     */
+    String[] roleStartsWith() default {};
+
 }

@@ -6,6 +6,7 @@ package ch.plaintext.sessions.model;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.Locale;
 
 /**
  * Model class representing a session attribute with its name and size
@@ -31,13 +32,20 @@ public class SessionAttribute implements Serializable {
         this.formattedSize = formatSize(sizeInBytes);
     }
 
+    /**
+     * Formats a byte count with a fixed decimal point.
+     * <p>
+     * {@code Locale.ROOT} rather than the platform default: without it the separator follows the
+     * server's locale, so the same session renders as "2.00 KB" or "2,00 KB" depending on where
+     * the application happens to run — and the tests only pass on an English machine.
+     */
     private String formatSize(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
         } else if (bytes < 1024 * 1024) {
-            return String.format("%.2f KB", bytes / 1024.0);
+            return String.format(Locale.ROOT, "%.2f KB", bytes / 1024.0);
         } else {
-            return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
+            return String.format(Locale.ROOT, "%.2f MB", bytes / (1024.0 * 1024.0));
         }
     }
 }

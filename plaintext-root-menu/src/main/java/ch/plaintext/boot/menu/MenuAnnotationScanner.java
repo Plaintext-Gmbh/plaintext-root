@@ -25,6 +25,21 @@ public class MenuAnnotationScanner {
     private final SecurityProvider securityProvider;
     private final MenuVisibilityProvider menuVisibilityProvider;
     private final BeanFactory beanFactory;
+    private final MenuAccessPolicy accessPolicy;
+
+    /**
+     * Keeps the three-argument form working for callers that predate the access policy; they get
+     * {@link MenuAccessPolicy#PERMISSIVE}, the historic behaviour.
+     *
+     * @param securityProvider       role lookup, may be null
+     * @param menuVisibilityProvider mandate lookup, may be null
+     * @param beanFactory            used for lazy provider lookup, may be null
+     */
+    public MenuAnnotationScanner(SecurityProvider securityProvider,
+                                 MenuVisibilityProvider menuVisibilityProvider,
+                                 BeanFactory beanFactory) {
+        this(securityProvider, menuVisibilityProvider, beanFactory, MenuAccessPolicy.PERMISSIVE);
+    }
 
     public List<MenuItemImpl> findAnnotatedClasses(String scanPackage) {
         List<MenuItemImpl> menuItems = new ArrayList<>();
@@ -67,6 +82,9 @@ public class MenuAnnotationScanner {
             menuItem.setTitle(annotation.title());
             menuItem.setIcon(annotation.icon());
             menuItem.setModuleId(annotation.moduleId());
+            menuItem.setMenuId(annotation.menuId());
+            menuItem.setRoleStartsWith(Arrays.asList(annotation.roleStartsWith()));
+            menuItem.setAccessPolicy(accessPolicy);
             menuItem.setSecurityProvider(securityProvider);
             menuItem.setMenuVisibilityProvider(menuVisibilityProvider);
             menuItem.setBeanFactory(beanFactory);

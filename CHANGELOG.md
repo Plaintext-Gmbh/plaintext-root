@@ -10,6 +10,37 @@ from `git log` and may not be exhaustive.
 
 ## [Unreleased]
 
+### Added
+- Menu access policy `STRICT` (`plaintext.menu.access-policy`): a menu item stays
+  hidden unless a rule admits the user — `ROLE_ROOT`, `ROLE_ADMIN` outside the Root
+  menu, the derived `ROLE_MENU_<menuId>`, one of the declared `roles`, or a prefix
+  from the new `roleStartsWith`. The default stays `PERMISSIVE`, so existing
+  applications are unaffected, and an unknown value falls back to it rather than
+  failing startup. New `menuId` and `roleStartsWith` attributes on `MenuAnnotation`,
+  `getAutoRole()`/`getEffectiveMenuId()`/`isUnderRootMenu()` on `MenuItemImpl`,
+  `hasAnyRoleStartingWith()` as a default method on `SecurityProvider`.
+- `MenuRoleService`: lists every assignable menu role and resolves a request path
+  back to its menu item, ignoring the current user's permissions — a screen that
+  grants roles must show the ones its operator does not hold. Registered through
+  `MenuAutoConfiguration` so consumers need not component-scan `ch.plaintext`.
+- `CronConfigStore` as the seam for cron configuration, with `JpaCronConfigStore`
+  as the unchanged default (`plaintext.cron.store`, default `jpa`). Applications
+  that keep their cron configuration outside the database — a wiki page, a config
+  service — contribute their own bean.
+- `plaintext.cron.default-enabled` / `default-startup` (both `true`, unchanged
+  behaviour) plus `isEnabledByDefault()` / `isStartupByDefault()` on
+  `PlaintextCron`, so a deployment need not fire every newly registered job at once.
+- `CronModuleConfiguration` registers the cron beans explicitly (guarded by
+  `@ConditionalOnMissingBean`) and is announced through `AutoConfiguration.imports`
+  — the module now works in applications that do not component-scan `ch.plaintext`.
+
+### Fixed
+- Cron key derivation resolves CGLIB proxies via `ClassUtils.getUserClass`. A job
+  annotated `@Transactional` or `@Async` was filed as `MyCron$$SpringCGLIB$$0`,
+  never found its stored configuration again and silently created a fresh one.
+- `SessionAttribute` formats sizes with `Locale.ROOT`; `SessionAttributeTest`
+  failed on every machine whose locale uses a decimal comma.
+
 ### Security
 - Validate CSRF tokens on JSF pages: `/**/*.xhtml` and `/**/*.html` removed
   from `DEFAULT_CSRF_IGNORE` — the JSF ViewState is state management, not a
