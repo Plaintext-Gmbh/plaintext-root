@@ -124,6 +124,7 @@
         <module>plaintext-root-jpa</module>
         <module>plaintext-root-menu</module>
         <module>plaintext-root-menu-visibility</module>
+        <module>plaintext-root-pageguard</module>
         <module>plaintext-root-role-assignment</module>
 
         <!-- template -->
@@ -181,6 +182,18 @@
                 <groupId>ch.plaintext</groupId>
                 <artifactId>plaintext-root-menu</artifactId>
                 <version>${plaintext-root.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.plaintext</groupId>
+                <artifactId>plaintext-root-pageguard</artifactId>
+                <version>${plaintext-root.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.plaintext</groupId>
+                <artifactId>plaintext-root-pageguard</artifactId>
+                <version>${plaintext-root.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>ch.plaintext</groupId>

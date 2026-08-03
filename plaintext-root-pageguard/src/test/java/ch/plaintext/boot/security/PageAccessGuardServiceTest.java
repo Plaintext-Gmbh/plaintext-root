@@ -4,7 +4,6 @@
 package ch.plaintext.boot.security;
 
 import ch.plaintext.boot.menu.MenuItemImpl;
-import ch.plaintext.boot.plugins.security.PlaintextSecurityProperties;
 import jakarta.faces.context.ExternalContext;
 import jakarta.faces.context.FacesContext;
 import org.junit.jupiter.api.DisplayName;
@@ -109,7 +108,7 @@ class PageAccessGuardServiceTest {
     void modusWirdAusDenPropertiesUebernommen() {
         assertEquals(PageGuardMode.STRICT, strictMitMenues().getMode());
         assertEquals(PageGuardMode.REPORT, reportMitMenues().getMode());
-        assertEquals(PageGuardMode.REPORT, new PlaintextSecurityProperties().getPageGuard().getMode(),
+        assertEquals(PageGuardMode.REPORT, new PageGuardProperties().getMode(),
                 "Framework-Default muss REPORT bleiben, sonst sperren die Consumer-Apps beim Update aus");
     }
 
@@ -334,8 +333,8 @@ class PageAccessGuardServiceTest {
 
         @Test
         void konfigurierteAliaseWerdenAusgewertet() {
-            PlaintextSecurityProperties properties = eigenschaften(PageGuardMode.STRICT, true);
-            properties.getPageGuard().getAliases().put("rechnungdetail.xhtml", "rechnungen.html");
+            PageGuardProperties properties = eigenschaften(PageGuardMode.STRICT, true);
+            properties.getAliases().put("rechnungdetail.xhtml", "rechnungen.html");
 
             assertTrue(guard(properties, menu("rechnungen.html", true)).hasAccessToView("/rechnungdetail.xhtml"));
             assertFalse(guard(properties, menu("rechnungen.html", false)).hasAccessToView("/rechnungdetail.xhtml"));
@@ -346,9 +345,9 @@ class PageAccessGuardServiceTest {
 
     @Test
     void konfigurierteAllowlistErlaubtEinzelneViewsUndPraefixe() {
-        PlaintextSecurityProperties properties = eigenschaften(PageGuardMode.STRICT, true);
-        properties.getPageGuard().getAllowlist().add("wander-druck.xhtml");
-        properties.getPageGuard().getAllowlist().add("public/**");
+        PageGuardProperties properties = eigenschaften(PageGuardMode.STRICT, true);
+        properties.getAllowlist().add("wander-druck.xhtml");
+        properties.getAllowlist().add("public/**");
 
         PageAccessGuardService service = guard(properties);
         assertTrue(service.hasAccessToView("/wander-druck.xhtml"));

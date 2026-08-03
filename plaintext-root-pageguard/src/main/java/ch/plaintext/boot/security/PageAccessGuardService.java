@@ -6,11 +6,9 @@ package ch.plaintext.boot.security;
 import ch.plaintext.MenuRegistry;
 import ch.plaintext.boot.menu.MenuItemImpl;
 import ch.plaintext.boot.menu.MenuRegistryImpl;
-import ch.plaintext.boot.plugins.security.PlaintextSecurityProperties;
 import jakarta.faces.context.ExternalContext;
 import jakarta.faces.context.FacesContext;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,12 +43,11 @@ import java.util.Set;
  * @author plaintext.ch
  * @since 1.42.0
  */
-@Service
 @Slf4j
 public class PageAccessGuardService {
 
     private final MenuRegistry menuRegistry;
-    private final PlaintextSecurityProperties.PageGuardProperties properties;
+    private final PageGuardProperties properties;
 
     /**
      * Systemseiten die immer erreichbar sein sollen, unabhängig von Menü-Konfiguration.
@@ -108,9 +105,9 @@ public class PageAccessGuardService {
     /** Schutz gegen Zyklen in der Menue-Hierarchie. */
     private static final int MAX_PARENT_TIEFE = 10;
 
-    public PageAccessGuardService(MenuRegistry menuRegistry, PlaintextSecurityProperties securityProperties) {
+    public PageAccessGuardService(MenuRegistry menuRegistry, PageGuardProperties properties) {
         this.menuRegistry = menuRegistry;
-        this.properties = securityProperties.getPageGuard();
+        this.properties = properties;
     }
 
     /**

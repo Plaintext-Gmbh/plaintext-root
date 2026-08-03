@@ -5,6 +5,7 @@ package ch.plaintext.boot.menu;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -55,5 +56,23 @@ public class MenuAutoConfiguration {
     public MenuRoleService menuRoleService() {
         log.info("Registering MenuRoleService");
         return new MenuRoleService();
+    }
+
+    /**
+     * The registry carries {@code @Service} for the applications that component-scan
+     * {@code ch.plaintext}; {@link ConditionalOnMissingBean} means they keep the scanned bean and
+     * this method does nothing. Registering it here as well is what makes the registry — and
+     * therefore everything built on it, notably the page access guard — available to an
+     * application that consumes single modules rather than the whole framework. Without it such an
+     * application starts cleanly and silently has no registry at all.
+     *
+     * @param applicationContext used to look up the registered menu item beans
+     * @return the menu registry
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public MenuRegistryImpl menuRegistry(ApplicationContext applicationContext) {
+        log.info("Registering MenuRegistry");
+        return new MenuRegistryImpl(applicationContext);
     }
 }
