@@ -119,11 +119,17 @@
                         </h:panelGroup>
 
                         <h:outputText value=""/>
+                        <!-- Karte 504: Die process-Liste MUSS jedes Eingabefeld dieses Formulars nennen.
+                             tokenScope fehlte hier — dadurch durchlief das Feld den JSF-Lebenszyklus nicht,
+                             #{apiTokenBean.newTokenScope} behielt seinen Initialwert READ, und die Maske
+                             stellte still einen READ-Token aus, obwohl ADMIN gewählt war. Die Gültigkeit
+                             stand in der Liste und kam an — deshalb sah es aus wie ein Backend-Fehler.
+                             Wer hier ein Feld ergänzt, ergänzt es auch in dieser Liste (ApiTokenFormularTest). -->
                         <p:commandButton value="Token erstellen"
                                          icon="pi pi-plus"
                                          action="#{apiTokenBean.createToken()}"
                                          update=":fm"
-                                         process="@this,:fm:tokenName,:fm:tokenValidity"
+                                         process="@this,:fm:tokenName,:fm:tokenValidity,:fm:tokenScope"
                                          styleClass="ui-button-success"/>
                     </h:panelGrid>
                 </p:panel>
