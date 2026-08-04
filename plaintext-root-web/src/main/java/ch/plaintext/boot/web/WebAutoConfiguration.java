@@ -3,9 +3,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.web;
 
+import ch.plaintext.boot.menu.MenuAutoConfiguration;
 import ch.plaintext.boot.menu.SecurityProvider;
 import ch.plaintext.boot.plugins.config.UrlRewriteConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
@@ -32,6 +34,7 @@ import org.springframework.context.annotation.Import;
  * @since 1.494.0
  */
 @Configuration
+@AutoConfigureBefore(MenuAutoConfiguration.class)
 @ConditionalOnWebApplication
 @Import(UrlRewriteConfig.class)
 @Slf4j
@@ -40,6 +43,15 @@ public class WebAutoConfiguration {
     /**
      * Liest die Rollen des angemeldeten Benutzers aus dem Spring-Security-Kontext und beantwortet
      * damit die Sichtbarkeitsfragen des Menues.
+     *
+     * <p><b>Die Reihenfolge ist hier sicherheitsrelevant</b>, siehe {@link AutoConfigureBefore}
+     * an dieser Klasse. {@link MenuAutoConfiguration} bietet einen permissiven Default-Provider
+     * an ({@code hasRole} liefert immer {@code true}), damit eine App ohne Security ueberhaupt
+     * ein Menue bekommt. Beide Beans sind {@link ConditionalOnMissingBean} — ohne die
+     * Ordnungsangabe gewaenne der Default, und jeder Menuepunkt waere fuer jeden sichtbar. Weil
+     * der Seiten-Zugriffsschutz seine Regeln aus derselben Sichtbarkeit ableitet, waeren damit
+     * auch alle Seiten erreichbar. Ein fail-open ohne jede Fehlermeldung.
+     * {@code SecurityProviderReihenfolgeTest} haelt das fest.
      *
      * @return der Rollen-Anbieter
      */
