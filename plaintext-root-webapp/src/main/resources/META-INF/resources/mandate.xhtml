@@ -156,7 +156,7 @@
                                 <div style="text-align: right;">
                                     <p:commandButton value="#{i18n.t('Filter zurücksetzen')}"
                                                    icon="pi pi-filter-slash"
-                                                   update="usersTable"
+                                                   update=":fm:usersTable"
                                                    process="@this"
                                                    onclick="PF('usersTable').clearFilters()"
                                                    styleClass="ui-button-outlined"/>
@@ -185,7 +185,7 @@
                                                  itemLabel="#{m}"
                                                  itemValue="#{m}"/>
                                     <p:ajax listener="#{mandateBackingBean.saveUserMandat(user)}"
-                                          update="messages,usersTable"
+                                          update=":fm:messages,:fm:usersTable"
                                           process="@this"/>
                                 </p:selectOneMenu>
                             </p:column>
