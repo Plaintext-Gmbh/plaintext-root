@@ -73,10 +73,14 @@ class MenuLinkInvariantTest {
      * Jeder Eintrag hier ist eine Entscheidung, kein Versehen — bitte begruenden.
      */
     private static final Map<String, String> BEWUSST_GESPERRT = Map.of(
-            // Verwaiste Beispielseite (Google-Charts-Demo mit hart codierten Fantasiedaten, laedt ein
-            // Script von gstatic.com, das die CSP ohnehin blockt). Nirgends verlinkt. Karte 308 laesst
-            // sie bewusst gesperrt; Loeschen ist eine eigene Aufraeum-Karte.
-            "demo", "verwaiste Demo-Seite, nirgends verlinkt"
+            // Derzeit leer.
+            //
+            // Hier stand bis zum 04.08.2026 "demo" — die verwaiste Google-Charts-Beispielseite, die
+            // Karte 308 bewusst gesperrt liegen liess ("Loeschen ist eine eigene Aufraeum-Karte").
+            // Das ist Karte 523: demo.xhtml ist geloescht. Der Grund war nicht Ordnungsliebe —
+            // plaintext-root-webapp ist Abhaengigkeit JEDER App, die Seite wurde also in app,
+            // guild, schuetu, iot und fwtool mit ausgeliefert und war dort, weil diese Apps im
+            // Modus REPORT liefen, fuer jeden angemeldeten Benutzer erreichbar.
     );
 
     /**
