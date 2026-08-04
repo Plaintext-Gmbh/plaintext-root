@@ -505,6 +505,13 @@ class SecurityTest {
         // /demo.html hat keinen Menueeintrag, keinen Alias und keinen Allowlist-Eintrag und ist
         // auch NICHT hart in der Security-Config verdrahtet — hier greift also ausschliesslich der
         // fail-closed-Zweig des Guards. Vorher lieferte er an dieser Stelle "return true".
+        //
+        // Karte 523: die Datei demo.xhtml gibt es seit dem 04.08.2026 nicht mehr (Demoseite mit
+        // Google-Charts-Beispieldaten, die ueber plaintext-root-webapp in JEDE App mitgeliefert
+        // wurde und dort ungeschuetzt war). Der Test bleibt gueltig und wird dadurch sogar
+        // schaerfer: der Guard-Filter entscheidet VOR dem FacesServlet und damit unabhaengig
+        // davon, ob hinter dem Pfad ueberhaupt eine View liegt — er darf hier also nicht 404
+        // liefern, sondern muss abweisen.
         AngemeldeteSession session = meldeTestUserAn();
         ResponseEntity<String> response = lenientClient().get()
                 .uri("/demo.html")
