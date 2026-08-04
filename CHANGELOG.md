@@ -69,6 +69,15 @@ from `git log` and may not be exhaustive.
   `@ConditionalOnMissingBean`) and is announced through `AutoConfiguration.imports`
   — the module now works in applications that do not component-scan `ch.plaintext`.
 
+### Fixed
+- `WebAutoConfiguration` is now ordered `@AutoConfigureBefore(MenuAutoConfiguration.class)`.
+  Both offer a `SecurityProvider` bean guarded by `@ConditionalOnMissingBean`: the menu module
+  contributes a *permissive* default so that an application without security still gets a menu,
+  the web module contributes the real, Spring-Security-backed one. Without the ordering the
+  permissive default won — every menu item visible to everyone, and since the page guard derives
+  its rules from menu visibility, every page reachable. Fail-open, with no error message.
+  `SecurityProviderReihenfolgeTest` pins it down.
+
 ### Changed
 - `PlaintextSecurityProperties.PageGuardProperties` is now the top-level class
   `ch.plaintext.boot.security.PageGuardProperties`, and `getPageGuard()` is gone from
