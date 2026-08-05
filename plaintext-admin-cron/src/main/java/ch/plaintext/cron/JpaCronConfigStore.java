@@ -33,4 +33,12 @@ public class JpaCronConfigStore implements CronConfigStore {
     public List<CronConfigEntity> findAll() {
         return repository.findAll();
     }
+
+    /**
+     * Same answer as the interface default, but as a query instead of a full table scan.
+     */
+    @Override
+    public Optional<CronConfigEntity> findLegacyProxyRow(String cronName, String mandat) {
+        return repository.findFirstByCronNameStartingWithAndMandatOrderByIdAsc(cronName + "$$", mandat);
+    }
 }
