@@ -35,8 +35,15 @@ Zusätzlich ist der Pfad im `RateLimitFilter` gedrosselt, seine Antwort ist
 
 Ein ApiToken trägt einen `scope`-Claim (`READ`/`EINTRAGEN`/`ADMIN`/`SESSION`).
 Für den Session-Aufbau sind nur die Scopes aus
-`plaintext.security.token-login.required-scopes` (Default `SESSION`, `ADMIN`)
+`plaintext.security.token-login.required-scopes` (Default `SESSION`)
 zugelassen; ein Token **ohne** Claim wird abgelehnt (fail-closed).
+
+Bis zum 05.08.2026 stand `ADMIN` ebenfalls im Default, damit bestehende
+Vollzugriffs-Tokens weiterfunktionieren. Damit war jedes ADMIN-MCP-Token zugleich
+ein Generalschlüssel für eine Browser-Session — eine zweite Tür neben der
+markierten. Karte 544 hat den Bestand erhoben (in 30 Tagen kein einziger
+erfolgreicher `/token-login`; die drei ADMIN-Tokens mit `use_count 0`) und `ADMIN`
+daraufhin aus dem Default entfernt.
 
 Grund: Die Session bekommt die vollen DB-Rollen des Token-Besitzers. Ohne diese
 Prüfung ließe sich ein für Automation ausgestelltes `READ`-Token an

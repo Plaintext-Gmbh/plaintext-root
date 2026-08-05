@@ -134,12 +134,18 @@ class TokenLoginControllerTest {
     }
 
     @Test
-    @DisplayName("ADMIN-Token bleibt zugelassen (bestehende Vollzugriffs-Tokens)")
-    void adminScope_wirdAkzeptiert() {
+    @DisplayName("ADMIN-Token darf KEINE Browser-Session mehr eroeffnen (Karte 544)")
+    void adminScope_wirdAbgelehnt() {
+        // Bis 05.08.2026 war ADMIN zugelassen, damit bestehende Vollzugriffs-Tokens
+        // weiterfunktionieren. Damit war jedes ADMIN-MCP-Token zugleich ein Generalschluessel fuer
+        // eine Browser-Session mit den DB-Rollen seines Besitzers — und diese Tokens liegen im
+        // Klartext in MCP-Konfigurationen. Erhebung vor der Umstellung: in 30 Tagen kein einziger
+        // erfolgreicher /token-login, die drei ADMIN-Tokens mit use_count 0.
         when(apiTokenService.validateToken("jwt-admin")).thenReturn(Optional.of(result("default", "admin")));
 
-        assertNull(controller.tokenLogin("jwt-admin", request, response));
-        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals("redirect:/login.html", controller.tokenLogin("jwt-admin", request, response));
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verify(aufbau.securityContextRepository(), never()).saveContext(any(), any(), any());
     }
 
     // ==================== Karte 309: Scope-Zwang ====================
