@@ -19,6 +19,7 @@ import java.util.Set;
 @Slf4j
 public class BrandingService {
 
+    private static final String KEY_APP_NAME = "branding.app.name";
     private static final String KEY_FOOTER_TEXT = "branding.footer.text";
     private static final String KEY_SHOW_VERSION = "branding.footer.showVersion";
     private static final String KEY_SHOW_ROOT_VERSION = "branding.footer.showRootVersion";
@@ -108,6 +109,14 @@ public class BrandingService {
     public String getFooterText(String mandat) {
         String val = settingsService.getString(KEY_FOOTER_TEXT, mandat);
         return val != null ? val : "";
+    }
+
+    /**
+     * Anwendungsname aus den Settings ({@code branding.app.name}); leer, wenn nicht gesetzt.
+     * Verwendet u.a. vom Titel-Default des Templates.
+     */
+    public String getAppName(String mandat) {
+        return settingsService.getString(KEY_APP_NAME, mandat);
     }
 
     public boolean isShowVersion(String mandat) {

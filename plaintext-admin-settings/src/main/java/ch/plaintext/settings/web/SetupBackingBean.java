@@ -25,7 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 
 import java.io.Serializable;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -41,6 +40,7 @@ public class SetupBackingBean implements Serializable {
     private final transient SetupConfigService setupConfigService;
     private final PlaintextSecurity security;
     private final transient ApplicationContext applicationContext;
+    private final transient BrandingBean brandingBean;
 
     // Branding fields
     private String footerText;
@@ -81,11 +81,13 @@ public class SetupBackingBean implements Serializable {
     private boolean root;
 
     public SetupBackingBean(BrandingService brandingService, SetupConfigService setupConfigService,
-                            PlaintextSecurity security, ApplicationContext applicationContext) {
+                            PlaintextSecurity security, ApplicationContext applicationContext,
+                            BrandingBean brandingBean) {
         this.brandingService = brandingService;
         this.setupConfigService = setupConfigService;
         this.security = security;
         this.applicationContext = applicationContext;
+        this.brandingBean = brandingBean;
     }
 
     /**
@@ -327,11 +329,11 @@ public class SetupBackingBean implements Serializable {
     }
 
     private void refreshBrandingBean() {
+        // Seit die Bean im selben Modul liegt, braucht es die fruehere Reflection
+        // ueber den ApplicationContext nicht mehr.
         try {
-            Object brandingBean = applicationContext.getBean("brandingBean");
-            Method refresh = brandingBean.getClass().getMethod("refresh");
-            refresh.invoke(brandingBean);
-        } catch (Exception e) {
+            brandingBean.refresh();
+        } catch (RuntimeException e) {
             log.debug("Could not refresh BrandingBean: {}", e.getMessage());
         }
     }

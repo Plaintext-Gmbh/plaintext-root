@@ -1,7 +1,7 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-package ch.plaintext.boot.web;
+package ch.plaintext.settings.web;
 
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.settings.service.BrandingService;
@@ -33,6 +33,7 @@ public class BrandingBean {
     private int darkLogoWidth = 180;
     private int darkLogoHeight = 40;
     private String i18nIcon = "pi pi-globe";
+    private String appName;
 
     public BrandingBean(BrandingService brandingService, PlaintextSecurity security) {
         this.brandingService = brandingService;
@@ -56,7 +57,6 @@ public class BrandingBean {
             showVersion = brandingService.isShowVersion(mandat);
             showRootVersion = brandingService.isShowRootVersion(mandat);
             showBuildTimestamp = brandingService.isShowBuildTimestamp(mandat);
-            showBuildTimestamp = brandingService.isShowBuildTimestamp(mandat);
             hasLightLogo = brandingService.hasLogo(mandat, "light");
             hasDarkLogo = brandingService.hasLogo(mandat, "dark");
             lightLogoWidth = brandingService.getLogoWidth(mandat, "light");
@@ -64,6 +64,7 @@ public class BrandingBean {
             darkLogoWidth = brandingService.getLogoWidth(mandat, "dark");
             darkLogoHeight = brandingService.getLogoHeight(mandat, "dark");
             i18nIcon = brandingService.getI18nIcon(mandat);
+            appName = brandingService.getAppName(mandat);
 
             log.debug("Branding refreshed for mandat={}: hasLightLogo={}, hasDarkLogo={}", mandat, hasLightLogo, hasDarkLogo);
         } catch (Exception e) {
@@ -77,5 +78,13 @@ public class BrandingBean {
 
     public String getEffectiveFooterText() {
         return (footerText != null && !footerText.isBlank()) ? footerText : "Copyright \u00A9 Plaintext.ch";
+    }
+
+    /**
+     * Anwendungsname aus den Settings ({@code branding.app.name}); Fallback
+     * "Plaintext App". Titel-Default des Templates.
+     */
+    public String getEffectiveAppName() {
+        return (appName != null && !appName.isBlank()) ? appName : "Plaintext App";
     }
 }
