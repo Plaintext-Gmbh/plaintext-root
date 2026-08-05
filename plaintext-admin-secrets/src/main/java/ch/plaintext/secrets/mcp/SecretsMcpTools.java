@@ -10,9 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springaicommunity.mcp.annotation.McpTool;
 import org.springaicommunity.mcp.annotation.McpToolParam;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * MCP-Tool zum Setzen von Secrets. Bewusst nur <b>set</b> (one-way — Werte werden nie ausgelesen).
@@ -20,6 +25,24 @@ import java.util.Locale;
  * <p>{@link ConditionalOnClass} auf die MCP-Annotation: das Bean lädt NUR in Apps, die selbst einen
  * spring-ai-MCP-Server haben (guild/iot/…). Apps ohne MCP bleiben unberührt (die optionale Dependency
  * ist nicht transitiv, und die Condition verhindert das Laden dieser Klasse).</p>
+ *
+ * <p><b>Autorisierung (Karte 557):</b> Bis zum 05.08.2026 hatte dieses Werkzeug <em>keine</em>
+ * Zugriffskontrolle — weder Annotation noch Prüfung im Rumpf. Da jedes gültige MCP-Token mindestens
+ * {@code SCOPE_READ} erhält, konnte ein reines Lesetoken Secrets überschreiben. Verlangt werden jetzt
+ * {@code SCOPE_ADMIN} <b>und</b> die Rolle {@code ADMIN} oder {@code ROOT}:</p>
+ * <ul>
+ *   <li>Der <b>Scope</b> verhindert, dass ein Lese- oder Schreibtoken an den Secret-Speicher kommt.</li>
+ *   <li>Die <b>Rolle</b> ist nötig, weil die Token-Ausstellung in der Oberfläche laut
+ *       {@code ApiTokenMenu} den Rollen {@code USER, ADMIN, ROOT} offensteht und der Scope dort frei
+ *       wählbar ist — ein gewöhnliches Mitglied könnte sich sonst selbst ein ADMIN-Token ausstellen
+ *       und die Prüfung damit umgehen. Dieselbe Begründung wie in {@code ApiTokenMcpTools}.</li>
+ * </ul>
+ *
+ * <p><b>Warum im Rumpf und nicht per {@code @PreAuthorize}:</b> Ein MCP-Aufruf läuft nicht über den
+ * üblichen Web-Pfad; ob eine Annotation greift, hängt daran, dass Methodensicherheit in der
+ * konsumierenden Anwendung eingeschaltet ist und das Bean proxied wird. Eine still wirkungslose
+ * Annotation sähe von aussen genauso aus wie eine wirksame — die Prüfung im Rumpf kann nicht
+ * ausfallen.</p>
  */
 @Slf4j
 @Component
@@ -27,13 +50,17 @@ import java.util.Locale;
 @ConditionalOnClass(name = "org.springaicommunity.mcp.annotation.McpTool")
 public class SecretsMcpTools {
 
+    private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
+    private static final Set<String> SCHREIB_ROLLEN = Set.of("ROLE_ADMIN", "ROLE_ROOT");
+
     private final SecretService secretService;
 
     @McpTool(name = "set_secret",
             description = "Set (create or overwrite) a secret — ONE-WAY, the value is never read back. "
             + "backend = VAULTWARDEN (write to the shared vault), LOCAL_DB (AES-encrypted in this app's DB) "
             + "or HASHICORP (configured HashiCorp Vault). note = optional free-text comment. "
-            + "The entry's creation timestamp is recorded automatically.")
+            + "The entry's creation timestamp is recorded automatically. "
+            + "Requires a caller token with scope=ADMIN and the role ADMIN or ROOT.")
     public String setSecret(
             @McpToolParam(description = "Secret name / key") String name,
             @McpToolParam(description = "Backend: VAULTWARDEN, LOCAL_DB or HASHICORP") String backend,
@@ -43,6 +70,10 @@ public class SecretsMcpTools {
             // wollte, musste einen Leerstring oder die Zeichenkette "null" schicken — beides landet
             // als Notiz am Secret. SecretService.set() vertraegt null ausdruecklich ("if (note != null)").
             @McpToolParam(required = false, description = "Optional free-text note/comment") String note) {
+        String verweigert = autorisierungPruefen();
+        if (verweigert != null) {
+            return verweigert;
+        }
         SecretBackendType type;
         try {
             type = SecretBackendType.valueOf(backend.trim().toUpperCase(Locale.ROOT));
@@ -56,5 +87,32 @@ public class SecretsMcpTools {
         } catch (RuntimeException e) {
             return "FEHLER: " + e.getMessage();
         }
+    }
+
+    /**
+     * Prüft den Aufrufer gegen den vom Bearer-Filter befüllten SecurityContext.
+     *
+     * @return {@code null}, wenn der Aufruf zulässig ist — sonst die fertige Fehlermeldung für den
+     *         MCP-Client. Die Meldung nennt bewusst nur die fehlende Voraussetzung und keine Werte.
+     */
+    private String autorisierungPruefen() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            log.warn("MCP: set_secret abgewiesen — nicht authentisiert");
+            return "FEHLER: nicht authentisiert.";
+        }
+        Set<String> authorities = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toUnmodifiableSet());
+
+        if (!authorities.contains(SCOPE_ADMIN)) {
+            log.warn("MCP: set_secret abgewiesen — scope=ADMIN fehlt (Aufrufer {})", auth.getName());
+            return "FEHLER: set_secret erfordert einen Aufrufer-Token mit scope=ADMIN.";
+        }
+        if (SCHREIB_ROLLEN.stream().noneMatch(authorities::contains)) {
+            log.warn("MCP: set_secret abgewiesen — Rolle ADMIN/ROOT fehlt (Aufrufer {})", auth.getName());
+            return "FEHLER: set_secret erfordert die Rolle ADMIN oder ROOT.";
+        }
+        return null;
     }
 }
