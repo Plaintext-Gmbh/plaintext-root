@@ -121,12 +121,27 @@ public class PlaintextSecurityProperties {
          * (Claim-Wert case-insensitiv). Ein Token <b>ohne</b> {@code scope}-Claim wird immer
          * abgelehnt — fail-closed, analog zum {@code McpBearerTokenFilter} (Karte 312).
          *
-         * <p>{@code SESSION} ist der dafuer vorgesehene, minimale Scope; {@code ADMIN} ist
-         * zugelassen, damit bestehende Vollzugriffs-Tokens weiter funktionieren. {@code READ} und
-         * {@code EINTRAGEN} reichen bewusst NICHT: sie werden fuer maschinelle MCP-Zugriffe
-         * ausgestellt und sollen keine interaktive Session mit allen DB-Rollen ergeben.</p>
+         * <p>{@code SESSION} ist der dafuer vorgesehene, minimale Scope — und seit Karte 544 der
+         * einzige. {@code READ} und {@code EINTRAGEN} reichen ohnehin nicht: sie werden fuer
+         * maschinelle MCP-Zugriffe ausgestellt und sollen keine interaktive Session mit allen
+         * DB-Rollen ergeben.</p>
+         *
+         * <p><b>Warum {@code ADMIN} hier nicht mehr steht (Karte 544, 05.08.2026):</b> {@code ADMIN}
+         * war zugelassen, damit bestehende Vollzugriffs-Tokens weiterfunktionieren. Damit war jedes
+         * ADMIN-MCP-Token zugleich ein Generalschluessel fuer eine Browser-Session mit den DB-Rollen
+         * seines Besitzers — eine zweite Tuer neben der ausdruecklich markierten. Genau das war nicht
+         * beabsichtigt: {@code ADMIN} wird als MCP-Berechtigungsgrad vergeben, nicht als
+         * Session-Erlaubnis, und diese Tokens liegen im Klartext in MCP-Konfigurationen.
+         *
+         * <p>Der Bestand wurde vor der Umstellung erhoben: in 30 Tagen <b>kein einziger
+         * erfolgreicher</b> {@code /token-login}; die drei theoretisch session-faehigen ADMIN-Tokens
+         * sind Maschinen-Tokens mit {@code use_count 0}. Die Umstellung sperrt also niemanden aus,
+         * der den Endpunkt tatsaechlich benutzt.</p>
+         *
+         * <p>Wer einzelne Instanzen bewusst anders will, setzt die Property weiterhin explizit —
+         * geaendert hat sich nur die Voreinstellung.</p>
          */
-        private List<String> requiredScopes = new ArrayList<>(List.of("SESSION", "ADMIN"));
+        private List<String> requiredScopes = new ArrayList<>(List.of("SESSION"));
     }
 
 

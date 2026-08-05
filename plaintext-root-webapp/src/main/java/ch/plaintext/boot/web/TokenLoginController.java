@@ -40,7 +40,8 @@ import java.util.Optional;
  *       zweiter Faktor (TOTP). Vorher wurde der {@link SecurityContextRepository} direkt beschrieben
  *       und alle drei uebersprungen.</li>
  *   <li>Der {@code scope}-Claim des Tokens wird <b>erzwungen</b>
- *       ({@code plaintext.security.token-login.required-scopes}, Default {@code SESSION}/{@code ADMIN}).
+ *       ({@code plaintext.security.token-login.required-scopes}, Default {@code SESSION} — seit
+ *       Karte 544 ohne {@code ADMIN}, siehe dort).
  *       Ein fehlender Claim wird abgelehnt (fail-closed). Vorher vergab der Controller pauschal die
  *       vollen DB-Rollen des Token-Besitzers — ein fuer Automation ausgestelltes {@code READ}-Token
  *       ergab damit eine Vollzugriffs-Browser-Session.</li>
