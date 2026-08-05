@@ -80,7 +80,11 @@ public class ApiTokenMcpTools {
             @McpToolParam(description = "Name des Tokens, z.B. 'mcpZorin' (muss im Mandanten des Benutzers "
                     + "eindeutig sein — bestehenden zuerst per revoke_api_token widerrufen)") String tokenName,
             @McpToolParam(description = "Berechtigungsumfang, PFLICHT: READ, EINTRAGEN oder ADMIN") String scope,
-            @McpToolParam(description = "Gueltigkeit in Tagen (7-365, leer = 90)") Integer validityDays) {
+            // Karte 520: Der Code liest den Parameter ausdruecklich als weglassbar
+            // ("validityDays == null ? DEFAULT_VALIDITY_DAYS : validityDays" drei Zeilen weiter
+            // unten), das Schema fuehrte ihn aber als Pflicht.
+            @McpToolParam(required = false, description = "Gueltigkeit in Tagen (7-365, leer = 90)")
+            Integer validityDays) {
 
         Aufrufer aufrufer;
         try {

@@ -38,7 +38,11 @@ public class SecretsMcpTools {
             @McpToolParam(description = "Secret name / key") String name,
             @McpToolParam(description = "Backend: VAULTWARDEN, LOCAL_DB or HASHICORP") String backend,
             @McpToolParam(description = "The secret value to store (write-only)") String value,
-            @McpToolParam(description = "Optional free-text note/comment") String note) {
+            // Karte 520: Die Beschreibung verspricht "Optional", das Schema fuehrte den Parameter
+            // aber als Pflicht (@McpToolParam ist per Default required). Wer die Notiz weglassen
+            // wollte, musste einen Leerstring oder die Zeichenkette "null" schicken — beides landet
+            // als Notiz am Secret. SecretService.set() vertraegt null ausdruecklich ("if (note != null)").
+            @McpToolParam(required = false, description = "Optional free-text note/comment") String note) {
         SecretBackendType type;
         try {
             type = SecretBackendType.valueOf(backend.trim().toUpperCase(Locale.ROOT));
