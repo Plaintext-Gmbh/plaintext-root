@@ -67,7 +67,7 @@
         </style>
     </f:facet>
     <title>
-        <ui:insert name="title">Plaintext App</ui:insert>
+        <ui:insert name="title">#{empty brandingBean ? 'Plaintext App' : brandingBean.effectiveAppName}</ui:insert>
     </title>
     <h:outputScript name="js/layout.js" library="plaintext-layout"/>
     <script>

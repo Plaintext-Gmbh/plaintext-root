@@ -4,6 +4,8 @@
 package ch.plaintext.settings.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -35,7 +37,12 @@ public class BrandingLogo {
     @Column(name = "theme", nullable = false, length = 10)
     private String theme; // "light" or "dark"
 
-    @Column(name = "image_data", nullable = false, columnDefinition = "text")
+    // LONGVARCHAR statt columnDefinition="text": "text" ist PostgreSQL-Dialekt und laesst
+    // HSQLDB-Konsumenten beim CREATE TABLE scheitern (ddl-auto:update loggt nur WARN, die
+    // Tabelle fehlt dann). Hibernate uebersetzt LONGVARCHAR je Dialekt: PostgreSQL -> text,
+    // HSQLDB -> LONGVARCHAR. Fuer die Root-Webapp (Flyway, ddl-auto:none) aendert sich nichts.
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "image_data", nullable = false)
     private String imageData; // Base64-encoded
 
     @Column(name = "content_type", nullable = false, length = 100)
