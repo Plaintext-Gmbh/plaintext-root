@@ -101,7 +101,7 @@
                         <p:commandButton icon="pi pi-clock"
                                          ajax="true"
                                          actionListener="#{cronBackingBean.trigger(row.getCronName(), row.mandat)}"
-                                         update="@form,messages"
+                                         update="@form,:fm:messages"
                                          onstart="PF('blockIt').show()"
                                          oncomplete="PF('blockIt').hide()"
                                          title="Jetzt ausführen"
@@ -113,7 +113,7 @@
                             <f:convertDateTime locale="de" pattern="dd.MM.yy HH:mm" timeZone="Europe/Zurich"/>
                         </h:outputText>
                     </h:panelGroup>
-                    <p:poll interval="3" update="tbl" rendered="#{row.getCron().running}"/>
+                    <p:poll interval="3" update=":fm:tbl" rendered="#{row.getCron().running}"/>
 
                     <p:progressBar ajax="true"
                                    value="#{row.getPercente()}"

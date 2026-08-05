@@ -92,7 +92,7 @@
                     <p:column headerText="#{i18n.t('Aktionen')}" style="width: 80px; text-align: center;">
                         <p:commandButton icon="pi pi-trash" styleClass="ui-button-danger ui-button-sm"
                                          actionListener="#{i18nBackingBean.delete()}"
-                                         update="messages,tbl" process="@this"
+                                         update=":fm:messages,:fm:tbl" process="@this"
                                          title="Löschen">
                             <f:setPropertyActionListener target="#{i18nBackingBean.selected}" value="#{obj}"/>
                             <p:confirm header="Bestätigung"
