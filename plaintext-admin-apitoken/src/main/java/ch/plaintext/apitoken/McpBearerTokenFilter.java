@@ -67,11 +67,11 @@ import java.util.Set;
  * des Token-Users leak-frei per {@link McpUserRoles} und legt sie als
  * {@code ROLE_*}/{@code PROPERTY_*}-Authorities ab.</p>
  *
- * <p><b>Scope:</b> Trägt das Token einen {@code scope}-Claim ({@code READ}/{@code EINTRAGEN}/
+ * <p><b>Scope:</b> Trägt das Token einen {@code scope}-Claim ({@code READ}/{@code WRITE}/
  * {@code ADMIN}, siehe {@link JwtTokenService#generateToken(Long, String, String, String, int, String)}),
- * vergibt der Filter KUMULATIVE {@code SCOPE_*}-Authorities (ADMIN erhält auch SCOPE_EINTRAGEN +
- * SCOPE_READ, EINTRAGEN auch SCOPE_READ) — Downstream-Apps prüfen dann per {@code @PreAuthorize
- * ("hasAuthority('SCOPE_EINTRAGEN')")} o.ä., ohne hasAnyAuthority-Ketten. <b>Fehlt der Claim, gilt seit
+ * vergibt der Filter KUMULATIVE {@code SCOPE_*}-Authorities (ADMIN erhält auch SCOPE_WRITE +
+ * SCOPE_READ, WRITE auch SCOPE_READ) — Downstream-Apps prüfen dann per {@code @PreAuthorize
+ * ("hasAuthority('SCOPE_WRITE')")} o.ä., ohne hasAnyAuthority-Ketten. <b>Fehlt der Claim, gilt seit
  * Karte 312 nur noch {@code READ}</b> (fail-closed). Zuvor galt {@code ADMIN} als „sanfte Migration" —
  * da die Token-Ausstellung damals gar keinen Scope vergab, war damit faktisch jeder API-Token ein
  * Vollzugriffs-Token. Wer scope-lose Alt-Tokens noch produktiv im Einsatz hat, kann das alte Verhalten
@@ -221,9 +221,16 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * Vergibt kumulative {@code SCOPE_*}-Authorities: SCOPE_READ immer, SCOPE_EINTRAGEN zusätzlich
-     * bei EINTRAGEN/ADMIN, SCOPE_ADMIN zusätzlich bei ADMIN. Ein nicht erkannter Claim-Wert bekommt
-     * NUR SCOPE_READ (least privilege).
+     * Vergibt kumulative {@code SCOPE_*}-Authorities: SCOPE_READ immer, SCOPE_WRITE <b>und</b>
+     * SCOPE_EINTRAGEN zusätzlich bei WRITE/EINTRAGEN/ADMIN, SCOPE_ADMIN zusätzlich bei ADMIN. Ein
+     * nicht erkannter Claim-Wert bekommt NUR SCOPE_READ (least privilege).
+     *
+     * <p><b>Übergangsfenster (Karte 545):</b> {@code WRITE} ist der neue Name des bisherigen Scopes
+     * {@code EINTRAGEN} (Entscheid Daniel, 05.08.2026). Beide Claim-Werte sind gültig und vergeben
+     * <em>dieselben</em> Authorities — sonst prüfte die eine Hälfte des Codes gegen SCOPE_EINTRAGEN
+     * und die andere gegen SCOPE_WRITE, und ein Token bestünde nur die halbe Strecke. Der Altname
+     * fällt erst, wenn alle Downstream-{@code @PreAuthorize}-Ausdrücke auf {@code SCOPE_WRITE}
+     * stehen (Stufe 3 der Karte).</p>
      *
      * <p><b>Fehlender/leerer Claim ⇒ {@code READ} (Karte 312, H-7).</b> Vorher galt hier {@code ADMIN}
      * als „sanfte Migration" — in Kombination damit, dass die Token-Ausstellung gar keinen Scope
@@ -235,7 +242,8 @@ public class McpBearerTokenFilter implements Filter {
         String fallback = legacyScopeAdmin ? "ADMIN" : "READ";
         String effective = (scope == null || scope.isBlank()) ? fallback : scope.trim().toUpperCase();
         authorities.add(new SimpleGrantedAuthority("SCOPE_READ"));
-        if (effective.equals("EINTRAGEN") || effective.equals("ADMIN")) {
+        if (effective.equals("WRITE") || effective.equals("EINTRAGEN") || effective.equals("ADMIN")) {
+            authorities.add(new SimpleGrantedAuthority("SCOPE_WRITE"));
             authorities.add(new SimpleGrantedAuthority("SCOPE_EINTRAGEN"));
         }
         if (effective.equals("ADMIN")) {

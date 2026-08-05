@@ -54,7 +54,7 @@ public class ApiTokenBackingBean implements Serializable {
     private int newTokenValidityDays = JwtTokenService.DEFAULT_VALIDITY_DAYS;
 
     /**
-     * Berechtigungsumfang des neuen Tokens (Karte 312): {@code READ}, {@code EINTRAGEN} oder
+     * Berechtigungsumfang des neuen Tokens (Karte 312): {@code READ}, {@code WRITE} oder
      * {@code ADMIN}. Default bewusst {@code READ} — wer mehr braucht, wählt es aktiv aus. Vorher gab
      * die Ausstellung gar keinen Scope mit, und der MCP-Filter deutete das als ADMIN; damit war jedes
      * hier erzeugte Token ein Vollzugriffs-Token.
@@ -66,13 +66,18 @@ public class ApiTokenBackingBean implements Serializable {
     /**
      * Auswahlwerte für den Scope, aufsteigend nach Berechtigung.
      *
+     * <p><b>{@code WRITE} statt {@code EINTRAGEN} (Karte 545, Entscheid Daniel 05.08.2026):</b> Der
+     * Altname wird vom {@link McpBearerTokenFilter} weiterhin <em>akzeptiert</em>, aber hier nicht
+     * mehr <em>angeboten</em> — bestehende Tokens laufen unverändert, neue Alt-Tokens entstehen
+     * nicht mehr. Beide Werte vergeben dieselben Authorities.</p>
+     *
      * <p>{@code SESSION} (Karte 309) ist kein MCP-Berechtigungsgrad, sondern der Marker dafür, dass aus
      * dem Token per {@code /token-login} eine Browser-Session gebaut werden darf. Der MCP-Bearer-Filter
      * kennt den Wert nicht und vergibt dafür nur {@code SCOPE_READ} (least privilege) — genau richtig:
      * ein Session-Token soll nicht nebenbei zum API-Vollzugriff werden.</p>
      */
     @Getter
-    private final List<String> verfuegbareScopes = List.of("READ", "EINTRAGEN", "SESSION", "ADMIN");
+    private final List<String> verfuegbareScopes = List.of("READ", "WRITE", "SESSION", "ADMIN");
 
     @Getter
     private int minValidityDays = JwtTokenService.MIN_VALIDITY_DAYS;
