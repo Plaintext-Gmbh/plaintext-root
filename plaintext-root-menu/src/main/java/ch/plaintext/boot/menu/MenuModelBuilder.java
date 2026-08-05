@@ -143,7 +143,7 @@ public class MenuModelBuilder {
                 PrimefacesSubmenu parentSubmenu = submenuMap.get(parent);
 
                 if (parentSubmenu == null) {
-                    log.warn("Parent submenu '{}' not found for item '{}' - skipping", parent, item.getTitle());
+                    meldeFehlendesElternmenue(parent, item, allMenuItems);
                     continue;
                 }
 
@@ -167,6 +167,48 @@ public class MenuModelBuilder {
     private boolean hasChildren(String title, List<MenuItemImpl> visibleItems) {
         return visibleItems.stream()
             .anyMatch(item -> title.equals(item.getParent()));
+    }
+
+    /**
+     * Meldet ein Kind, das ohne Elterncontainer dasteht — und unterscheidet dabei die beiden
+     * Faelle, die vorher beide als WARN herausgingen (Karte 521).
+     *
+     * <p><b>Elternmenue existiert, ist aber nicht sichtbar.</b> Das ist der <i>Normalbetrieb</i>,
+     * kein Fehler: Ein Kind darf breiter erreichbar sein als sein Elternmenue. Beispiele aus dem
+     * Framework: {@code API Token} und {@code Benachrichtigungen} deklarieren
+     * {@code roles={"USER","ADMIN","ROOT"}}, haengen aber unter {@code Admin} (nur ADMIN) bzw.
+     * {@code Root} (nur ROOT) — fuer einen normalen Benutzer ist das Elternmenue also unsichtbar
+     * und das Kind sichtbar. Dasselbe entsteht, wenn ein Modul deaktiviert oder ein Menue fuer
+     * einen Mandanten ausgeblendet ist, das Kind aber nicht. In einem hierarchischen Menue laesst
+     * sich ein solches Kind nicht darstellen; Ueberspringen ist richtig — nur ist es eben nichts,
+     * wovor man warnen muesste.
+     *
+     * <p><b>Elternmenue existiert nirgends.</b> Das ist ein echter Konfigurationsfehler (Tippfehler
+     * im {@code parent}, entferntes Elternmenue) und bleibt WARN — die Seite ist dann fuer
+     * <i>niemanden</i> ueber das Menue erreichbar.
+     *
+     * <p><b>Warum das zaehlt:</b> In plaintext-app erzeugten acht Eintraege des ersten Falls
+     * <b>1218 WARN-Zeilen pro Tag — 79 % aller Warnungen der Anwendung</b> (Karte 521, gemessen in
+     * Graylog ueber 24 h). Eine Warnung, die immer dasteht, wird nicht mehr gelesen; echte
+     * Warnungen gehen darin unter.
+     *
+     * @param parent       Titel des gesuchten Elternmenues
+     * @param item         das Kind, das nicht eingehaengt werden konnte
+     * @param allMenuItems <b>alle</b> registrierten Menuepunkte, auch die unsichtbaren — nur so
+     *                     laesst sich "unsichtbar" von "gibt es nicht" unterscheiden
+     */
+    private void meldeFehlendesElternmenue(String parent, MenuItemImpl item,
+                                           List<MenuItemImpl> allMenuItems) {
+        boolean existiert = allMenuItems.stream()
+                .anyMatch(kandidat -> parent.equals(kandidat.getTitle()));
+        if (existiert) {
+            log.debug("Parent submenu '{}' exists but is not visible for the current user/mandate "
+                    + "- skipping item '{}'", parent, item.getTitle());
+            return;
+        }
+        log.warn("Parent submenu '{}' does not exist for item '{}' - skipping. The item is "
+                + "unreachable via the menu for EVERY user; fix the parent title in its "
+                + "@MenuAnnotation or add the missing parent menu.", parent, item.getTitle());
     }
 
     /**

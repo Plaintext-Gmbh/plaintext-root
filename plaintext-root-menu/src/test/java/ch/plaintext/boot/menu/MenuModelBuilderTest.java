@@ -3,6 +3,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.menu;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.primefaces.model.menu.MenuElement;
 import org.primefaces.model.menu.MenuModel;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 import java.util.Collections;
@@ -528,6 +535,91 @@ class MenuModelBuilderTest {
             assertEquals(1, lauftageSubmenu.getElements().size());
             assertEquals("Karte", ((PrimefacesMenuItem) wanderungenSubmenu.getElements().get(0)).getValue());
             assertEquals("Karte", ((PrimefacesMenuItem) lauftageSubmenu.getElements().get(0)).getValue());
+        }
+    }
+
+    /**
+     * Karte 521: Ein Kind ohne einhaengbaren Elterncontainer wird uebersprungen — die Frage ist,
+     * ob das eine Warnung wert ist.
+     *
+     * <p>In plaintext-app erzeugten acht solche Eintraege <b>1218 WARN-Zeilen pro Tag, 79 % aller
+     * Warnungen der Anwendung</b> (Graylog, 24 h). Und zwar erwartungsgemaess: {@code API Token}
+     * und {@code Benachrichtigungen} deklarieren {@code roles={"USER","ADMIN","ROOT"}}, haengen
+     * aber unter {@code Admin} bzw. {@code Root} — fuer einen normalen Benutzer ist das
+     * Elternmenue unsichtbar und das Kind sichtbar. Eine Warnung, die immer dasteht, wird nicht
+     * mehr gelesen; echte Warnungen gehen darin unter.
+     *
+     * <p>Die beiden Faelle unten sind die Gegenprobe zueinander: waere die Unterscheidung nicht
+     * da, muesste einer von beiden fehlschlagen.
+     */
+    @Nested
+    class ParentNotFoundLogLevel {
+
+        private ListAppender<ILoggingEvent> logs;
+        private Logger logger;
+        private Level vorherigesLevel;
+
+        @BeforeEach
+        void hoereMit() {
+            logger = (Logger) LoggerFactory.getLogger(MenuModelBuilder.class);
+            vorherigesLevel = logger.getLevel();
+            logger.setLevel(Level.DEBUG);
+            logs = new ListAppender<>();
+            logs.start();
+            logger.addAppender(logs);
+        }
+
+        @AfterEach
+        void hoerAuf() {
+            logger.detachAppender(logs);
+            logs.stop();
+            logger.setLevel(vorherigesLevel);
+        }
+
+        @Test
+        void shouldLogDebugNotWarnWhenParentExistsButIsInvisible() {
+            // Der Musterfall aus PROD: Elternmenue nur fuer ADMIN, Kind fuer jeden.
+            MenuItemImpl admin = createVisibleMenuItem("Admin", "", 2, "/index.xhtml", "", false);
+            MenuItemImpl apiToken = createMenuItem("API Token", "Admin", 90, "/api-token.xhtml", "");
+
+            Map<String, MenuItemImpl> beans = new LinkedHashMap<>();
+            beans.put("admin", admin);
+            beans.put("apiToken", apiToken);
+            when(applicationContext.getBeansOfType(MenuItemImpl.class)).thenReturn(beans);
+
+            MenuModel model = menuModelBuilder.buildMenuModel();
+
+            assertTrue(model.getElements().isEmpty(),
+                    "Ein Kind ohne sichtbaren Elterncontainer bleibt uebersprungen — das Verhalten "
+                            + "aendert sich nicht, nur die Meldung.");
+            assertTrue(meldungen(Level.WARN).isEmpty(),
+                    "Der erwartete Fall darf keine Warnung erzeugen, war: " + meldungen(Level.WARN));
+            assertTrue(meldungen(Level.DEBUG).stream().anyMatch(m -> m.contains("Admin") && m.contains("API Token")),
+                    "Nachvollziehbar bleiben muss es trotzdem — auf DEBUG. Gesehen: " + meldungen(Level.DEBUG));
+        }
+
+        @Test
+        void shouldStillWarnWhenParentDoesNotExistAtAll() {
+            // Der echte Konfigurationsfehler: Tippfehler im parent. Fuer NIEMANDEN erreichbar.
+            MenuItemImpl orphan = createMenuItem("Kontaktliste", "Kontakteee", 10, "/kontakte.xhtml", "");
+
+            Map<String, MenuItemImpl> beans = Map.of("orphan", orphan);
+            when(applicationContext.getBeansOfType(MenuItemImpl.class)).thenReturn(beans);
+
+            MenuModel model = menuModelBuilder.buildMenuModel();
+
+            assertTrue(model.getElements().isEmpty());
+            assertTrue(meldungen(Level.WARN).stream().anyMatch(m -> m.contains("Kontakteee") && m.contains("does not exist")),
+                    "Ein parent, den es nirgends gibt, muss weiterhin als Warnung herausgehen — "
+                            + "sonst verschwindet mit dem Laerm auch der echte Fehler. Gesehen: "
+                            + meldungen(Level.WARN));
+        }
+
+        private List<String> meldungen(Level level) {
+            return logs.list.stream()
+                    .filter(e -> e.getLevel() == level)
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .toList();
         }
     }
 
