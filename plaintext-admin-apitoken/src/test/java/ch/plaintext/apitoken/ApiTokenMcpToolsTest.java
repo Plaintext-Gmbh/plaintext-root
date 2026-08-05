@@ -105,6 +105,24 @@ class ApiTokenMcpToolsTest {
         verify(service, never()).createToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), anyString());
     }
 
+    /**
+     * Karte 545: {@code WRITE} ist der neue Name des Schreibrechts, {@code EINTRAGEN} bleibt im
+     * Übergangsfenster gültig. Beide müssen die Ausstellung passieren — sonst kann ein Client, der
+     * schon auf den neuen Namen umgestellt hat, sich kein Token mehr ausstellen lassen.
+     */
+    @Test
+    void schreibScopes_werdenBeideAkzeptiert_neuerUndAlterName() {
+        authAdmin();
+        when(service.createToken(eq(7L), eq("plaintext"), anyString(), eq("u@x.ch"), eq(30), anyString()))
+                .thenReturn("jwt-abc");
+
+        assertTrue(tools.createApiToken("neu", "WRITE", 30).contains("jwt-abc"));
+        assertTrue(tools.createApiToken("alt", "eintragen", 30).contains("jwt-abc"));
+
+        verify(service).createToken(7L, "plaintext", "neu", "u@x.ch", 30, "WRITE");
+        verify(service).createToken(7L, "plaintext", "alt", "u@x.ch", 30, "EINTRAGEN");
+    }
+
     @Test
     void gueltigeAusstellung_nutztIdentitaetDesAufrufers() {
         authAdmin();

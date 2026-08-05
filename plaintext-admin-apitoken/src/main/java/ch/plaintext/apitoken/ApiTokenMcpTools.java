@@ -63,7 +63,12 @@ import java.util.Set;
 @ConditionalOnClass(name = "org.springaicommunity.mcp.annotation.McpTool")
 public class ApiTokenMcpTools {
 
-    private static final Set<String> ERLAUBTE_SCOPES = Set.of("READ", "EINTRAGEN", "ADMIN");
+    /**
+     * Gültige Scope-Werte. {@code WRITE} ist seit Karte 545 der Name des Schreibrechts;
+     * {@code EINTRAGEN} bleibt im Übergangsfenster gültig (gleiche Authorities, siehe
+     * {@link McpBearerTokenFilter}) und fällt mit Stufe 3 der Karte weg.
+     */
+    private static final Set<String> ERLAUBTE_SCOPES = Set.of("READ", "WRITE", "EINTRAGEN", "ADMIN");
     private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
     private static final Set<String> AUSSTELLER_ROLLEN = Set.of("ROLE_ADMIN", "ROLE_ROOT");
     private static final DateTimeFormatter DATUM = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
@@ -75,11 +80,13 @@ public class ApiTokenMcpTools {
             + "ueber den ApiTokenService, d.h. mit Zeile in api_token (nur SHA-256-Hash), explizitem Scope, "
             + "Ablaufdatum und Widerrufsmoeglichkeit. Der Token-String wird GENAU EINMAL zurueckgegeben und "
             + "ist danach nicht wiederherstellbar. Erfordert einen Aufrufer-Token mit Scope ADMIN sowie die "
-            + "Rolle ADMIN oder ROOT. scope ist PFLICHT: READ, EINTRAGEN oder ADMIN.")
+            + "Rolle ADMIN oder ROOT. scope ist PFLICHT: READ, WRITE oder ADMIN (EINTRAGEN ist der "
+            + "Altname von WRITE und uebergangsweise noch gueltig).")
     public String createApiToken(
             @McpToolParam(description = "Name des Tokens, z.B. 'mcpZorin' (muss im Mandanten des Benutzers "
                     + "eindeutig sein — bestehenden zuerst per revoke_api_token widerrufen)") String tokenName,
-            @McpToolParam(description = "Berechtigungsumfang, PFLICHT: READ, EINTRAGEN oder ADMIN") String scope,
+            @McpToolParam(description = "Berechtigungsumfang, PFLICHT: READ, WRITE oder ADMIN "
+                    + "(EINTRAGEN = Altname von WRITE, uebergangsweise noch gueltig)") String scope,
             // Karte 520: Der Code liest den Parameter ausdruecklich als weglassbar
             // ("validityDays == null ? DEFAULT_VALIDITY_DAYS : validityDays" drei Zeilen weiter
             // unten), das Schema fuehrte ihn aber als Pflicht.

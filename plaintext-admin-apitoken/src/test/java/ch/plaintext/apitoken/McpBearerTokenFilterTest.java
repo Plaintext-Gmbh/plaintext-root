@@ -259,18 +259,43 @@ class McpBearerTokenFilterTest {
         Authentication auth = runAndCaptureAuth(jwtFilter(jwt, mock(McpUserRoles.class)), "Bearer tok");
 
         assertTrue(hasAuthority(auth, "SCOPE_READ"));
+        assertFalse(hasAuthority(auth, "SCOPE_WRITE"));
         assertFalse(hasAuthority(auth, "SCOPE_EINTRAGEN"));
         assertFalse(hasAuthority(auth, "SCOPE_ADMIN"));
     }
 
+    /**
+     * Karte 545: {@code WRITE} ist der neue Name des Schreibrechts (Entscheid Daniel, 05.08.2026).
+     */
     @Test
-    void scopeEintragen_bekommtReadUndEintragen_keinAdmin() throws Exception {
-        JwtTokenService jwt = jwtValidating("tok", 1L, "default", "u@x.ch", "EINTRAGEN", "jti-2");
+    void scopeWrite_bekommtReadUndWrite_keinAdmin() throws Exception {
+        JwtTokenService jwt = jwtValidating("tok", 1L, "default", "u@x.ch", "WRITE", "jti-2a");
         Authentication auth = runAndCaptureAuth(jwtFilter(jwt, mock(McpUserRoles.class)), "Bearer tok");
 
         assertTrue(hasAuthority(auth, "SCOPE_READ"));
-        assertTrue(hasAuthority(auth, "SCOPE_EINTRAGEN"));
+        assertTrue(hasAuthority(auth, "SCOPE_WRITE"));
         assertFalse(hasAuthority(auth, "SCOPE_ADMIN"));
+    }
+
+    /**
+     * Karte 545, Übergangsfenster: Der Altname {@code EINTRAGEN} und der neue Name {@code WRITE}
+     * vergeben <b>dieselben</b> Authorities. Ohne diese Gleichheit prüfte die eine Hälfte des Codes
+     * gegen SCOPE_EINTRAGEN und die andere gegen SCOPE_WRITE — ein Token bestünde nur die halbe
+     * Strecke, und genau diesen Zwischenzustand soll die Umbenennung vermeiden.
+     */
+    @Test
+    void altnameEintragenUndNeunameWrite_vergebenDieselbenAuthorities() throws Exception {
+        JwtTokenService alt = jwtValidating("tok", 1L, "default", "u@x.ch", "EINTRAGEN", "jti-2");
+        Authentication mitAltname = runAndCaptureAuth(jwtFilter(alt, mock(McpUserRoles.class)), "Bearer tok");
+        JwtTokenService neu = jwtValidating("tok", 1L, "default", "u@x.ch", "WRITE", "jti-2b");
+        Authentication mitNeuname = runAndCaptureAuth(jwtFilter(neu, mock(McpUserRoles.class)), "Bearer tok");
+
+        for (String erwartet : new String[] {"SCOPE_READ", "SCOPE_WRITE", "SCOPE_EINTRAGEN"}) {
+            assertTrue(hasAuthority(mitAltname, erwartet), "EINTRAGEN muss " + erwartet + " vergeben");
+            assertTrue(hasAuthority(mitNeuname, erwartet), "WRITE muss " + erwartet + " vergeben");
+        }
+        assertFalse(hasAuthority(mitAltname, "SCOPE_ADMIN"));
+        assertFalse(hasAuthority(mitNeuname, "SCOPE_ADMIN"));
     }
 
     @Test
@@ -279,6 +304,7 @@ class McpBearerTokenFilterTest {
         Authentication auth = runAndCaptureAuth(jwtFilter(jwt, mock(McpUserRoles.class)), "Bearer tok");
 
         assertTrue(hasAuthority(auth, "SCOPE_READ"));
+        assertTrue(hasAuthority(auth, "SCOPE_WRITE"));
         assertTrue(hasAuthority(auth, "SCOPE_EINTRAGEN"));
         assertTrue(hasAuthority(auth, "SCOPE_ADMIN"));
     }
@@ -295,6 +321,7 @@ class McpBearerTokenFilterTest {
         Authentication auth = runAndCaptureAuth(jwtFilter(jwt, mock(McpUserRoles.class)), "Bearer tok");
 
         assertTrue(hasAuthority(auth, "SCOPE_READ"));
+        assertFalse(hasAuthority(auth, "SCOPE_WRITE"), "fehlender Claim darf kein Schreibrecht geben");
         assertFalse(hasAuthority(auth, "SCOPE_EINTRAGEN"), "fehlender Claim darf kein Schreibrecht geben");
         assertFalse(hasAuthority(auth, "SCOPE_ADMIN"), "fehlender Claim darf kein ADMIN geben");
     }
@@ -312,6 +339,7 @@ class McpBearerTokenFilterTest {
         Authentication auth = runAndCaptureAuth(filter, "Bearer tok");
 
         assertTrue(hasAuthority(auth, "SCOPE_READ"));
+        assertTrue(hasAuthority(auth, "SCOPE_WRITE"));
         assertTrue(hasAuthority(auth, "SCOPE_EINTRAGEN"));
         assertTrue(hasAuthority(auth, "SCOPE_ADMIN"));
     }
@@ -322,6 +350,7 @@ class McpBearerTokenFilterTest {
         Authentication auth = runAndCaptureAuth(jwtFilter(jwt, mock(McpUserRoles.class)), "Bearer tok");
 
         assertTrue(hasAuthority(auth, "SCOPE_READ"));
+        assertFalse(hasAuthority(auth, "SCOPE_WRITE"));
         assertFalse(hasAuthority(auth, "SCOPE_EINTRAGEN"));
         assertFalse(hasAuthority(auth, "SCOPE_ADMIN"));
     }
