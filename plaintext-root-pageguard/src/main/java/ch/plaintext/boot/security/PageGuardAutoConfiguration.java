@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.web.context.annotation.RequestScope;
 
 /**
  * Registriert den Seiten-Zugriffsschutz.
@@ -62,6 +63,25 @@ public class PageGuardAutoConfiguration {
      * @param pageAccessGuardService  der Guard-Service
      * @return der Startup-Report
      */
+    /**
+     * Die Backing-Bean, die das Template bei jedem {@code preRenderView} ueber
+     * {@code #{pageAccessGuardBackingBean.checkPageAccess()}} aufruft. Sie trug bislang nur
+     * {@code @Named}/{@code @RequestScoped} und existierte damit nur in Apps, die
+     * {@code ch.plaintext} component-scannen — in einem Konsumenten ohne diesen Scan brach jede
+     * mit dem Template ausgelieferte Seite mit "Target Unreachable, identifier
+     * [pageAccessGuardBackingBean] resolved to null" ab (Inventar, 05.08.2026, settings.html).
+     * Request-Scope wie am Stereotyp; das {@code @Autowired}-Feld injiziert Spring auch bei
+     * {@code @Bean}-Instanzen.
+     *
+     * @return die Backing-Bean fuer den Template-Aufruf
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @RequestScope
+    public PageAccessGuardBackingBean pageAccessGuardBackingBean() {
+        return new PageAccessGuardBackingBean();
+    }
+
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnProperty(name = "plaintext.security.page-guard.startup-report",

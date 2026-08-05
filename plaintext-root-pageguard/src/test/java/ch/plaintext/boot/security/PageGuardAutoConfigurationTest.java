@@ -36,6 +36,16 @@ class PageGuardAutoConfigurationTest {
         });
     }
 
+    /**
+     * Das Template ruft {@code #{pageAccessGuardBackingBean.checkPageAccess()}} bei jedem
+     * preRenderView — fehlt die Bean, bricht in einem Konsumenten ohne ch.plaintext-Scan jede
+     * mit dem Template ausgelieferte Seite mit "Target Unreachable" ab.
+     */
+    @Test
+    void stelltDieBackingBeanOhneComponentScanBereit() {
+        runner.run(context -> assertThat(context).hasBean("pageAccessGuardBackingBean"));
+    }
+
     @Test
     void istOhneKonfigurationImModusReport() {
         runner.run(context -> {
