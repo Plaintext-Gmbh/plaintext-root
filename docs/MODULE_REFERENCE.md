@@ -110,7 +110,6 @@ Main web application module. Bundles all other modules and provides:
 | `PlaintextSecurityConfig` | Spring Security configuration |
 | `UserPreferencesRestController` | REST API for saving UI preferences |
 | `VersionController` | Public version endpoint |
-| `TokenLoginController` | Session-Login über ein ApiToken-JWT (`/token-login`) |
 
 ## Module Dependencies
 

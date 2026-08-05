@@ -86,18 +86,20 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void shouldRateLimitTokenLogin() throws Exception {
+    @DisplayName("Karte 560: /token-login wird NICHT mehr gedrosselt — der Pfad ist unbesetzt und "
+            + "faellt unter authenticated(); ein Limit darauf haette nichts zu bremsen")
+    void shouldNotRateLimitRemovedTokenLogin() throws Exception {
         when(request.getRequestURI()).thenReturn("/token-login");
-        when(request.getRemoteAddr()).thenReturn("10.0.0.2");
-        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+        // Bewusst KEIN getRemoteAddr()-Stub: der Filter ermittelt fuer diesen Pfad gar keine
+        // Client-IP mehr. Mockitos strikte Stub-Pruefung ist hier der eigentliche Beweis --
+        // ein ueberfluessiger Stub liesse den Test scheitern, sobald der Zweig zurueckkaeme.
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 5; i++) {
             filter.doFilter(request, response, filterChain);
         }
-        verify(filterChain, times(3)).doFilter(request, response);
 
-        filter.doFilter(request, response, filterChain);
-        verify(response).setStatus(429);
+        verify(filterChain, times(5)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
     }
 
     @Test

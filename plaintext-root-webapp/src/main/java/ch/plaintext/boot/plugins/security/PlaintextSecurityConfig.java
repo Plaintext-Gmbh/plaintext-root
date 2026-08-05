@@ -67,13 +67,15 @@ public class PlaintextSecurityConfig {
     // Die einzigen Aufrufer sind die vier fetch()-Aufrufe in includes/config.xhtml, und die
     // haengen das Token bereits an (params.append('_csrf', ...)) — der Fix ist deshalb rein
     // konfigurativ und bricht keinen produktiven Flow.
+    // Karte 560: /token-login ist hier raus, weil es den Endpunkt nicht mehr gibt. Ein permitAll
+    // auf einen unbesetzten Pfad ist nicht bloss ueberfluessig -- er haelt die Tuer offen, falls je
+    // wieder ein Controller unter diesem Mapping entsteht.
     private static final List<String> DEFAULT_CSRF_IGNORE = List.of(
-            "/token-login", "/nosec/**"
+            "/nosec/**"
     );
 
     // Framework-Defaults: Ohne Authentication erreichbar
     private static final List<String> DEFAULT_PERMIT_ALL = List.of(
-            "/token-login", "/token-login/**",
             "/login.xhtml", "/login.html", "/jakarta.faces.resource/**",
             "/actuator/health",
             "/nosec/**",
@@ -244,7 +246,7 @@ public class PlaintextSecurityConfig {
                             matchers.add(PathPatternRequestMatcher.pathPattern(pattern));
                         }
                         // NOSONAR (S4502): Die Ausnahme trifft ausschliesslich tokenbasierte,
-                        // sessionlose Pfade — Framework-Default /token-login und /nosec/**, dazu
+                        // sessionlose Pfade — Framework-Default /nosec/**, dazu
                         // was eine App ausdruecklich in plaintext.security.csrf-ignore-patterns
                         // eintraegt. CSRF schuetzt gegen das automatische Mitsenden von
                         // Session-Cookies; wo die Berechtigung aus einem Bearer-Token im Header
