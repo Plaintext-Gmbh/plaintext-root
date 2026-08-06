@@ -112,5 +112,88 @@ class CronConfigStoreTest {
             assertThat(store.findByCronNameAndMandat("A", "global")).contains(entity);
             assertThat(store.save(entity)).isSameAs(entity);
         }
+
+        @Test
+        void sucht_die_Proxy_Bestandszeile_als_Query() {
+            CronConfigRepository repo = mock(CronConfigRepository.class);
+            CronConfigEntity alt = zeile("A$$SpringCGLIB$$0", "trimstein", false, "5 6 * * *");
+            when(repo.findFirstByCronNameStartingWithAndMandatOrderByIdAsc("A$$", "trimstein"))
+                    .thenReturn(Optional.of(alt));
+
+            assertThat(new JpaCronConfigStore(repo).findLegacyProxyRow("A", "trimstein")).contains(alt);
+        }
+    }
+
+    /**
+     * Karte 574: Am 03.08.2026 wechselte der gespeicherte Name vom CGLIB-Proxy-Namen auf den
+     * Klassennamen. Weil nur exakt gesucht wurde, entstanden 99 verwaiste Zeilen, und 22 bewusst
+     * abgeschaltete Boot-Laeufe waren wieder an — ohne Fehlermeldung, der Start blieb gruen.
+     */
+    @Nested
+    class BestandszeileUnterAltemNamen {
+
+        /** Nur findAll ist bedient — genau die Ausgangslage einer fremden Store-Implementierung. */
+        private CronConfigStore storeMit(CronConfigEntity... zeilen) {
+            return new CronConfigStore() {
+                @Override
+                public Optional<CronConfigEntity> findByCronNameAndMandat(String cronName, String mandat) {
+                    return Optional.empty();
+                }
+
+                @Override
+                public CronConfigEntity save(CronConfigEntity entity) {
+                    return entity;
+                }
+
+                @Override
+                public List<CronConfigEntity> findAll() {
+                    return List.of(zeilen);
+                }
+            };
+        }
+
+        @Test
+        void wird_ueber_den_Proxy_Suffix_gefunden() {
+            CronConfigEntity alt = zeile("KontaktEmailAvisTrigger$$SpringCGLIB$$0", "trimstein", false, "10 6 * * *");
+
+            Optional<CronConfigEntity> treffer =
+                    storeMit(alt).findLegacyProxyRow("KontaktEmailAvisTrigger", "trimstein");
+
+            assertThat(treffer).contains(alt);
+            assertThat(treffer.orElseThrow().isStartup()).isFalse();
+            assertThat(treffer.orElseThrow().getCronExpression()).isEqualTo("10 6 * * *");
+        }
+
+        @Test
+        void bleibt_beim_eigenen_Mandanten() {
+            CronConfigEntity fremd = zeile("MailSyncCron$$SpringCGLIB$$0", "butscher", false, "0 6 * * *");
+
+            assertThat(storeMit(fremd).findLegacyProxyRow("MailSyncCron", "trimstein")).isEmpty();
+        }
+
+        @Test
+        void trifft_keinen_anderen_Job_mit_gleichem_Wortanfang() {
+            // Ohne das trennende "$$" wuerde MailSyncCron die Zeile von MailSyncCronExtra kapern
+            // und deren Einstellungen an sich ziehen.
+            CronConfigEntity anderer = zeile("MailSyncCronExtra$$SpringCGLIB$$0", "trimstein", false, "0 6 * * *");
+
+            assertThat(storeMit(anderer).findLegacyProxyRow("MailSyncCron", "trimstein")).isEmpty();
+        }
+
+        @Test
+        void ignoriert_eine_Zeile_die_bereits_auf_dem_neuen_Namen_steht() {
+            CronConfigEntity neu = zeile("MailSyncCron", "trimstein", true, "0 6 * * *");
+
+            assertThat(storeMit(neu).findLegacyProxyRow("MailSyncCron", "trimstein")).isEmpty();
+        }
+    }
+
+    private static CronConfigEntity zeile(String name, String mandat, boolean startup, String expr) {
+        CronConfigEntity e = new CronConfigEntity();
+        e.setCronName(name);
+        e.setMandat(mandat);
+        e.setStartup(startup);
+        e.setCronExpression(expr);
+        return e;
     }
 }

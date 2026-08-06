@@ -920,4 +920,53 @@ class CronControllerTest {
         // which is async. The trigger method itself should complete.
         cronController.trigger("FailCron", "mandatA");
     }
+
+    // --- adoptLegacyProxyRow (private) — Karte 574 ---
+
+    @Test
+    void adoptLegacyProxyRow_uebernimmtBestandszeileUndBenenntSieUm() throws Exception {
+        SuperCron sc = createTestSuperCron("KontaktEmailAvisTrigger", false);
+        CronConfigEntity alt = new CronConfigEntity();
+        alt.setId(29L);
+        alt.setCronName("KontaktEmailAvisTrigger$$SpringCGLIB$$0");
+        alt.setMandat("trimstein");
+        alt.setStartup(false);
+        alt.setEnabled(false);
+        alt.setCronExpression("10 6 * * *");
+        when(cronConfigStore.findLegacyProxyRow("KontaktEmailAvisTrigger", "trimstein"))
+                .thenReturn(Optional.of(alt));
+
+        Method m = CronController.class.getDeclaredMethod(
+                "adoptLegacyProxyRow", SuperCron.class, String.class);
+        m.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Optional<CronConfigEntity> ergebnis =
+                (Optional<CronConfigEntity>) m.invoke(cronController, sc, "trimstein");
+
+        assertThat(ergebnis).isPresent();
+        CronConfigEntity uebernommen = ergebnis.orElseThrow();
+        // Umbenannt statt kopiert: dieselbe Zeile, dieselbe Id — es entsteht keine zweite Leiche.
+        assertThat(uebernommen).isSameAs(alt);
+        assertThat(uebernommen.getId()).isEqualTo(29L);
+        assertThat(uebernommen.getCronName()).isEqualTo("KontaktEmailAvisTrigger");
+        // Und genau das, was am 03.08. verloren ging:
+        assertThat(uebernommen.isStartup()).isFalse();
+        assertThat(uebernommen.isEnabled()).isFalse();
+        assertThat(uebernommen.getCronExpression()).isEqualTo("10 6 * * *");
+    }
+
+    @Test
+    void adoptLegacyProxyRow_leerWennKeineBestandszeile() throws Exception {
+        SuperCron sc = createTestSuperCron("NeuerCron", false);
+        when(cronConfigStore.findLegacyProxyRow(anyString(), anyString())).thenReturn(Optional.empty());
+
+        Method m = CronController.class.getDeclaredMethod(
+                "adoptLegacyProxyRow", SuperCron.class, String.class);
+        m.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Optional<CronConfigEntity> ergebnis =
+                (Optional<CronConfigEntity>) m.invoke(cronController, sc, "trimstein");
+
+        assertThat(ergebnis).isEmpty();
+    }
 }

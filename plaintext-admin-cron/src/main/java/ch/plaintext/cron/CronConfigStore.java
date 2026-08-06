@@ -41,4 +41,32 @@ public interface CronConfigStore {
      * @return every stored configuration across all mandates
      */
     List<CronConfigEntity> findAll();
+
+    /**
+     * Finds a row that belongs to the same job under an <em>older</em> name.
+     * <p>
+     * Job names have changed before: until 03.08.2026 a job was stored under its CGLIB proxy name
+     * ({@code KontaktEmailAvisTrigger$$SpringCGLIB$$0}), afterwards under the plain class name. A
+     * lookup by the new name finds nothing, a fresh row is created with the code defaults — and
+     * every setting made by hand silently stops applying while the old row stays behind as a
+     * leftover. That happened to 99 rows across 14 jobs (card 574).
+     * <p>
+     * The marker is the {@code $$} that separates a class name from any proxy suffix; it cannot
+     * appear in a Java class name, so a row whose name starts with {@code <name>$$} is the same job
+     * under a generated alias.
+     *
+     * @param cronName the job's current name, without any suffix
+     * @param mandat   the mandate the row belongs to, or {@code global}
+     * @return the leftover row, or empty when there is none
+     * @since 1.517.0
+     */
+    default Optional<CronConfigEntity> findLegacyProxyRow(String cronName, String mandat) {
+        // Deliberately a default method: implementations outside this module (a wiki page, a config
+        // service) keep working without change, and they inherit a correct — if unindexed — answer.
+        String prefix = cronName + "$$";
+        return findAll().stream()
+                .filter(e -> mandat != null && mandat.equals(e.getMandat()))
+                .filter(e -> e.getCronName() != null && e.getCronName().startsWith(prefix))
+                .findFirst();
+    }
 }

@@ -23,4 +23,11 @@ public interface CronConfigRepository extends JpaRepository<CronConfigEntity, Lo
 
     void deleteByCronNameAndMandat(String cronName, String mandat);
 
+    /**
+     * Findet die Bestandszeile desselben Jobs unter einem Proxy-Namen (Praefix {@code <name>$$}).
+     * Siehe {@link CronConfigStore#findLegacyProxyRow(String, String)}. Aeltester Treffer zuerst:
+     * bei mehreren Proxy-Generationen ist die urspruengliche Zeile die mit den Einstellungen.
+     */
+    Optional<CronConfigEntity> findFirstByCronNameStartingWithAndMandatOrderByIdAsc(String prefix, String mandat);
+
 }

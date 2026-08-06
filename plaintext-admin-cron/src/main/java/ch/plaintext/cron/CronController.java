@@ -101,9 +101,13 @@ public class CronController implements Serializable {
                  if(config.isPresent()){
                      entity = config.get();
                  } else {
-                     entity = createCronConfigEntity(superCron);
-                     entity.setCronName(superCron.getName());
-                     entity.setMandat("global");
+                     entity = adoptLegacyProxyRow(superCron, "global")
+                             .orElseGet(() -> {
+                                 CronConfigEntity fresh = createCronConfigEntity(superCron);
+                                 fresh.setCronName(superCron.getName());
+                                 fresh.setMandat("global");
+                                 return fresh;
+                             });
                  }
                 entity = cronConfigStore.save(entity);
                 entity.setCron(superCron);
@@ -121,11 +125,20 @@ public class CronController implements Serializable {
                     if(config.isPresent()){
                         entity = config.get();
                     } else {
-                        entity = createCronConfigEntity(superCron);
-                        entity.setCronName(superCron.getName());
-                        entity.setMandat(mandat);
-                        // Apply time offset for non-global crons to prevent parallel execution
-                        entity.setCronExpression(applyTimeOffset(entity.getCronExpression(), mandantIndex));
+                        Optional<CronConfigEntity> adopted = adoptLegacyProxyRow(superCron, mandat);
+                        if (adopted.isPresent()) {
+                            entity = adopted.get();
+                            // KEIN applyTimeOffset: die uebernommene Zeile traegt ihren eigenen
+                            // Ausdruck, der Versatz steckt dort laengst drin (oder wurde von Hand
+                            // gesetzt). Ihn erneut anzuwenden verschoebe die Zeit bei jedem
+                            // Namenswechsel weiter.
+                        } else {
+                            entity = createCronConfigEntity(superCron);
+                            entity.setCronName(superCron.getName());
+                            entity.setMandat(mandat);
+                            // Apply time offset for non-global crons to prevent parallel execution
+                            entity.setCronExpression(applyTimeOffset(entity.getCronExpression(), mandantIndex));
+                        }
                     }
                     //clone - get a new wrapped instance using bean name (prototype scope)
                     String beanName = superCron.getBeanName();
@@ -148,6 +161,35 @@ public class CronController implements Serializable {
             }
         }
         return result;
+    }
+
+    /**
+     * Uebernimmt die Bestandszeile desselben Jobs unter einem alten Proxy-Namen, statt eine neue
+     * mit den Code-Defaults anzulegen.
+     * <p>
+     * Anlass ist Karte 574: Am 03.08.2026 wechselte der gespeicherte Name vom CGLIB-Proxy-Namen
+     * ({@code X$$SpringCGLIB$$0}) auf den Klassennamen. Weil hier nur exakt gesucht wurde, entstand
+     * fuer jeden Job und Mandanten eine neue Zeile mit Code-Defaults — 99 Zeilen ueber 14 Jobs
+     * verwaisten, und 22 bewusst abgeschaltete Boot-Laeufe waren wieder an. Sichtbar wurde es an
+     * einer Mail-Flut, nicht an einem Fehler: Der Start lief gruen, die Einstellungen galten nur
+     * nicht mehr.
+     * <p>
+     * Die Zeile wird <em>umbenannt</em> und nicht kopiert. Damit bleiben nicht nur
+     * {@code enabled}/{@code startup}/{@code cronExpression} erhalten, sondern auch Id, Zaehler und
+     * letzter Lauf — und es entsteht keine zweite Karteileiche.
+     *
+     * @return die uebernommene Zeile (bereits auf den neuen Namen gesetzt), oder leer
+     */
+    private Optional<CronConfigEntity> adoptLegacyProxyRow(SuperCron superCron, String mandat) {
+        Optional<CronConfigEntity> legacy = cronConfigStore.findLegacyProxyRow(superCron.getName(), mandat);
+        legacy.ifPresent(e -> {
+            log.info("Cron {} / {}: uebernehme Bestandszeile '{}' (id {}) statt neuer Zeile mit Defaults "
+                            + "— enabled={}, startup={}, expression={}",
+                    superCron.getName(), mandat, e.getCronName(), e.getId(),
+                    e.isEnabled(), e.isStartup(), e.getCronExpression());
+            e.setCronName(superCron.getName());
+        });
+        return legacy;
     }
 
     private CronConfigEntity createCronConfigEntity(SuperCron superCron){
