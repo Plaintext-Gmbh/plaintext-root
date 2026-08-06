@@ -60,9 +60,13 @@ public interface DeepLinkTarget {
      * <b>Die serverseitige Zugriffspruefung.</b> Darf der aktuell angemeldete Benutzer diesen
      * Datensatz in diesem Mandat sehen?
      *
-     * <p>Wird aufgerufen, <em>bevor</em> der Mandat gewechselt und weitergeleitet wird. Der Mandat
-     * wird explizit uebergeben, damit die Implementierung nicht auf den (noch nicht gewechselten)
-     * Session-Mandanten zurueckgreifen muss.
+     * <p>Wird aufgerufen, <em>nachdem</em> auf das Ziel-Mandat gewechselt wurde und bevor
+     * weitergeleitet wird — die Module filtern ihre Daten ueber den aktiven Mandanten, eine
+     * Pruefung davor wuerde systematisch {@code false} liefern (siehe {@code DeepLinkResolver}).
+     * Gewechselt wird nur in ein Mandat, das der Benutzer ohnehin waehlen duerfte; faellt diese
+     * Pruefung negativ aus, wird der vorherige Mandat wiederhergestellt. Der Mandat wird
+     * zusaetzlich explizit uebergeben, damit die Implementierung dagegen pruefen kann, statt sich
+     * allein auf den Session-Zustand zu verlassen.
      *
      * @param mandat Ziel-Mandat, kleingeschrieben; bereits als „Benutzer hat Zugriff darauf" geprueft
      * @param id     Datensatz-Id aus dem Link; bereits gegen ein enges Zeichenmuster validiert,
