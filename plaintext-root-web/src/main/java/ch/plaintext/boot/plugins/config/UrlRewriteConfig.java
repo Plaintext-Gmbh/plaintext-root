@@ -41,7 +41,14 @@ public class UrlRewriteConfig {
         public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
                 throws IOException, ServletException {
             HttpServletRequest httpRequest = (HttpServletRequest) request;
-            String path = httpRequest.getRequestURI();
+            // Path-Parameter abschneiden (Karte 612): Der Filter wird ueber den Servlet-Pfad
+            // ausgewaehlt (*.html) — dort entfernt der Container ";jsessionid=..." bereits —,
+            // entscheidet hier aber ueber getRequestURI(), wo es noch drinsteht. Ohne diesen
+            // Schnitt endet "/kontakte.html;jsessionid=X" nicht auf ".html", die Umschreibung
+            // auf .xhtml unterbleibt und der Request laeuft auf eine Ressource, die es physisch
+            // nicht gibt. Der pathParameterFilter raeumt das im Normalfall schon vorher weg;
+            // diese Zeile haelt das Modul auch ohne ihn richtig.
+            String path = stripPathParameters(httpRequest.getRequestURI());
 
             // Skip Swagger, OAuth2 and technical URLs
             if (path.contains("/swagger") ||
@@ -65,6 +72,18 @@ public class UrlRewriteConfig {
             }
 
             chain.doFilter(request, response);
+        }
+
+        /**
+         * Entfernt in jedem Pfadsegment alles ab dem ersten Semikolon (Karte 612). Delegiert an
+         * {@link PathParameterConfig.PathParameterFilter#stripPathParameters(String)}, damit es
+         * fuer die Regel genau eine Quelle gibt.
+         */
+        static String stripPathParameters(String uri) {
+            if (uri == null || uri.indexOf(';') < 0) {
+                return uri;
+            }
+            return PathParameterConfig.PathParameterFilter.stripPathParameters(uri);
         }
 
         @Override

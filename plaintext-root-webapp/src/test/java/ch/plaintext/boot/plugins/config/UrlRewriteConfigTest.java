@@ -127,6 +127,31 @@ class UrlRewriteConfigTest {
     }
 
     @Test
+    void doFilter_shouldRewriteHtmlEvenWithPathParameters() throws Exception {
+        // Karte 612: Der Filter wird ueber den Servlet-Pfad ausgewaehlt (*.html), entschied aber
+        // ueber getRequestURI() — mit ";jsessionid=..." endete der Pfad nicht auf ".html", die
+        // Umschreibung unterblieb und der Request lief auf eine Ressource, die es nicht gibt.
+        when(request.getRequestURI()).thenReturn("/kontakte.html;jsessionid=C252CABB81F6399C");
+        when(request.getRequestDispatcher("/kontakte.xhtml")).thenReturn(dispatcher);
+
+        filter.doFilter(request, response, chain);
+
+        verify(request).getRequestDispatcher("/kontakte.xhtml");
+        verify(dispatcher).forward(request, response);
+        verify(chain, never()).doFilter(request, response);
+    }
+
+    @Test
+    void doFilter_shouldStillSkipTechnicalUrlsWithPathParameters() throws Exception {
+        when(request.getRequestURI()).thenReturn("/swagger-ui/index.html;jsessionid=ABC");
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verify(request, never()).getRequestDispatcher(anyString());
+    }
+
+    @Test
     void doFilter_shouldPassThroughNonHtmlUrls() throws Exception {
         when(request.getRequestURI()).thenReturn("/api/data.json");
 
