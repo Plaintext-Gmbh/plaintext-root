@@ -71,13 +71,18 @@ public class ApiTokenBackingBean implements Serializable {
      * mehr <em>angeboten</em> — bestehende Tokens laufen unverändert, neue Alt-Tokens entstehen
      * nicht mehr. Beide Werte vergeben dieselben Authorities.</p>
      *
-     * <p>{@code SESSION} (Karte 309) ist kein MCP-Berechtigungsgrad, sondern der Marker dafür, dass aus
-     * dem Token per {@code /token-login} eine Browser-Session gebaut werden darf. Der MCP-Bearer-Filter
-     * kennt den Wert nicht und vergibt dafür nur {@code SCOPE_READ} (least privilege) — genau richtig:
-     * ein Session-Token soll nicht nebenbei zum API-Vollzugriff werden.</p>
+     * <p><b>{@code SESSION} ist hier entfallen (Karte 560, 05.08.2026).</b> Der Wert war kein
+     * MCP-Berechtigungsgrad, sondern der Marker dafür, dass aus dem Token per {@code /token-login}
+     * eine Browser-Session gebaut werden darf — und diesen Endpunkt gibt es nicht mehr. Ein
+     * weiterhin angebotener Wert hätte Tokens erzeugt, die nichts mehr können: der
+     * MCP-Bearer-Filter kennt {@code SESSION} nicht und vergibt dafür nur {@code SCOPE_READ}.</p>
+     *
+     * <p>Wie bei {@code EINTRAGEN} wird der Wert nur nicht mehr <em>angeboten</em>. Bestehende
+     * Tokens mit {@code scope=SESSION} bleiben gültig und verhalten sich unverändert wie
+     * {@code READ}-Tokens; es gibt keine Migration und niemand wird ausgesperrt.</p>
      */
     @Getter
-    private final List<String> verfuegbareScopes = List.of("READ", "WRITE", "SESSION", "ADMIN");
+    private final List<String> verfuegbareScopes = List.of("READ", "WRITE", "ADMIN");
 
     @Getter
     private int minValidityDays = JwtTokenService.MIN_VALIDITY_DAYS;

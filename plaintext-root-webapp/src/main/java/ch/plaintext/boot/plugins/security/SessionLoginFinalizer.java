@@ -43,6 +43,13 @@ import java.util.Collection;
  *       die {@code Authentication} daran vorbei erzeugt, loggt TOTP-User ohne zweiten Faktor ein.</li>
  * </ol>
  *
+ * <p><b>Stand nach Karte 560 (05.08.2026):</b> Beide urspruenglichen Aufrufer sind entfernt —
+ * {@code AutoLoginController} mit Karte 30, {@code TokenLoginController} mit Karte 560. Die Klasse
+ * bleibt trotzdem: Sie ist der einzige Ort, an dem ein Login-Weg ausserhalb von Spring Securitys
+ * eigenen Filtern korrekt finalisiert wird, und genau das Fehlen einer solchen Stelle war die
+ * Ursache der drei Luecken oben. Wer kuenftig einen Login-Weg baut, benutzt sie — statt den
+ * {@link SecurityContext} wieder selbst zusammenzusetzen.</p>
+ *
  * <p>Die Loesung ist bewusst <em>kein</em> Nachbau der einzelnen Pruefungen, sondern die Delegation an
  * genau dieselben Komponenten: {@link AccountStatusUserDetailsChecker}, {@link SessionAuthenticationStrategy}
  * und {@link PlaintextAuthenticationSuccessHandler}. So kann kein kuenftiges Gate (z.B. der erzwungene

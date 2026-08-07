@@ -57,8 +57,9 @@ The application starts at **http://localhost:8080**.
 
 On first startup, Flyway automatically creates the database schema. A root user is created by the `PlaintextInitLoader`.
 
-Check the application logs for the initial credentials. For scripted/kiosk access there is
-`/token-login?token=<ApiToken-JWT>` (scope `SESSION`); see `docs/security/LOGIN_PATHS.md`.
+Check the application logs for the initial credentials. Scripted/kiosk access uses the regular
+form login — the former `/token-login?token=` endpoint was removed in card 560; see
+`docs/security/LOGIN_PATHS.md`.
 
 ## Project Structure
 

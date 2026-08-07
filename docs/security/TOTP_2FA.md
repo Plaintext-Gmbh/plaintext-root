@@ -91,10 +91,10 @@ POST /login  (username + password + _csrf)
 - **`/login/totp` ist „cold-call"-sicher.** Ohne pending-Session-Zustand
   (den nur der Erfolgs-Handler nach korrektem Passwort setzt) meldet der Endpunkt
   niemanden an – Redirect zurück zum Login.
-- **Gilt für alle Anmeldewege.** Auch `/token-login` läuft über den Erfolgs-Handler
-  (via `SessionLoginFinalizer`) und damit durch das Gate – vorher baute der Controller den
-  `SecurityContext` selbst und meldete TOTP-User ohne zweiten Faktor an.
-  Siehe `docs/security/LOGIN_PATHS.md`.
+- **Gilt für alle Anmeldewege.** Das Gate hängt am Erfolgs-Handler, nicht am einzelnen
+  Login-Weg – deshalb greift es auch für neue Wege automatisch. Der Sonderweg `/token-login`
+  baute den `SecurityContext` einst selbst und meldete TOTP-User ohne zweiten Faktor an; er ist
+  seit Karte 560 entfernt. Siehe `docs/security/LOGIN_PATHS.md`.
 - **Rate-Limit.** Fehlversuche am zweiten Faktor laufen über den bestehenden
   `AccountLockoutService` (Brute-Force-Schutz).
 - **CSRF bleibt aktiv** auf der TOTP-Seite (Token im Formular).

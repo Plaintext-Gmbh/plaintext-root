@@ -1,67 +1,56 @@
-# Alternativer Anmeldeweg: `/token-login`
+# Anmeldewege — und die beiden entfernten
 
-Neben Form-Login, OAuth2/OIDC und One-Time-Token kennt das Framework einen Weg, der
-eine Browser-Session **ohne Passworteingabe** aufbaut. Er ist für scriptgesteuerte
-bzw. Kiosk-Aufrufer gedacht (UI-Tests, PageTester, ZAP, Turnier-Kiosk) und
-sicherheitskritisch.
+Das Framework kennt drei Anmeldewege: **Form-Login**, **OAuth2/OIDC** und
+**One-Time-Token**. Alle drei laufen über dieselben Gates (Account-Lockout,
+Session-Fixation, zweiter Faktor).
 
-| Weg | Credential | Widerrufbar | Ablauf | Abschaltbar |
-|---|---|---|---|---|
-| `GET /token-login?token=` | ApiToken-JWT (RS256, gehasht in `api_token`) | ja (Invalidierung) | ja | `plaintext.security.token-login.enabled` |
+Zwei weitere Wege gab es einmal. Beide sind entfernt, und beide stehen hier
+weiterhin, weil ihre Begründung erklärt, warum es keinen dritten Sonderweg
+geben sollte.
 
-Der frühere `GET /autologin?key=` (statischer Klartext-Key in
-`my_user_entity.autologin_key`, weder ablaufend noch widerrufbar) ist
-**entfernt** — Endpunkt, Spalte und Konfiguration.
+## Entfernt: `GET /token-login?token=` (Karte 560, 05.08.2026)
 
-## Absicherung
+Der Endpunkt tauschte ein ApiToken-JWT gegen eine vollwertige Browser-Session,
+gedacht für scriptgesteuerte bzw. Kiosk-Aufrufer (UI-Tests, PageTester, ZAP,
+Turnier-Kiosk).
 
-`TokenLoginController` finalisiert die Anmeldung über `SessionLoginFinalizer` und
-durchläuft damit **dieselben Gates wie der Form-Login**:
+**Warum er weg ist:** Er war eine zweite Tür neben der markierten. Ein Token, das
+für maschinellen Zugriff ausgestellt wurde, ergab dort eine Browser-Session mit
+den **vollen DB-Rollen** seines Besitzers. Karte 309 hat den Weg abgesichert
+(Gates, Scope-Zwang, Not-Aus), Karte 544 den Default-Scope von `ADMIN` auf
+`SESSION` verengt — aber solange die Tür existiert, kann sie wieder aufgehen.
 
-1. **Account-Status** (`AccountStatusUserDetailsChecker`) – ein wegen Brute-Force
-   gesperrter Account (`AccountLockoutService`) kommt auch hier nicht durch.
-2. **Session-Fixation** – `ChangeSessionIdAuthenticationStrategy` vergibt vor dem
-   Speichern des `SecurityContext` eine neue Session-Id. Ohne das wäre eine dem
-   Opfer untergeschobene Session nach dem Klick auf den Login-Link voll
-   authentifiziert.
-3. **Zweiter Faktor** – `PlaintextAuthenticationSuccessHandler` schickt TOTP-User
-   in den Pending-Flow (`/login/totp`) statt in eine Vollsession; ebenso greift
-   der erzwungene Passwortwechsel.
+**Vorbedingung war eine Messung, keine Annahme:** In 30 Tagen kein einziger
+erfolgreicher `/token-login` in PROD. Gemessen wurde gegen die Erfolgsmeldung des
+`SessionLoginFinalizer` (`"… Session aufgebaut fuer …"`), nicht gegen die
+Abwesenheit von Fehlermeldungen — und die Suche vorher an einem Positivfall
+geprüft, sonst wäre die Null wertlos gewesen.
 
-Zusätzlich ist der Pfad im `RateLimitFilter` gedrosselt, seine Antwort ist
-`no-store`, und das Token erscheint im Log nur maskiert.
+**Was mit entfernt wurde:** `TokenLoginController` samt Test,
+`plaintext.security.token-login.*` (`TokenLoginProperties`), der `permitAll`- und
+der CSRF-Eintrag in `PlaintextSecurityConfig`, der Rate-Limit-Zweig im
+`RateLimitFilter` und der Auswahlwert `SESSION` in der Token-Ausstellung.
 
-## Scope-Zwang
+**Was NICHT entfernt wurde:** Der Scope-**Wert** `SESSION` selbst. Bestehende
+Tokens tragen ihn im Claim; sie bleiben gültig und verhalten sich wie
+`READ`-Tokens (der `McpBearerTokenFilter` kennt den Wert nicht und vergibt
+`SCOPE_READ`). Er wird nur nicht mehr *angeboten* — dieselbe Behandlung wie
+`EINTRAGEN` in Karte 545. Damit braucht der Ausbau keine Migration.
 
-Ein ApiToken trägt einen `scope`-Claim (`READ`/`EINTRAGEN`/`ADMIN`/`SESSION`).
-Für den Session-Aufbau sind nur die Scopes aus
-`plaintext.security.token-login.required-scopes` (Default `SESSION`)
-zugelassen; ein Token **ohne** Claim wird abgelehnt (fail-closed).
+**Für Skripte gilt jetzt der Form-Login.** Aufrufer, die bisher
+`PLAINTEXT_KIOSK_TOKEN` an `/token-login` gehängt haben, brauchen den regulären
+Anmeldeweg; `scripts/lib/plaintext-login.sh` (plaintext-boot) kann beides und
+fällt ohne Token bereits auf den Form-Login zurück.
 
-Bis zum 05.08.2026 stand `ADMIN` ebenfalls im Default, damit bestehende
-Vollzugriffs-Tokens weiterfunktionieren. Damit war jedes ADMIN-MCP-Token zugleich
-ein Generalschlüssel für eine Browser-Session — eine zweite Tür neben der
-markierten. Karte 544 hat den Bestand erhoben (in 30 Tagen kein einziger
-erfolgreicher `/token-login`; die drei ADMIN-Tokens mit `use_count 0`) und `ADMIN`
-daraufhin aus dem Default entfernt.
+## Entfernt: `GET /autologin?key=`
 
-Grund: Die Session bekommt die vollen DB-Rollen des Token-Besitzers. Ohne diese
-Prüfung ließe sich ein für Automation ausgestelltes `READ`-Token an
-`/token-login` hängen und ergäbe eine Browser-Vollsession — die Scope-Grenze, auf
-die sich der MCP-Zugriff verlässt, wäre über diesen Weg wertlos.
+Statischer Klartext-Key in `my_user_entity.autologin_key`, weder ablaufend noch
+widerrufbar. Endpunkt, Spalte und Konfiguration sind entfernt.
 
-`SESSION` ist der dafür gedachte minimale Scope. Der `McpBearerTokenFilter` kennt
-den Wert nicht und vergibt dafür nur `SCOPE_READ` — ein Session-Token wird also
-nicht nebenbei zum API-Vollzugriff.
+## Warum es keinen vierten Weg geben sollte
 
-## Betriebshinweise
-
-* Deployments ohne Token-Login-Nutzer sollten `plaintext.security.token-login.enabled: false`
-  setzen.
-* Das Token reist heute als Query-Parameter (Bookmark-/Script-Tauglichkeit)
-  und landet damit in Proxy-Logs und Browser-History. Die Umstellung auf
-  POST/Header ist eine offene Folgeaufgabe.
-* Ein vorab ausgestelltes Token validiert nur gegen Instanzen mit **stabilem**
-  JWT-Signaturschlüssel (`plaintext.jwt.private-key-vault-item` bzw.
-  `-file`). Eine lokal ohne Schlüssel gestartete Instanz erzeugt bei jedem Start
-  ein flüchtiges RSA-Paar — dort ist der Form-Login der Weg für Skripte.
+Beide entfernten Wege hatten dieselbe Bauart: ein Credential in der URL, das
+ohne Passworteingabe eine Session eröffnet. Beide waren gut gemeint (Kiosk,
+Automation), und bei beiden ergab am Ende ein für einen engen Zweck
+ausgestelltes Geheimnis eine Vollsession. Wer einen ähnlichen Bedarf hat, baut
+ihn in den bestehenden Wegen ab — nicht daneben.

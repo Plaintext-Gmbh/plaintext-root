@@ -86,63 +86,17 @@ public class PlaintextSecurityProperties {
     private TotpProperties totp = new TotpProperties();
 
 
-    /**
-     * Session-Bootstrap aus einem ApiToken ({@code GET /token-login?token=}), Karte 309.
-     * Siehe {@link TokenLoginProperties}.
-     */
-    private TokenLoginProperties tokenLogin = new TokenLoginProperties();
-
-    /**
-     * Konfiguration von {@code /token-login} ({@code ch.plaintext.boot.web.TokenLoginController}).
-     *
-     * <p><b>Hintergrund (Karte 309):</b> Der Endpunkt tauscht ein ApiToken gegen eine vollwertige
-     * Browser-Session. Bis hierher liess er sich weder betrieblich abschalten, noch wertete er den
-     * {@code scope}-Claim des Tokens aus: ein fuer Kiosk/Automation ausgestelltes {@code READ}-Token
-     * lieferte an {@code /token-login} eine Browser-Session mit den <em>vollen</em> DB-Rollen des
-     * Token-Besitzers. Beides ist hier konfigurierbar geworden.</p>
-     */
-    @Data
-    public static class TokenLoginProperties {
-
-        /**
-         * Not-Aus fuer {@code /token-login}. Bei {@code false} antwortet der Endpunkt wie bei einem
-         * ungueltigen Token (Redirect auf die Login-Seite).
-         *
-         * <p>Default bewusst {@code true}: der Endpunkt ist ein produktiv gedachter Anmeldeweg
-         * (Ersatz fuer den entfernten {@code /autologin}), und ein stiller Default-Aus haette bestehende Links
-         * ohne Vorwarnung gebrochen. Die eigentliche Absicherung leisten der erzwungene Scope
-         * ({@link #getRequiredScopes()}) sowie Lockout-/2FA-Gate. Deployments ohne Token-Login-Nutzer
-         * sollten das Flag dennoch auf {@code false} setzen.</p>
-         */
-        private boolean enabled = true;
-
-        /**
-         * Scopes, die ein Token tragen muss, um daraus eine Browser-Session bauen zu duerfen
-         * (Claim-Wert case-insensitiv). Ein Token <b>ohne</b> {@code scope}-Claim wird immer
-         * abgelehnt — fail-closed, analog zum {@code McpBearerTokenFilter} (Karte 312).
-         *
-         * <p>{@code SESSION} ist der dafuer vorgesehene, minimale Scope — und seit Karte 544 der
-         * einzige. {@code READ} und {@code EINTRAGEN} reichen ohnehin nicht: sie werden fuer
-         * maschinelle MCP-Zugriffe ausgestellt und sollen keine interaktive Session mit allen
-         * DB-Rollen ergeben.</p>
-         *
-         * <p><b>Warum {@code ADMIN} hier nicht mehr steht (Karte 544, 05.08.2026):</b> {@code ADMIN}
-         * war zugelassen, damit bestehende Vollzugriffs-Tokens weiterfunktionieren. Damit war jedes
-         * ADMIN-MCP-Token zugleich ein Generalschluessel fuer eine Browser-Session mit den DB-Rollen
-         * seines Besitzers — eine zweite Tuer neben der ausdruecklich markierten. Genau das war nicht
-         * beabsichtigt: {@code ADMIN} wird als MCP-Berechtigungsgrad vergeben, nicht als
-         * Session-Erlaubnis, und diese Tokens liegen im Klartext in MCP-Konfigurationen.
-         *
-         * <p>Der Bestand wurde vor der Umstellung erhoben: in 30 Tagen <b>kein einziger
-         * erfolgreicher</b> {@code /token-login}; die drei theoretisch session-faehigen ADMIN-Tokens
-         * sind Maschinen-Tokens mit {@code use_count 0}. Die Umstellung sperrt also niemanden aus,
-         * der den Endpunkt tatsaechlich benutzt.</p>
-         *
-         * <p>Wer einzelne Instanzen bewusst anders will, setzt die Property weiterhin explizit —
-         * geaendert hat sich nur die Voreinstellung.</p>
-         */
-        private List<String> requiredScopes = new ArrayList<>(List.of("SESSION"));
-    }
+    // Karte 560 (05.08.2026): plaintext.security.token-login.* ist ersatzlos entfallen, zusammen mit
+    // dem Endpunkt /token-login selbst (TokenLoginController). Er war eine zweite Tuer neben der
+    // markierten -- ein fuer Maschinen ausgestelltes Token ergab dort eine Browser-Session mit den
+    // vollen DB-Rollen seines Besitzers. Karte 309 hat ihn abgesichert, Karte 544 den Scope-Zwang
+    // auf SESSION verengt, und diese Karte baut ihn ab. Vorbedingung war eine Messung, keine
+    // Annahme: in 30 Tagen kein einziger erfolgreicher Token-Login in PROD (Graylog, gegen die
+    // Erfolgsmeldung des SessionLoginFinalizer geprueft, nicht gegen die Abwesenheit von Fehlern).
+    //
+    // Eine noch gesetzte Property dieses Praefixes ist ab hier wirkungslos. Sie loest keinen
+    // Startfehler aus (Spring bindet unbekannte Schluessel ausserhalb dieses Objekts nicht) --
+    // wer sie in einer app.env stehen hat, sollte sie beim naechsten Anfassen entfernen.
 
 
     /**

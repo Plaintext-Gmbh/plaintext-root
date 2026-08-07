@@ -185,13 +185,9 @@ public class RateLimitFilter implements Filter {
             return;
         }
 
-        if (path.startsWith("/token-login")) {
-            String clientIp = getClientIp(request);
-            if (!loginLimiter.tryConsume(clientIp)) {
-                rejectLogin(response, path, clientIp);
-                return;
-            }
-        }
+        // Karte 560: Der Zweig fuer /token-login ist entfallen, weil es den Endpunkt nicht mehr
+        // gibt. Er faellt damit unter anyRequest().authenticated() und ist fuer Anonyme gar nicht
+        // mehr erreichbar -- ein Rate-Limit darauf haette nichts mehr zu bremsen.
 
         if (path.equals("/ott/generate") && "POST".equalsIgnoreCase(request.getMethod())) {
             String clientIp = getClientIp(request);
