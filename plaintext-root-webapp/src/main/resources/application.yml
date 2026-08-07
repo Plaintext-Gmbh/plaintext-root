@@ -52,6 +52,11 @@ server:
       # im Referer und in Fehlermeldungen; eine davon ist als Zugang ohne Passwort und ohne
       # zweiten Faktor in eine Aufgabenkarte gelangt. Der pathParameterFilter faengt die
       # Altlasten, diese Zeile stoppt den Nachschub.
+      # ACHTUNG: Diese Zeile wirkt NUR in plaintext-root -- jede Anwendung bringt eine eigene
+      # application.yml mit, die diese hier verdeckt (belegt am Set-Cookie-Header: nur
+      # root.plaintext.ch traegt Secure/SameSite aus diesem Block, app/guild/iot/schuetu nicht).
+      # Wirksam fuer ALLE Anwendungen ist deshalb der SessionTrackingConfig-Initializer in
+      # plaintext-root-web; diese Zeile bleibt als Dokumentation an der erwarteten Stelle.
       tracking-modes: cookie
       # SECURITY (Karte 314, Punkt 1): Session-Lebensdauer explizit statt implizitem
       # Servlet-Default (30 min). Wert unveraendert 30 min -> kein Verhaltensbruch, aber
