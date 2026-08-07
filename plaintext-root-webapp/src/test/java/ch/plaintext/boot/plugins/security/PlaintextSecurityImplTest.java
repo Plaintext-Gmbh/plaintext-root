@@ -662,6 +662,83 @@ class PlaintextSecurityImplTest {
         assertNull(mandat);
     }
 
+    // ==================== getUsernameForUser() / getEmailForUser() Tests (Karte 596) ====================
+
+    @Test
+    void getUsernameForUser_shouldReturnUsernameFromDatabase() {
+        // Given: User exists in database
+        MyUserEntity user = new MyUserEntity();
+        user.setId(123L);
+        user.setUsername("daniel@plaintext.ch");
+        when(userRepository.findById(123L)).thenReturn(Optional.of(user));
+
+        // When
+        String username = plaintextSecurity.getUsernameForUser(123L);
+
+        // Then
+        assertEquals("daniel@plaintext.ch", username);
+    }
+
+    @Test
+    void getUsernameForUser_shouldReturnNullWhenUserNotFound() {
+        // Given: User doesn't exist
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When
+        String username = plaintextSecurity.getUsernameForUser(999L);
+
+        // Then
+        assertNull(username);
+    }
+
+    @Test
+    void getUsernameForUser_shouldReturnNullOnDatabaseError() {
+        // Given: Database error
+        when(userRepository.findById(any())).thenThrow(new RuntimeException("Database error"));
+
+        // When
+        String username = plaintextSecurity.getUsernameForUser(123L);
+
+        // Then: fail-soft — der Aufrufer soll weiterarbeiten koennen, nicht abbrechen
+        assertNull(username);
+    }
+
+    /**
+     * Karte 596: Der Regelfall — der Benutzername IST die Mailadresse (die Selbstregistrierung
+     * setzt ihn so, der Passwort-Reset verschickt an ihn).
+     */
+    @Test
+    void getEmailForUser_shouldReturnAddressWhenUsernameIsMail() {
+        MyUserEntity user = new MyUserEntity();
+        user.setId(123L);
+        user.setUsername("owner@plaintext.ch");
+        when(userRepository.findById(123L)).thenReturn(Optional.of(user));
+
+        assertEquals(Optional.of("owner@plaintext.ch"), plaintextSecurity.getEmailForUser(123L));
+    }
+
+    /**
+     * Karte 596: Der Fall, um den es geht — Altbestand ohne Mailform. Es wird NICHT geworfen und
+     * NICHT der unbrauchbare Wert geliefert, sondern leer: Der Aufrufer schliesst die Zaehlung
+     * trotzdem und protokolliert den nicht erreichbaren Owner als Befund.
+     */
+    @Test
+    void getEmailForUser_shouldBeEmptyForLegacyUsername() {
+        MyUserEntity user = new MyUserEntity();
+        user.setId(5L);
+        user.setUsername("plafferma");
+        when(userRepository.findById(5L)).thenReturn(Optional.of(user));
+
+        assertTrue(plaintextSecurity.getEmailForUser(5L).isEmpty());
+    }
+
+    @Test
+    void getEmailForUser_shouldBeEmptyWhenUserNotFound() {
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertTrue(plaintextSecurity.getEmailForUser(999L).isEmpty());
+    }
+
     // ==================== ifGranted() Tests ====================
 
     @Test

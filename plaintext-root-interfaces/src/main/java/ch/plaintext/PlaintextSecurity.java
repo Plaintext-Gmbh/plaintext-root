@@ -7,6 +7,7 @@ import org.springframework.security.core.Authentication;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -59,6 +60,42 @@ public interface PlaintextSecurity {
      * @return The mandat string for the user, or null if user not found
      */
     String getMandatForUser(long userId);
+
+    /**
+     * Liefert den Benutzernamen (Login-Namen) zu einer Benutzer-Id.
+     *
+     * <p><b>Wofür (Karte 596):</b> Hintergrundläufe müssen den Empfänger aus dem <b>Datensatz</b>
+     * nehmen, nie aus dem Sicherheitskontext — dort liefert {@link #getId()} im Cron-Lauf
+     * {@code -1} (Karte 588). Der Datensatz trägt nur die Id; diese Methode ist die Brücke.
+     *
+     * <p><b>Das ist NICHT zwingend eine Mailadresse.</b> In der Regel ist der Benutzername
+     * zugleich die Adresse, aber im Altbestand stehen auch reine Kürzel. Wer versenden will,
+     * nimmt {@link #getEmailForUser(long)}.
+     *
+     * @param userId Benutzer-Id
+     * @return der Benutzername, oder {@code null} wenn kein Benutzer mit dieser Id existiert
+     */
+    String getUsernameForUser(long userId);
+
+    /**
+     * Liefert die <b>zustellbare Mailadresse</b> zu einer Benutzer-Id — oder nichts.
+     *
+     * <p>In dieser Anwendung ist der Benutzername zugleich die Mailadresse: Die
+     * Selbstregistrierung setzt ihn so, der Passwort-Reset verschickt an ihn, und die
+     * Benutzerverwaltung erzwingt beim Anlegen die Mailform. Für den Altbestand
+     * ({@code plafferma}) und für maschinelle Schreiber ({@code anonymousUser}) gilt das nicht.
+     *
+     * <p><b>Der {@link Optional}-Rückgabewert ist Absicht:</b> Ein nicht auflösbarer Empfänger ist
+     * ein Befund, kein Normalfall — aber er darf den Aufrufer nicht scheitern lassen. Der Typ
+     * zwingt zur Behandlung, ohne eine Ausnahme zu werfen.
+     *
+     * @param userId Benutzer-Id
+     * @return die Mailadresse, oder {@link Optional#empty()} wenn der Benutzer unbekannt ist
+     *         oder sein Benutzername keine Adresse ist
+     */
+    default Optional<String> getEmailForUser(long userId) {
+        return PlaintextEmailAddress.asDeliverable(getUsernameForUser(userId));
+    }
 
     /**
      * Checks if the current user has been granted the specified role.

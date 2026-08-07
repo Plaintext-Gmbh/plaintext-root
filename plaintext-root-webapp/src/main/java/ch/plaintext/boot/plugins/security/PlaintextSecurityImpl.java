@@ -401,6 +401,33 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         }
     }
 
+    /**
+     * Karte 596: Auflösung Benutzer-Id -&gt; Benutzername, damit Hintergrundläufe den Empfänger aus
+     * dem Datensatz nehmen können. Im Cron-Kontext liefert {@link #getId()} {@code -1} (Karte 588),
+     * der Sicherheitskontext taugt dort also nicht als Quelle.
+     *
+     * <p>Aufbau bewusst identisch zu {@link #getMandatForUser(long)} — gleiche Absicherung,
+     * gleiche Null-Semantik, damit sich beide gleich verhalten.
+     */
+    @Override
+    public String getUsernameForUser(long userId) {
+        if (instance == null) {
+            log.warn("PlaintextSecurityImpl instance not initialized");
+            return null;
+        }
+        try {
+            MyUserEntity user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                log.warn("User with ID {} not found", userId);
+                return null;
+            }
+            return user.getUsername();
+        } catch (Exception e) {
+            log.error("Error getting username for user {}", userId, e);
+            return null;
+        }
+    }
+
     @Override
     public boolean ifGranted(String role) {
         if (role == null) return false;
