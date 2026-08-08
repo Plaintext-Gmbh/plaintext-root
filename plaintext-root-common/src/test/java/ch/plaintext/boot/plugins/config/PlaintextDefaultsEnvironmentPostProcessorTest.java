@@ -70,6 +70,19 @@ class PlaintextDefaultsEnvironmentPostProcessorTest {
     }
 
     @Test
+    @DisplayName("Swagger und OpenAPI-Docs sind per Voreinstellung aus")
+    void springdocIstAus() {
+        MockEnvironment environment = new MockEnvironment();
+
+        processor.postProcessEnvironment(environment, new SpringApplication());
+
+        // Karte 623: root schaltet beides seit Karte 314 ab, die Consumer nicht -- ihre eigene
+        // application.yml verdeckte die root-Fassung. Gemessen waren 38 bzw. 11 offene Pfade.
+        assertThat(environment.getProperty("springdoc.api-docs.enabled")).isEqualTo("false");
+        assertThat(environment.getProperty("springdoc.swagger-ui.enabled")).isEqualTo("false");
+    }
+
+    @Test
     @DisplayName("Zweimal laufen aendert nichts")
     void istIdempotent() {
         MockEnvironment environment = new MockEnvironment();
