@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -93,7 +94,26 @@ class VaultwardenClient {
      */
     private static final int BACKOFF_RATE_LIMIT_SEK = 300;
 
+    /**
+     * Zeitquelle fuer Cache-Ablauf und Backoff.
+     *
+     * <p>Karte 608: Vorher stand hier ueberall {@code Instant.now()}. Die Tests mussten deshalb
+     * mit {@code Thread.sleep(1300)} echte Zeit verstreichen lassen, um einen Backoff zu
+     * ueberspringen — zwei Sekunden Wartezeit je Lauf, und Sonar meldet {@code Thread.sleep} in
+     * Tests zu Recht (java:S2925): Ein Test, der auf die Uhr wartet, ist auf einem langsamen
+     * Runner flaky und auf einem schnellen langsam.
+     *
+     * <p>Im Betrieb ist es unveraendert {@link Clock#systemUTC()}; nur der Test setzt eine
+     * eigene Uhr ein und stellt sie vor.</p>
+     */
+    private final Clock clock;
+
     VaultwardenClient(VaultwardenProperties props, String appName) {
+        this(props, appName, Clock.systemUTC());
+    }
+
+    VaultwardenClient(VaultwardenProperties props, String appName, Clock clock) {
+        this.clock = clock;
         this.props = props;
         this.http = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(Math.max(5, props.getHttpTimeoutSeconds())))
@@ -369,7 +389,7 @@ class VaultwardenClient {
     // ------------------------------------------------------------------
 
     private void ensureFresh() {
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         if (cachedItems != null && now.isBefore(cacheExpiry)) {
             return;
         }
@@ -474,7 +494,7 @@ class VaultwardenClient {
         this.userKey = uk;
         this.accessToken = newAccessToken;
         long ttlSec = Math.min((long) Math.max(1, props.getLoginTtlMinutes()) * 60, Math.max(60, expiresIn) - 30);
-        this.loginExpiry = Instant.now().plusSeconds(Math.max(30, ttlSec));
+        this.loginExpiry = Instant.now(clock).plusSeconds(Math.max(30, ttlSec));
         // masterKey/stretched sind lokale Variablen -> GC-faehig nach Ableitung
         log.info("Vaultwarden-Login ok fuer {} (KDF=PBKDF2, {} Iterationen)", emailLower, iterations);
     }
