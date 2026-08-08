@@ -4,6 +4,36 @@
                 xmlns:ui="http://java.sun.com/jsf/facelets"
                 xmlns:p="http://primefaces.org/ui"
                 xmlns:c="http://java.sun.com/jsp/jstl/core">
+<!--
+    Menue-Rendering fuer bis zu drei Ebenen.
+
+    Bis 1.530.0 wurde die dritte Ebene flachgeklopft: ein verschachteltes
+    Submenue wurde als reines Label gerendert und seine Blaetter als
+    Geschwister darunter gehaengt. Begruendung war, dass ein Submenue kein
+    url-Property hat und #{child.url} darauf eine ELException wirft, die
+    menu.xhtml und damit jede eingeloggte Seite mitreisst.
+
+    Die Sorge ist berechtigt, das Ausweichen war zu grob: Anwendungen mit
+    dreistufigem Menue verlieren dadurch ihre Gliederung. Der MenuModelBuilder
+    baut die Ebene korrekt auf, sie kam nur nicht durch den Renderer.
+
+    Diese Fassung rendert die dritte Ebene als echtes <ul> und haelt die
+    Haertung ein: auf .url wird ausschliesslich bei Nicht-Submenues
+    zugegriffen, geprueft ueber denselben Klassennamen-Test wie zuvor.
+
+    STYLING: Das Theme adressiert Untermenues ausschliesslich als
+    '.layout-menu > li > ul'. Eine Stufe tiefer greift KEINE einzige Regel,
+    die dritte Ebene faellt also auf Browser-Defaults zurueck - eckige
+    Aufzaehlungszeichen, 40px Einzug, geerbte Linkfarbe (gruen statt grau),
+    14px statt 0.9rem. Die Regeln unten spiegeln deshalb die Theme-Regeln der
+    zweiten Ebene 1:1 und nutzen dieselben CSS-Variablen des Themes
+    (pt-text-color, pt-surface-hover), damit der Dark-Mode mitgeht. Sie stehen
+    hier ohne die beiden fuehrenden Minuszeichen: ein XML-Kommentar darf die
+    Zeichenfolge nicht enthalten, sonst schlaegt das Facelets-Parsing fehl.
+    Einziger gewollter
+    Unterschied ist der linke Einzug (4.5rem statt 3.25rem), damit die
+    Verschachtelung sichtbar bleibt.
+-->
 
 <div class="menu-wrapper">
     <div class="layout-menu-container">
@@ -24,28 +54,29 @@
                                         <c:forEach items="#{elem.elements}" var="child">
                                             <c:if test="#{child.rendered}">
                                                 <c:choose>
-                                                    <!-- HÄRTUNG: Ein Submenü als Kind (verschachteltes Submenü) hat
-                                                         KEIN url-Property. #{child.url} darauf wirft eine ELException,
-                                                         die menu.xhtml und damit JEDE eingeloggte Seite crasht.
-                                                         Defensiv: Label rendern + dessen Blatt-Kinder flach darunter,
-                                                         statt blind child.url aufzulösen. -->
+                                                    <!-- Dritte Ebene: echtes Untermenue.
+                                                         .url wird hier NICHT angefasst - ein Submenue
+                                                         hat die Property nicht (siehe Kopfkommentar). -->
                                                     <c:when test="#{child['class'].name.contains('Submenu')}">
-                                                        <li role="menuitem" class="layout-nested-submenu-label">
+                                                        <li role="menuitem" class="layout-nested-submenu">
                                                             <a href="#">
                                                                 <i class="#{child.icon}"></i>
                                                                 <span>#{child.label}</span>
+                                                                <i class="pi pi-chevron-down layout-submenu-toggler"></i>
                                                             </a>
+                                                            <ul role="menu">
+                                                                <c:forEach items="#{child.elements}" var="sub">
+                                                                    <c:if test="#{sub.rendered and not sub['class'].name.contains('Submenu')}">
+                                                                        <li role="menuitem">
+                                                                            <a href="#{sub.url}">
+                                                                                <i class="#{sub.icon}"></i>
+                                                                                <span>#{sub.value}</span>
+                                                                            </a>
+                                                                        </li>
+                                                                    </c:if>
+                                                                </c:forEach>
+                                                            </ul>
                                                         </li>
-                                                        <c:forEach items="#{child.elements}" var="sub">
-                                                            <c:if test="#{sub.rendered and not sub['class'].name.contains('Submenu')}">
-                                                                <li role="menuitem">
-                                                                    <a href="#{sub.url}">
-                                                                        <i class="#{sub.icon}"></i>
-                                                                        <span>#{sub.value}</span>
-                                                                    </a>
-                                                                </li>
-                                                            </c:if>
-                                                        </c:forEach>
                                                     </c:when>
                                                     <c:otherwise>
                                                         <li role="menuitem">
@@ -86,11 +117,78 @@
                 transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
             }
             .layout-sidebar .layout-menu > li.active-menuitem > ul {
-                max-height: 500px;
+                max-height: 1200px;
                 opacity: 1;
             }
             .layout-sidebar .layout-menu.transitions-enabled > li.active-menuitem > ul {
                 transition: max-height 0.3s ease-in, opacity 0.3s ease-in;
+            }
+
+            /* ── Dritte Ebene ────────────────────────────────────────────
+               Das Theme adressiert Untermenues ausschliesslich als
+               '.layout-menu > li > ul' - die dritte Ebene liegt eine Stufe
+               tiefer und faellt deshalb komplett auf Browser-Defaults zurueck:
+               eckige Aufzaehlungszeichen, 40px Einzug, geerbte Linkfarbe
+               (gruen) und 14px statt 0.9rem.
+
+               Die folgenden Regeln spiegeln die Theme-Regeln fuer die zweite
+               Ebene 1:1 - inklusive var(--pt-text-color) und
+               var(--pt-surface-hover), damit der Dark-Mode mitgeht. Einziger
+               Unterschied ist der linke Einzug (4.5rem statt 3.25rem), damit
+               die Verschachtelung sichtbar bleibt. */
+            .layout-menu > li > ul > li.layout-nested-submenu > ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                display: block;
+                max-height: 0;
+                overflow: hidden;
+                opacity: 0;
+                transition: max-height 0.25s ease-out, opacity 0.25s ease-out;
+            }
+            .layout-menu > li > ul > li.layout-nested-submenu.active-submenu > ul {
+                max-height: 600px;
+                opacity: 1;
+            }
+            .layout-menu > li > ul > li.layout-nested-submenu > ul > li {
+                list-style: none;
+            }
+            .layout-menu > li > ul > li.layout-nested-submenu > ul > li > a {
+                display: flex;
+                align-items: center;
+                padding: 0.625rem 1.25rem 0.625rem 4.5rem;
+                color: var(--pt-text-color);
+                transition: background-color var(--pt-transition-duration);
+                gap: 0.75rem;
+                font-size: 0.9rem;
+            }
+            .layout-menu > li > ul > li.layout-nested-submenu > ul > li > a:hover {
+                background-color: var(--pt-surface-hover);
+            }
+            .layout-menu > li > ul > li.layout-nested-submenu > ul > li > a > i:first-child {
+                font-size: 0.875rem;
+                width: 1.25rem;
+                text-align: center;
+            }
+            /* Der Elterneintrag der dritten Ebene ist selbst ein Link ohne Ziel -
+               er soll wie ein normaler Eintrag der zweiten Ebene aussehen, nur
+               mit Pfeil rechts. */
+            .layout-menu > li > ul > li.layout-nested-submenu > a {
+                justify-content: flex-start;
+            }
+            .layout-nested-submenu > a > .layout-submenu-toggler {
+                margin-left: auto;
+                font-size: 0.75rem;
+                transition: transform 0.25s;
+            }
+            .layout-nested-submenu.active-submenu > a > .layout-submenu-toggler {
+                transform: rotate(180deg);
+            }
+            /* Horizontal/Slim: dieselbe kompakte Polsterung wie das Theme sie
+               dort fuer die zweite Ebene setzt. */
+            .layout-horizontal .layout-menu > li > ul > li.layout-nested-submenu > ul > li > a,
+            .layout-slim .layout-menu > li > ul > li.layout-nested-submenu > ul > li > a {
+                padding: 0.625rem 1rem 0.625rem 2rem;
             }
 
             /* Slim + Horizontal mode: flyout submenus via display toggle */
@@ -104,6 +202,13 @@
             .layout-slim .layout-menu > li.active-menuitem > ul,
             .layout-horizontal .layout-menu > li.active-menuitem > ul {
                 display: block !important;
+            }
+            /* In diesen Modi die dritte Ebene immer offen - ein zweites
+               Ausklappen im Flyout waere kaum bedienbar. */
+            .layout-slim .layout-menu > li > ul > li.layout-nested-submenu > ul,
+            .layout-horizontal .layout-menu > li > ul > li.layout-nested-submenu > ul {
+                max-height: none;
+                opacity: 1;
             }
         </style>
         <script>
@@ -122,7 +227,40 @@
 
             function setupSubmenuHandlers() {
                 var openSubmenuLabel = window.submenuToRestore || sessionStorage.getItem('openSubmenuLabel');
+                var openNestedLabel = sessionStorage.getItem('openNestedSubmenuLabel');
 
+                // Dritte Ebene zuerst verdrahten: der Handler stoppt die
+                // Weitergabe, damit der Klick auf ein verschachteltes Submenue
+                // nicht das Elternmenue zuklappt.
+                $('.layout-menu > li > ul > li.layout-nested-submenu > a')
+                    .off('click.nested').on('click.nested', function(e) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        var nested = $(this).closest('li.layout-nested-submenu');
+                        var label = $(this).children('span').first().text().trim();
+                        nested.siblings('li.layout-nested-submenu').removeClass('active-submenu');
+                        nested.toggleClass('active-submenu');
+                        if (nested.hasClass('active-submenu')) {
+                            sessionStorage.setItem('openNestedSubmenuLabel', label);
+                        } else {
+                            sessionStorage.removeItem('openNestedSubmenuLabel');
+                        }
+                        return false;
+                    });
+
+                // Zustand der dritten Ebene wiederherstellen
+                if (openNestedLabel) {
+                    $('.layout-menu > li > ul > li.layout-nested-submenu').each(function() {
+                        var label = $(this).children('a').first().children('span').first().text().trim();
+                        if (label === openNestedLabel) {
+                            $(this).addClass('active-submenu');
+                        }
+                    });
+                }
+
+                // Blaetter: Elternmenue merken. Der Selektor fasst auch die
+                // dritte Ebene, deren Label-Links sind aber oben schon
+                // abgefangen (stopImmediatePropagation).
                 $('.layout-menu > li > ul a').off('click.submenu-item').on('click.submenu-item', function(e) {
                     var parentMenuItem = $(this).closest('.layout-menu > li');
                     var parentLabel = parentMenuItem.children('a').first().text().trim();
