@@ -37,7 +37,9 @@ import java.io.IOException;
  * Wer den Fehler meldete, gab damit seine angemeldete Sitzung weiter. Nach dieser Umleitung
  * entsteht die Fehlerseite gar nicht mehr.
  *
- * <p><b>Ordnung:</b> {@link Ordered#HIGHEST_PRECEDENCE} — vor Spring Security (Order -100) und
+ * <p><b>Ordnung:</b> {@code HIGHEST_PRECEDENCE + 20} — nach Springs ForwardedHeaderFilter (+10),
+ * damit die Weiterleitung das Schema der urspruenglichen Anfrage traegt, und weiterhin vor
+ * Spring Security (Order -100) und
  * vor dem {@code htmlRewriteFilter} (HIGHEST_PRECEDENCE + 1), der ueber
  * {@code getRequestURI()} entscheidet und deshalb an derselben Stelle stolpert.
  *
@@ -57,7 +59,25 @@ public class PathParameterConfig {
         FilterRegistrationBean<PathParameterFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new PathParameterFilter());
         registration.addUrlPatterns("/*");
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        // Karte 612 (08.08.2026): HIGHEST_PRECEDENCE + 20 statt HIGHEST_PRECEDENCE.
+        //
+        // sendRedirect() unten bekommt einen RELATIVEN Pfad; die absolute URL baut der
+        // Container daraus -- mit dem Schema, das ER sieht. Lief dieser Filter vor Springs
+        // ForwardedHeaderFilter, war das noch das Schema des Connectors (http), nicht das der
+        // urspruenglichen Anfrage (https). Gemessen am 08.08.2026 auf allen vier Hosts:
+        //
+        //   GET https://app.plaintext.ch/;jsessionid=...  ->  302  Location: http://app.plaintext.ch/
+        //
+        // Die Weiterleitung funktionierte also, stufte den Benutzer aber auf Klartext-HTTP
+        // zurueck -- und seit Karte 620 traegt das Session-Cookie Secure, wird dorthin also gar
+        // nicht mehr gesendet. Aus einem Schoenheitsfehler wurde damit ein Anmeldeproblem.
+        //
+        // Resultierende Reihenfolge (root; die Werte stehen in RateLimitFilterConfig):
+        //   RateLimitFilter        HIGHEST_PRECEDENCE        rohe Peer-Adresse + XFF-Kette
+        //   ForwardedHeaderFilter  HIGHEST_PRECEDENCE + 10   Scheme/Host/RemoteAddr korrigieren
+        //   PathParameterFilter    HIGHEST_PRECEDENCE + 20   <- hier, mit korrektem Schema
+        //   SecurityFilterChain    -100
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 20);
         registration.setName("pathParameterFilter");
         return registration;
     }

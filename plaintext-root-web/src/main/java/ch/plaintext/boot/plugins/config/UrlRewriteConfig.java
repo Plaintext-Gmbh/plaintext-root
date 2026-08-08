@@ -27,7 +27,22 @@ public class UrlRewriteConfig {
         FilterRegistrationBean<HtmlToXhtmlRewriteFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new HtmlToXhtmlRewriteFilter());
         registration.addUrlPatterns("*.html", "*.htm");
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1); // After Swagger filter
+        // Karte 612 (08.08.2026): + 30 statt + 1.
+        //
+        // Dieser Filter muss NACH dem pathParameterFilter laufen, damit eine URL wie
+        // /login.html;jsessionid=... hier bereits bereinigt ankommt -- sonst endet sie nicht
+        // auf .html und das urlPattern greift nicht.
+        //
+        // Der pathParameterFilter wiederum musste hinter Springs ForwardedHeaderFilter (+10)
+        // wandern, weil sein sendRedirect() sonst mit dem Connector-Schema (http) statt dem
+        // der urspruenglichen Anfrage (https) gebaut wird. Beide Bedingungen zusammen ergeben:
+        //
+        //   ForwardedHeaderFilter  +10   Scheme/Host korrigieren
+        //   PathParameterFilter    +20   Pfad bereinigen, Redirect mit korrektem Schema
+        //   htmlRewriteFilter      +30   <- hier, sieht nur bereinigte Pfade
+        //
+        // Weiterhin nach dem Swagger-Filter und vor Spring Security (-100).
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 30);
         registration.setName("htmlRewriteFilter");
         return registration;
     }
