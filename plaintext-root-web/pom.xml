@@ -7,7 +7,7 @@
     <parent>
         <groupId>ch.plaintext</groupId>
         <artifactId>plaintext-root-parent</artifactId>
-        <version>1.536.0</version>
+        <version>1.537.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>plaintext-root-web</artifactId>
