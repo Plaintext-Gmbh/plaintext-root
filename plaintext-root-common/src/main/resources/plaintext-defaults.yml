@@ -1,0 +1,41 @@
+# Gemeinsame Grundeinstellungen fuer ALLE Plaintext-Anwendungen.
+#
+# WARUM DIESE DATEI EXISTIERT (Karte 620, 08.08.2026):
+# Diese Werte standen frueher in plaintext-root-webapp/application.yml. Spring Boot laedt aber
+# nur EINE classpath:/application.yml — und jede App (app, guild, schuetu, iot, fwtool) bringt
+# eine eigene mit. Die root-Fassung war damit in allen fuenf Consumern unsichtbar; gemessen am
+# 08.08.2026 gingen so 14 Schluessel verloren, davon 7 sicherheitsrelevante.
+#
+# Der Dateiname ist deshalb bewusst NICHT application.yml: Er kann nicht verdeckt werden.
+# Eingespeist wird sie vom PlaintextDefaultsEnvironmentPostProcessor mit der NIEDRIGSTEN
+# Praezedenz — jede App, jedes Profil und jede Umgebungsvariable ueberschreibt sie weiterhin.
+#
+# WAS HIER HINEINGEHOERT: Werte, die ohne Zutun der App ueberall gelten sollen.
+# WAS NICHT: alles App-Spezifische. Das gehoert in die application.yml der App.
+
+server:
+  servlet:
+    session:
+      timeout: ${PLAINTEXT_SESSION_TIMEOUT:30m}
+      tracking-modes: cookie
+      cookie:
+        http-only: true
+        same-site: lax
+        # Je Instanz gesetzt, nicht fest verdrahtet: PROD true, INT false.
+        #
+        # Der Default ist hier bewusst false — anders als in plaintext-root-webapp, wo er
+        # true lautet. Grund: Die INT-Instanzen laufen mit DEMSELBEN Profil wie PROD
+        # (SPRING_PROFILES_ACTIVE=prod,postgres, gemessen am 08.08.2026 an sechs
+        # Containern). Es gibt also kein Profil, ueber das man INT ausnehmen koennte, und
+        # ein Default true wuerde die Anmeldung auf http://<ip>:<port> sofort unmoeglich
+        # machen: Der Browser sendet ein Secure-Cookie ueber http gar nicht erst.
+        #
+        # Scharf geschaltet wird deshalb je Container ueber die Umgebungsvariable —
+        # dieselbe Bauform wie PLAINTEXT_BASEURL (Karte 584/598) und dieselbe Falle: Der
+        # Wert muss in plaintext-config UND auf dem NAS stehen, sonst raeumt ihn
+        # setup_blue_green() beim naechsten Reparaturlauf weg (Karte 592).
+        #
+        # Variablenname absichtlich identisch mit dem in plaintext-root-webapp: EIN Name
+        # fuer EINEN Schalter, sonst haertet man root und die Consumer versehentlich
+        # getrennt.
+        secure: ${PLAINTEXT_COOKIE_SECURE:false}
