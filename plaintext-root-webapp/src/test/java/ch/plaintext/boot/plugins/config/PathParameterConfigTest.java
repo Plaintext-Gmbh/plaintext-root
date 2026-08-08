@@ -74,8 +74,17 @@ class PathParameterConfigTest {
                 new PathParameterConfig().pathParameterFilter();
 
         assertNotNull(registration.getFilter());
-        // Spring Security liegt bei -100, der htmlRewriteFilter bei HIGHEST_PRECEDENCE + 1.
-        assertEquals(Ordered.HIGHEST_PRECEDENCE, registration.getOrder());
+        // Karte 612: Die Reihenfolge muss ZWEI Bedingungen zugleich erfuellen --
+        //   nach  ForwardedHeaderFilter (+10), sonst baut sendRedirect() die Weiterleitung mit
+        //         dem Connector-Schema (http) statt dem der urspruenglichen Anfrage (https)
+        //   vor   htmlRewriteFilter (+30), sonst kommt /login.html;jsessionid=... dort ungereinigt
+        //         an und endet nicht auf .html
+        // Spring Security liegt weiterhin weit dahinter (-100).
+        assertEquals(Ordered.HIGHEST_PRECEDENCE + 20, registration.getOrder());
+        assertTrue(registration.getOrder() > Ordered.HIGHEST_PRECEDENCE + 10,
+                "muss nach dem ForwardedHeaderFilter laufen, sonst degradiert der Redirect auf http");
+        assertTrue(registration.getOrder() < Ordered.HIGHEST_PRECEDENCE + 30,
+                "muss vor dem htmlRewriteFilter laufen, sonst sieht der eine unbereinigte URL");
         assertTrue(registration.getUrlPatterns().contains("/*"));
     }
 
