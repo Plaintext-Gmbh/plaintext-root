@@ -1,2 +1,3 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
-  ch.plaintext.boot.plugins.secret.VaultwardenEnvironmentPostProcessor
+  ch.plaintext.boot.plugins.secret.VaultwardenEnvironmentPostProcessor,\
+  ch.plaintext.boot.plugins.config.PlaintextDefaultsEnvironmentPostProcessor
