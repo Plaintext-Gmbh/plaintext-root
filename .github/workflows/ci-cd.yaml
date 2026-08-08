@@ -124,9 +124,17 @@ jobs:
       #
       # Der Postgres-Host-Port ist projektspezifisch gewaehlt, damit sich parallele
       # Integrationstest-DBs auf einem geteilten Docker-Daemon nicht in die Quere kommen.
+      # Vergeben sind: root 5441, iot 5435, app 5436, schuetu 5437, fwtool 5438, guild 5439.
+      #
+      # NICHT auf 5434 zurueckstellen (Karte 608, 08.08.2026): Auf dem NAS belegt seit dem
+      # Neustart am 08.08. der Postgres der UGREEN-Photo-App 127.0.0.1:5434 dauerhaft
+      # (/volume1/@appstore/com.ugreen.photo/db). Der Testcontainer laeuft mit --network host
+      # und kann den Port dann nicht binden; `psql` erreicht stattdessen die Photo-Datenbank
+      # und meldet Erfolg, sodass der Startschritt gruen aussieht. Erst die Tests fallen mit
+      # `FATAL: role "plaintext" does not exist` um — 48 Errors, die wie ein Codefehler wirken.
       runner: >-
         ${{ github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted", "nas"]' }}
-      postgres-port: '5434'
+      postgres-port: '5441'
     # Caller und reusable Workflow haben denselben Owner -> `secrets: inherit` funktioniert und
     # reicht alle benoetigten Secrets durch, ohne sie einzeln pflegen zu muessen.
     # Hinweis: Bei Pull Requests aus Forks stellt GitHub keine Secrets bereit; die Pipeline
