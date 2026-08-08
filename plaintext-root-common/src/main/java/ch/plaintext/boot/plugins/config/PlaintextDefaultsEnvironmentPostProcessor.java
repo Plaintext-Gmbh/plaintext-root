@@ -94,11 +94,26 @@ public class PlaintextDefaultsEnvironmentPostProcessor implements EnvironmentPos
     }
 
     /**
-     * Frueh ausfuehren, damit die eigene Source wirklich unten landet: Ein spaeter laufender
-     * Processor koennte sonst mit {@code addLast} noch unter uns rutschen.
+     * <b>Moeglichst spaet ausfuehren</b> — und das ist hier keine Feinheit, sondern der Kern.
+     *
+     * <p>Der {@code ConfigDataEnvironmentPostProcessor}, der die {@code application.yml} laedt,
+     * laeuft bei {@code HIGHEST_PRECEDENCE + 10}. Lief dieser Processor davor, landete unsere
+     * mit {@code addLast} eingefuegte Source <em>ueber</em> der erst danach eingefuegten
+     * {@code application.yml} — und die Grundeinstellungen ueberschrieben genau das, was sie
+     * ergaenzen sollten.
+     *
+     * <p>Das ist am 08.08.2026 auf PROD passiert: {@code plaintext-root} verlor sein
+     * {@code Secure}-Cookie, weil der Default {@code false} aus {@code plaintext-defaults.yml}
+     * den Wert {@code ${PLAINTEXT_COOKIE_SECURE:true}} aus der eigenen {@code application.yml}
+     * schlug. Gemessen am Set-Cookie-Header vor und nach dem Rollout von 1.532.0.
+     *
+     * <p>Mit {@code LOWEST_PRECEDENCE} laeuft der Processor nach ConfigData, und {@code addLast}
+     * setzt die Source dorthin, wo sie hingehoert: unter alles andere. Dieselbe Ueberlegung wie
+     * beim {@code VaultwardenEnvironmentPostProcessor}, nur mit umgekehrtem Ziel — spaet laufen
+     * heisst bei {@code addFirst} "ganz oben" und bei {@code addLast} "ganz unten".
      */
     @Override
     public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
+        return Ordered.LOWEST_PRECEDENCE;
     }
 }

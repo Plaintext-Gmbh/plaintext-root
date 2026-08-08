@@ -1,0 +1,14 @@
+# Stellt im Test eine anwendungseigene application.yml nach.
+#
+# Geladen wird sie ueber spring.config.name=test-eigene-app, damit sie NICHT die echte
+# application.yml anderer Tests in diesem Modul verdeckt — das waere derselbe Fehler, den
+# dieser Test aufdecken soll.
+#
+# Die Werte sind absichtlich andere als die in plaintext-defaults.yml: Nur so ist am
+# Ergebnis ablesbar, welche Source gewonnen hat.
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: strict
+        secure: true
