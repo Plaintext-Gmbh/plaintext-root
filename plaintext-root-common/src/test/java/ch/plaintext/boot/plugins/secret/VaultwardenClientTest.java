@@ -13,6 +13,11 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import javax.crypto.Cipher;
@@ -175,7 +180,7 @@ class VaultwardenClientTest {
      * Crashloop konnte so den Start ANDERER Anwendungen verhindern.</p>
      */
     @Test
-    void getItems_rateLimit429_versuchtNichtSofortErneut() throws InterruptedException {
+    void getItems_rateLimit429_versuchtNichtSofortErneut() {
         // cacheTtl = 1s mit Absicht: VOR dem Fix war der Fehler-Backoff clamp(cacheTtl, 1, 60),
         // also hier 1 Sekunde — nach dem Warten unten waere der naechste Login rausgegangen und
         // der Test rot. Mit dem Fix greift bei einem 429 der lange Backoff, unabhaengig vom TTL.
@@ -183,12 +188,13 @@ class VaultwardenClientTest {
         p.setCacheTtlSeconds(1);
         vault.tokenStatus = 429;
         vault.tokenBody = "{\"message\":\"Too many login requests\"}";
-        VaultwardenClient client = newClient(p);
+        TestUhr uhr = new TestUhr();
+        VaultwardenClient client = newClient(p, uhr);
 
         assertThat(client.getItems()).isEmpty();
         assertThat(vault.tokenCalls).isEqualTo(1);
 
-        Thread.sleep(1300);   // laenger als der alte Backoff
+        uhr.weiter(Duration.ofMillis(1300));   // laenger als der alte Backoff
         client.getItems();
         client.getItems();
 
@@ -197,22 +203,22 @@ class VaultwardenClientTest {
                 .isEqualTo(1);
     }
 
-    /** Auch ein gewoehnlicher Fehlschlag (kein 429) fuehrt nicht zu Dauerfeuer. */
     /**
      * Auch ein gewoehnlicher Fehlschlag fuehrt nicht zu Dauerfeuer: Der Backoff startet bei 30
      * Sekunden und verdoppelt sich — vor dem Fix waren es hoechstens 60, danach ging es endlos
      * im selben Takt weiter.
      */
     @Test
-    void getItems_fehlschlag_versuchtNichtSofortErneut() throws InterruptedException {
+    void getItems_fehlschlag_versuchtNichtSofortErneut() {
         VaultwardenProperties p = props();
         p.setCacheTtlSeconds(1);
         vault.tokenStatus = 500;
         vault.tokenBody = "boom";
-        VaultwardenClient client = newClient(p);
+        TestUhr uhr = new TestUhr();
+        VaultwardenClient client = newClient(p, uhr);
 
         assertThat(client.getItems()).isEmpty();
-        Thread.sleep(1300);
+        uhr.weiter(Duration.ofMillis(1300));
         client.getItems();
 
         assertThat(vault.tokenCalls)
@@ -340,6 +346,42 @@ class VaultwardenClientTest {
 
     private static VaultwardenClient newClient(VaultwardenProperties p) {
         return new VaultwardenClient(p, "junit");
+    }
+
+    /**
+     * Steuerbare Uhr fuer die Backoff-Tests (Karte 608).
+     *
+     * <p>Vorher warteten diese Tests mit {@code Thread.sleep(1300)} echte Zeit ab, um einen
+     * Backoff zu ueberspringen. Das ist doppelt schlecht: Auf einem langsamen Runner kippt der
+     * Test, auf einem schnellen kostet er trotzdem die volle Wartezeit. Sonar meldet es als
+     * java:S2925.</p>
+     *
+     * <p>Mit dieser Uhr wird die Zeit gesetzt statt abgewartet — der Test prueft dasselbe
+     * Verhalten in Millisekunden statt in Sekunden.</p>
+     */
+    private static final class TestUhr extends Clock {
+        private Instant jetzt = Instant.parse("2026-01-01T00:00:00Z");
+
+        @Override public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override public Instant instant() {
+            return jetzt;
+        }
+
+        /** Stellt die Uhr vor — der Ersatz fuer {@code Thread.sleep}. */
+        void weiter(Duration d) {
+            jetzt = jetzt.plus(d);
+        }
+    }
+
+    private static VaultwardenClient newClient(VaultwardenProperties p, Clock uhr) {
+        return new VaultwardenClient(p, "junit", uhr);
     }
 
     private static VaultwardenItem byName(List<VaultwardenItem> items, String name) {
