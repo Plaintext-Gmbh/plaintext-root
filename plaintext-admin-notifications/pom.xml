@@ -7,7 +7,7 @@
     <parent>
         <groupId>ch.plaintext</groupId>
         <artifactId>plaintext-root-parent</artifactId>
-        <version>1.546.0</version>
+        <version>1.547.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>plaintext-admin-notifications</artifactId>
