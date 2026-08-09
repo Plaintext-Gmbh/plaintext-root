@@ -132,15 +132,92 @@ public class JwtTokenService {
         this.vaultProvider = vaultProvider;
     }
 
+    /**
+     * Wie oft beim Start auf den Vault gewartet wird, wenn er als Schlüsselquelle konfiguriert ist,
+     * aber gerade nicht liefert. 0 schaltet das Warten ab (bisheriges Verhalten).
+     *
+     * <p>Der Default deckt den langen Vaultwarden-Backoff nach einem HTTP 429 ab (300 s,
+     * {@code VaultwardenClient}) mit Reserve: 8 Versuche à 60 s.</p>
+     */
+    @Value("${plaintext.jwt.vault-wait-attempts:8}")
+    int vaultWaitAttempts;
+
+    /** Abstand zwischen zwei Startversuchen in Sekunden. Siehe {@link #vaultWaitAttempts}. */
+    @Value("${plaintext.jwt.vault-wait-seconds:60}")
+    int vaultWaitSeconds;
+
+    /**
+     * Lädt die Schlüssel und wartet dabei auf einen vorübergehend nicht erreichbaren Vault.
+     *
+     * <p><b>Warum gewartet wird (Karte 632):</b> Ohne dieses Warten stirbt die Anwendung, sobald
+     * Vaultwarden mit HTTP 429 abriegelt — und {@code restart: always} startet sie sofort neu, wo
+     * sie erneut anklopft. <b>Jeder Neustart verlängert die Sperre, die er abwarten müsste.</b> Am
+     * 08.08.2026 haben nach einem Docker-Neustart vier Anwendungen gleichzeitig angeklopft und sich
+     * gegenseitig ausgesperrt; app kam auf {@code RestartCount 11} und war eine Stunde tot. Der
+     * Backoff aus Karte 395 kann das nicht verhindern: Er lebt im Prozess, und der Prozess ist nach
+     * jedem Fehlschlag ein neuer.</p>
+     *
+     * <p><b>Was NICHT aufgeweicht wird:</b> die fail-closed-Linie aus Karte 347. Gewartet wird nur,
+     * wenn der Vault als Quelle <i>konfiguriert und aktiv</i> ist — also wenn berechtigte Aussicht
+     * besteht, dass der Schlüssel gleich kommt. Fehlt die Konfiguration, scheitert der Start sofort
+     * wie bisher; ein Classpath-Fallback entsteht dadurch nirgends.</p>
+     */
     @PostConstruct
     public void init() {
+        Exception letzterFehler = null;
+        int versuche = Math.max(1, vaultWaitAttempts);
+
+        for (int versuch = 1; versuch <= versuche; versuch++) {
+            try {
+                this.privateKey = loadPrivateKey();
+                this.publicKeys = loadPublicKeys();
+                if (versuch > 1) {
+                    log.info("JWT RSA keys im {}. Versuch geladen — der Vault war beim Start vorübergehend nicht erreichbar",
+                            versuch);
+                }
+                log.info("JWT RSA keys loaded successfully ({} public key(s) for validation)", publicKeys.size());
+                return;
+            } catch (Exception e) {
+                letzterFehler = e;
+                boolean nochVersucheOffen = versuch < versuche;
+                if (!nochVersucheOffen || !lohntWarten()) {
+                    break;
+                }
+                log.warn("JWT RSA keys noch nicht ladbar (Versuch {}/{}): {} — der Vault ist als Quelle konfiguriert, "
+                                + "also warte ich {} s statt den Start abzubrechen (ein Neustart würde nur erneut anklopfen)",
+                        versuch, versuche, e.getMessage(), vaultWaitSeconds);
+                if (!schlafe(vaultWaitSeconds)) {
+                    break;
+                }
+            }
+        }
+
+        log.error("Failed to load JWT RSA keys: {}",
+                letzterFehler != null ? letzterFehler.getMessage() : "unbekannt", letzterFehler);
+        throw new IllegalStateException("Cannot initialize JWT service without RSA keys", letzterFehler);
+    }
+
+    /**
+     * Ob es Aussicht gibt, dass ein weiterer Versuch gelingt: Der Vault ist als Schlüsselquelle
+     * konfiguriert <b>und</b> grundsätzlich aktiv — dann fehlt nur die Antwort, nicht die Quelle.
+     * Bei fehlender Konfiguration wäre Warten sinnlos und würde einen Startfehler bloss verzögern.
+     */
+    private boolean lohntWarten() {
+        if (privateKeyVaultItem == null || privateKeyVaultItem.isBlank()) {
+            return false;
+        }
+        VaultwardenSecretService vault = vaultProvider.getIfAvailable();
+        return vault != null && vault.isEnabled();
+    }
+
+    /** @return false, wenn der Schlaf unterbrochen wurde (dann nicht weiter warten). */
+    private boolean schlafe(int sekunden) {
         try {
-            this.privateKey = loadPrivateKey();
-            this.publicKeys = loadPublicKeys();
-            log.info("JWT RSA keys loaded successfully ({} public key(s) for validation)", publicKeys.size());
-        } catch (Exception e) {
-            log.error("Failed to load JWT RSA keys: {}", e.getMessage(), e);
-            throw new IllegalStateException("Cannot initialize JWT service without RSA keys", e);
+            Thread.sleep(Duration.ofSeconds(sekunden).toMillis());
+            return true;
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 
