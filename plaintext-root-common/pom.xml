@@ -93,6 +93,25 @@
             <artifactId>jakarta.faces</artifactId>
         </dependency>
 
+        <!-- CDI-API: FacesContext greift beim Aufloesen von EL-Ausdruecken auf
+             den BeanManager zu. Ohne diese Abhaengigkeit scheitert alles, was
+             einen FacesContext anfasst, mit NoClassDefFoundError - etwa das
+             Lesen eines Cookies im UserPreferencesBackingBean.
+             Beide Artefakte sind noetig: seit CDI 4.1 liegt
+             ELAwareBeanManager NICHT mehr in cdi-api, sondern im getrennten
+             cdi-el-api. Provided wie in plaintext-root-web, der Container
+             bringt die Implementierung mit. -->
+        <dependency>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-el-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.primefaces</groupId>
             <artifactId>primefaces</artifactId>

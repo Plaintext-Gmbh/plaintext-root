@@ -1,1 +1,2 @@
 ch.plaintext.boot.plugins.secret.VaultwardenAutoConfiguration
+ch.plaintext.boot.plugins.jsf.userprofile.UserProfileAutoConfiguration
