@@ -57,7 +57,7 @@ import java.util.UUID;
  */
 @Service
 @Slf4j
-public class JwtTokenService {
+public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
 
     public static final int MIN_VALIDITY_DAYS = 7;
     public static final int MAX_VALIDITY_DAYS = 365;
@@ -383,6 +383,7 @@ public class JwtTokenService {
      * @throws IllegalArgumentException wenn {@code subject} fehlt
      * @throws IllegalStateException    wenn die Schlüssel noch nicht geladen sind (Start wartet auf den Vault)
      */
+    @Override
     public String signServiceToken(String subject, String audience, Duration gueltigkeit) {
         if (subject == null || subject.isBlank()) {
             throw new IllegalArgumentException("signServiceToken: subject ist Pflicht — "
