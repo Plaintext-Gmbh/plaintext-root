@@ -122,6 +122,22 @@ public class JwtTokenService {
     private List<PublicKey> publicKeys;
 
     /**
+     * Die öffentlichen Schlüssel dieser Instanz — für die Veröffentlichung als JWK Set
+     * (Karte 635, {@code /.well-known/jwks.json}).
+     *
+     * <p>Gibt <b>nur</b> die öffentlichen Schlüssel heraus, nie {@link #privateKey}. Der Rückgabewert
+     * ist unveränderlich: Ein Aufrufer, der die Liste bearbeiten könnte, würde damit stillschweigend
+     * ändern, womit diese Instanz Tokens prüft.
+     *
+     * <p>Leer, solange die Schlüssel noch nicht geladen sind (der Start wartet auf den Vault, siehe
+     * {@code loadKeys}) — der Endpunkt liefert dann ein leeres Set statt eines Fehlers, denn ein
+     * halb gestarteter Dienst ist kein Grund, dem Abrufer eine Störung zu melden.
+     */
+    public List<PublicKey> getPublicKeysForPublication() {
+        return publicKeys == null ? List.of() : List.copyOf(publicKeys);
+    }
+
+    /**
      * Nur Dev/Test: das zur Laufzeit erzeugte Ersatz-Schlüsselpaar, falls weder Vault-Item, noch
      * Key-Datei, noch ein Classpath-Key vorhanden ist (siehe {@link #loadPrivateKey()}). Wird von
      * {@link #loadPublicKeys()} gebraucht, damit Signier- und Prüfschlüssel zusammenpassen.

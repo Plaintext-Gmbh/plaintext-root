@@ -79,6 +79,15 @@ public class PlaintextSecurityConfig {
             "/login.xhtml", "/login.html", "/jakarta.faces.resource/**",
             "/actuator/health",
             "/nosec/**",
+            // Karte 635: JWK Set dieser Instanz (RFC 7517). Der Pfad ist der von RFC 8414 und
+            // OpenID Connect Discovery vorgesehene -- dort sucht jede Bibliothek von selbst,
+            // deshalb liegt er ausserhalb von /nosec und braucht eine eigene Freigabe.
+            //
+            // Ohne Anmeldung erreichbar zu sein IST der Zweck: Eine Gegenstelle soll ein von uns
+            // ausgestelltes Token pruefen koennen, ohne dass ihr jemand den Schluessel von Hand
+            // ueberreicht. Der Endpunkt gibt ausschliesslich OEFFENTLICHE Schluessel heraus
+            // (JwksController; ein Test besteht darauf, dass kein privater Anteil erscheint).
+            "/.well-known/jwks.json",
             "/oauth2/**", "/login/oauth2/**",
             "/register", "/register/**",
             "/password-reset", "/password-reset/**",
