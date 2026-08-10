@@ -68,6 +68,31 @@ public class JwtTokenService {
     private static final String CLAIM_EMAIL = "email";
     private static final String CLAIM_TOKEN_NAME = "tokenName";
     private static final String CLAIM_SCOPE = "scope";
+
+    /**
+     * Trennt die Token-Klassen (Karte 635). API-Tokens tragen den Claim <b>nicht</b>;
+     * {@link #signServiceToken} setzt ihn auf {@link #TOKEN_USE_SERVICE}.
+     *
+     * <p><b>Warum das sein muss.</b> {@link #validateToken} prüft die Signatur — und ein fehlender
+     * {@link #CLAIM_SCOPE} gilt als {@code ADMIN} (sanfte Migration alter API-Tokens). Ohne diese
+     * Trennung wäre jedes von uns signierte Maschinen-Token automatisch ein ADMIN-API-Token. Der
+     * Drucker-Session-Token aus Karte 556 geht als Header über die Leitung und liegt im Speicher
+     * eines Raspberry Pi: Er darf hier nichts öffnen.
+     */
+    private static final String CLAIM_TOKEN_USE = "token_use";
+
+    /** Wert von {@link #CLAIM_TOKEN_USE} für Maschinen-Ausweise — nie ein API-Token. */
+    public static final String TOKEN_USE_SERVICE = "service";
+
+    /** Untergrenze für {@link #signServiceToken}: kürzer als eine Minute ist praktisch unbenutzbar. */
+    public static final Duration SERVICE_TOKEN_MIN_VALIDITY = Duration.ofMinutes(1);
+
+    /**
+     * Obergrenze für {@link #signServiceToken}. Ein Maschinen-Ausweis ist kurzlebig; wer länger
+     * braucht, weist sich neu aus — genau das ist der Sinn des veröffentlichten Schlüssels.
+     */
+    public static final Duration SERVICE_TOKEN_MAX_VALIDITY = Duration.ofDays(2);
+
     private static final String VAULT_FIELD_PRIVATE_KEY = "private_key_pem";
     /** Feld im Vault-Item mit dem instanz-eigenen Public-Key (X.509/SPKI-PEM) — Karte 347. */
     private static final String VAULT_FIELD_PUBLIC_KEY = "public_key_pem";
@@ -106,6 +131,22 @@ public class JwtTokenService {
      */
     @Value("${plaintext.jwt.private-key-vault-item:}")
     private String privateKeyVaultItem;
+
+    /**
+     * {@code iss} der von {@link #signServiceToken} ausgestellten Maschinen-Ausweise — üblicherweise
+     * die öffentliche Basis-URL dieser Instanz, unter der auch {@code /.well-known/jwks.json} liegt
+     * (Karte 635).
+     *
+     * <p>Leer lässt den Claim weg. Das ist bewusst erlaubt, aber schlechter: Eine Gegenstelle, die
+     * mehrere Instanzen kennt (INT und PROD teilen sich das {@code prod}-Profil), kann sie dann nicht
+     * auseinanderhalten. Die Prüfung des Werts ist Sache der Gegenstelle — sie muss ihn gegen ihre
+     * eigene Erwartung halten und darf daraus <b>nicht</b> den Schlüssel-Abrufort ableiten, sonst
+     * bestimmt der Aussteller, wem geglaubt wird.
+     *
+     * <p>Package-private, damit Tests den Wert setzen können — wie {@link #activeProfiles}.
+     */
+    @Value("${plaintext.jwt.issuer:}")
+    String issuer;
 
     /**
      * Aktive Spring-Profile (kommasepariert, z. B. {@code prod} oder {@code prod,green}). Unter
@@ -317,6 +358,69 @@ public class JwtTokenService {
     }
 
     /**
+     * Signiert einen <b>Maschinen-Ausweis</b>: ein kurzlebiges JWT, mit dem sich diese Instanz bei
+     * einer Gegenstelle ausweist, die den öffentlichen Schlüssel über
+     * {@code /.well-known/jwks.json} beziehen kann (Karte 635).
+     *
+     * <p><b>Wofür.</b> Ersetzt geteilte Geheimnisse zwischen Diensten. Der Fall aus Karte 556: Der
+     * Label-Drucker hält eine exklusive Session; bisher bewies ein gemerkter Zufallswert die
+     * Berechtigung, und nach einem Neustart war er weg — die Session blieb bis zum Neustart des
+     * Geräts blockiert. Mit einem signierten Ausweis stellt der Dienst nach dem Neustart einfach
+     * einen neuen aus; der private Schlüssel verlässt die Anwendung nie.
+     *
+     * <p><b>Das ist kein API-Token.</b> Der Claim {@code token_use=service} sorgt dafür, dass
+     * {@link #validateToken} es ablehnt. Ohne diese Trennung wäre der Ausweis hier ein
+     * vollprivilegiertes API-Token, denn ein fehlender {@code scope} gilt als {@code ADMIN}.
+     *
+     * <p>Die Gültigkeit wird auf {@link #SERVICE_TOKEN_MIN_VALIDITY}…{@link #SERVICE_TOKEN_MAX_VALIDITY}
+     * begrenzt — geklemmt statt abgelehnt, wie bei {@link #generateToken(Long, String, String, String, int)}.
+     *
+     * @param subject     wer sich ausweist, z. B. {@code guild-checkin-desk} (Pflicht)
+     * @param audience    für wen der Ausweis gilt, z. B. {@code guild42-label-printer}; die Gegenstelle
+     *                    prüft ihn und weist fremde Ausweise ab (leer = kein {@code aud}-Claim)
+     * @param gueltigkeit Laufzeit ab jetzt
+     * @return signiertes JWT (RS256)
+     * @throws IllegalArgumentException wenn {@code subject} fehlt
+     * @throws IllegalStateException    wenn die Schlüssel noch nicht geladen sind (Start wartet auf den Vault)
+     */
+    public String signServiceToken(String subject, String audience, Duration gueltigkeit) {
+        if (subject == null || subject.isBlank()) {
+            throw new IllegalArgumentException("signServiceToken: subject ist Pflicht — "
+                    + "ein Ausweis ohne Aussteller-Kennung ist fuer die Gegenstelle nicht zuzuordnen.");
+        }
+        if (privateKey == null) {
+            // Nicht als Signaturfehler tarnen: Der Aufrufer soll unterscheiden koennen zwischen
+            // "noch nicht bereit" (Vault-Wartezeit beim Start) und "kaputt".
+            throw new IllegalStateException("signServiceToken: privater Signaturschluessel ist noch nicht "
+                    + "geladen (Vault-Wartezeit beim Start) — spaeter erneut versuchen.");
+        }
+
+        Duration laufzeit = gueltigkeit == null ? SERVICE_TOKEN_MIN_VALIDITY : gueltigkeit;
+        if (laufzeit.compareTo(SERVICE_TOKEN_MIN_VALIDITY) < 0) laufzeit = SERVICE_TOKEN_MIN_VALIDITY;
+        if (laufzeit.compareTo(SERVICE_TOKEN_MAX_VALIDITY) > 0) laufzeit = SERVICE_TOKEN_MAX_VALIDITY;
+
+        Instant now = Instant.now();
+        var builder = Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(subject)
+                .claim(CLAIM_TOKEN_USE, TOKEN_USE_SERVICE)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(laufzeit)));
+
+        if (issuer != null && !issuer.isBlank()) {
+            builder.issuer(issuer.trim());
+        }
+        if (audience != null && !audience.isBlank()) {
+            builder.audience().add(audience.trim()).and();
+        }
+
+        String token = builder.signWith(privateKey, Jwts.SIG.RS256).compact();
+        log.info("Maschinen-Ausweis signiert: subject={}, audience={}, gueltig {} (iss={})",
+                subject, audience, laufzeit, issuer == null || issuer.isBlank() ? "<nicht gesetzt>" : issuer);
+        return token;
+    }
+
+    /**
      * Validate a JWT token and extract claims.
      *
      * <p>Die Signatur wird gegen ALLE konfigurierten öffentlichen Schlüssel geprüft
@@ -338,6 +442,17 @@ public class JwtTokenService {
                 return Optional.empty();
             }
             Claims claims = verified.get();
+
+            // Karte 635: Ein Maschinen-Ausweis (signServiceToken) traegt dieselbe Signatur wie ein
+            // API-Token und wuerde hier sonst durchgehen -- mit userId=null und ohne scope-Claim, was
+            // als ADMIN gilt. Er wird deshalb ausdruecklich abgewiesen. Alte API-Tokens tragen den
+            // Claim nicht und bleiben unveraendert gueltig.
+            String tokenUse = claims.get(CLAIM_TOKEN_USE, String.class);
+            if (tokenUse != null && !tokenUse.isBlank()) {
+                log.warn("JWT abgewiesen: token_use='{}' ist kein API-Token (jti={}). Ein Maschinen-Ausweis "
+                        + "gibt keinen API-Zugriff.", tokenUse, claims.getId());
+                return Optional.empty();
+            }
 
             Long userId = claims.get(CLAIM_USER_ID, Long.class);
             String mandat = claims.get(CLAIM_MANDAT, String.class);
