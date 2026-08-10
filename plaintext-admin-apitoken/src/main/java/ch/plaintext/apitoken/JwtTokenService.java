@@ -236,14 +236,7 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
                 return;
             } catch (Exception e) {
                 letzterFehler = e;
-                boolean nochVersucheOffen = versuch < versuche;
-                if (!nochVersucheOffen || !lohntWarten()) {
-                    break;
-                }
-                log.warn("JWT RSA keys noch nicht ladbar (Versuch {}/{}): {} — der Vault ist als Quelle konfiguriert, "
-                                + "also warte ich {} s statt den Start abzubrechen (ein Neustart würde nur erneut anklopfen)",
-                        versuch, versuche, e.getMessage(), vaultWaitSeconds);
-                if (!schlafe(vaultWaitSeconds)) {
+                if (!weiterWarten(versuch, versuche, e)) {
                     break;
                 }
             }
@@ -252,6 +245,24 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
         log.error("Failed to load JWT RSA keys: {}",
                 letzterFehler != null ? letzterFehler.getMessage() : "unbekannt", letzterFehler);
         throw new IllegalStateException("Cannot initialize JWT service without RSA keys", letzterFehler);
+    }
+
+    /**
+     * Ob nach einem Fehlversuch ein weiterer folgt — und wartet in diesem Fall auch gleich.
+     *
+     * <p>Fasst beide Abbruchgründe an einer Stelle zusammen (keine Versuche mehr bzw. der Vault
+     * taugt nicht als Quelle; und: der Schlaf wurde unterbrochen), damit die Schleife in
+     * {@link #init()} genau einen Ausstieg hat. Reine Extraktion — an der Reihenfolge der
+     * Prüfungen und am Protokollierten ändert sich nichts.</p>
+     */
+    private boolean weiterWarten(int versuch, int versuche, Exception fehler) {
+        if (versuch >= versuche || !lohntWarten()) {
+            return false;
+        }
+        log.warn("JWT RSA keys noch nicht ladbar (Versuch {}/{}): {} — der Vault ist als Quelle konfiguriert, "
+                        + "also warte ich {} s statt den Start abzubrechen (ein Neustart würde nur erneut anklopfen)",
+                versuch, versuche, fehler.getMessage(), vaultWaitSeconds);
+        return schlafe(vaultWaitSeconds);
     }
 
     /**
@@ -272,7 +283,7 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
         try {
             Thread.sleep(Duration.ofSeconds(sekunden).toMillis());
             return true;
-        } catch (InterruptedException ie) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return false;
         }
