@@ -209,4 +209,101 @@ class JwtTokenServiceTest {
 
         assertFalse(jti1.equals(jti2), "Zwei Tokens duerfen nicht dieselbe jti tragen");
     }
+
+    // ------------------------------------------------- Maschinen-Ausweis (Karte 635, signServiceToken)
+
+    /** Claims eines Service-Tokens, geprüft gegen die öffentlichen Schlüssel der Instanz selbst. */
+    private static Claims claimsOf(JwtTokenService service, String token) {
+        return service.verifyWithAnyKey(token, service.getPublicKeysForPublication()).orElseThrow(
+                () -> new AssertionError("Service-Token muss gegen den veroeffentlichten Public-Key verifizieren — "
+                        + "sonst kann die Gegenstelle es ueber /.well-known/jwks.json nicht pruefen"));
+    }
+
+    @Test
+    void serviceToken_istMitDemVeroeffentlichtenSchluesselPruefbar() {
+        JwtTokenService service = serviceWithoutVault();
+        service.init();
+
+        String token = service.signServiceToken("guild-checkin-desk", "guild42-label-printer",
+                java.time.Duration.ofMinutes(30));
+
+        Claims claims = claimsOf(service, token);
+        assertEquals("guild-checkin-desk", claims.getSubject());
+        assertEquals(JwtTokenService.TOKEN_USE_SERVICE, claims.get("token_use", String.class));
+        assertTrue(claims.getAudience().contains("guild42-label-printer"),
+                "aud muss die Gegenstelle nennen, damit ein Ausweis nicht anderswo gilt");
+        assertTrue(claims.getId() != null && !claims.getId().isBlank(), "jti wird immer gesetzt");
+        assertTrue(claims.getExpiration().toInstant().isAfter(Instant.now()), "Ausweis darf nicht sofort abgelaufen sein");
+    }
+
+    /**
+     * Der Sicherheitstest dieser Änderung: Ein Maschinen-Ausweis trägt dieselbe Signatur wie ein
+     * API-Token. Ginge er durch {@link JwtTokenService#validateToken}, wäre er wegen des fehlenden
+     * {@code scope}-Claims ein ADMIN-Token — und der Ausweis wandert als Header über die Leitung.
+     */
+    @Test
+    void serviceToken_gibtKeinenApiZugriff() {
+        JwtTokenService service = serviceWithoutVault();
+        service.init();
+
+        String ausweis = service.signServiceToken("guild-checkin-desk", "guild42-label-printer",
+                java.time.Duration.ofMinutes(30));
+
+        assertFalse(service.validateToken(ausweis).isPresent(),
+                "Ein Maschinen-Ausweis darf NIE als API-Token validieren (sonst ADMIN ohne scope-Claim)");
+    }
+
+    @Test
+    void serviceToken_gueltigkeitWirdNachUntenUndObenGeklemmt() {
+        JwtTokenService service = serviceWithoutVault();
+        service.init();
+
+        Claims zuKurz = claimsOf(service, service.signServiceToken("desk", null, java.time.Duration.ofSeconds(1)));
+        long sekundenKurz = zuKurz.getExpiration().toInstant().getEpochSecond()
+                - zuKurz.getIssuedAt().toInstant().getEpochSecond();
+        assertEquals(JwtTokenService.SERVICE_TOKEN_MIN_VALIDITY.toSeconds(), sekundenKurz,
+                "Unter der Untergrenze wird auf die Untergrenze geklemmt, nicht abgelehnt");
+
+        Claims zuLang = claimsOf(service, service.signServiceToken("desk", null, java.time.Duration.ofDays(30)));
+        long sekundenLang = zuLang.getExpiration().toInstant().getEpochSecond()
+                - zuLang.getIssuedAt().toInstant().getEpochSecond();
+        assertEquals(JwtTokenService.SERVICE_TOKEN_MAX_VALIDITY.toSeconds(), sekundenLang,
+                "Ueber der Obergrenze wird geklemmt — ein Maschinen-Ausweis bleibt kurzlebig");
+    }
+
+    @Test
+    void serviceToken_ohneSubject_wirdAbgelehnt() {
+        JwtTokenService service = serviceWithoutVault();
+        service.init();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.signServiceToken("  ", "printer", java.time.Duration.ofMinutes(5)),
+                "Ohne subject kann die Gegenstelle den Aussteller nicht zuordnen");
+    }
+
+    @Test
+    void serviceToken_issuerWirdGesetztWennKonfiguriert() {
+        JwtTokenService service = serviceWithoutVault();
+        service.issuer = "https://app.guild42.ch";
+        service.init();
+
+        Claims mitIssuer = claimsOf(service, service.signServiceToken("desk", null, java.time.Duration.ofMinutes(5)));
+        assertEquals("https://app.guild42.ch", mitIssuer.getIssuer());
+
+        JwtTokenService ohne = serviceWithoutVault();
+        ohne.issuer = "";
+        ohne.init();
+        assertEquals(null, claimsOf(ohne, ohne.signServiceToken("desk", null, java.time.Duration.ofMinutes(5))).getIssuer(),
+                "Leerer Wert laesst den Claim weg statt einen leeren iss zu schreiben");
+    }
+
+    @Test
+    void serviceToken_ohneGeladeneSchluessel_meldetNichtBereit() {
+        // init() absichtlich NICHT aufrufen: Zustand waehrend der Vault-Wartezeit beim Start.
+        JwtTokenService service = serviceWithoutVault();
+
+        assertThrows(IllegalStateException.class,
+                () -> service.signServiceToken("desk", "printer", java.time.Duration.ofMinutes(5)),
+                "Ohne privaten Schluessel muss der Aufrufer 'noch nicht bereit' von 'kaputt' unterscheiden koennen");
+    }
 }
