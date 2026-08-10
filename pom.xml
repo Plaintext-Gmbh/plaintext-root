@@ -418,6 +418,15 @@
                 <artifactId>jakarta.enterprise.cdi-api</artifactId>
                 <version>${jakarta.enterprise.cdi-api.version}</version>
             </dependency>
+            <!-- Seit CDI 4.1 liegt ELAwareBeanManager nicht mehr in cdi-api,
+                 sondern in diesem getrennten Artefakt. Wer einen FacesContext
+                 anfasst, braucht beide - dieselbe Version, deshalb dieselbe
+                 Property. -->
+            <dependency>
+                <groupId>jakarta.enterprise</groupId>
+                <artifactId>jakarta.enterprise.cdi-el-api</artifactId>
+                <version>${jakarta.enterprise.cdi-api.version}</version>
+            </dependency>
 
             <!-- JWT -->
             <dependency>
