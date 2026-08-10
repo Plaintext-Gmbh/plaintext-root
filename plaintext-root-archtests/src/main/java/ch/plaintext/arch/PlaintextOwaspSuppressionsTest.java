@@ -79,6 +79,9 @@ class PlaintextOwaspSuppressionsTest {
     /** Regex-Metazeichen, an denen ein Ausdruck als „nicht literal" erkannt wird. */
     private static final Pattern METAZEICHEN = Pattern.compile("[\\[\\]().*+?{}|^$]");
 
+    /** Maven-Klassifizierer, die vor der Versions-Erkennung vom Jar-Namen abgeschnitten werden. */
+    private static final String[] KLASSIFIZIERER = {"-sources", "-javadoc"};
+
     @Test
     void keineWirkungsloseSuppression() throws IOException {
         Path datei = datei();
@@ -363,16 +366,47 @@ class PlaintextOwaspSuppressionsTest {
                 }
             }
         }
-        Pattern jarName = Pattern.compile("^(.*?)-(\\d[^/\\\\]*?)(?:-(?:sources|javadoc))?\\.jar$");
         Map<String, String> map = new LinkedHashMap<>();
         for (String e : eintraege) {
             String name = e.substring(Math.max(e.lastIndexOf('/'), e.lastIndexOf('\\')) + 1);
-            Matcher m = jarName.matcher(name);
-            if (m.matches()) {
-                map.putIfAbsent(m.group(1), m.group(2));
+            String[] artefakt = zerlegeJarName(name);
+            if (artefakt != null) {
+                map.putIfAbsent(artefakt[0], artefakt[1]);
             }
         }
         return map;
+    }
+
+    /**
+     * Zerlegt einen Jar-Dateinamen in {@code {artifactId, version}} — {@code null}, wenn der Name
+     * nicht dem Maven-Schema {@code <artifactId>-<version>[-sources|-javadoc].jar} folgt.
+     *
+     * <p>Bewusst ohne regulären Ausdruck. Das frühere Muster
+     * {@code ^(.*?)-(\d[^/\\]*?)(?:-(?:sources|javadoc))?\.jar$} hatte zwei ineinander
+     * verschachtelte reluktante Quantoren und damit polynomiale Laufzeit (Sonar {@code java:S5852}).
+     * Diese Zerlegung liest den Namen in einem Durchgang und liefert dieselbe Aufteilung: Trennstelle
+     * ist der erste Bindestrich, auf den eine Ziffer folgt.</p>
+     *
+     * @param name Dateiname ohne Pfad, z. B. {@code plaintext-root-menu-1.544.0.jar}
+     * @return zweielementiges Array {artifactId, version} oder {@code null}
+     */
+    static String[] zerlegeJarName(String name) {
+        if (name == null || !name.endsWith(".jar")) {
+            return null;
+        }
+        String rumpf = name.substring(0, name.length() - ".jar".length());
+        for (String klassifizierer : KLASSIFIZIERER) {
+            if (rumpf.endsWith(klassifizierer)) {
+                rumpf = rumpf.substring(0, rumpf.length() - klassifizierer.length());
+                break;
+            }
+        }
+        for (int i = 0; i + 1 < rumpf.length(); i++) {
+            if (rumpf.charAt(i) == '-' && Character.isDigit(rumpf.charAt(i + 1))) {
+                return new String[]{rumpf.substring(0, i), rumpf.substring(i + 1)};
+            }
+        }
+        return null;
     }
 
     private static String entpacke(String eintrag) {
