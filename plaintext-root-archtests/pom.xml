@@ -33,6 +33,15 @@
             <artifactId>junit-jupiter-api</artifactId>
         </dependency>
 
+        <!-- Engine NUR fuer die modul-eigenen Tests unter src/test/java. Die publizierten Arch-Tests
+             in src/main/java laufen im Consumer mit dessen Engine; archunit-junit5 bringt nur die
+             ArchUnit-Engine mit, nicht die Jupiter-Engine. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- plaintext-root-common bringt transitiv:
              - ch.plaintext.boot.utils.MobileFormLinter (Scan-Logik des Mobile-Linters)
              - ch.plaintext:plaintext-root-interfaces -> ch.plaintext.PlaintextCron
