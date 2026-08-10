@@ -72,10 +72,19 @@
             <artifactId>commons-io</artifactId>
         </dependency>
 
-        <!-- XStream for JPA Converters -->
+        <!-- XStream for JPA Converters.
+             Wird nur noch zum LESEN von Altbestand gebraucht, siehe
+             SimpleStorableConverter - geschrieben wird JSON. Kann entfallen,
+             sobald in keiner Installation mehr XML-Werte in den Spalten stehen. -->
         <dependency>
             <groupId>com.thoughtworks.xstream</groupId>
             <artifactId>xstream</artifactId>
+        </dependency>
+
+        <!-- Jackson: das Format, in dem JPA-Converter neu schreiben. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
 
         <!-- JSF/PrimeFaces -->
