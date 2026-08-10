@@ -297,6 +297,25 @@ class JwtTokenServiceTest {
                 "Leerer Wert laesst den Claim weg statt einen leeren iss zu schreiben");
     }
 
+    /**
+     * Der Vertrag, über den Fachmodule den Ausweis anfordern: {@code ch.plaintext.ServiceTokenIssuer}
+     * aus {@code plaintext-root-interfaces}. Ohne ihn müsste ein Modul wie {@code plaintext-guild-events}
+     * von {@code plaintext-admin-apitoken} abhängen — also vom Halter des privaten Schlüssels.
+     */
+    @Test
+    void serviceToken_istUeberDenVertragAusRootInterfacesErreichbar() {
+        JwtTokenService service = serviceWithoutVault();
+        service.init();
+
+        ch.plaintext.ServiceTokenIssuer vertrag = service;
+        String token = vertrag.signServiceToken("guild-checkin-desk", "guild42-label-printer",
+                java.time.Duration.ofMinutes(30));
+
+        assertEquals("guild-checkin-desk", claimsOf(service, token).getSubject());
+        assertFalse(service.validateToken(token).isPresent(),
+                "Auch ueber den Vertrag ausgestellt bleibt der Ausweis kein API-Token");
+    }
+
     @Test
     void serviceToken_ohneGeladeneSchluessel_meldetNichtBereit() {
         // init() absichtlich NICHT aufrufen: Zustand waehrend der Vault-Wartezeit beim Start.
