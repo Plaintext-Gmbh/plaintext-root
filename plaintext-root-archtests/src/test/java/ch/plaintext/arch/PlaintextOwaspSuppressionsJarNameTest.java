@@ -61,9 +61,10 @@ class PlaintextOwaspSuppressionsJarNameTest {
 
     @Test
     void bleibtBeiPathologischemNamenLinear() {
-        // Genau der Eingabetyp, an dem das alte Muster quadratisch wurde: sehr viele Bindestriche
-        // ohne folgende Ziffer, dann keine .jar-Endung.
-        String bosartig = "a-".repeat(20000) + "b";
+        // Genau der Eingabetyp, an dem das alte Muster quadratisch wurde: viele "-Ziffer"-Stellen
+        // fuer die beiden reluktanten Gruppen, und eine Endung, die knapp nicht passt. Mit dem
+        // alten Ausdruck gemessen: 372 ms bei n=2000, 1351 ms bei n=4000, 4783 ms bei n=8000.
+        String bosartig = "a-1".repeat(8000) + ".ja";
         assertTimeout(Duration.ofSeconds(2),
                 () -> assertNull(PlaintextOwaspSuppressionsTest.zerlegeJarName(bosartig)));
     }
