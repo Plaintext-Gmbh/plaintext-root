@@ -3,7 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.objstore;
 
-import ch.plaintext.boot.plugins.jsf.userprofile.UserPreference;
+import lombok.Getter;
+import lombok.Setter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -17,19 +18,30 @@ import static org.mockito.Mockito.*;
 
 /**
  * Tests for GenericEntityService - generic object storage service.
+ *
+ * <p>Verwendet einen eigenen Testtyp statt TestPref: der Service liegt
+ * seit der Auslagerung in plaintext-root-common, und ein Test dort darf nicht
+ * auf das webapp-Modul zeigen.</p>
  */
 @ExtendWith(MockitoExtension.class)
 class GenericEntityServiceTest {
+
+    @Getter
+    @Setter
+    public static class TestPref implements SimpleStorable<TestPref> {
+        private String uniqueId;
+        private String darkMode;
+    }
 
     @Mock
     private SimpleStorableEntityRepository repository;
 
     @InjectMocks
-    private GenericEntityService<UserPreference> service;
+    private GenericEntityService<TestPref> service;
 
     @Test
     void save_shouldCreateNewEntity_whenNotExists() {
-        UserPreference pref = new UserPreference();
+        TestPref pref = new TestPref();
         pref.setUniqueId("user1");
         when(repository.findByUniqueId("user1")).thenReturn(null);
 
@@ -44,7 +56,7 @@ class GenericEntityServiceTest {
 
     @Test
     void save_shouldUpdateExistingEntity_whenExists() {
-        UserPreference pref = new UserPreference();
+        TestPref pref = new TestPref();
         pref.setUniqueId("user1");
 
         SimpleStorableEntity existingEntity = new SimpleStorableEntity();
@@ -60,7 +72,7 @@ class GenericEntityServiceTest {
 
     @Test
     void save_shouldHandleException() {
-        UserPreference pref = new UserPreference();
+        TestPref pref = new TestPref();
         pref.setUniqueId("user1");
         when(repository.findByUniqueId("user1")).thenThrow(new RuntimeException("DB error"));
 
@@ -69,7 +81,7 @@ class GenericEntityServiceTest {
 
     @Test
     void findByUniqueId_shouldReturnObject_whenExists() {
-        UserPreference pref = new UserPreference();
+        TestPref pref = new TestPref();
         pref.setUniqueId("user1");
         pref.setDarkMode("dark");
 
@@ -77,7 +89,7 @@ class GenericEntityServiceTest {
         entity.setMyObject(pref);
         when(repository.findByUniqueId("user1")).thenReturn(entity);
 
-        UserPreference result = service.findByUniqueId("user1");
+        TestPref result = service.findByUniqueId("user1");
 
         assertNotNull(result);
         assertEquals("dark", result.getDarkMode());
@@ -87,7 +99,7 @@ class GenericEntityServiceTest {
     void findByUniqueId_shouldReturnNull_whenNotExists() {
         when(repository.findByUniqueId("nonexistent")).thenReturn(null);
 
-        UserPreference result = service.findByUniqueId("nonexistent");
+        TestPref result = service.findByUniqueId("nonexistent");
 
         assertNull(result);
     }
