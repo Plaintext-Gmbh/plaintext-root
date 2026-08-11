@@ -114,6 +114,36 @@
                 </div>
             </p:fieldset>
 
+            <!-- Sitzungen (Karte 627) -->
+            <p:fieldset legend="#{i18n.t('Sitzungen')}" toggleable="true" style="margin-bottom: 1rem;">
+                <div class="grid">
+                    <div class="col-12 md:col-8">
+                        <h:panelGrid columns="2" cellpadding="5" style="width:100%;">
+                            <h:outputText value="#{i18n.t('Sitzungs-Informationen aufzeichnen')}:" style="font-weight:bold;"/>
+                            <p:toggleSwitch id="sessionTrackingEnabled" value="#{setupBackingBean.sessionTrackingEnabled}"/>
+                        </h:panelGrid>
+
+                        <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-save"
+                                         actionListener="#{setupBackingBean.saveSessionSettings()}"
+                                         update="messages"
+                                         process="sessionTrackingEnabled @this"
+                                         style="margin-top:10px;"/>
+
+                        <div style="margin-top:15px;">
+                            <small style="color: var(--text-color-secondary, #6c757d);">
+                                <i class="pi pi-info-circle" style="margin-right:5px;"/>
+                                #{i18n.t('Aufgezeichnet werden je Sitzung: Benutzer, Mandant, Sitzungs-Id, Browserkennung (User-Agent), Anmeldezeit und letzte Aktivität — keine Inhalte und keine Klickpfade.')}
+                            </small>
+                            <br/>
+                            <small style="color: var(--text-color-secondary, #6c757d);">
+                                <i class="pi pi-info-circle" style="margin-right:5px;"/>
+                                #{i18n.t('Wenn deaktiviert, bleibt die Sitzungsübersicht (Root → Sitzungen) leer, weil keine neuen Einträge mehr entstehen. Bereits aufgezeichnete Sitzungen bleiben erhalten und werden nicht gelöscht. Das Beenden einer laufenden Sitzung funktioniert weiterhin. Die Umstellung wirkt sofort, ohne Neustart.')}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </p:fieldset>
+
             <!-- Logo Light -->
             <p:fieldset legend="#{i18n.t('Logo (Light Mode)')}" toggleable="true" style="margin-bottom: 1rem;">
                 <div class="grid">

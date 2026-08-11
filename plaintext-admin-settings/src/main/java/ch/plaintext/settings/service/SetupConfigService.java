@@ -75,6 +75,14 @@ public class SetupConfigService implements ISetupConfigService {
     }
 
     @Override
+    public boolean isSessionTrackingEnabled(String mandat) {
+        // Karte 627: Fehlt eine Konfiguration, wird aufgezeichnet — so war es vor dem Schalter.
+        return repository.findByMandat(mandat)
+                .map(SetupConfig::isSessionTrackingEnabled)
+                .orElse(true);
+    }
+
+    @Override
     public Long getSystemMailAccountId() {
         // GLOBAL-Systemkonto ist system-weit (nur ROOT konfiguriert es) -> erste Konfiguration mit gesetztem Wert.
         return repository.findFirstBySystemMailAccountIdNotNull()

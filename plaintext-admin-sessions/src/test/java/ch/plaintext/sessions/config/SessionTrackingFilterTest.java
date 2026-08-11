@@ -6,6 +6,7 @@ package ch.plaintext.sessions.config;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.sessions.service.HttpSessionRegistry;
 import ch.plaintext.sessions.service.SessionAuditServiceImpl;
+import ch.plaintext.settings.ISetupConfigService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,10 +17,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,11 +55,22 @@ class SessionTrackingFilterTest {
     @Mock
     private SecurityContext securityContext;
 
+    @Mock
+    private ObjectProvider<ISetupConfigService> setupConfigProvider;
+
+    @Mock
+    private ISetupConfigService setupConfigService;
+
     private SessionTrackingFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new SessionTrackingFilter(sessionAuditService, security, sessionRegistry);
+        filter = new SessionTrackingFilter(sessionAuditService, security, sessionRegistry, setupConfigProvider);
+        // Karte 627: Voreinstellung fuer die bestehenden Faelle ist „Schalter an" — sie pruefen das
+        // Verhalten VOR dem Schalter und muessen es unveraendert weiter belegen. lenient(), weil die
+        // meisten Faelle abbrechen, bevor der Schalter ueberhaupt gelesen wird.
+        lenient().when(setupConfigProvider.getIfAvailable()).thenReturn(setupConfigService);
+        lenient().when(setupConfigService.isSessionTrackingEnabled(any())).thenReturn(true);
     }
 
     @Test
@@ -189,5 +203,70 @@ class SessionTrackingFilterTest {
         verify(sessionRegistry).registerSession("sess-456", httpSession);
         verify(sessionAuditService).updateOrCreate(99L, "sess-456", authentication, "Mozilla/5.0");
         verify(filterChain).doFilter(httpRequest, httpResponse);
+    }
+
+    // ── Karte 627: der Schalter ────────────────────────────────────────────────────────────────
+
+    /**
+     * Der Zweck der Karte: Schalter aus → kein neuer Eintrag. Die Registrierung in der flüchtigen
+     * {@link HttpSessionRegistry} läuft weiter, sonst verlöre ROOT das Zwangs-Abmelden.
+     */
+    @Test
+    void schalterAusZeichnetNichtAufLaesstAberDasAbmeldenIntakt() {
+        angemeldeteSitzung("sess-aus", 7L, "Firefox/1.0");
+        when(security.getMandat()).thenReturn("default");
+        when(setupConfigService.isSessionTrackingEnabled("default")).thenReturn(false);
+
+        filter.trackSessionAsync(httpRequest);
+
+        verify(sessionRegistry).registerSession("sess-aus", httpSession);
+        verifyNoInteractions(sessionAuditService);
+    }
+
+    @Test
+    void schalterAnZeichnetAuf() {
+        angemeldeteSitzung("sess-an", 7L, "Firefox/1.0");
+        when(security.getMandat()).thenReturn("default");
+        when(setupConfigService.isSessionTrackingEnabled("default")).thenReturn(true);
+
+        filter.trackSessionAsync(httpRequest);
+
+        verify(sessionAuditService).updateOrCreate(7L, "sess-an", authentication, "Firefox/1.0");
+    }
+
+    /** Anwendung ohne Modul {@code plaintext-admin-settings}: aufzeichnen wie vor der Karte. */
+    @Test
+    void ohneSettingsModulWirdAufgezeichnet() {
+        angemeldeteSitzung("sess-ohne", 8L, "curl/8.0");
+        when(setupConfigProvider.getIfAvailable()).thenReturn(null);
+
+        filter.trackSessionAsync(httpRequest);
+
+        verify(sessionAuditService).updateOrCreate(8L, "sess-ohne", authentication, "curl/8.0");
+    }
+
+    /**
+     * Ein Fehler beim Lesen des Schalters darf die Aufzeichnung nicht stillschweigend beenden —
+     * das wäre ein Datenverlust, den niemand bemerkt, weil kein Request fehlschlägt.
+     */
+    @Test
+    void schalterNichtLesbarZeichnetAuf() {
+        angemeldeteSitzung("sess-fehler", 9L, "curl/8.0");
+        when(security.getMandat()).thenThrow(new IllegalStateException("kein Mandant im Kontext"));
+
+        filter.trackSessionAsync(httpRequest);
+
+        verify(sessionAuditService).updateOrCreate(9L, "sess-fehler", authentication, "curl/8.0");
+    }
+
+    private void angemeldeteSitzung(String sessionId, Long userId, String userAgent) {
+        SecurityContextHolder.setContext(securityContext);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn("admin");
+        when(httpRequest.getSession(false)).thenReturn(httpSession);
+        when(httpSession.getId()).thenReturn(sessionId);
+        when(security.getId()).thenReturn(userId);
+        when(httpRequest.getHeader("User-Agent")).thenReturn(userAgent);
     }
 }
