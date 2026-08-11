@@ -302,6 +302,28 @@ public class PlaintextSecurityConfig {
                 })
                 .authorizeHttpRequests(authorize -> {
                     authorize
+                            // SECURITY/API-VERTRAG (Karte 652): Jeder ueber response.sendError(...)
+                            // erzeugte Fehler — 403 aus dem AccessDeniedHandler, 404 aus Spring MVC,
+                            // 500 aus einem Controller — loest im Servlet-Container einen zweiten,
+                            // INTERNEN Durchlauf auf /error aus (DispatcherType.ERROR), und zwar erst
+                            // NACHDEM die komplette Filterkette zurueckgekehrt ist. Die
+                            // springSecurityFilterChain ist per Boot-Default auf REQUEST+ASYNC+ERROR
+                            // gemappt und lief deshalb erneut — dort ist der Aufrufer anonym (die
+                            // Bearer-/Token-Filter sind FilterRegistrationBeans und laufen nur auf
+                            // REQUEST), /error faellt unter anyRequest().authenticated(), und der
+                            // LoginUrlAuthenticationEntryPoint ueberschrieb den urspruenglichen
+                            // Status mit 302 auf die Anmeldeseite.
+                            //
+                            // Messbar war das ohne jede Authentisierung: GET /nosec/gibtsnicht — ein
+                            // permitAll-Pfad — lieferte 302 auf /login.html statt 404 (schuetu INT,
+                            // 11.08.2026). Fuer API-Clients ist der Effekt schwerwiegender: eine
+                            // fehlende Berechtigung kam als HTML-Anmeldeseite an, und ein Skript mit
+                            // `curl -L` sah daraus HTTP 200 — eine Rechteverweigerung als Erfolg.
+                            //
+                            // Der DispatcherType ERROR wird ausschliesslich vom Container gesetzt;
+                            // ein Aufruf von aussen traegt immer REQUEST. Diese Regel oeffnet /error
+                            // also NICHT fuer externe Aufrufer (Gegenprobe im ErrorDispatchChainTest).
+                            .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll()
                             .requestMatchers(permitAllArray).permitAll()
                             .requestMatchers("/actuator/**").hasRole("ADMIN")
                             // SECURITY (Karte 304): /api/i18n/** ist Uebersetzungs-Verwaltung und lag

@@ -114,17 +114,21 @@ class SecurityTest {
     @Test
     void anonymerPostAufXhtmlOhneCsrfTokenWirdGeblockt() {
         // /login.xhtml ist permitAll — die Blockade hier ist eindeutig CSRF, nicht Autorisierung
+        // ERWARTUNG GEAENDERT (Karte 652): Bis zum 11.08.2026 verlangte dieser Test eine
+        // 3xx-Umleitung auf /login.html. Genau das war der Bug: `sendError(403)` loeste einen
+        // ERROR-Dispatch auf /error aus, der erneut durch die Security-Kette lief und den Status
+        // mit einer Umleitung ueberschrieb. Der Test hat dieses Verhalten als Normalfall
+        // festgeschrieben — eine abgewiesene Anfrage kam beim Aufrufer als "geh dich anmelden" an,
+        // und ein Skript mit `curl -L` las daraus HTTP 200.
+        // Geblockt wird weiterhin, nur sichtbar: 403 statt Umleitung.
         ResponseEntity<String> response = lenientClient().post()
                 .uri("/login.xhtml")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body("dummy=1")
                 .retrieve()
                 .toEntity(String.class);
-        assertTrue(response.getStatusCode().is3xxRedirection(),
-                "POST auf .xhtml ohne _csrf-Token muss geblockt werden, war: " + response.getStatusCode());
-        String location = response.getHeaders().getFirst(HttpHeaders.LOCATION);
-        assertNotNull(location);
-        assertTrue(location.contains("/login.html"), "CSRF-Ablehnung anonymer Requests landet auf der Login-Seite, war: " + location);
+        assertEquals(403, response.getStatusCode().value(),
+                "POST auf .xhtml ohne _csrf-Token muss mit 403 geblockt werden, war: " + response.getStatusCode());
     }
 
     @Test
