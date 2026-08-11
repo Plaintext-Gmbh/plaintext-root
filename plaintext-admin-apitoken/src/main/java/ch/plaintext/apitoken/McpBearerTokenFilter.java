@@ -135,8 +135,16 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * Vollständige Validierung inkl. DB-Revocation-Check (leak-frei seit root ≥ 1.246.0) —
-     * das bisherige Verhalten der iot-Kopie und die empfohlene Strategie. Ohne jti-Blocklist-Prüfung
+     * Vollständige Validierung inkl. DB-Revocation-Check — das bisherige Verhalten der iot-Kopie
+     * und die empfohlene Strategie.
+     * <p>
+     * <b>Nicht mehr „leak-frei seit root ≥ 1.246.0" (Karte 655, 11.08.2026).</b> Der damalige Fix
+     * beseitigte das {@code @Transactional}-Leck; das view-gebundene bleibt: Der OSIV-Filter
+     * umschliesst diese Filterkette, deshalb haelt der JPA-Revocation-Lookup seine DB-Verbindung
+     * bis zum Requestende — bei einer MCP-Sitzung also ueber deren ganze Laufzeit. Gemessen in
+     * plaintext-iot: 15 {@code Apparent connection leak detected} in 7 Tagen mit
+     * {@code ApiTokenService.validateVerifiedToken} im Stack. Einordnung und Begruendung, warum
+     * das (noch) nicht umgebaut wird, im Javadoc von {@link ApiTokenService#validateToken}. Ohne jti-Blocklist-Prüfung
      * (die Hash-Allowlist in {@link ApiTokenService} deckt Revocation hier bereits ab; von dieser
      * Strategie geminzte Tokens tragen aktuell keinen scope/jti-Claim).
      */

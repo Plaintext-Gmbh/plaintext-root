@@ -339,14 +339,32 @@ public class ApiTokenService implements IApiTokenService {
      * 4. Update last-used timestamp (best effort)
      * <p>
      * <b>Deliberately NOT {@code @Transactional}.</b> This method is called from servlet
-     * filters and non-MVC / reactive (Spring-AI MCP) request contexts that live outside the
-     * DispatcherServlet / OpenSessionInView lifecycle. A method-level transaction bound to such
+     * filters and non-MVC / reactive (Spring-AI MCP) request contexts outside the
+     * DispatcherServlet. A method-level transaction bound to such
      * a thread never gets its {@code TransactionSynchronizationManager} thread-locals cleaned up,
      * so the Hikari connection is committed but never returned to the pool — the pool is exhausted
      * after {@code maxPoolSize} validations. The read ({@code findByTokenHash}) and the best-effort
-     * last-used write ({@code save}) therefore each run in their own short Spring Data transaction
-     * that releases its connection immediately. They need no shared transaction: the last-used
+     * last-used write ({@code save}) therefore each run in their own short Spring Data transaction.
+     * They need no shared transaction: the last-used
      * update is non-critical statistics, not atomic with the revocation check.
+     * <p>
+     * <b>Correction, Karte 655 (11.08.2026): the connection is NOT released immediately, and this
+     * path is NOT outside the OpenSessionInView lifecycle.</b> A full Hikari leak stack trace from
+     * PROD shows {@code OpenEntityManagerInViewFilter.doFilterInternal} <i>below</i> the entire
+     * Spring Security filter chain — it wraps {@link McpBearerTokenFilter} as well. With
+     * {@code spring.jpa.open-in-view=true} (Boot default, disabled in none of the repos) the first
+     * JPA access binds an EntityManager to the request, so {@code findByTokenHash} keeps its
+     * connection until the request ends. For an MCP session ({@code protocol: STREAMABLE}) that is
+     * the whole session, and HikariCP reports it after 60 s as
+     * {@code Apparent connection leak detected} — 15 times in 7 days in plaintext-iot, every single
+     * one on an {@code http-nio-8080-exec-*} thread with this method in the stack.
+     * <p>
+     * This is the same mechanism {@code McpUserRolesImpl} already documents and avoids for the role
+     * lookup (Karte 437, {@code JdbcTemplate} instead of JPA); the revocation lookup here was left
+     * on JPA. It is a warning sign, not an outage: the connections come back when the session ends,
+     * and no pool exhaustion has ever been observed. Converting this lookup to JDBC is deliberately
+     * <b>not</b> done as a side effect — it touches revocation, i.e. security-relevant behaviour,
+     * and needs its own card and its own evidence.
      */
     @Override
     public Optional<ApiTokenValidationResult> validateToken(String jwtToken) {
