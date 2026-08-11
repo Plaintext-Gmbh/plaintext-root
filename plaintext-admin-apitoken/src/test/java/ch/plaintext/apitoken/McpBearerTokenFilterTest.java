@@ -590,4 +590,66 @@ class McpBearerTokenFilterTest {
         assertNull(SecurityContextHolder.getContext().getAuthentication(),
                 "finally raeumt auch beim Durchreichen auf");
     }
+
+    // ------------------------------------------------------------------ Karte 652: Recht fehlt
+
+    /**
+     * Karte 652: Eine Rechteverweigerung aus {@code @PreAuthorize} erreicht diesen Filter NICHT als
+     * {@link org.springframework.security.access.AccessDeniedException}, sondern in eine
+     * {@link jakarta.servlet.ServletException} gehuellt — so wickelt der DispatcherServlet sie ein.
+     * Der erste Anlauf dieser Karte fing nur den unverpackten Typ und wurde deshalb nie ausgefuehrt;
+     * der Aufrufer bekam weiterhin 302 auf /login.html (gemessen an schuetu INT, 11.08.2026).
+     */
+    @Test
+    void verpackteAccessDeniedException_wird403Json() throws Exception {
+        JwtTokenService jwt = jwtValidating("gueltig", 42L, "default", "mcp@plaintext.ch", "READ", null);
+        HttpServletRequest request = requestWithAuth("Bearer gueltig");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRequestURI()).thenReturn("/api/turnier/kommando");
+        StringWriter sink = new StringWriter();
+        HttpServletResponse response = responseWithWriter(sink);
+        when(response.isCommitted()).thenReturn(false);
+        FilterChain chain = (rq, rs) -> {
+            throw new jakarta.servlet.ServletException(
+                    new org.springframework.security.access.AccessDeniedException("Access Denied"));
+        };
+
+        jwtFilter(jwt, mock(McpUserRoles.class)).doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        verify(response).setContentType("application/json");
+        assertTrue(sink.toString().contains("Forbidden"),
+                "Der Rumpf muss JSON sein, war: " + sink);
+    }
+
+    /**
+     * Gegenprobe: Ohne diese Abgrenzung waere aus dem catch ein Schweigefilter geworden — ein
+     * beliebiger Serverfehler duerfte nicht als 403 beim Client landen.
+     */
+    @Test
+    void andereVerpackteFehler_werdenDurchgereicht() throws Exception {
+        JwtTokenService jwt = jwtValidating("gueltig", 42L, "default", "mcp@plaintext.ch", "READ", null);
+        HttpServletRequest request = requestWithAuth("Bearer gueltig");
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        FilterChain chain = (rq, rs) -> {
+            throw new jakarta.servlet.ServletException(new IllegalStateException("Datenbank weg"));
+        };
+
+        assertThrows(jakarta.servlet.ServletException.class,
+                () -> jwtFilter(jwt, mock(McpUserRoles.class)).doFilter(request, response, chain));
+        verify(response, never()).setStatus(HttpServletResponse.SC_FORBIDDEN);
+    }
+
+    @Test
+    void findeAccessDenied_findetNichtsInEinerZyklischenKette() {
+        RuntimeException selbstbezug = new RuntimeException("zyklisch") {
+            @Override
+            public synchronized Throwable getCause() {
+                return this;
+            }
+        };
+        assertNull(McpBearerTokenFilter.findeAccessDenied(selbstbezug),
+                "Eine sich selbst als Ursache tragende Exception darf nicht zur Endlosschleife fuehren");
+    }
+
 }
