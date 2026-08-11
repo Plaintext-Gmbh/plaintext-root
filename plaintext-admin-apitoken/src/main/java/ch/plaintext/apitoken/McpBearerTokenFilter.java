@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -209,6 +210,34 @@ public class McpBearerTokenFilter implements Filter {
         try {
             log.debug("MCP request authenticated for user {} mandat={}", validation.userId(), validation.mandat());
             chain.doFilter(request, response);
+        } catch (AccessDeniedException e) {
+            // SECURITY/API-VERTRAG (Karte 652): Ein Bearer-Client, dem ein Recht fehlt, bekam bisher
+            // HTTP 302 auf /login.html — HTML fuer ein Geraet, das JSON erwartet. Gemessen an
+            // schuetu INT am 11.08.2026: READ-Token gegen
+            // @PreAuthorize("hasAuthority('SCOPE_WRITE')") -> 302; mit `curl -L` wird daraus
+            // HTTP 200 mit 14 534 Bytes Anmeldeseite, also ein Erfolg im aufrufenden Skript.
+            //
+            // Ursache ist die POSITION dieses Filters, nicht die Security-Konfiguration: Er laeuft
+            // mit order=1 HINTER der Security-Kette (-100). Die AccessDeniedException aus
+            // @PreAuthorize passiert auf dem Rueckweg zuerst das finally unten — das den
+            // vorherigen, anonymen Context wiederherstellt — und erst danach den
+            // ExceptionTranslationFilter. Der entscheidet aber genau an dieser Authentication
+            // zwischen 403 (angemeldet, kein Recht) und 302 auf die Anmeldung (anonym). Der Filter
+            // hatte seine eigene Authentication also weggeraeumt, bevor sie beurteilt werden
+            // konnte.
+            //
+            // Deshalb schliesst der Fall hier ab, wo er entstanden ist: dieselbe JSON-Form wie das
+            // 401 oben, und nur fuer die url-patterns dieses Filters — JSF-/Browser-Pfade kommen
+            // hier nie vorbei und leiten weiterhin auf /login.html um.
+            if (httpResponse.isCommitted()) {
+                // Antwort laeuft bereits (z.B. eine SSE-Verbindung unter /mcp): Ein nachgeschobener
+                // JSON-Rumpf wuerde den Datenstrom zerstoeren. Dann lieber die Exception weiterreichen.
+                throw e;
+            }
+            log.warn("MCP request abgewiesen (Recht fehlt): {} {} — userId={}, scope={} → 403 JSON",
+                    httpRequest.getMethod(), httpRequest.getRequestURI(),
+                    validation.userId(), validation.scope());
+            forbidden(httpResponse);
         } finally {
             SecurityContextHolder.setContext(previous);
         }
@@ -218,6 +247,17 @@ public class McpBearerTokenFilter implements Filter {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Valid Bearer token required\"}");
+    }
+
+    /**
+     * Gegenstueck zu {@link #unauthorized(HttpServletResponse)} fuer den Fall „Token gueltig, Recht
+     * fehlt" (Karte 652). Bewusst ohne Angabe, welcher Scope gefehlt hat: Der Client kann daran
+     * nichts aendern, und die Endpunkt-Rechtematrix gehoert nicht in eine Fehlerantwort.
+     */
+    private void forbidden(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"Token lacks the required scope for this endpoint\"}");
     }
 
     /**
