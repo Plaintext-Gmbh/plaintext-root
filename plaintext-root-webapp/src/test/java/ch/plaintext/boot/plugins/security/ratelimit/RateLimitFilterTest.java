@@ -394,4 +394,107 @@ class RateLimitFilterTest {
         }
         verify(filterChain, times(10)).doFilter(request, response);
     }
+
+    // ---------------------------------------------------------------- CalDAV/CardDAV (Karte 657)
+
+    /**
+     * Karte 657: CalDAV lag im generischen /nosec-Eimer und hat damit 73 Mal echte Clients
+     * abgewiesen — darunter vier Aufrufe der oeffentlichen Terminseite durch einen Browser, der
+     * sich das Kontingent mit einem gleichzeitigen Apple-Sync teilte. Gemessen am nginx-Log von
+     * plaintext-app: Spitzen von 85 CalDAV-Anfragen pro Minute gegen eine Grenze von 60.
+     */
+    private RateLimitFilter mitDavGrenze(int davMax, int nosecPublicMax) {
+        // api, login, claude, nosec-token, nosec-public, dav
+        return new RateLimitFilter(5, 60, 3, 60, 4, 60, 2, 60, nosecPublicMax, 60, davMax, 60);
+    }
+
+    @Test
+    @DisplayName("CalDAV verbraucht den DAV-Eimer und nicht das generische /nosec-Limit")
+    void calDavNutztEigenenEimer() throws Exception {
+        // Generisches Limit absichtlich winzig (1): Laege CalDAV noch darin, waere ab dem
+        // zweiten Aufruf Schluss. Der DAV-Eimer erlaubt 6.
+        RateLimitFilter f = mitDavGrenze(6, 1);
+        when(request.getRequestURI()).thenReturn("/nosec/caldav/mad/4/");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.40");
+
+        for (int i = 0; i < 6; i++) {
+            f.doFilter(request, response, filterChain);
+        }
+
+        verify(filterChain, times(6)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+    }
+
+    @Test
+    @DisplayName("CardDAV ebenso — der Zweig deckt beide Protokolle ab")
+    void cardDavNutztDenselbenEimer() throws Exception {
+        RateLimitFilter f = mitDavGrenze(6, 1);
+        when(request.getRequestURI()).thenReturn("/nosec/carddav/mad/addressbooks/default/");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.41");
+
+        for (int i = 0; i < 6; i++) {
+            f.doFilter(request, response, filterChain);
+        }
+
+        verify(filterChain, times(6)).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("Der DAV-Eimer ist eine Bremse, keine Freikarte")
+    void davEimerGreiftAnSeinerGrenze() throws Exception {
+        RateLimitFilter f = mitDavGrenze(3, 60);
+        when(request.getRequestURI()).thenReturn("/nosec/caldav/mad/");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.42");
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        for (int i = 0; i < 4; i++) {
+            f.doFilter(request, response, filterChain);
+        }
+
+        verify(filterChain, times(3)).doFilter(request, response);
+        verify(response).setStatus(429);
+    }
+
+    /**
+     * Der Kern des Befunds: Ein CalDAV-Sync darf die oeffentliche Terminseite nicht mehr
+     * aussperren. Frueher teilten sich beide den nosec-public-Eimer.
+     */
+    @Test
+    @DisplayName("Ein ausgeschoepfter DAV-Eimer sperrt die oeffentliche Terminseite NICHT aus")
+    void davVerbrauchSperrtDieTerminseiteNicht() throws Exception {
+        RateLimitFilter f = mitDavGrenze(2, 5);
+        when(request.getRemoteAddr()).thenReturn("203.0.113.43");
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        // DAV-Eimer leerlaufen lassen (2 erlaubt, der dritte wird abgewiesen)
+        when(request.getRequestURI()).thenReturn("/nosec/caldav/mad/");
+        for (int i = 0; i < 3; i++) {
+            f.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(2)).doFilter(request, response);
+
+        // Derselbe Anschluss ruft jetzt die oeffentliche Terminseite auf — muss durchkommen.
+        reset(filterChain);
+        when(request.getRequestURI()).thenReturn("/nosec/khost/termin/9902861ff6774a9b8ae7ad442d44df8a");
+        f.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    /** Die uebrigen /nosec-Pfade bleiben am generischen Limit — Karte 314/16 gilt unveraendert. */
+    @Test
+    @DisplayName("Nicht-DAV-Pfade unter /nosec bleiben am generischen Limit")
+    void generischesNosecLimitUnveraendert() throws Exception {
+        RateLimitFilter f = mitDavGrenze(240, 2);
+        when(request.getRequestURI()).thenReturn("/nosec/wiki/p/seite.xhtml");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.44");
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        for (int i = 0; i < 3; i++) {
+            f.doFilter(request, response, filterChain);
+        }
+
+        verify(filterChain, times(2)).doFilter(request, response);
+        verify(response).setStatus(429);
+    }
 }
