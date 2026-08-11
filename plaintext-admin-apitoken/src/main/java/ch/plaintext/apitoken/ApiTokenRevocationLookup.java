@@ -43,6 +43,25 @@ public interface ApiTokenRevocationLookup {
     Optional<TokenZustand> findForValidation(String tokenHash);
 
     /**
+     * Karte 664: Ist das Token mit diesem {@code jti} widerrufen worden?
+     *
+     * <p>Gegenstück zu {@link #findForValidation(String)} für den <b>JWT-Modus</b>
+     * ({@code plaintext.mcp.validation=JWT}, also app/guild/schuetu). Dort gibt es keinen
+     * Token-Hash zum Nachschlagen — der Filter kennt nur die Claims —, und deshalb war ein
+     * Widerruf dort bis zu einem Jahr lang wirkungslos.
+     *
+     * <p><b>Der Unterschied zu {@code findForValidation} ist die Lesart des Nichttreffers</b>, und
+     * sie ist der ganze Punkt: Dort heisst „keine Zeile" <i>widerrufen oder nie ausgestellt</i>;
+     * hier heisst es <i>nicht widerrufen</i>. Nur so bleiben die JWT-only-Tokens unberührt, die
+     * gar keine Zeile in {@code api_token} haben (Zeiterfassungs-Uhr, Juriwagen, {@code minten}) —
+     * genau jene, die ein Umstellen auf {@code validation=DATABASE} aussperren würde (Karte 305).
+     *
+     * @param jti {@code jti}-Claim des zu prüfenden Tokens
+     * @return {@code true} nur bei einer gefundenen, als {@code invalidated} markierten Zeile
+     */
+    boolean isJtiRevoked(String jti);
+
+    /**
      * Schreibt die Nutzungsstatistik fort: {@code last_used_at = jetzt},
      * {@code use_count = use_count + 1}, {@code updated_at = jetzt}.
      *

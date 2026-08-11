@@ -1,1 +1,2 @@
 ch.plaintext.apitoken.config.ApiTokenModuleConfiguration
+ch.plaintext.apitoken.config.JtiRevocationAutoConfiguration

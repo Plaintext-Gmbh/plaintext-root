@@ -291,4 +291,66 @@ class ApiTokenServiceTest {
                 "Schlaegt dieser Test fehl, wurde der Scope-Erhalt beim Regenerieren nachgeruestet — "
                         + "dann diese Erwartung auf den erhaltenen Scope umstellen (Karte 504/349).");
     }
+
+    /**
+     * Karte 664: Ohne den {@code jti} in der Zeile kann der Filter ein eingehendes Token nicht
+     * seiner Zeile zuordnen — {@code revoke_api_token} meldet dann Erfolg und das Token
+     * funktioniert weiter. Der Test haelt das Bindeglied fest.
+     */
+    @Test
+    void createTokenSchreibtDenJtiInDieZeile() {
+        when(repo.countByUserIdAndMandatAndDeleted(anyLong(), anyString(), any())).thenReturn(0L);
+        when(repo.findByUserIdAndMandatAndTokenNameAndDeleted(anyLong(), anyString(), anyString(), any()))
+                .thenReturn(Optional.empty());
+        when(jwt.generateToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), any()))
+                .thenReturn(TOKEN);
+        when(jwt.extractJti(TOKEN)).thenReturn(Optional.of("jti-4711"));
+        ArgumentCaptor<ApiToken> gespeichert = ArgumentCaptor.forClass(ApiToken.class);
+
+        service.createToken(7L, "plaintext", "cli", "u@x.ch", 90, "READ");
+
+        verify(repo).save(gespeichert.capture());
+        assertEquals("jti-4711", gespeichert.getValue().getJti());
+    }
+
+    /**
+     * Karte 664: Auch Service-Tokens (Uhr, Juriwagen) muessen widerrufbar sein — sie laufen
+     * ueber einen eigenen Ausstellungspfad, der sonst leicht vergessen wird.
+     */
+    @Test
+    void createServiceTokenSchreibtDenJtiEbenfalls() {
+        when(repo.findByUserIdAndMandatAndDeletedOrderByCreatedAtDesc(anyLong(), anyString(), any()))
+                .thenReturn(List.of());
+        when(jwt.generateToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), any()))
+                .thenReturn(TOKEN);
+        when(jwt.extractJti(TOKEN)).thenReturn(Optional.of("jti-uhr"));
+        ArgumentCaptor<ApiToken> gespeichert = ArgumentCaptor.forClass(ApiToken.class);
+
+        service.createServiceToken(7L, "plaintext", "uhr", "u@x.ch", 90, "EINTRAGEN");
+
+        verify(repo).save(gespeichert.capture());
+        assertEquals("jti-uhr", gespeichert.getValue().getJti());
+    }
+
+    /**
+     * Karte 664: Ein nicht lesbarer jti darf die Ausstellung nicht scheitern lassen. Die Zeile
+     * bekommt dann {@code null} — das heisst „unbekannt", nicht „widerrufen", und das Token
+     * verhaelt sich wie eines von vor dieser Karte.
+     */
+    @Test
+    void createTokenBleibtErfolgreichWennDerJtiNichtLesbarIst() {
+        when(repo.countByUserIdAndMandatAndDeleted(anyLong(), anyString(), any())).thenReturn(0L);
+        when(repo.findByUserIdAndMandatAndTokenNameAndDeleted(anyLong(), anyString(), anyString(), any()))
+                .thenReturn(Optional.empty());
+        when(jwt.generateToken(anyLong(), anyString(), anyString(), anyString(), anyInt(), any()))
+                .thenReturn(TOKEN);
+        when(jwt.extractJti(TOKEN)).thenReturn(Optional.empty());
+        ArgumentCaptor<ApiToken> gespeichert = ArgumentCaptor.forClass(ApiToken.class);
+
+        String ausgestellt = service.createToken(7L, "plaintext", "cli", "u@x.ch", 90, "READ");
+
+        assertEquals(TOKEN, ausgestellt);
+        verify(repo).save(gespeichert.capture());
+        assertEquals(null, gespeichert.getValue().getJti());
+    }
 }
