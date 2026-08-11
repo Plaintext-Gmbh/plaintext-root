@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -505,5 +506,88 @@ class McpBearerTokenFilterTest {
                         mock(IApiTokenService.class), mock(McpUserRoles.class), mock(ObjectProvider.class));
 
         assertEquals(List.of("/mcp/*"), List.copyOf(registration.getUrlPatterns()));
+    }
+
+    // ------------------------------------------------------------------ Recht fehlt → 403, nicht 302 (Karte 652)
+
+    /**
+     * Gemessen an schuetu INT am 11.08.2026: Ein gueltiges READ-Token gegen
+     * {@code @PreAuthorize("hasAuthority('SCOPE_WRITE')")} lieferte HTTP 302 auf {@code /login.html},
+     * mit {@code curl -L} daraus HTTP 200 und 14 534 Bytes Anmeldeseite — im aufrufenden Skript ein
+     * Erfolg. Ursache: Das {@code finally} restauriert den anonymen Context, bevor der
+     * {@code ExceptionTranslationFilter} an genau dieser Authentication zwischen 403 und
+     * Login-Redirect entscheidet.
+     */
+    private static HttpServletRequest apiRequestWithAuth(String authHeader) {
+        HttpServletRequest request = requestWithAuth(authHeader);
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRequestURI()).thenReturn("/api/turnier/kommando");
+        return request;
+    }
+
+    @Test
+    void rechtFehlt_wird403MitJson_statt302AufDieAnmeldung() throws Exception {
+        // Der Filter sieht den Header MIT Prefix; validateToken bekommt den Rest.
+        JwtTokenService jwt = jwtValidating("t", 7L, "worb", "u@example.invalid", "READ", null);
+
+        HttpServletRequest request = apiRequestWithAuth("Bearer t");
+        StringWriter sink = new StringWriter();
+        HttpServletResponse response = responseWithWriter(sink);
+        when(response.isCommitted()).thenReturn(false);
+
+        FilterChain chain = mock(FilterChain.class);
+        doThrow(new AccessDeniedException("Access Denied")).when(chain).doFilter(any(), any());
+
+        jwtFilter(jwt, mock(McpUserRoles.class)).doFilter(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        verify(response).setContentType("application/json");
+        assertTrue(sink.toString().contains("Forbidden"),
+                "403-JSON-Body statt HTML-Redirect — ein Geraet kann 'Recht fehlt' sonst nicht von "
+                        + "'Session abgelaufen' unterscheiden");
+        assertFalse(sink.toString().contains("SCOPE_"),
+                "Die Fehlerantwort verraet nicht, welcher Scope gefehlt haette");
+    }
+
+    /** Auch im Ablehnungsfall darf keine Token-Authentication auf dem gepoolten Thread zurueckbleiben. */
+    @Test
+    void rechtFehlt_securityContextWirdTrotzdemRestauriert() throws Exception {
+        SecurityContext vorher = SecurityContextHolder.getContext();
+        JwtTokenService jwt = jwtValidating("t", 7L, "worb", "u@example.invalid", "READ", null);
+
+        HttpServletRequest request = apiRequestWithAuth("Bearer t");
+        HttpServletResponse response = responseWithWriter(new StringWriter());
+        FilterChain chain = mock(FilterChain.class);
+        doThrow(new AccessDeniedException("Access Denied")).when(chain).doFilter(any(), any());
+
+        jwtFilter(jwt, mock(McpUserRoles.class)).doFilter(request, response, chain);
+
+        assertSame(vorher, SecurityContextHolder.getContext(),
+                "finally laeuft auch auf dem Ablehnungspfad");
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    /**
+     * Laeuft die Antwort schon (z.B. ein SSE-Strom unter /mcp), wuerde ein nachgeschobener
+     * JSON-Rumpf den Datenstrom zerstoeren. Dann reicht der Filter die Exception weiter, statt
+     * in eine angefangene Antwort hineinzuschreiben.
+     */
+    @Test
+    void antwortBereitsBegonnen_exceptionWirdDurchgereicht() throws Exception {
+        JwtTokenService jwt = jwtValidating("t", 7L, "worb", "u@example.invalid", "READ", null);
+
+        HttpServletRequest request = apiRequestWithAuth("Bearer t");
+        HttpServletResponse response = responseWithWriter(new StringWriter());
+        when(response.isCommitted()).thenReturn(true);
+
+        FilterChain chain = mock(FilterChain.class);
+        doThrow(new AccessDeniedException("Access Denied")).when(chain).doFilter(any(), any());
+
+        McpBearerTokenFilter filter = jwtFilter(jwt, mock(McpUserRoles.class));
+        assertThrows(AccessDeniedException.class, () -> filter.doFilter(request, response, chain));
+
+        verify(response, never()).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        assertNull(SecurityContextHolder.getContext().getAuthentication(),
+                "finally raeumt auch beim Durchreichen auf");
     }
 }
