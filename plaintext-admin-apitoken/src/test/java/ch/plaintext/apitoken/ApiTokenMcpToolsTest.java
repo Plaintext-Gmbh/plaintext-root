@@ -175,6 +175,66 @@ class ApiTokenMcpToolsTest {
         assertTrue(!antwort.contains("hash-1"), "Hash/Token darf nicht in der Ausgabe stehen: " + antwort);
     }
 
+    /**
+     * Karte 670: Im Kontext liegen zwei widersprüchliche {@code PROPERTY_MANDAT_*} — eine aus dem
+     * Token-Claim (klein) und eine aus {@code my_user_entity.roles}, wo derselbe Mandant in PROD
+     * gross gespeichert ist. Massgeblich ist der Mandant des <b>Tokens</b>.
+     *
+     * <p>Beide Einfügereihenfolgen werden geprüft. Das beweist für sich genommen <b>nicht</b>, dass
+     * die Auswahl hash-unabhängig ist — ein {@code HashSet} ignoriert die Einfügereihenfolge, beide
+     * Durchläufe sehen dieselbe Ordnung. Die Variation sichert gegen eine spätere Implementierung
+     * ab, die die Reihenfolge doch beachtet (etwa ein {@code LinkedHashSet} im Aufrufer). Dass der
+     * Test greift, ist gegengeprüft: mit dem alten {@code findFirst()} über
+     * {@code PROPERTY_MANDAT_} schlägt er fehl ("FEHLER: Token 1 nicht gefunden").
+     */
+    @Test
+    void zweiMandatAuthorities_tokenMandatGewinnt_unabhaengigVonDerReihenfolge() {
+        for (boolean grossZuerst : new boolean[] {true, false}) {
+            SecurityContextHolder.clearContext();
+            if (grossZuerst) {
+                authentifiziereAls("ROLE_ADMIN", "SCOPE_ADMIN", "PROPERTY_MYUSERID_7",
+                        "PROPERTY_MANDAT_PLAINTEXT", "PROPERTY_MANDAT_plaintext",
+                        "PROPERTY_TOKEN_MANDAT_plaintext");
+            } else {
+                authentifiziereAls("ROLE_ADMIN", "SCOPE_ADMIN", "PROPERTY_MYUSERID_7",
+                        "PROPERTY_TOKEN_MANDAT_plaintext", "PROPERTY_MANDAT_plaintext",
+                        "PROPERTY_MANDAT_PLAINTEXT");
+            }
+            when(service.getAllTokens(7L, "plaintext")).thenReturn(List.of(token(1L, "eigener")));
+
+            assertEquals("OK: Token 1 widerrufen.", tools.revokeApiToken(1L),
+                    "grossZuerst=" + grossZuerst);
+            verify(service, never()).invalidateToken(anyLong(), anyLong(), eq("PLAINTEXT"));
+        }
+    }
+
+    /**
+     * Karte 670: Zwischen root-Release und Rollout in app/guild/schuetu läuft dort noch ein Filter
+     * ohne {@code PROPERTY_TOKEN_MANDAT_*}. Ohne Rückfall auf {@code PROPERTY_MANDAT_} bräche in
+     * diesem Fenster jedes Token-Werkzeug mit „Mandant nicht bestimmbar" ab — aus einem Lesefehler
+     * würde ein Ausfall.
+     */
+    @Test
+    void ohneTokenMandatAuthority_faelltAufAltePropertyZurueck() {
+        authentifiziereAls("ROLE_ADMIN", "SCOPE_ADMIN", "PROPERTY_MYUSERID_7",
+                "PROPERTY_MANDAT_plaintext");
+        when(service.getAllTokens(7L, "plaintext")).thenReturn(List.of(token(1L, "eigener")));
+
+        assertEquals("OK: Token 1 widerrufen.", tools.revokeApiToken(1L));
+        verify(service).invalidateToken(1L, 7L, "plaintext");
+    }
+
+    /** Karte 670: Fehlt jede Mandanten-Authority, wird nicht geraten, sondern abgebrochen. */
+    @Test
+    void ohneJedeMandatAuthority_keineAusstellung() {
+        authentifiziereAls("ROLE_ADMIN", "SCOPE_ADMIN", "PROPERTY_MYUSERID_7");
+
+        assertTrue(tools.createApiToken("t", "READ", 30).contains("Mandant"),
+                "Ohne Mandant darf kein Token ausgestellt werden");
+        verify(service, never()).createToken(anyLong(), anyString(), anyString(), anyString(),
+                anyInt(), anyString());
+    }
+
     private ApiToken token(Long id, String name) {
         ApiToken t = new ApiToken();
         t.setId(id);

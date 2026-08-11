@@ -91,6 +91,23 @@ public class McpBearerTokenFilter implements Filter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
+    /**
+     * Präfix der Authority, die den Mandanten <b>des vorgelegten Tokens</b> trägt (Karte 670).
+     *
+     * <p>Es gibt bereits {@code PROPERTY_MANDAT_*} — davon liegen im Kontext aber regelmässig
+     * <b>zwei</b>: eine aus dem Token-Claim und eine aus den Benutzerrollen in
+     * {@code my_user_entity.roles}, wo derselbe Mandant in PROD grossgeschrieben gespeichert ist
+     * ({@code PROPERTY_MANDAT_PLAINTEXT} neben {@code PROPERTY_MANDAT_plaintext}). Wer aus dieser
+     * Menge „den" Mandanten zieht, bekommt je nach Hash-Reihenfolge mal den einen und mal den
+     * anderen — gemessen am 11.08.2026 mit demselben Token zweimal verschieden, wodurch 28
+     * Token-Zeilen zeitweise weder auflistbar noch widerrufbar waren.
+     *
+     * <p>Diese Authority kommt aus genau einer Quelle und deshalb genau einmal vor. Die
+     * bestehenden {@code PROPERTY_MANDAT_*} bleiben unangetastet — {@code getAllowedMandate()} und
+     * die Rollenprüfung hängen daran.
+     */
+    static final String TOKEN_MANDAT_PREFIX = "PROPERTY_TOKEN_MANDAT_";
+
     private final TokenValidator tokenValidator;
     private final McpUserRoles mcpUserRoles;
     private final JtiRevocationChecker revocationChecker;
@@ -197,6 +214,9 @@ public class McpBearerTokenFilter implements Filter {
         authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
         authorities.add(new SimpleGrantedAuthority("PROPERTY_MYUSERID_" + validation.userId()));
         authorities.add(new SimpleGrantedAuthority("PROPERTY_MANDAT_" + validation.mandat()));
+        // Eindeutige Zweitfassung desselben Werts — siehe TOKEN_MANDAT_PREFIX. Sie ist die einzige
+        // Mandanten-Authority, die garantiert nur einmal vorkommt.
+        authorities.add(new SimpleGrantedAuthority(TOKEN_MANDAT_PREFIX + validation.mandat()));
         addScopeAuthorities(authorities, validation.scope());
         // Echte Rollen des Users (ROOT/ADMIN/PROPERTY_MANDAT_* etc.) — damit getAllowedMandate() stimmt.
         for (String role : mcpUserRoles.rolesForUser(validation.userId())) {
@@ -204,6 +224,16 @@ public class McpBearerTokenFilter implements Filter {
                 continue;
             }
             String r = role.toUpperCase();
+            // PROPERTY_TOKEN_MANDAT_* ist reserviert und kommt AUSSCHLIESSLICH aus dem Token
+            // (Karte 670). Käme sie auch aus der Rollenspalte, läge wieder mehr als eine im
+            // Kontext — und schlimmer: Ein Eintrag in `my_user_entity.roles` könnte den Mandanten
+            // des Tokens überstimmen und damit die Mandantengrenze verschieben. Deshalb hier
+            // verworfen statt übernommen.
+            if (r.startsWith(TOKEN_MANDAT_PREFIX)) {
+                log.warn("Rolle {} des Benutzers {} ignoriert: {}* ist fuer den Token-Mandanten reserviert",
+                        role, validation.userId(), TOKEN_MANDAT_PREFIX);
+                continue;
+            }
             authorities.add(new SimpleGrantedAuthority(r.startsWith("PROPERTY_") ? r : "ROLE_" + r));
         }
         var auth = new UsernamePasswordAuthenticationToken(validation.email(), null, authorities);

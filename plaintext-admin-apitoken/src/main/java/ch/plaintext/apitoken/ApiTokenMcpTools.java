@@ -211,9 +211,32 @@ public class ApiTokenMcpTools {
 
         Long userId = praefixWert(authorities, "PROPERTY_MYUSERID_").map(Long::valueOf)
                 .orElseThrow(() -> new ZugriffVerweigert("FEHLER: Benutzer-Id im Sicherheitskontext nicht bestimmbar."));
-        String mandat = praefixWert(authorities, "PROPERTY_MANDAT_")
-                .orElseThrow(() -> new ZugriffVerweigert("FEHLER: Mandant im Sicherheitskontext nicht bestimmbar."));
+        String mandat = mandatBestimmen(authorities);
         return new Aufrufer(userId, mandat, auth.getName());
+    }
+
+    /**
+     * Bestimmt den Mandanten des Aufrufers — den <b>seines Tokens</b>, nicht irgendeinen aus dem
+     * Kontext (Karte 670).
+     *
+     * <p>Warum das eine eigene Methode braucht: Im Kontext liegen regelmässig zwei
+     * {@code PROPERTY_MANDAT_*}-Authorities, weil derselbe Mandant im Token klein und in
+     * {@code my_user_entity.roles} gross geschrieben steht. Ein {@code findFirst()} über die
+     * ungeordnete Authority-Menge zog davon mal die eine, mal die andere; am 11.08.2026 lieferte
+     * derselbe Token im Abstand von 40 Minuten zwei verschiedene Mandanten, wodurch 28
+     * Token-Zeilen zeitweise weder auflistbar noch widerrufbar waren.
+     *
+     * <p>{@link McpBearerTokenFilter#TOKEN_MANDAT_PREFIX} kommt aus genau einer Quelle und deshalb
+     * genau einmal vor. Der Rückfall auf {@code PROPERTY_MANDAT_} gilt der Übergangszeit: Zwischen
+     * root-Release und Rollout in app/guild/schuetu kann ein älterer Filter im Consumer laufen, der
+     * die neue Authority noch nicht setzt — ohne Rückfall bräche dort jedes Token-Werkzeug mit
+     * „Mandant nicht bestimmbar" ab. Der Rückfall erbt die alte Mehrdeutigkeit; das ist bewusst der
+     * kleinere Schaden und endet mit dem Rollout.
+     */
+    private String mandatBestimmen(Set<String> authorities) {
+        return praefixWert(authorities, McpBearerTokenFilter.TOKEN_MANDAT_PREFIX)
+                .or(() -> praefixWert(authorities, "PROPERTY_MANDAT_"))
+                .orElseThrow(() -> new ZugriffVerweigert("FEHLER: Mandant im Sicherheitskontext nicht bestimmbar."));
     }
 
     private Optional<String> praefixWert(Set<String> authorities, String praefix) {
