@@ -225,18 +225,22 @@ public class McpBearerTokenFilter implements Filter {
             // @PreAuthorize("hasAuthority('SCOPE_WRITE')") -> 302; mit `curl -L` wird daraus
             // HTTP 200 mit 14 534 Bytes Anmeldeseite, also ein Erfolg im aufrufenden Skript.
             //
-            // Ursache ist die POSITION dieses Filters, nicht die Security-Konfiguration: Er laeuft
-            // mit order=1 HINTER der Security-Kette (-100). Die AccessDeniedException aus
-            // @PreAuthorize passiert auf dem Rueckweg zuerst das finally unten — das den
-            // vorherigen, anonymen Context wiederherstellt — und erst danach den
-            // ExceptionTranslationFilter. Der entscheidet aber genau an dieser Authentication
-            // zwischen 403 (angemeldet, kein Recht) und 302 auf die Anmeldung (anonym). Der Filter
-            // hatte seine eigene Authentication also weggeraeumt, bevor sie beurteilt werden
-            // konnte.
+            // RICHTIGSTELLUNG (11.08.2026, nach der Nachmessung an schuetu INT): Die urspruengliche
+            // Begruendung an dieser Stelle — die Position dieses Filters raeume seine eigene
+            // Authentication weg, bevor der ExceptionTranslationFilter sie beurteilen koenne — war
+            // FALSCH, und dieser catch-Zweig allein hat den Befund nicht behoben. Die 302 entsteht
+            // in einem zweiten, containerinternen Durchlauf: `sendError` loest einen ERROR-Dispatch
+            // auf /error aus, der erneut durch die Security-Kette laeuft (dort anonym, weil dieser
+            // Filter als FilterRegistrationBean nur auf DispatcherType.REQUEST laeuft) und dessen
+            // EntryPoint den Status ueberschreibt. Belegt ohne jede Authentisierung: ein 404 auf dem
+            // permitAll-Pfad /nosec/** kam ebenfalls als 302 auf /login.html an.
             //
-            // Deshalb schliesst der Fall hier ab, wo er entstanden ist: dieselbe JSON-Form wie das
-            // 401 oben, und nur fuer die url-patterns dieses Filters — JSF-/Browser-Pfade kommen
-            // hier nie vorbei und leiten weiterhin auf /login.html um.
+            // Behoben ist das an der Wurzel in PlaintextSecurityConfig
+            // (dispatcherTypeMatchers(ERROR).permitAll(), siehe ErrorDispatchChainTest). Dieser
+            // Zweig bleibt als Verteidigung in der Tiefe stehen: Wo die AccessDeniedException den
+            // Filter doch erreicht, beantwortet er sie in derselben JSON-Form wie das 401 oben —
+            // und nur fuer die url-patterns dieses Filters, JSF-/Browser-Pfade kommen hier nie
+            // vorbei.
             if (httpResponse.isCommitted()) {
                 // Antwort laeuft bereits (z.B. eine SSE-Verbindung unter /mcp): Ein nachgeschobener
                 // JSON-Rumpf wuerde den Datenstrom zerstoeren. Dann lieber die Exception weiterreichen.
