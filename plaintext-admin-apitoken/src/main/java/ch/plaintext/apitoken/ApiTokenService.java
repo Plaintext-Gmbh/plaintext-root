@@ -44,6 +44,12 @@ public class ApiTokenService implements IApiTokenService {
     private final ApiTokenRepository apiTokenRepository;
     private final JwtTokenService jwtTokenService;
 
+    /**
+     * Leak-freier Lesezugriff für die Revocation-Prüfung (Karte 659) — siehe
+     * {@link ApiTokenRevocationLookup} für den Grund, warum dieser eine Pfad an JPA vorbeigeht.
+     */
+    private final ApiTokenRevocationLookup revocationLookup;
+
     private static final int MAX_TOKENS_PER_USER = 10;
 
     /**
@@ -365,6 +371,14 @@ public class ApiTokenService implements IApiTokenService {
      * and no pool exhaustion has ever been observed. Converting this lookup to JDBC is deliberately
      * <b>not</b> done as a side effect — it touches revocation, i.e. security-relevant behaviour,
      * and needs its own card and its own evidence.
+     * <p>
+     * <b>Karte 659 (11.08.2026): that card exists and the conversion is done.</b> Both DB accesses
+     * of {@link #validateVerifiedToken(String, JwtTokenService.JwtValidationResult)} — the
+     * revocation read and the best-effort last-used write — now run through
+     * {@link ApiTokenRevocationLookup} on {@code JdbcTemplate}, so no EntityManager is bound to the
+     * request any more. The behaviour is unchanged and pinned by {@code ApiTokenRevocationVertragIT},
+     * which runs both paths against the same data. Everything <i>except</i> validation still uses
+     * JPA: those calls come from MVC requests with a normal request lifetime.
      */
     @Override
     public Optional<ApiTokenValidationResult> validateToken(String jwtToken) {
@@ -394,38 +408,45 @@ public class ApiTokenService implements IApiTokenService {
      * @return Validation result, oder empty wenn revoked/invalidiert/gelöscht
      */
     public Optional<ApiTokenValidationResult> validateVerifiedToken(String jwtToken, JwtTokenService.JwtValidationResult jwt) {
-        // Step 2: Compute SHA-256 hash and look up in DB for revocation check
+        // Step 2: Compute SHA-256 hash and look up in DB for revocation check.
+        // Karte 659: über ApiTokenRevocationLookup (JDBC) statt über das JPA-Repository — dieser
+        // Pfad läuft aus einem Servlet-Filter heraus, und mit open-in-view=true hielte der erste
+        // JPA-Zugriff die DB-Verbindung über die ganze (bei MCP: sitzungslange) Requestdauer.
         String hash = sha256(jwtToken);
-        Optional<ApiToken> apiToken = apiTokenRepository.findByTokenHash(hash);
+        Optional<ApiTokenRevocationLookup.TokenZustand> apiToken = revocationLookup.findForValidation(hash);
         if (apiToken.isEmpty()) {
             log.warn("JWT token hash not found in database for userId={}, mandat={} - possibly revoked",
                     jwt.userId(), jwt.mandat());
             return Optional.empty();
         }
 
-        ApiToken t = apiToken.get();
+        ApiTokenRevocationLookup.TokenZustand t = apiToken.get();
 
-        if (t.getDeleted()) {
+        if (t.deleted()) {
             log.warn("JWT token was deleted for userId={}, mandat={}",
                     jwt.userId(), jwt.mandat());
             return Optional.empty();
         }
 
-        if (t.isInvalidated()) {
+        if (t.invalidated()) {
             log.warn("JWT token was invalidated for userId={}, mandat={}",
                     jwt.userId(), jwt.mandat());
             return Optional.empty();
         }
 
-        // Step 3: Update last used timestamp and use count
-        t.setLastUsedAt(LocalDateTime.now());
-        t.setUseCount(t.getUseCount() + 1);
-        apiTokenRepository.save(t);
+        // Step 3: Update last used timestamp and use count (best effort, ebenfalls über JDBC).
+        // Ein Fehler hier darf die bereits getroffene Zugriffsentscheidung nicht kippen: die Zahlen
+        // sind Statistik, nicht Teil der Validierung.
+        try {
+            revocationLookup.markUsed(t.id());
+        } catch (RuntimeException e) {
+            log.warn("Nutzungsstatistik für Token id={} nicht fortgeschrieben: {}", t.id(), e.toString());
+        }
 
         log.debug("Token validated successfully for userId={}, mandat={}", jwt.userId(), jwt.mandat());
         // Karte 309: scope-Claim mitgeben, damit Aufrufer (z.B. TokenLoginController) die
         // Berechtigungs-Beschraenkung des Tokens ueberhaupt auswerten koennen.
-        return Optional.of(new ApiTokenValidationResult(jwt.userId(), jwt.mandat(), t.getUserEmail(),
+        return Optional.of(new ApiTokenValidationResult(jwt.userId(), jwt.mandat(), t.userEmail(),
                 jwt.tokenName(), jwt.expiresAt(), jwt.scope()));
     }
 

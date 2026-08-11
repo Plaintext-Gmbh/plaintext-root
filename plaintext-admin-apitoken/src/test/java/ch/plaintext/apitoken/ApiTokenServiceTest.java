@@ -46,7 +46,8 @@ class ApiTokenServiceTest {
 
     private final ApiTokenRepository repo = mock(ApiTokenRepository.class);
     private final JwtTokenService jwt = mock(JwtTokenService.class);
-    private final ApiTokenService service = new ApiTokenService(repo, jwt);
+    private final ApiTokenRevocationLookup lookup = mock(ApiTokenRevocationLookup.class);
+    private final ApiTokenService service = new ApiTokenService(repo, jwt, lookup);
 
     private static final String TOKEN = "eyJ.header.sig";
 
@@ -54,32 +55,27 @@ class ApiTokenServiceTest {
         return new JwtValidationResult(7L, "plaintext", "u@x.ch", "cli", Instant.now().plusSeconds(3600), null, null);
     }
 
-    private ApiToken storedToken() {
-        ApiToken t = new ApiToken();
-        t.setTokenHash("hash");
-        t.setUserId(7L);
-        t.setUserEmail("u@x.ch");
-        t.setTokenName("cli");
-        t.setDeleted(false);
-        t.setInvalidated(false);
-        t.setUseCount(3L);
-        return t;
+    /**
+     * Der Zustand, den der Revocation-Lookup liefert (Karte 659) — seit dem Umbau auf JDBC läuft
+     * dieser eine Pfad nicht mehr über das JPA-Repository.
+     */
+    private ApiTokenRevocationLookup.TokenZustand storedToken() {
+        return new ApiTokenRevocationLookup.TokenZustand(42L, false, false, "u@x.ch");
     }
 
     @Test
     void gueltigerTokenGibtResultUndAktualisiertLastUsed() {
-        ApiToken t = storedToken();
         when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
-        when(repo.findByTokenHash(anyString())).thenReturn(Optional.of(t));
-        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.of(storedToken()));
 
         Optional<ApiTokenValidationResult> res = service.validateToken(TOKEN);
 
         assertTrue(res.isPresent());
         assertEquals(7L, res.get().userId());
         assertEquals("plaintext", res.get().mandat());
-        assertEquals(4L, t.getUseCount());          // use-count hochgezählt
-        verify(repo).save(t);                       // last-used best effort persistiert
+        assertEquals("u@x.ch", res.get().email());
+        verify(lookup).markUsed(42L);               // last-used best effort fortgeschrieben
+        verify(repo, never()).save(any());          // und zwar OHNE JPA im Filter-Pfad
     }
 
     @Test
@@ -87,42 +83,58 @@ class ApiTokenServiceTest {
         assertTrue(service.validateToken(null).isEmpty());
         assertTrue(service.validateToken("").isEmpty());
         verify(jwt, never()).validateToken(any());
-        verify(repo, never()).findByTokenHash(any());
+        verify(lookup, never()).findForValidation(any());
     }
 
     @Test
     void ungueltigeJwtSignaturGibtEmpty() {
         when(jwt.validateToken(TOKEN)).thenReturn(Optional.empty());
         assertTrue(service.validateToken(TOKEN).isEmpty());
-        verify(repo, never()).findByTokenHash(any());
+        verify(lookup, never()).findForValidation(any());
     }
 
     @Test
     void hashNichtInDbRevoktGibtEmpty() {
         when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
-        when(repo.findByTokenHash(anyString())).thenReturn(Optional.empty());
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.empty());
         assertTrue(service.validateToken(TOKEN).isEmpty());
-        verify(repo, never()).save(any());
+        verify(lookup, never()).markUsed(anyLong());
     }
 
     @Test
     void geloeschterTokenGibtEmpty() {
-        ApiToken t = storedToken();
-        t.setDeleted(true);
         when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
-        when(repo.findByTokenHash(anyString())).thenReturn(Optional.of(t));
+        when(lookup.findForValidation(anyString()))
+                .thenReturn(Optional.of(new ApiTokenRevocationLookup.TokenZustand(42L, true, false, "u@x.ch")));
         assertTrue(service.validateToken(TOKEN).isEmpty());
-        verify(repo, never()).save(any());
+        verify(lookup, never()).markUsed(anyLong());
     }
 
     @Test
     void invalidierterTokenGibtEmpty() {
-        ApiToken t = storedToken();
-        t.setInvalidated(true);
         when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
-        when(repo.findByTokenHash(anyString())).thenReturn(Optional.of(t));
+        when(lookup.findForValidation(anyString()))
+                .thenReturn(Optional.of(new ApiTokenRevocationLookup.TokenZustand(42L, false, true, "u@x.ch")));
         assertTrue(service.validateToken(TOKEN).isEmpty());
-        verify(repo, never()).save(any());
+        verify(lookup, never()).markUsed(anyLong());
+    }
+
+    /**
+     * Die Nutzungsstatistik ist ausdrücklich <b>best effort</b> (Karte 659): Fällt der Zähler-Update
+     * aus, bleibt der Zugriff gültig. Andernfalls würde ein gesperrter Schreibzugriff auf
+     * {@code api_token} jeden Bearer-Aufruf abweisen — ein Ausfall aus einer Statistikzeile heraus.
+     */
+    @Test
+    void fehlerBeimNutzungszaehlerKipptDieEntscheidungNicht() {
+        when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.of(storedToken()));
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("DB weg"))
+                .when(lookup).markUsed(42L);
+
+        Optional<ApiTokenValidationResult> res = service.validateToken(TOKEN);
+
+        assertTrue(res.isPresent(), "ein fehlgeschlagener Statistik-Update darf den Token nicht entwerten");
+        assertEquals(7L, res.get().userId());
     }
 
     /**
