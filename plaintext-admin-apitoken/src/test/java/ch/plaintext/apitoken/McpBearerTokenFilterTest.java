@@ -186,9 +186,42 @@ class McpBearerTokenFilterTest {
         assertTrue(namen.contains("PROPERTY_MANDAT_EXTRA"), "PROPERTY_-Rollen bleiben ohne ROLE_-Präfix: " + namen);
         assertTrue(namen.contains("PROPERTY_MYUSERID_7"));
         assertTrue(namen.contains("PROPERTY_MANDAT_mandat1"), "Basis-Mandat-Authority behält Original-Case: " + namen);
-        assertEquals(6, namen.size(),
-                "null/blank ignoriert; erwartet ROLE_USER + 2 PROPERTY-Basis + 1 SCOPE_READ (fehlender Claim "
-                        + "= READ, fail-closed seit Karte 312) + 2 gemappte: " + namen);
+        assertTrue(namen.contains("PROPERTY_TOKEN_MANDAT_mandat1"),
+                "Karte 670: eindeutige Mandanten-Authority aus dem Token: " + namen);
+        assertEquals(7, namen.size(),
+                "null/blank ignoriert; erwartet ROLE_USER + 3 PROPERTY-Basis (inkl. TOKEN_MANDAT, Karte 670) "
+                        + "+ 1 SCOPE_READ (fehlender Claim = READ, fail-closed seit Karte 312) + 2 gemappte: "
+                        + namen);
+    }
+
+    /**
+     * Karte 670: Die Benutzerrollen bringen denselben Mandanten in anderer Schreibweise mit
+     * ({@code PROPERTY_MANDAT_EXTRA} oben, in PROD {@code PROPERTY_MANDAT_PLAINTEXT}). Dann liegen
+     * zwei {@code PROPERTY_MANDAT_*} im Kontext und ein {@code findFirst()} darüber ist ein
+     * Münzwurf. {@code PROPERTY_TOKEN_MANDAT_*} muss deshalb <b>genau einmal</b> vorkommen — sonst
+     * verschiebt der Fix das Problem nur.
+     */
+    @Test
+    void tokenMandatAuthority_kommtGenauEinmalVor_auchWennRollenDenMandantenWiederholen()
+            throws Exception {
+        JwtTokenService jwt = jwtValidating("gueltig", 7L, "plaintext", "root@plaintext.ch");
+        McpUserRoles roles = mock(McpUserRoles.class);
+        when(roles.rolesForUser(7L)).thenReturn(new LinkedHashSet<>(
+                Arrays.asList("root", "PROPERTY_MANDAT_plaintext", "PROPERTY_TOKEN_MANDAT_fremd")));
+
+        HttpServletRequest request = requestWithAuth("Bearer gueltig");
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        AtomicReference<Authentication> waehrendKette = new AtomicReference<>();
+        FilterChain chain = (rq, rs) -> waehrendKette.set(SecurityContextHolder.getContext().getAuthentication());
+
+        jwtFilter(jwt, roles).doFilter(request, response, chain);
+
+        List<String> namen = waehrendKette.get().getAuthorities().stream().map(Object::toString).toList();
+        long tokenMandate = namen.stream().filter(n -> n.startsWith("PROPERTY_TOKEN_MANDAT_")).count();
+        assertEquals(1, tokenMandate,
+                "genau eine Token-Mandanten-Authority erwartet, sonst ist die Auswahl wieder mehrdeutig: "
+                        + namen);
+        assertTrue(namen.contains("PROPERTY_TOKEN_MANDAT_plaintext"), namen.toString());
     }
 
     // ------------------------------------------------------------------ SecurityContext-Hygiene
