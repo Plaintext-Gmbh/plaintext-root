@@ -109,6 +109,9 @@ public class ApiTokenService implements IApiTokenService {
 
         ApiToken token = new ApiToken();
         token.setTokenHash(hash);
+        // Karte 664: ohne den jti in der Zeile kann der Filter ein eingehendes Token nicht seiner
+        // Zeile zuordnen -> revoke_api_token meldet Erfolg und das Token funktioniert weiter.
+        token.setJti(jwtTokenService.extractJti(jwtToken).orElse(null));
         token.setUserId(userId);
         token.setMandat(mandat);
         token.setTokenName(tokenName);
@@ -175,6 +178,8 @@ public class ApiTokenService implements IApiTokenService {
 
         ApiToken token = new ApiToken();
         token.setTokenHash(sha256(jwtToken));
+        // Karte 664: siehe createToken — auch Service-Tokens muessen widerrufbar sein.
+        token.setJti(jwtTokenService.extractJti(jwtToken).orElse(null));
         token.setUserId(userId);
         token.setMandat(mandat);
         token.setTokenName(tokenName);

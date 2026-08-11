@@ -559,6 +559,36 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
                 .map(result -> Duration.between(Instant.now(), result.expiresAt()));
     }
 
+    /**
+     * Liest den {@code jti}-Claim (JWT-ID) eines soeben ausgestellten Tokens (Karte 664).
+     *
+     * <p>Die Ausstellung erzeugt den jti intern per {@code UUID.randomUUID()} und gibt nur den
+     * fertigen Token-String zurück; {@link ApiTokenService} braucht ihn aber, um ihn in der
+     * {@code api_token}-Zeile abzulegen — sonst lässt sich ein eingehendes Token später nicht
+     * seiner Zeile zuordnen und {@code revoke_api_token} bleibt wirkungslos.</p>
+     *
+     * <p>Bewusst NICHT über {@link #validateToken(String)}: Das würde Service-Tokens
+     * ({@code token_use=service}, Karte 635) abweisen und wertet Claims aus, die hier niemanden
+     * interessieren. Geprüft wird trotzdem die Signatur — ein Token, dessen Signatur nicht passt,
+     * hat hier nichts verloren.</p>
+     *
+     * @param token JWT-String
+     * @return jti, oder {@link Optional#empty()} bei ungültiger Signatur oder fehlendem Claim
+     */
+    public Optional<String> extractJti(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return verifyWithAnyKey(token, publicKeys)
+                    .map(Claims::getId)
+                    .filter(jti -> !jti.isBlank());
+        } catch (JwtException e) {
+            log.warn("jti nicht lesbar: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     private PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         String pem = null;
 

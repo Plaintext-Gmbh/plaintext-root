@@ -60,6 +60,22 @@ public class ApiTokenRevocationLookupJdbc implements ApiTokenRevocationLookup {
     }
 
     @Override
+    public boolean isJtiRevoked(String jti) {
+        if (jti == null || jti.isEmpty()) {
+            return false;
+        }
+        // Karte 664: Die Abfrage fragt direkt nach dem gesuchten Zustand, statt eine Zeile zu laden
+        // und sie hier auszuwerten — der Aufruf sitzt im Auth-Pfad jedes MCP-Requests.
+        // invalidated ist NOT NULL (V1775256894), deshalb genügt die WHERE-Bedingung; deleted wird
+        // bewusst NICHT geprüft: invalidateToken() setzt beide Flags, und ein Datensatz, der nur
+        // aufgeräumt (deleted) und nicht widerrufen wurde, ist kein Widerruf.
+        Integer treffer = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM api_token WHERE jti = ? AND invalidated = TRUE",
+                Integer.class, jti);
+        return treffer != null && treffer > 0;
+    }
+
+    @Override
     public void markUsed(long id) {
         Timestamp jetzt = Timestamp.valueOf(LocalDateTime.now());
         jdbc.update("UPDATE api_token SET last_used_at = ?, use_count = use_count + 1, updated_at = ?"
