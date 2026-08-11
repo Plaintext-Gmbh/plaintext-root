@@ -276,8 +276,10 @@ class JwtTokenServiceTest {
         JwtTokenService service = serviceWithoutVault();
         service.init();
 
+        java.time.Duration gueltigkeit = java.time.Duration.ofMinutes(5);
+
         assertThrows(IllegalArgumentException.class,
-                () -> service.signServiceToken("  ", "printer", java.time.Duration.ofMinutes(5)),
+                () -> service.signServiceToken("  ", "printer", gueltigkeit),
                 "Ohne subject kann die Gegenstelle den Aussteller nicht zuordnen");
     }
 
@@ -321,8 +323,10 @@ class JwtTokenServiceTest {
         // init() absichtlich NICHT aufrufen: Zustand waehrend der Vault-Wartezeit beim Start.
         JwtTokenService service = serviceWithoutVault();
 
+        java.time.Duration gueltigkeit = java.time.Duration.ofMinutes(5);
+
         assertThrows(IllegalStateException.class,
-                () -> service.signServiceToken("desk", "printer", java.time.Duration.ofMinutes(5)),
+                () -> service.signServiceToken("desk", "printer", gueltigkeit),
                 "Ohne privaten Schluessel muss der Aufrufer 'noch nicht bereit' von 'kaputt' unterscheiden koennen");
     }
 }
