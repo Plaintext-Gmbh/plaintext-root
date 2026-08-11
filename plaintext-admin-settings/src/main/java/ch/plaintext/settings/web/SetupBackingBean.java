@@ -74,6 +74,10 @@ public class SetupBackingBean implements Serializable {
     private boolean totpEnabled = false;
     private Long systemMailAccountId;
 
+    // Karte 627: Aufzeichnung der Sitzungsinformationen. Vorbelegung AN — eine Setup-Seite, die
+    // vor dem Laden „aus" anzeigt, wuerde beim Speichern still abschalten.
+    private boolean sessionTrackingEnabled = true;
+
     /** Optional: von der App (plaintext-z-mailbox) geliefert; null, wenn die App/Mailbox nicht vorhanden ist. */
     @Autowired(required = false)
     private transient SystemMailSender systemMailSender;
@@ -149,6 +153,7 @@ public class SetupBackingBean implements Serializable {
             magicLinkEnabled = config.isMagicLinkEnabled();
             totpEnabled = config.isTotpEnabled();
             systemMailAccountId = config.getSystemMailAccountId();
+            sessionTrackingEnabled = config.isSessionTrackingEnabled();
         });
     }
 
@@ -300,6 +305,24 @@ public class SetupBackingBean implements Serializable {
             addMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Login-Einstellungen gespeichert");
         } catch (Exception e) {
             log.error("Error saving login settings", e);
+            addMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Speichern fehlgeschlagen");
+        }
+    }
+
+    /**
+     * Karte 627: Eigener Speicherpfad für den Sitzungs-Schalter. Bewusst nicht in
+     * {@link #saveLoginSettings()} mitgeführt — die Aufzeichnung ist kein Login-Verfahren, und ein
+     * gemeinsamer Knopf würde beide Bereiche aneinander binden.
+     */
+    public void saveSessionSettings() {
+        try {
+            String mandat = security.getMandat();
+            SetupConfig config = setupConfigService.getOrCreate(mandat);
+            config.setSessionTrackingEnabled(sessionTrackingEnabled);
+            setupConfigService.save(config);
+            addMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Sitzungs-Einstellungen gespeichert");
+        } catch (Exception e) {
+            log.error("Error saving session settings", e);
             addMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Speichern fehlgeschlagen");
         }
     }

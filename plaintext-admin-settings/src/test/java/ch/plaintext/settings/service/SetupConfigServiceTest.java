@@ -59,4 +59,30 @@ class SetupConfigServiceTest {
 
         assertThat(service.isRootUserEnabled("default")).isTrue();
     }
+
+    // Karte 627: Die Richtung des Defaults ist der Kern — ohne Konfiguration wird aufgezeichnet.
+    // Ein umgekehrter Default wuerde bei jedem Mandanten ohne SETUP_CONFIG-Row still abschalten,
+    // und niemand wuerde es bemerken, weil nichts fehlschlaegt.
+    @Test
+    void isSessionTrackingEnabledTrueWhenNoConfigExists() {
+        when(repository.findByMandat("default")).thenReturn(Optional.empty());
+
+        assertThat(service.isSessionTrackingEnabled("default")).isTrue();
+    }
+
+    @Test
+    void isSessionTrackingEnabledFalseWhenSwitchedOff() {
+        SetupConfig config = new SetupConfig();
+        config.setMandat("default");
+        config.setSessionTrackingEnabled(false);
+        when(repository.findByMandat("default")).thenReturn(Optional.of(config));
+
+        assertThat(service.isSessionTrackingEnabled("default")).isFalse();
+    }
+
+    @Test
+    void neueSetupConfigZeichnetAuf() {
+        // Der Entity-Default entscheidet fuer frisch angelegte Konfigurationen (getOrCreate).
+        assertThat(new SetupConfig().isSessionTrackingEnabled()).isTrue();
+    }
 }

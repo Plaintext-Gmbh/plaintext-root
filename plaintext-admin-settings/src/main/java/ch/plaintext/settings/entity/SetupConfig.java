@@ -53,6 +53,12 @@ public class SetupConfig {
     @Column(name = "TOTP_ENABLED", nullable = false)
     private boolean totpEnabled = false;
 
+    // Karte 627: Aufzeichnung der Sitzungsinformationen (USER_SESSION). Default AN — heute wird
+    // ohne Schalter aufgezeichnet, und das Bestandsverhalten darf sich durch den Umbau nicht
+    // still aendern.
+    @Column(name = "SESSION_TRACKING_ENABLED", nullable = false)
+    private boolean sessionTrackingEnabled = true;
+
     /** GLOBAL-Mailbox-Konto (Id) für System-/Auth-Mails (PW-Reset/Login-Link/Registrierung); null = nicht konfiguriert. */
     @Column(name = "SYSTEM_MAIL_ACCOUNT_ID")
     private Long systemMailAccountId;

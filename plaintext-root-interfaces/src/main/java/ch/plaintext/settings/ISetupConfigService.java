@@ -21,6 +21,13 @@ public interface ISetupConfigService {
     boolean isMagicLinkEnabled(String mandat);
 
     /**
+     * Ob Sitzungsinformationen (Tabelle {@code USER_SESSION}) für diesen Mandanten aufgezeichnet
+     * werden (Karte 627). Fehlt eine Konfiguration, gilt {@code true}: ohne Schalter wurde bisher
+     * immer aufgezeichnet, und das Bestandsverhalten soll sich nicht still ändern.
+     */
+    boolean isSessionTrackingEnabled(String mandat);
+
+    /**
      * Ob das TOTP/2FA-Feature system-weit (in mindestens einer Mandanten-Konfiguration) über die
      * Root→Setup-UI aktiviert wurde. Ergänzt die statische Property {@code plaintext.security.totp.enabled}.
      */
