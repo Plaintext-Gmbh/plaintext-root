@@ -42,7 +42,17 @@ public class RateLimitFilter implements Filter {
     private final RateLimiter nosecTokenLimiter;
     /** SECURITY (Karte 314, Punkt 16): Auffang-Limit fuer alle uebrigen /nosec/-Pfade. */
     private final RateLimiter nosecPublicLimiter;
+    /**
+     * Karte 657: Eigener, deutlich groesserer Eimer fuer CalDAV/CardDAV. Diese Pfade liegen nur
+     * deshalb unter {@code /nosec/}, damit die Formular-Anmeldung sie nicht abfaengt — sie sind
+     * per Basic-Auth geschuetzt und gerade nicht „public".
+     */
+    private final RateLimiter davLimiter;
     private final ClientIpResolver clientIpResolver;
+
+    /** Vorgabe des DAV-Eimers, auch fuer die Test-Konstruktoren (Karte 657). */
+    static final int DEFAULT_DAV_MAX_REQUESTS = 240;
+    static final int DEFAULT_DAV_WINDOW_SECONDS = 60;
 
     @org.springframework.beans.factory.annotation.Autowired
     public RateLimitFilter(
@@ -56,6 +66,15 @@ public class RateLimitFilter implements Filter {
             @Value("${plaintext.rate-limit.nosec-token.window-seconds:60}") int nosecTokenWindowSeconds,
             @Value("${plaintext.rate-limit.nosec-public.max-requests:60}") int nosecPublicMaxRequests,
             @Value("${plaintext.rate-limit.nosec-public.window-seconds:60}") int nosecPublicWindowSeconds,
+            // Karte 657: gemessen am nginx-Zugriffslog von plaintext-app, 7 Tage — ein
+            // Apple-Sync-Durchlauf erreicht Spitzen von 85 CalDAV-Anfragen pro Minute, mehrere
+            // Minuten lagen ueber 60. Das generische /nosec-Limit hat deshalb 73 Mal echte
+            // Clients abgewiesen, darunter vier Aufrufe der oeffentlichen Terminseite durch
+            // einen Browser, der sich den Eimer mit dem gleichzeitigen Sync teilte.
+            // 240 statt 90: Ein Erstsync eines neuen Geraets macht ein Vielfaches eines
+            // Folgesyncs, und ein Anschluss hat mehrere Geraete hinter derselben Adresse.
+            @Value("${plaintext.rate-limit.dav.max-requests:240}") int davMaxRequests,
+            @Value("${plaintext.rate-limit.dav.window-seconds:60}") int davWindowSeconds,
             @Value("${plaintext.rate-limit.trusted-proxies:" + ClientIpResolver.DEFAULT_TRUSTED_PROXIES + "}")
             String trustedProxies,
             @Value("${plaintext.rate-limit.max-buckets:" + RateLimiter.DEFAULT_MAX_BUCKETS + "}") int maxBuckets) {
@@ -64,12 +83,15 @@ public class RateLimitFilter implements Filter {
         this.claudeLimiter = new RateLimiter(claudeMaxRequests, claudeWindowSeconds * 1000L, maxBuckets);
         this.nosecTokenLimiter = new RateLimiter(nosecTokenMaxRequests, nosecTokenWindowSeconds * 1000L, maxBuckets);
         this.nosecPublicLimiter = new RateLimiter(nosecPublicMaxRequests, nosecPublicWindowSeconds * 1000L, maxBuckets);
+        this.davLimiter = new RateLimiter(davMaxRequests, davWindowSeconds * 1000L, maxBuckets);
         this.clientIpResolver = new ClientIpResolver(trustedProxies);
         log.info("Rate limiting enabled: API={} req/{}s, Login={} req/{}s, Claude-Automation={} req/{}s, "
-                        + "Nosec-Token={} req/{}s, Nosec-Public={} req/{}s, max-buckets={}, trusted-proxies={}",
+                        + "Nosec-Token={} req/{}s, Nosec-Public={} req/{}s, CalDAV/CardDAV={} req/{}s, "
+                        + "max-buckets={}, trusted-proxies={}",
                 apiMaxRequests, apiWindowSeconds, loginMaxRequests, loginWindowSeconds,
                 claudeMaxRequests, claudeWindowSeconds, nosecTokenMaxRequests, nosecTokenWindowSeconds,
-                nosecPublicMaxRequests, nosecPublicWindowSeconds, maxBuckets, trustedProxies);
+                nosecPublicMaxRequests, nosecPublicWindowSeconds, davMaxRequests, davWindowSeconds,
+                maxBuckets, trustedProxies);
     }
 
     /** Bequemer Konstruktor fuer Tests: Default-Trusted-Proxies und Default-Bucket-Deckel. */
@@ -91,6 +113,21 @@ public class RateLimitFilter implements Filter {
         this(apiMaxRequests, apiWindowSeconds, loginMaxRequests, loginWindowSeconds,
                 claudeMaxRequests, claudeWindowSeconds, nosecTokenMaxRequests, nosecTokenWindowSeconds,
                 nosecPublicMaxRequests, nosecPublicWindowSeconds,
+                DEFAULT_DAV_MAX_REQUESTS, DEFAULT_DAV_WINDOW_SECONDS,
+                ClientIpResolver.DEFAULT_TRUSTED_PROXIES, RateLimiter.DEFAULT_MAX_BUCKETS);
+    }
+
+    /** Wie oben, aber mit eigener CalDAV/CardDAV-Grenze (Karte 657). */
+    RateLimitFilter(int apiMaxRequests, int apiWindowSeconds,
+                    int loginMaxRequests, int loginWindowSeconds,
+                    int claudeMaxRequests, int claudeWindowSeconds,
+                    int nosecTokenMaxRequests, int nosecTokenWindowSeconds,
+                    int nosecPublicMaxRequests, int nosecPublicWindowSeconds,
+                    int davMaxRequests, int davWindowSeconds) {
+        this(apiMaxRequests, apiWindowSeconds, loginMaxRequests, loginWindowSeconds,
+                claudeMaxRequests, claudeWindowSeconds, nosecTokenMaxRequests, nosecTokenWindowSeconds,
+                nosecPublicMaxRequests, nosecPublicWindowSeconds,
+                davMaxRequests, davWindowSeconds,
                 ClientIpResolver.DEFAULT_TRUSTED_PROXIES, RateLimiter.DEFAULT_MAX_BUCKETS);
     }
 
@@ -130,6 +167,34 @@ public class RateLimitFilter implements Filter {
             String clientIp = getClientIp(request);
             if (!nosecTokenLimiter.tryConsume(clientIp)) {
                 log.warn("Rate limit exceeded for nosec-token endpoint {} from IP: {}", path, clientIp);
+                rejectJson(response);
+                return;
+            }
+        } else if (path.startsWith("/nosec/caldav/") || path.startsWith("/nosec/carddav/")) {
+            // Karte 657: CalDAV/CardDAV bekommt einen EIGENEN Eimer statt des generischen
+            // /nosec-Limits. Zwei Gruende, und der zweite ist der wichtigere:
+            //
+            // 1. Groessenordnung. Ein Apple-Sync (remindd/dataaccessd) erzeugt binnen Sekunden
+            //    dutzende PROPFIND/REPORT — gemessen am nginx-Log von plaintext-app ueber 7 Tage:
+            //    Spitzen von 85 Anfragen pro Minute, mehrere Minuten ueber der Grenze von 60.
+            //
+            // 2. Es sind verschiedene Dinge im selben Topf. Der geteilte Eimer hat nicht nur den
+            //    Sync gebremst, sondern die OEFFENTLICHE Terminseite gleich mit: Am 08.08.2026
+            //    bekam ein Browser vier Mal in 22 Sekunden HTTP 429 auf
+            //    /nosec/khost/termin/<token>, weil parallel synchronisiert wurde. Ein Besucher
+            //    zahlt so fuer die Geraete eines anderen.
+            //
+            // Bewusst NICHT das generische Limit angehoben: Die Begruendung aus Karte 314/16
+            // (fail-closed-Default fuer jeden neuen /nosec-Endpunkt) bleibt gueltig. CalDAV ist
+            // ausserdem gar nicht „public" — es authentisiert sich per Basic-Auth und liegt nur
+            // deshalb unter /nosec/, damit die Formular-Anmeldung es nicht abfaengt.
+            //
+            // Der Eimer bleibt pro Client-IP wirksam: Die Ablehnungen nennen die echte
+            // oeffentliche Adresse (Graylog: "from IP: 144.2.66.241"), nicht die Docker-Bridge --
+            // der ClientIpResolver wertet X-Forwarded-For korrekt aus.
+            String clientIp = getClientIp(request);
+            if (!davLimiter.tryConsume(clientIp)) {
+                log.warn("Rate limit exceeded for CalDAV/CardDAV endpoint {} from IP: {}", path, clientIp);
                 rejectJson(response);
                 return;
             }
