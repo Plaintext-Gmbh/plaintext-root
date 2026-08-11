@@ -218,29 +218,36 @@ public class McpBearerTokenFilter implements Filter {
         try {
             log.debug("MCP request authenticated for user {} mandat={}", validation.userId(), validation.mandat());
             chain.doFilter(request, response);
-        } catch (AccessDeniedException e) {
+        } catch (ServletException | RuntimeException ex) {
+            AccessDeniedException e = findeAccessDenied(ex);
+            if (e == null) {
+                throw ex;
+            }
             // SECURITY/API-VERTRAG (Karte 652): Ein Bearer-Client, dem ein Recht fehlt, bekam bisher
             // HTTP 302 auf /login.html — HTML fuer ein Geraet, das JSON erwartet. Gemessen an
             // schuetu INT am 11.08.2026: READ-Token gegen
             // @PreAuthorize("hasAuthority('SCOPE_WRITE')") -> 302; mit `curl -L` wird daraus
             // HTTP 200 mit 14 534 Bytes Anmeldeseite, also ein Erfolg im aufrufenden Skript.
             //
-            // RICHTIGSTELLUNG (11.08.2026, nach der Nachmessung an schuetu INT): Die urspruengliche
-            // Begruendung an dieser Stelle — die Position dieses Filters raeume seine eigene
-            // Authentication weg, bevor der ExceptionTranslationFilter sie beurteilen koenne — war
-            // FALSCH, und dieser catch-Zweig allein hat den Befund nicht behoben. Die 302 entsteht
-            // in einem zweiten, containerinternen Durchlauf: `sendError` loest einen ERROR-Dispatch
-            // auf /error aus, der erneut durch die Security-Kette laeuft (dort anonym, weil dieser
-            // Filter als FilterRegistrationBean nur auf DispatcherType.REQUEST laeuft) und dessen
-            // EntryPoint den Status ueberschreibt. Belegt ohne jede Authentisierung: ein 404 auf dem
-            // permitAll-Pfad /nosec/** kam ebenfalls als 302 auf /login.html an.
+            // WARUM DER FANG-TYP BREITER IST ALS DIE ERWARTETE EXCEPTION (Karte 652, gemessen am
+            // 11.08.2026): Der erste Anlauf fing hier ausschliesslich AccessDeniedException — und
+            // wurde nie ausgefuehrt. Grund ist nicht die Position dieses Filters, sondern die
+            // VERPACKUNG: Die AuthorizationDeniedException aus @PreAuthorize wird vom
+            // DispatcherServlet in eine jakarta.servlet.ServletException gehuellt, bevor sie die
+            // Filterkette erreicht. Ein Integrationstest ueber die echte Kette hat das sichtbar
+            // gemacht (BearerAccessDeniedChainTest): "Filter sieht Exception
+            // jakarta.servlet.ServletException". Der Spring-eigene ExceptionTranslationFilter macht
+            // deshalb dasselbe wie diese Methode — er durchsucht die Ursachenkette.
             //
-            // Behoben ist das an der Wurzel in PlaintextSecurityConfig
-            // (dispatcherTypeMatchers(ERROR).permitAll(), siehe ErrorDispatchChainTest). Dieser
-            // Zweig bleibt als Verteidigung in der Tiefe stehen: Wo die AccessDeniedException den
-            // Filter doch erreicht, beantwortet er sie in derselben JSON-Form wie das 401 oben —
-            // und nur fuer die url-patterns dieses Filters, JSF-/Browser-Pfade kommen hier nie
-            // vorbei.
+            // Ohne das Auspacken lief die Exception weiter nach aussen zum
+            // ExceptionTranslationFilter; dort war der SecurityContext durch das finally unten
+            // schon wieder anonym, und der LoginUrlAuthenticationEntryPoint machte aus der
+            // Rechteverweigerung eine Umleitung auf /login.html. Ein Geraet bekam HTML statt JSON,
+            // ein Skript mit `curl -L` sogar HTTP 200 — eine fehlende Berechtigung als Erfolg.
+            //
+            // Der Fall wird hier abgeschlossen, wo er entstanden ist: dieselbe JSON-Form wie das 401
+            // oben, und nur fuer die url-patterns dieses Filters — JSF-/Browser-Pfade kommen hier
+            // nie vorbei und leiten weiterhin auf /login.html um.
             if (httpResponse.isCommitted()) {
                 // Antwort laeuft bereits (z.B. eine SSE-Verbindung unter /mcp): Ein nachgeschobener
                 // JSON-Rumpf wuerde den Datenstrom zerstoeren. Dann lieber die Exception weiterreichen.
@@ -253,6 +260,34 @@ public class McpBearerTokenFilter implements Filter {
         } finally {
             SecurityContextHolder.setContext(previous);
         }
+    }
+
+    /**
+     * Sucht in der Ursachenkette nach einer {@link AccessDeniedException} (Karte 652).
+     *
+     * <p>Die Exception aus {@code @PreAuthorize} erreicht einen Servlet-Filter nicht in ihrer
+     * eigenen Gestalt, sondern in eine {@link ServletException} gehuellt. Genau daran ging der
+     * erste Anlauf vorbei. Spring Securitys eigener {@code ExceptionTranslationFilter} loest das
+     * ebenso, ueber seinen {@code ThrowableAnalyzer}.</p>
+     *
+     * <p>Die Kette wird mit einer Tiefengrenze durchlaufen: Eine Exception, die sich selbst als
+     * Ursache traegt (kommt bei manchen Wrappern vor), wuerde sonst zur Endlosschleife.</p>
+     *
+     * @return die gefundene Exception oder {@code null}, wenn keine in der Kette steckt
+     */
+    public static AccessDeniedException findeAccessDenied(Throwable ex) {
+        Throwable aktuell = ex;
+        for (int tiefe = 0; aktuell != null && tiefe < 10; tiefe++) {
+            if (aktuell instanceof AccessDeniedException treffer) {
+                return treffer;
+            }
+            Throwable ursache = aktuell.getCause();
+            if (ursache == aktuell) {
+                return null;
+            }
+            aktuell = ursache;
+        }
+        return null;
     }
 
     private void unauthorized(HttpServletResponse response) throws IOException {
