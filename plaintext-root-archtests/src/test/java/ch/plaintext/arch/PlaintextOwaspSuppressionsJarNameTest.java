@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 
 /**
@@ -53,10 +53,11 @@ class PlaintextOwaspSuppressionsJarNameTest {
     }
 
     @Test
-    void liefertNullOhneVersionOderOhneJarEndung() {
-        assertNull(PlaintextOwaspSuppressionsTest.zerlegeJarName("lombok.jar"));
-        assertNull(PlaintextOwaspSuppressionsTest.zerlegeJarName("plaintext-root-menu-1.544.0.pom"));
-        assertNull(PlaintextOwaspSuppressionsTest.zerlegeJarName(null));
+    void liefertLeeresArrayOhneVersionOderOhneJarEndung() {
+        // Leeres Array statt null (java:S1168): der Aufrufer prueft die Laenge, nicht auf null.
+        assertEquals(0, PlaintextOwaspSuppressionsTest.zerlegeJarName("lombok.jar").length);
+        assertEquals(0, PlaintextOwaspSuppressionsTest.zerlegeJarName("plaintext-root-menu-1.544.0.pom").length);
+        assertEquals(0, PlaintextOwaspSuppressionsTest.zerlegeJarName(null).length);
     }
 
     @Test
@@ -66,6 +67,6 @@ class PlaintextOwaspSuppressionsJarNameTest {
         // alten Ausdruck gemessen: 372 ms bei n=2000, 1351 ms bei n=4000, 4783 ms bei n=8000.
         String bosartig = "a-1".repeat(8000) + ".ja";
         assertTimeout(Duration.ofSeconds(2),
-                () -> assertNull(PlaintextOwaspSuppressionsTest.zerlegeJarName(bosartig)));
+                () -> assertEquals(0, PlaintextOwaspSuppressionsTest.zerlegeJarName(bosartig).length));
     }
 }

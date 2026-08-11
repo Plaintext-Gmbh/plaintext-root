@@ -132,7 +132,7 @@ class JwksControllerTest {
         String erwartet = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 MessageDigest.getInstance("SHA-256").digest(kanonisch.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
 
-        assertThat(jwk.get("kid")).isEqualTo(erwartet);
+        assertThat(jwk).containsEntry("kid", erwartet);
     }
 
     @Test
@@ -144,7 +144,7 @@ class JwksControllerTest {
         List<Map<String, Object>> keys = keysAus(controllerMit(paar.getPublic(), zweites.getPublic()));
 
         assertThat(keys).hasSize(2);
-        assertThat(keys.get(0).get("kid")).isNotEqualTo(keys.get(1).get("kid"));
+        assertThat(keys.get(0)).doesNotContainEntry("kid", keys.get(1).get("kid"));
     }
 
     /**

@@ -370,7 +370,7 @@ class PlaintextOwaspSuppressionsTest {
         for (String e : eintraege) {
             String name = e.substring(Math.max(e.lastIndexOf('/'), e.lastIndexOf('\\')) + 1);
             String[] artefakt = zerlegeJarName(name);
-            if (artefakt != null) {
+            if (artefakt.length == 2) {
                 map.putIfAbsent(artefakt[0], artefakt[1]);
             }
         }
@@ -378,8 +378,11 @@ class PlaintextOwaspSuppressionsTest {
     }
 
     /**
-     * Zerlegt einen Jar-Dateinamen in {@code {artifactId, version}} — {@code null}, wenn der Name
-     * nicht dem Maven-Schema {@code <artifactId>-<version>[-sources|-javadoc].jar} folgt.
+     * Zerlegt einen Jar-Dateinamen in {@code {artifactId, version}} — ein <b>leeres</b> Array, wenn
+     * der Name nicht dem Maven-Schema {@code <artifactId>-<version>[-sources|-javadoc].jar} folgt.
+     *
+     * <p>Leeres Array statt {@code null} (Sonar {@code java:S1168}): der Aufrufer prüft die Länge
+     * und kann das Ergebnis nicht versehentlich dereferenzieren.</p>
      *
      * <p>Bewusst ohne regulären Ausdruck. Das frühere Muster
      * {@code ^(.*?)-(\d[^/\\]*?)(?:-(?:sources|javadoc))?\.jar$} hatte zwei ineinander
@@ -388,11 +391,11 @@ class PlaintextOwaspSuppressionsTest {
      * ist der erste Bindestrich, auf den eine Ziffer folgt.</p>
      *
      * @param name Dateiname ohne Pfad, z. B. {@code plaintext-root-menu-1.544.0.jar}
-     * @return zweielementiges Array {artifactId, version} oder {@code null}
+     * @return zweielementiges Array {artifactId, version}, oder ein leeres Array
      */
     static String[] zerlegeJarName(String name) {
         if (name == null || !name.endsWith(".jar")) {
-            return null;
+            return KEINE_ZERLEGUNG;
         }
         String rumpf = name.substring(0, name.length() - ".jar".length());
         for (String klassifizierer : KLASSIFIZIERER) {
@@ -406,8 +409,11 @@ class PlaintextOwaspSuppressionsTest {
                 return new String[]{rumpf.substring(0, i), rumpf.substring(i + 1)};
             }
         }
-        return null;
+        return KEINE_ZERLEGUNG;
     }
+
+    /** Antwort auf einen Namen, der dem Maven-Schema nicht folgt (java:S1168 — kein {@code null}). */
+    private static final String[] KEINE_ZERLEGUNG = new String[0];
 
     private static String entpacke(String eintrag) {
         try {
