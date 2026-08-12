@@ -18,7 +18,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Dump Super Class
+ * Registry der {@link PlaintextRepository}-Beans, nach Entitätsname aufschlüsselbar.
+ *
+ * <p><b>Karte 687:</b> Hier stand bis zum 12.08.2026 zusätzlich {@code getNextID(Object)} — eine
+ * Id-Vergabe über {@code max(id) + 1}, die für einen unbekannten Typ <b>{@code -1}</b> zurückgab.
+ * Ihr einziger Aufrufer war der Generator {@code UseExistingIdOtherwiseGenerateUsingIdentity} in
+ * {@link SuperModel}, und der lief seit dem Hibernate-7-Umstieg nicht mehr (Begründung dort). Die
+ * Methode war damit unerreichbar — und wäre sie es nicht gewesen, hätte sie Schaden angerichtet:
+ * für Entitätstypen ohne {@code PlaintextRepository} die Id {@code -1}, für alle anderen eine unter
+ * Nebenläufigkeit doppelt vergebene. Zwei Ausfallmechanismen, von denen einer den anderen verdeckte.
+ *
+ * <p>Mit ihr ist das statische {@code instance}-Feld entfallen; auch das hatte nur der Generator
+ * gelesen. Was bleibt, ist die Registry selbst.
  *
  * @author Plaintext GmbH
  * @since 600
@@ -27,8 +38,6 @@ import java.util.Map;
 @Slf4j
 public class RepoMaster extends SuperModel {
 
-    public static RepoMaster instance;
-
     @Autowired
     private List<PlaintextRepository> repos = new ArrayList<>();
 
@@ -36,48 +45,14 @@ public class RepoMaster extends SuperModel {
 
     @PostConstruct
     private void init() {
-        // log.info("*** init(); " + this.getClass().getCanonicalName());
-
         for (PlaintextRepository repo : repos) {
             String name = repo.getEntityName().toLowerCase();
             map.put(name, repo);
         }
-
-        instance = this;
     }
 
     public JpaRepository getRepo(String typ) {
         return map.get(typ.toLowerCase());
     }
-
-
-    public long getNextID(Object object) {
-
-        String typ = object.getClass().getSimpleName().toLowerCase();
-
-        if (!map.containsKey(typ)) {
-            log.warn("Repo fuer Typ" + typ + " nicht gefunden");
-            return -1;
-        }
-
-        Long id = null;
-        try {
-            id = map.get(typ).getMaxID();
-        } catch (Exception e) {
-            log.info("repo error ! " + e.getMessage());
-        }
-
-        if (id == null) {
-            id = 1L;
-        } else {
-            id++;
-        }
-
-        //long id = map.get(typ).getMaxID() + 1;
-        log.info("neue id: " + id + " für " + typ);
-        return id;
-
-    }
-
 
 }
