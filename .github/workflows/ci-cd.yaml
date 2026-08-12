@@ -135,8 +135,31 @@ jobs:
       runner: >-
         ${{ github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["self-hosted", "nas"]' }}
       postgres-port: '5441'
-    # Caller und reusable Workflow haben denselben Owner -> `secrets: inherit` funktioniert und
-    # reicht alle benoetigten Secrets durch, ohne sie einzeln pflegen zu muessen.
+    # Karte 717 (aus 313/A10): explizite Liste statt `secrets: inherit`.
+    #
+    # `inherit` reicht dem Reusable Workflow saemtliche Secrets dieses Repos durch — auch kuenftige,
+    # die mit der Pipeline nichts zu tun haben. Der Workflow liegt in `plaintext-scripts`, einem
+    # OEFFENTLICHEN Repo, dessen `master` ohne Fremd-Approval aenderbar ist; wer dort committet,
+    # fuehrt hier Code aus.
+    #
+    # **Ehrlich zum heutigen Nutzen:** Dieses Repo besitzt derzeit genau die sieben Secrets, die die
+    # Pipeline auch braucht — anders als guild/fwtool/iot/schuetu/app, wo `inherit` zusaetzlich
+    # AUTOBUMP_TOKEN durchreichte (dort gemessen: mit `inherit` `vorhanden=true`, mit Liste
+    # `false`). Hier wirkt die Aenderung praeventiv: Das naechste Secret, das jemand an dieses Repo
+    # haengt, geht nicht mehr automatisch mit.
+    #
+    # MAVEN_NAS_TOKEN und NVD_API_KEY sind erst seit plaintext-scripts#62 deklariert — ohne das
+    # waeren Maven-Deploy und OWASP-Pruefung stumm gebrochen. NVD_API_KEY existiert hier nicht;
+    # `inherit` haette es ebenso wenig geliefert.
+    #
     # Hinweis: Bei Pull Requests aus Forks stellt GitHub keine Secrets bereit; die Pipeline
     # laeuft dann als reiner Build/Test-Lauf (deploy-target `ci-only`) ohne Deploy.
-    secrets: inherit
+    secrets:
+      TWINGATE_SERVICE_KEY: ${{ secrets.TWINGATE_SERVICE_KEY }}
+      MVN_DEPLOY_TOKEN: ${{ secrets.MVN_DEPLOY_TOKEN }}
+      MAVEN_NAS_TOKEN: ${{ secrets.MAVEN_NAS_TOKEN }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      PUSHOVER_APP_TOKEN: ${{ secrets.PUSHOVER_APP_TOKEN }}
+      PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
