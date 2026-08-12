@@ -7,7 +7,6 @@ import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -30,9 +29,29 @@ import java.util.*;
 @Slf4j
 public class SuperModel implements XstreamStorable {
 
+    /**
+     * Die Id kommt von der Datenbank (Identity-Spalte).
+     *
+     * <p><b>Karte 687:</b> Hier stand bis zum 12.08.2026 ein eigener Generator
+     * {@code UseExistingIdOtherwiseGenerateUsingIdentity}, der zwei Dinge versprach: eine bereits
+     * gesetzte Id durchzureichen und andernfalls über {@code RepoMaster} die nächste zu holen. Er
+     * hat seit dem Hibernate-7-Umstieg <b>keines von beiden</b> geleistet: seine Methode
+     * {@code generate(SharedSessionContractImplementor, Object)} überschrieb nichts —
+     * {@code org.hibernate.id.IdentityGenerator} ist über {@code PostInsertIdentifierGenerator}
+     * ein {@code OnExecutionGenerator} und kennt die Methode gar nicht, und die einzige Stelle mit
+     * diesem Namen ({@code IdentifierGenerator}) hat eine andere Signatur (Rückgabe {@code Object}).
+     * Weil {@code @Override} fehlte, fiel das beim Upgrade nicht als Compilerfehler auf.
+     *
+     * <p>Gelaufen ist die ganze Zeit die geerbte IDENTITY-Strategie. Genau die steht jetzt hier —
+     * die Zeile beschreibt also, was ohnehin passiert, statt etwas anderes zu versprechen.
+     *
+     * <p><b>Wer eine Id vorgeben will, kann das hier nicht.</b> Der Weg dafür ist ein
+     * {@code @Id}-Feld <i>ohne</i> {@code @GeneratedValue} an der eigenen Entity — so machen es die
+     * Singleton-Konfigurationszeilen {@code MessengerConfig} (app) und {@code SchuetuMysqlConfig}
+     * (schuetu), die deshalb bewusst nicht von {@code SuperModel} erben.
+     */
     @Id
-    @GenericGenerator(name = "UseExistingIdOtherwiseGenerateUsingIdentity", strategy = "ch.plaintext.framework.UseExistingIdOtherwiseGenerateUsingIdentity")
-    @GeneratedValue(generator = "UseExistingIdOtherwiseGenerateUsingIdentity")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Boolean deleted = Boolean.FALSE;

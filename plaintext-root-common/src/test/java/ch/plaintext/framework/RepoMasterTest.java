@@ -29,8 +29,6 @@ class RepoMasterTest {
         java.lang.reflect.Field mapField = RepoMaster.class.getDeclaredField("map");
         mapField.setAccessible(true);
         mapField.set(repoMaster, repoMap);
-
-        RepoMaster.instance = repoMaster;
     }
 
     // -------------------------------------------------------------------------
@@ -59,64 +57,34 @@ class RepoMasterTest {
     }
 
     // -------------------------------------------------------------------------
-    // getNextID
+    // Karte 687: getNextID(Object) und das statische instance-Feld gibt es nicht
+    // mehr. Die zugehoerigen Faelle sind hier ersatzlos entfallen — sie haben
+    // eine Methode geprueft, die nur ihr eigener (ebenfalls toter) Aufrufer
+    // erreichte. Was bleibt, ist die Registry oben.
     // -------------------------------------------------------------------------
 
+    /**
+     * Karte 687: {@code getNextID} ist weg — und zwar nachweislich, nicht nur „im Code nicht mehr
+     * zu sehen". Ohne diese Zusicherung koennte die Methode samt {@code -1}-Zweig wieder
+     * hereinwachsen, ohne dass ein Test rot wird: ihr einziger Aufrufer war schon vorher tot, ein
+     * Verhaltenstest kann sie also gar nicht erwischen.
+     */
     @Test
-    void getNextID_repoNotFound_returnsMinusOne() {
-        long id = repoMaster.getNextID(new Object());
-        assertEquals(-1, id);
+    void getNextID_gibtEsNichtMehr() {
+        assertTrue(java.util.Arrays.stream(RepoMaster.class.getDeclaredMethods())
+                        .noneMatch(m -> m.getName().equals("getNextID")),
+                "RepoMaster.getNextID war die Id-Vergabe des toten Generators (Karte 687) und gab "
+                        + "fuer unbekannte Typen -1 zurueck. Wer sie wieder einfuehrt, braucht "
+                        + "einen erreichbaren Aufrufer und eine Antwort auf den -1-Fall.");
     }
 
+    /** Ebenso das statische {@code instance}: es hatte nur der geloeschte Generator gelesen. */
     @Test
-    void getNextID_repoExists_maxIdNotNull_returnsMaxIdPlusOne() {
-        PlaintextRepository mockRepo = mock(PlaintextRepository.class);
-        when(mockRepo.getMaxID()).thenReturn(10L);
-        repoMap.put("sampleentity", mockRepo);
-
-        SampleEntity obj = new SampleEntity();
-        long id = repoMaster.getNextID(obj);
-        assertEquals(11L, id);
+    void statischesInstanceFeld_gibtEsNichtMehr() {
+        assertTrue(java.util.Arrays.stream(RepoMaster.class.getDeclaredFields())
+                        .noneMatch(f -> f.getName().equals("instance")),
+                "Ein statischer Verweis auf eine Spring-Bean ist ein Umgehungsweg an der "
+                        + "Injektion vorbei; er existierte nur fuer den geloeschten Generator.");
     }
 
-    @Test
-    void getNextID_repoExists_maxIdNull_returnsOne() {
-        PlaintextRepository mockRepo = mock(PlaintextRepository.class);
-        when(mockRepo.getMaxID()).thenReturn(null);
-        repoMap.put("sampleentity", mockRepo);
-
-        SampleEntity obj = new SampleEntity();
-        long id = repoMaster.getNextID(obj);
-        assertEquals(1L, id);
-    }
-
-    @Test
-    void getNextID_repoExists_exceptionThrown_returnsOne() {
-        PlaintextRepository mockRepo = mock(PlaintextRepository.class);
-        when(mockRepo.getMaxID()).thenThrow(new RuntimeException("DB error"));
-        repoMap.put("sampleentity", mockRepo);
-
-        SampleEntity obj = new SampleEntity();
-        long id = repoMaster.getNextID(obj);
-        // Exception caught, id is null, so returns 1
-        assertEquals(1L, id);
-    }
-
-    // -------------------------------------------------------------------------
-    // Static instance
-    // -------------------------------------------------------------------------
-
-    @Test
-    void instance_isSetCorrectly() {
-        assertSame(repoMaster, RepoMaster.instance);
-    }
-
-    // -------------------------------------------------------------------------
-    // Test-only fixture: a minimal SuperModel entity used to exercise the
-    // RepoMaster registry (getRepo / getNextID). RepoMaster derives its lookup
-    // key from getClass().getSimpleName().toLowerCase(), so the map key is
-    // "sampleentity".
-    // -------------------------------------------------------------------------
-    static class SampleEntity extends SuperModel {
-    }
 }

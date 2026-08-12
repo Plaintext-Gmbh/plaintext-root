@@ -237,4 +237,52 @@ class SuperModelTest {
     void getIndex4_defaultIsDefault() {
         assertEquals("default", model.getIndex4());
     }
+
+    // -------------------------------------------------------------------------
+    // Karte 687: Id-Abbildung
+    // -------------------------------------------------------------------------
+
+    /**
+     * Die Id kommt von der Datenbank, und zwar über die IDENTITY-Strategie — <b>ohne</b> benannten
+     * Generator. Bis zum 12.08.2026 hing hier {@code UseExistingIdOtherwiseGenerateUsingIdentity},
+     * eine Attrappe: ihre {@code generate}-Methode überschrieb unter Hibernate 7 nichts (falsche
+     * Oberklasse, falsche Signatur, kein {@code @Override}), gelaufen ist die ganze Zeit IDENTITY.
+     *
+     * <p><b>Warum das eine Zusicherung braucht.</b> Ein Verhaltenstest kann diesen Rückfall nicht
+     * erwischen: Solange der Generator wirkungslos ist, verhält sich alles wie IDENTITY, und ein
+     * grüner Test wäre genau das, was den Befund elf Monate lang verdeckt hat. Sichtbar ist der
+     * Unterschied nur an der Abbildung selbst — deshalb wird sie hier geprüft und nicht ihr Effekt.
+     */
+    @Test
+    void id_haengtAnIdentityUndAnKeinemBenanntenGenerator() throws Exception {
+        Field id = SuperModel.class.getDeclaredField("id");
+
+        assertTrue(id.isAnnotationPresent(jakarta.persistence.Id.class), "id muss die @Id-Spalte sein");
+
+        jakarta.persistence.GeneratedValue generated =
+                id.getAnnotation(jakarta.persistence.GeneratedValue.class);
+        assertNotNull(generated, "ohne @GeneratedValue müsste jeder Aufrufer die Id selbst setzen");
+        assertEquals(jakarta.persistence.GenerationType.IDENTITY, generated.strategy(),
+                "IDENTITY ist die Strategie, die real läuft — sie muss auch dranstehen");
+        assertEquals("", generated.generator(),
+                "Ein benannter Generator ist genau die Konstruktion aus Karte 687. Wer wieder einen "
+                        + "einführt, muss belegen, dass Hibernate ihn tatsächlich aufruft — die "
+                        + "Vorgängerin tat es nie, weil sie von IdentityGenerator erbte, der die "
+                        + "generate-Methode gar nicht kennt.");
+    }
+
+    /**
+     * Gegenprobe zur Prüfung oben: Sie liest wirklich das Feld dieser Klasse und nicht irgendeines.
+     * Ohne sie wäre eine grüne Zusicherung auch dann möglich, wenn {@code getDeclaredField} auf ein
+     * anderes Feld zeigte.
+     */
+    @Test
+    void gegenprobe_dieIdPruefungLiestDasRichtigeFeld() throws Exception {
+        Field id = SuperModel.class.getDeclaredField("id");
+        assertEquals(Long.class, id.getType());
+        assertFalse(SuperModel.class.getDeclaredField("mandat")
+                        .isAnnotationPresent(jakarta.persistence.Id.class),
+                "mandat ist nicht die Id — fände die Prüfung oben hier ebenfalls @Id, läse sie das "
+                        + "falsche Feld");
+    }
 }
