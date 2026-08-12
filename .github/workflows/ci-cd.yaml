@@ -88,11 +88,38 @@ jobs:
     if: needs.skip-pruefung.outputs.skip != 'true'
     uses: Plaintext-Gmbh/plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml@master
     with:
+      # STILLGELEGT am 12.08.2026 auf Anweisung Daniels (Karte 776): der CONTAINER von
+      # plaintext-root laeuft nicht mehr, das MAVEN-ARTEFAKT lebt weiter.
+      #
+      # Deshalb hier `release-only` statt `release-all` — und nicht `ci-only`:
+      # plaintext-root-parent ist der Parent-POM von plaintext-app, plaintext-guild,
+      # plaintext-schuetu und plaintext-iot; ueber ihn kommt auch die Spring-Boot-Version.
+      # Ohne Releases von hier haetten alle vier Anwendungen keinen Weg mehr zu einer neuen
+      # root-Version. `release-only` macht Version-Bump, Tag, Push und `mvn clean deploy` in
+      # den Reposilite — nur deploy_to_dev/deploy_to_prod bleiben aus.
+      #
+      # Warum `release-all` nicht einfach stehen bleiben kann: es endet in
+      # `sudo docker compose up -d --no-deps --force-recreate <slot>`
+      # (plaintext-scripts/tui-build-logic.sh:752). Der Schutz auf dem NAS —
+      # `profiles: ["stillgelegt"]` — wirkt nur gegen ein `up -d` OHNE Servicenamen; wird ein
+      # Service ausdruecklich genannt, aktiviert Compose sein Profil implizit (gemessen
+      # 13.08.2026 auf dem NAS, Docker 29.4.3 / Compose v5.1.3). Ein ganz normaler Merge haette
+      # die Stilllegung also aufgehoben.
+      #
+      # Der Branch-Zweig faellt aus demselben Grund von 'snapshot-dev' auf 'ci-only': auch
+      # `snapshot-dev` deployt (deploy_to_dev -> deploy_blue_green "int"), nur eben in die
+      # INT-Slots — und die sind genauso stillgelegt wie PROD. Ein Push auf einen
+      # Feature-Branch haette also gereicht.
+      #
+      # WIEDER EINSCHALTEN (zusammen mit den Stilllegungszeilen in
+      # /volume1/docker/plaintext-root/docker-compose.yaml): 'release-only' unten wieder durch
+      # 'release-all' ersetzen und 'ci-only' im Branch-Zweig durch 'snapshot-dev'. Der manuelle
+      # workflow_dispatch bleibt unveraendert — er ist der bewusste, einzelne Rueckweg.
       deploy-target: >-
         ${{ github.event_name == 'schedule' && 'ci-only'
          || github.event_name == 'pull_request' && 'ci-only'
          || github.event_name == 'workflow_dispatch' && github.event.inputs.deploy-target
-         || (github.ref == 'refs/heads/master' && 'release-all' || 'snapshot-dev') }}
+         || (github.ref == 'refs/heads/master' && 'release-only' || 'ci-only') }}
       project-name: plaintext-root
       database-name: plaintext_root
       # Deploy-Ziele kommen aus Repository-Variablen (Settings -> Variables), damit
