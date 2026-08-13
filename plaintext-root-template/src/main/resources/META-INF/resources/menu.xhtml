@@ -117,11 +117,43 @@
                 transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
             }
             .layout-sidebar .layout-menu > li.active-menuitem > ul {
-                max-height: 1200px;
+                max-height: 3000px;
                 opacity: 1;
             }
             .layout-sidebar .layout-menu.transitions-enabled > li.active-menuitem > ul {
                 transition: max-height 0.3s ease-in, opacity 0.3s ease-in;
+            }
+
+            /* ── Deckel des aufgeklappten Untermenues ────────────────────
+               Das Aufklappen ist als max-height-Uebergang gebaut, und ein
+               solcher Uebergang braucht einen festen Zielwert - 'auto' laesst
+               sich nicht animieren. Zusammen mit dem noetigen
+               'overflow: hidden' ist dieser Wert damit zugleich eine harte
+               Grenze: was darueber hinausragt, verschwindet ersatzlos. Ohne
+               Scrollbalken, ohne Hinweis.
+
+               Die bisherigen Werte waren zu knapp bemessen: 1200px oben fuer
+               den Sidebar-Modus, 500px im Theme fuer alle uebrigen Modi
+               (layout-light/dark.css). Bei rund 34px Zeilenhoehe sind das 35
+               bzw. nur 14 Eintraege. Ein Menue mit einer aufgeklappten
+               dritten Ebene erreicht das schnell, denn deren Eintraege
+               zaehlen zur Hoehe des Elterncontainers dazu.
+
+               Massgeblich ist im Normalfall nicht mehr dieser Wert: das
+               Skript unten setzt beim Aufklappen die tatsaechliche Hoehe und
+               nimmt den Deckel danach ganz weg. Die Werte hier sind die
+               Reserve fuer den Fall, dass das Skript nicht laeuft - sie
+               sollen dann niemandem Eintraege wegschneiden, deshalb
+               grosszuegig.
+
+               Die Regel hebt den Theme-Deckel fuer die Modi ohne
+               '.layout-sidebar' an; gleiche Spezifitaet wie die Theme-Regel,
+               aber spaeter in der Kaskade, weil dieser Block im Body steht
+               und die Layout-Stylesheets im Head landen. Die Modi
+               'horizontal' und 'slim' setzen ohnehin 'max-height: none' mit
+               hoeherer Spezifitaet und bleiben unberuehrt. */
+            .layout-menu > li.active-menuitem > ul {
+                max-height: 3000px;
             }
 
             /* ── Dritte Ebene ────────────────────────────────────────────
@@ -146,8 +178,11 @@
                 opacity: 0;
                 transition: max-height 0.25s ease-out, opacity 0.25s ease-out;
             }
+            /* Gleiche Ueberlegung wie beim Elterncontainer oben: der Wert ist
+               eine harte Grenze, keine Reserve mit Luft nach oben - und er
+               wird im Regelfall vom Skript ersetzt. */
             .layout-menu > li > ul > li.layout-nested-submenu.active-submenu > ul {
-                max-height: 600px;
+                max-height: 2000px;
                 opacity: 1;
             }
             .layout-menu > li > ul > li.layout-nested-submenu > ul > li {
@@ -225,6 +260,82 @@
                 return w && (w.classList.contains('layout-slim') || w.classList.contains('layout-horizontal')) && window.innerWidth >= 992;
             }
 
+            // ── Genaue Aufklapphoehe ─────────────────────────────────────
+            // Aufgeklappt wird ueber einen max-height-Uebergang, und der
+            // braucht einen festen Zielwert - 'auto' laesst sich nicht
+            // animieren. Der Wert im Stylesheet ist damit zugleich eine harte
+            // Grenze: was darueber hinausragt, schneidet 'overflow: hidden'
+            // weg, ohne Scrollbalken und ohne Hinweis. Jede feste Grenze wird
+            // irgendwann erreicht, sobald eine dritte Ebene aufklappt - deren
+            // Eintraege zaehlen zur Hoehe des Elterncontainers dazu.
+            //
+            // Darum wird der Zielwert aus der tatsaechlich gemessenen Hoehe
+            // gesetzt und nach dem Uebergang auf 'none' genommen: danach
+            // waechst der Container frei mit, egal wie viele Eintraege noch
+            // dazukommen. Platz dafuer ist da, die Sidebar scrollt ohnehin
+            // ('.layout-menu-container { overflow-y: auto }'). Die Werte im
+            // Stylesheet bleiben als Reserve, falls dieses Skript nicht laeuft.
+            var PT_UEBERGANG_MS = 350;   // etwas mehr als die 0.3s im Stylesheet
+
+            function ptOeffnen(ul, animiert) {
+                if (!ul) return;
+                ul.ptOffen = true;
+                if (!animiert) {
+                    ul.style.maxHeight = 'none';
+                    return;
+                }
+                ul.style.maxHeight = ul.scrollHeight + 'px';
+                setTimeout(function() {
+                    // Deckel weg, sobald die Bewegung durch ist.
+                    if (ul.ptOffen) {
+                        ul.style.maxHeight = 'none';
+                    }
+                }, PT_UEBERGANG_MS);
+            }
+
+            function ptSchliessen(ul, animiert) {
+                if (!ul) return;
+                ul.ptOffen = false;
+                if (!animiert) {
+                    ul.style.maxHeight = '';
+                    return;
+                }
+                // Von 'none' aus laesst sich nicht animieren: erst die
+                // gemessene Hoehe setzen, Layout erzwingen, dann auf 0.
+                // Gemessen wird die sichtbare Hoehe, nicht die des Inhalts -
+                // sonst springt ein noch gedeckeltes Menue erst auf, bevor es
+                // zugeht.
+                ul.style.maxHeight = ul.offsetHeight + 'px';
+                void ul.offsetHeight;
+                ul.style.maxHeight = '0px';
+                setTimeout(function() {
+                    // Zurueck ans Stylesheet, das im Ruhezustand 0 vorgibt.
+                    if (!ul.ptOffen) {
+                        ul.style.maxHeight = '';
+                    }
+                }, PT_UEBERGANG_MS);
+            }
+
+            // Klappt die dritte Ebene auf, waehrend der Elterncontainer noch
+            // einen gemessenen Wert traegt, wuerde dessen Deckel den Zuwachs
+            // abschneiden - hier wird er freigegeben.
+            function ptElternFreigeben(ul) {
+                var eltern = $(ul).parent().closest('ul')[0];
+                if (eltern && $(eltern).parent().hasClass('active-menuitem')) {
+                    eltern.ptOffen = true;
+                    eltern.style.maxHeight = 'none';
+                }
+            }
+
+            // Slim und Horizontal blenden die Untermenues ueber 'display' ein
+            // und aus; dort stoert jede Inline-Hoehe.
+            function ptInlineHoehenEntfernen() {
+                $('.layout-menu ul').each(function() {
+                    this.style.maxHeight = '';
+                    this.ptOffen = false;
+                });
+            }
+
             function setupSubmenuHandlers() {
                 var openSubmenuLabel = window.submenuToRestore || sessionStorage.getItem('openSubmenuLabel');
                 var openNestedLabel = sessionStorage.getItem('openNestedSubmenuLabel');
@@ -238,22 +349,39 @@
                         e.stopImmediatePropagation();
                         var nested = $(this).closest('li.layout-nested-submenu');
                         var label = $(this).children('span').first().text().trim();
-                        nested.siblings('li.layout-nested-submenu').removeClass('active-submenu');
+                        var animiert = !isSlimOrHorizontal();
+                        nested.siblings('li.layout-nested-submenu').each(function() {
+                            if ($(this).hasClass('active-submenu')) {
+                                ptSchliessen($(this).children('ul')[0], animiert);
+                            }
+                        }).removeClass('active-submenu');
                         nested.toggleClass('active-submenu');
                         if (nested.hasClass('active-submenu')) {
+                            if (animiert) {
+                                ptElternFreigeben(nested.children('ul')[0]);
+                                ptOeffnen(nested.children('ul')[0], true);
+                            }
                             sessionStorage.setItem('openNestedSubmenuLabel', label);
                         } else {
+                            if (animiert) {
+                                ptSchliessen(nested.children('ul')[0], true);
+                            }
                             sessionStorage.removeItem('openNestedSubmenuLabel');
                         }
                         return false;
                     });
 
-                // Zustand der dritten Ebene wiederherstellen
+                // Zustand der dritten Ebene wiederherstellen. Beim Laden ohne
+                // Bewegung: der Uebergang ist noch gar nicht scharf
+                // ('transitions-enabled' kommt erst unten).
                 if (openNestedLabel) {
                     $('.layout-menu > li > ul > li.layout-nested-submenu').each(function() {
                         var label = $(this).children('a').first().children('span').first().text().trim();
                         if (label === openNestedLabel) {
                             $(this).addClass('active-submenu');
+                            if (!isSlimOrHorizontal()) {
+                                ptOeffnen($(this).children('ul')[0], false);
+                            }
                         }
                     });
                 }
@@ -287,6 +415,9 @@
                         // Sidebar: restore state
                         if (!isSlimOrHorizontal() && openSubmenuLabel && label === openSubmenuLabel) {
                             item.addClass('active-menuitem');
+                            // Ohne Bewegung, und nach der dritten Ebene oben -
+                            // 'none' deckelt deren Eintraege dann nicht mit.
+                            ptOeffnen(submenu[0], false);
                         }
 
                         // Click handler
@@ -295,13 +426,20 @@
                             e.preventDefault();
                             e.stopImmediatePropagation();
 
-                            $('.layout-menu > li').not(item).removeClass('active-menuitem');
+                            var animiert = !isSlimOrHorizontal();
+                            $('.layout-menu > li').not(item).each(function() {
+                                if (animiert && $(this).hasClass('active-menuitem')) {
+                                    ptSchliessen($(this).children('ul')[0], true);
+                                }
+                            }).removeClass('active-menuitem');
                             item.toggleClass('active-menuitem');
 
-                            if (!isSlimOrHorizontal()) {
+                            if (animiert) {
                                 if (item.hasClass('active-menuitem')) {
+                                    ptOeffnen(submenu[0], true);
                                     sessionStorage.setItem('openSubmenuLabel', label);
                                 } else {
+                                    ptSchliessen(submenu[0], true);
                                     sessionStorage.removeItem('openSubmenuLabel');
                                 }
                             }
@@ -321,6 +459,22 @@
                                 item.removeClass('active-menuitem');
                             }
                         });
+                    }
+                });
+
+                // Modus- und Breitenwechsel: im Flyout stoeren die gesetzten
+                // Hoehen, zurueck in der Sidebar fehlen sie. Beides hier
+                // nachziehen, sonst haengt ein Menue nach dem Wechsel an
+                // einem Wert fest, der nicht mehr zu seinem Inhalt passt.
+                if (isSlimOrHorizontal()) {
+                    ptInlineHoehenEntfernen();
+                }
+                $(window).off('resize.ptmenu').on('resize.ptmenu', function() {
+                    if (isSlimOrHorizontal()) {
+                        ptInlineHoehenEntfernen();
+                    } else {
+                        $('.layout-menu > li.active-menuitem > ul, .layout-menu li.layout-nested-submenu.active-submenu > ul')
+                            .each(function() { ptOeffnen(this, false); });
                     }
                 });
 
