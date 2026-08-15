@@ -13,6 +13,9 @@ import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.StandardEnvironment;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -21,6 +24,7 @@ import java.security.PublicKey;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -297,6 +301,46 @@ class JwtTokenServiceTest {
         ohne.init();
         assertEquals(null, claimsOf(ohne, ohne.signServiceToken("desk", null, java.time.Duration.ofMinutes(5))).getIssuer(),
                 "Leerer Wert laesst den Claim weg statt einen leeren iss zu schreiben");
+    }
+
+    /**
+     * Karte 804: Woher der {@code iss}-Wert kommt, wenn ihn niemand ausdrücklich setzt.
+     *
+     * <p>Der Test prüft den Platzhalter-Ausdruck der {@link Value}-Annotation selbst, nicht das Feld:
+     * Die Auflösung passiert im Spring-Kontext, ein gesetztes Feld würde also nur belegen, dass
+     * {@code signServiceToken} einen gesetzten Wert schreibt — das steht schon in
+     * {@link #serviceToken_issuerWirdGesetztWennKonfiguriert()}. Ändert jemand den Ausdruck zurück
+     * auf {@code ${plaintext.jwt.issuer:}}, wird dieser Test rot (Mutationsprobe gefahren).
+     */
+    @Test
+    void issuer_faelltAufDieBasisAdresseDerInstanzZurueck() throws Exception {
+        String ausdruck = JwtTokenService.class.getDeclaredField("issuer")
+                .getAnnotation(Value.class).value();
+
+        assertEquals("https://app.guild42.ch",
+                aufgeloest(ausdruck, Map.of("plaintext.baseurl", "https://app.guild42.ch")),
+                "Ohne eigene Konfiguration ist der iss die oeffentliche Adresse dieser Instanz — "
+                        + "nur so unterscheiden sich INT- und PROD-Ausweise, die denselben Schluessel teilen");
+
+        assertEquals("http://192.168.1.224:1151",
+                aufgeloest(ausdruck, Map.of("plaintext.baseurl", "http://192.168.1.224:1151")),
+                "INT traegt seine eigene Adresse — der Fall, der ohne diesen Default nicht existierte");
+
+        assertEquals("https://ausdruecklich.example",
+                aufgeloest(ausdruck, Map.of("plaintext.baseurl", "https://app.guild42.ch",
+                        "plaintext.jwt.issuer", "https://ausdruecklich.example")),
+                "Ein ausdruecklich gesetzter Wert gewinnt weiterhin");
+
+        assertEquals("", aufgeloest(ausdruck, Map.of()),
+                "Ohne Basis-Adresse bleibt der Claim weg wie bisher — ein iss=localhost waere "
+                        + "schlechter als gar keiner, weil er eine falsche Herkunft behauptet");
+    }
+
+    /** Löst einen Property-Platzhalter gegen genau die übergebenen Werte auf. */
+    private static String aufgeloest(String ausdruck, Map<String, Object> werte) {
+        StandardEnvironment umgebung = new StandardEnvironment();
+        umgebung.getPropertySources().addFirst(new MapPropertySource("test", werte));
+        return umgebung.resolvePlaceholders(ausdruck);
     }
 
     /**

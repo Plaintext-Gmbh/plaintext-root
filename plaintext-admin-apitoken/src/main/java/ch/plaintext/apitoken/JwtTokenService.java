@@ -143,9 +143,22 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
      * eigene Erwartung halten und darf daraus <b>nicht</b> den Schlüssel-Abrufort ableiten, sonst
      * bestimmt der Aussteller, wem geglaubt wird.
      *
+     * <p><b>Warum der Default aus {@code plaintext.baseurl} kommt (Karte 804).</b> Genau der oben
+     * beschriebene schlechtere Fall war der Normalzustand: Die Eigenschaft war nirgends gesetzt,
+     * also trugen INT- und PROD-Ausweise denselben Inhalt — bei geteilter {@code app.env} und
+     * damit demselben Signaturschlüssel sind sie dann nicht mehr auseinanderzuhalten. Der Wert,
+     * den dieses Feld will, steht in jeder Umgebung bereits als {@code plaintext.baseurl}; ihn
+     * ein zweites Mal von Hand zu pflegen hätte nur zwei Quellen erzeugt, die auseinanderlaufen.
+     *
+     * <p>Der innere Default ist bewusst <b>leer</b> und nicht {@code localhost}: Wo keine
+     * Basis-Adresse konfiguriert ist, bleibt der Claim weg wie bisher. Ein
+     * {@code iss=http://localhost:8080} in einem Produktiv-Ausweis wäre schlechter als gar keiner,
+     * weil er eine Herkunft behauptet, die nicht stimmt. Ein ausdrücklich gesetztes
+     * {@code plaintext.jwt.issuer} gewinnt weiterhin.
+     *
      * <p>Package-private, damit Tests den Wert setzen können — wie {@link #activeProfiles}.
      */
-    @Value("${plaintext.jwt.issuer:}")
+    @Value("${plaintext.jwt.issuer:${plaintext.baseurl:}}")
     String issuer;
 
     /**
