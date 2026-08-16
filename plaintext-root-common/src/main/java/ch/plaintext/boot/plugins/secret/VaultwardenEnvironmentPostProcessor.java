@@ -58,6 +58,13 @@ import lombok.extern.slf4j.Slf4j;
  * {@link VaultwardenPropertyResolutionException} FAIL-FAST ab. Die Meldung nennt
  * nur Property- und Item-Namen — NIEMALS Secret-Werte oder das Master-Passwort.
  * Normale (nicht-{@code vault:}) Werte werden unveraendert durchgereicht.</p>
+ *
+ * <p><b>Der Abbruch gewinnt auch gegen einen Default.</b> Ein
+ * {@code @Value("$&#123;plaintext.foo.token:&#125;")} faellt bei einer unaufloesbaren
+ * {@code vault:}-Referenz NICHT auf den leeren Default zurueck — der Default greift nur, wenn das
+ * Property ueberhaupt fehlt, nicht wenn seine Aufloesung scheitert. Das ist Absicht: ein leerer
+ * Wert saehe aus wie eine harmlose Konfigurationsluecke, waehrend die App in Wahrheit ohne ihr
+ * Secret liefe. Festgehalten in {@code VaultwardenFailFastVertragTest} (Karte 868).</p>
  */
 @Slf4j
 public class VaultwardenEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
@@ -71,6 +78,12 @@ public class VaultwardenEnvironmentPostProcessor implements EnvironmentPostProce
         sources.addFirst(new VaultwardenPropertySource(environment));
         log.debug("Vault-Property-Resolver registriert (Source '{}' an erster Stelle)",
                 VaultwardenPropertySource.SOURCE_NAME);
+
+        // Und JETZT alle vault:-Referenzen einmalig aufloesen und in ihrer Quell-Source ersetzen.
+        // Die lazy Source allein genuegt nicht: Spring Boot haengt spaeter eine eigene Source davor
+        // und reicht den Roh-Wert durch (siehe VaultwardenEagerResolution).
+        VaultwardenEagerResolution.resolveAll(environment,
+                new VaultwardenValueResolver(() -> VaultwardenPropertySource.buildService(environment)));
     }
 
     /**
