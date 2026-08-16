@@ -96,7 +96,7 @@ class VaultwardenPropertySource extends PropertySource<Object> {
      * {@link Binder}). Wird nur waehrend einer laufenden Aufloesung aufgerufen
      * (Guard aktiv), daher liest der Binder die Roh-Werte aus den echten Sources.
      */
-    private static VaultwardenSecretService buildService(ConfigurableEnvironment environment) {
+    static VaultwardenSecretService buildService(ConfigurableEnvironment environment) {
         VaultwardenProperties props = Binder.get(environment)
                 .bind("plaintext.vault", VaultwardenProperties.class)
                 .orElseGet(VaultwardenProperties::new);

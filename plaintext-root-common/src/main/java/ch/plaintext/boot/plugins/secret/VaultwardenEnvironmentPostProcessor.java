@@ -78,6 +78,12 @@ public class VaultwardenEnvironmentPostProcessor implements EnvironmentPostProce
         sources.addFirst(new VaultwardenPropertySource(environment));
         log.debug("Vault-Property-Resolver registriert (Source '{}' an erster Stelle)",
                 VaultwardenPropertySource.SOURCE_NAME);
+
+        // Und JETZT alle vault:-Referenzen einmalig aufloesen und in ihrer Quell-Source ersetzen.
+        // Die lazy Source allein genuegt nicht: Spring Boot haengt spaeter eine eigene Source davor
+        // und reicht den Roh-Wert durch (siehe VaultwardenEagerResolution).
+        VaultwardenEagerResolution.resolveAll(environment,
+                new VaultwardenValueResolver(() -> VaultwardenPropertySource.buildService(environment)));
     }
 
     /**
