@@ -49,9 +49,7 @@ jobs:
           # Karte 886: die Dateilisten des Commits, um Anwendungscode von einer reinen
           # Workflow-/Doku-Aenderung zu unterscheiden. Fehlt das Payload (z.B. bei
           # workflow_dispatch), sind sie leer — dann wird bewusst gemeldet.
-          C_ADDED: ${{ toJSON(github.event.head_commit.added) }}
-          C_MODIFIED: ${{ toJSON(github.event.head_commit.modified) }}
-          C_REMOVED: ${{ toJSON(github.event.head_commit.removed) }}
+          GH_TOKEN: ${{ github.token }}
           PUSHOVER_APP_TOKEN: ${{ secrets.PUSHOVER_APP_TOKEN }}
           PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
         run: |
@@ -81,7 +79,17 @@ jobs:
           # der Dringlichkeit und dem Text, die zutreffen. Alle Zweifelsfaelle (gemischter Commit,
           # fehlendes Payload) gehen in Richtung MELDEN.
           NEUTRAL='^\.github/|\.md$|^\.gitignore$|^LICENSE$|^renovate\.json$'
-          DATEIEN="$(printf '%s\n%s\n%s\n' "$C_ADDED" "$C_MODIFIED" "$C_REMOVED" | grep -oE '"[^"]+"' | tr -d '"')"
+          # NACHGEBESSERT (Karte 886, zweiter Anlauf): zuerst stand hier die Dateiliste aus dem
+          # push-Payload (github.event.head_commit.added/modified/removed). Am lebenden System
+          # gemessen: nach einem SQUASH-MERGE sind diese Felder leer — vier Merges am 17.08.2026
+          # ergaben alle "Anwendungscode=ja", obwohl jeder genau eine Datei unter .github/ aendert.
+          # Die Abstufung haette so NIE gegriffen. Der Payload-Weg ist damit widerlegt, nicht nur
+          # unsicher; wer ihn wieder einbaut, baut den Fehler nach.
+          #
+          # Die Commit-API liefert dieselbe Frage korrekt und braucht nur contents:read.
+          # Scheitert der Aufruf (Rate-Limit, Netz), bleibt DATEIEN leer und der Fail-safe unten
+          # greift: dann wird gemeldet.
+          DATEIEN="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq '.files[].filename' 2>/dev/null)"
           ANZAHL="$(printf '%s\n' "$DATEIEN" | sed '/^$/d' | wc -l)"
           # GitHub KUERZT diese Arrays bei sehr grossen Commits. Der leere Fall faellt oben schon
           # auf "ja"; gefaehrlich ist der gekuerzte NICHT-leere: bleiben nach der Kuerzung zufaellig
