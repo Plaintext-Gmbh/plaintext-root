@@ -44,7 +44,7 @@ public class MandateBackingBean implements Serializable {
     private MyUserRepository userRepository;
 
     @Autowired
-    private MandateMenuConfigRepository mandateMenuConfigRepository;
+    private transient MandateMenuConfigRepository mandateMenuConfigRepository;
 
     private List<String> mandate = new ArrayList<>();
     private List<MyUserEntity> users = new ArrayList<>();

@@ -65,10 +65,10 @@ public class RootEntityBackingBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Autowired
-    private EntityRegistryService registryService;
+    private transient EntityRegistryService registryService;
 
     @Autowired
-    private JpaEntityService entityService;
+    private transient JpaEntityService entityService;
 
     @Autowired
     private PlaintextSecurity plaintextSecurity;

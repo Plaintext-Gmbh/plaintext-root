@@ -68,10 +68,10 @@ public class MyUserBackingBean implements Serializable {
     private PlaintextSecurity plaintextSecurity;
 
     @Autowired
-    private UserMandateRepository userMandateRepo;
+    private transient UserMandateRepository userMandateRepo;
 
     @Autowired
-    private MagicLinkService magicLinkService;
+    private transient MagicLinkService magicLinkService;
 
     /** Zusätzliche Mandate des gewählten Benutzers (Mehrfach-Mandant), im Dialog editierbar. */
     private List<String> selectedZusatzMandate = new ArrayList<>();
