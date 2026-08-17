@@ -476,8 +476,13 @@ public class PlaintextSecurityConfig {
 
     @Bean
     PersistentTokenBasedRememberMeServices rememberMeServices() {
+        // Karte 898: PlaintextRememberMeServices statt der Spring-Klasse. Ein Series/Token-Mismatch
+        // wirft dort keine CookieTheftException nach draussen mehr — sie schlug bis in den
+        // dispatcherServlet durch und machte /login.html zu HTTP 500 (sechsmal in sieben Tagen,
+        // gemessen in Karte 892). Der Diebstahlschutz bleibt unberuehrt: removeUserTokens laeuft
+        // in processAutoLoginCookie VOR dem throw, das Cookie wird per cancelCookie geloescht.
         PersistentTokenBasedRememberMeServices services =
-                new PersistentTokenBasedRememberMeServices(rememberMeSigningKey, userDetail, tokenRepository);
+                new PlaintextRememberMeServices(rememberMeSigningKey, userDetail, tokenRepository);
         // Bei OAuth/OIDC-Login gibt es keinen 'remember-me'-Formparameter. Damit
         // PlaintextAuthenticationSuccessHandler#loginSuccess dennoch einen persistenten
         // Cookie ausstellt, muss alwaysRemember=true sein (sonst prüft loginSuccess den
