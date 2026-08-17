@@ -46,6 +46,12 @@ jobs:
           # Ueber env, nicht per Interpolation in den Skripttext: eine Commit-Message darf
           # Anfuehrungszeichen und Backticks enthalten.
           MSG: ${{ github.event.head_commit.message }}
+          # Karte 886: die Dateilisten des Commits, um Anwendungscode von einer reinen
+          # Workflow-/Doku-Aenderung zu unterscheiden. Fehlt das Payload (z.B. bei
+          # workflow_dispatch), sind sie leer — dann wird bewusst gemeldet.
+          C_ADDED: ${{ toJSON(github.event.head_commit.added) }}
+          C_MODIFIED: ${{ toJSON(github.event.head_commit.modified) }}
+          C_REMOVED: ${{ toJSON(github.event.head_commit.removed) }}
           PUSHOVER_APP_TOKEN: ${{ secrets.PUSHOVER_APP_TOKEN }}
           PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
         run: |
@@ -64,17 +70,57 @@ jobs:
           # setzen den Marker mit Absicht und machen 206 der 214 uebersprungenen master-Laeufe der
           # letzten 100 Laeufe je Repo aus. Wer die mitmeldet, gewoehnt sich die Meldung ab.
           AUTOMATIK='^(Prepare next development iteration|chore\(quality\): Quality-Gate-Status)'
+          # Karte 886: "laeuft nirgends" stimmt nur fuer Anwendungscode. Eine reine Workflow-
+          # oder Doku-Aenderung wirkt ab dem naechsten Lauf, ganz ohne Deploy — und genau die soll
+          # laut Rollen-Regel mit [skip-ci] gemergt werden. Wer nach Vorschrift arbeitete, loeste
+          # also einen Prioritaets-1-Alarm mit falschem Inhalt aus, und ein Alarm, der regelmaessig
+          # nicht stimmt, gewoehnt dem Empfaenger das Hinsehen ab — dieselbe Ueberlegung, aus der
+          # oben schon die beiden Automatik-Commits ausgenommen sind.
+          #
+          # Der Waechter wird praezisiert, nicht abgeschaltet: gemeldet wird weiterhin, nur mit
+          # der Dringlichkeit und dem Text, die zutreffen. Alle Zweifelsfaelle (gemischter Commit,
+          # fehlendes Payload) gehen in Richtung MELDEN.
+          NEUTRAL='^\.github/|\.md$|^\.gitignore$|^LICENSE$|^renovate\.json$'
+          DATEIEN="$(printf '%s\n%s\n%s\n' "$C_ADDED" "$C_MODIFIED" "$C_REMOVED" | grep -oE '"[^"]+"' | tr -d '"')"
+          ANZAHL="$(printf '%s\n' "$DATEIEN" | sed '/^$/d' | wc -l)"
+          # GitHub KUERZT diese Arrays bei sehr grossen Commits. Der leere Fall faellt oben schon
+          # auf "ja"; gefaehrlich ist der gekuerzte NICHT-leere: bleiben nach der Kuerzung zufaellig
+          # nur .github/-Pfade uebrig, wuerde eine echte Anwendungscode-Aenderung auf prio 0
+          # abgestuft — genau die Richtung, die diese Aenderung verhindern soll.
+          # Die genaue Kuerzungsgrenze ist hier NICHT gemessen; 50 ist bewusst weit darunter
+          # gewaehlt. Ein rein deploy-neutraler Commit mit mehr als 50 Dateien ist ohnehin so
+          # ungewoehnlich, dass eine Meldung angemessen ist.
+          MAX_VERLAESSLICH=50
+          if [ -z "$DATEIEN" ]; then
+            ANWENDUNGSCODE=ja
+          elif [ "$ANZAHL" -ge "$MAX_VERLAESSLICH" ]; then
+            ANWENDUNGSCODE=ja
+            echo "Dateiliste umfasst $ANZAHL Eintraege — moeglicherweise gekuerzt, daher als Anwendungscode behandelt."
+          elif printf '%s\n' "$DATEIEN" | grep -qvE "$NEUTRAL"; then
+            ANWENDUNGSCODE=ja
+          else
+            ANWENDUNGSCODE=nein
+          fi
+
+          if [ "$ANWENDUNGSCODE" = "ja" ]; then
+            MELDE_TEXT="Auf master wurde wegen [skip-ci] nicht deployt — die gemergte Aenderung laeuft nirgends. Commit: $BETREFF"
+            MELDE_PRIO=1
+          else
+            MELDE_TEXT="Auf master wurde wegen [skip-ci] nicht deployt. Der Commit beruehrt keinen Anwendungscode — die Aenderung wirkt ab dem naechsten Lauf, ein Deploy war nicht noetig. Commit: $BETREFF"
+            MELDE_PRIO=0
+          fi
+
           if [ "$GITHUB_REF_NAME" = "master" ] \
              && printf '%s' "$BETREFF" | grep -qF '[skip-ci]' \
              && ! printf '%s' "$BETREFF" | grep -qE "$AUTOMATIK"; then
-            echo "::warning::Deploy auf master uebersprungen: $BETREFF"
+            echo "::warning::Deploy auf master uebersprungen (Anwendungscode=$ANWENDUNGSCODE): $BETREFF"
             if [ -n "$PUSHOVER_APP_TOKEN" ] && [ -n "$PUSHOVER_USER_KEY" ]; then
               curl -s -o /dev/null --max-time 20 -X POST https://api.pushover.net/1/messages.json \
                 --form-string "token=$PUSHOVER_APP_TOKEN" \
                 --form-string "user=$PUSHOVER_USER_KEY" \
                 --form-string "title=Deploy uebersprungen: $GITHUB_REPOSITORY" \
-                --form-string "message=Auf master wurde wegen [skip-ci] nicht deployt — die gemergte Aenderung laeuft nirgends. Commit: $BETREFF" \
-                --form-string "priority=1" \
+                --form-string "message=$MELDE_TEXT" \
+                --form-string "priority=$MELDE_PRIO" \
                 --form-string "url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
                 --form-string "url_title=Lauf ansehen" \
                 || echo "::warning::Pushover-Meldung konnte nicht gesendet werden."
