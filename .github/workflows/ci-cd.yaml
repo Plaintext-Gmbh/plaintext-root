@@ -11,8 +11,8 @@ on:
           - release-all
         default: ci-only
   schedule:
-    - cron: '0 3 * * *'   # Nightly: schneller Test-Build (ci-only, KEIN Sonar)
-    - cron: '0 4 * * 1'   # Weekly Mo 04:00: Voll-Analyse (Sonar + OWASP-CVE + SpotBugs + Quality-Gate)
+    - cron: '0 2 * * *'   # Nightly: schneller Test-Build (ci-only, KEIN Sonar) — gestaffelt, Karte 889
+    - cron: '0 6 * * 1'   # Weekly montags: Voll-Analyse (Sonar + OWASP-CVE + SpotBugs + Quality-Gate) — gestaffelt, Karte 889
   push:
     branches: ['**']
   pull_request:
@@ -186,10 +186,12 @@ jobs:
       # hier keine umgebungsspezifischen Adressen im oeffentlichen Repo stehen.
       dev-url: ${{ vars.DEPLOY_DEV_URL }}
       prod-url: ${{ vars.DEPLOY_PROD_URL }}
-      # Sonar + Voll-Analyse NUR wöchentlich (Mo 04:00); nightly bleibt schnell. Dispatch = manueller
+      # Sonar + Voll-Analyse NUR montags; nightly bleibt schnell. Dispatch = manueller
       # Voll-Lauf, standardmässig ohne Deploy (siehe deploy-target oben).
-      sonar-enabled: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
-      quality-analysis: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
+      # Karte 889: NICHT auf die Uhrzeit vergleichen — der Cron-Ausdruck stand zweimal im File,
+      # und eine Zeitverschiebung haette Sonar lautlos abgeschaltet. '* * 1' ist die Aussage.
+      sonar-enabled: ${{ endsWith(github.event.schedule, '* * 1') || github.event_name == 'workflow_dispatch' }}
+      quality-analysis: ${{ endsWith(github.event.schedule, '* * 1') || github.event_name == 'workflow_dispatch' }}
       # SICHERHEIT (Karte 426, Entscheidung Daniel 02.08.2026): Pull-Request-Laeufe laufen NICHT
       # mehr auf den self-hosted NAS-Runnern — nur noch master und die Deploys.
       #
