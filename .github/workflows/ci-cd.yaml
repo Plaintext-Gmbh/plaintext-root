@@ -191,8 +191,8 @@ jobs:
       prod-url: ${{ vars.DEPLOY_PROD_URL }}
       # Sonar + Voll-Analyse NUR wöchentlich (Mo 04:00); nightly bleibt schnell. Dispatch = manueller
       # Voll-Lauf, standardmässig ohne Deploy (siehe deploy-target oben).
-      sonar-enabled: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
-      quality-analysis: ${{ github.event.schedule == '0 4 * * 1' || github.event_name == 'workflow_dispatch' }}
+      sonar-enabled: ${{ (github.event_name == 'schedule' && github.event.schedule != '0 3 * * *') || github.event_name == 'workflow_dispatch' }}
+      quality-analysis: ${{ (github.event_name == 'schedule' && github.event.schedule != '0 3 * * *') || github.event_name == 'workflow_dispatch' }}
       # SICHERHEIT (Karte 426, Entscheidung Daniel 02.08.2026): Pull-Request-Laeufe laufen NICHT
       # mehr auf den self-hosted NAS-Runnern — nur noch master und die Deploys.
       #
