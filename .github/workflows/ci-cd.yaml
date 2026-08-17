@@ -11,7 +11,7 @@ on:
           - release-all
         default: ci-only
   schedule:
-    - cron: '0 3 * * *'   # Nightly: schneller Test-Build (ci-only, KEIN Sonar)
+    - cron: '0 2 * * *'   # Nightly: schneller Test-Build (ci-only, KEIN Sonar) — gestaffelt, Karte 895
     # Karte 889: gestaffelt. Vorher starteten ALLE SECHS Repos hier zur selben Minute
     # und belegten die vier NAS-Runner komplett; die Analysen bremsten sich dabei
     # gegenseitig (gemessen 86-155 Min statt 23-56 Min allein) und Deploys warteten Stunden.
