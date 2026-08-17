@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -211,7 +212,11 @@ class SessionsBackingBeanTest {
         when(facesContext.getExternalContext()).thenReturn(externalContext);
         doThrow(new java.io.IOException("Redirect failed")).when(externalContext).redirect("/index.xhtml");
 
-        // Should not throw
-        bean.onLoad();
+        // Sonar java:S2699 (Karte 891): die Zusage stand nur als Kommentar da ("Should not throw"),
+        // geprueft wurde sie nicht — der Test waere auch gruen geblieben, wenn onLoad() die
+        // IOException durchgereicht haette, weil JUnit den Aufruf selbst nicht bewertet. Beides
+        // gehoert festgehalten: dass nichts nach aussen dringt UND dass der Versuch stattfand.
+        assertDoesNotThrow(bean::onLoad, "eine fehlgeschlagene Weiterleitung darf die Seite nicht kippen");
+        verify(externalContext).redirect("/index.xhtml");
     }
 }

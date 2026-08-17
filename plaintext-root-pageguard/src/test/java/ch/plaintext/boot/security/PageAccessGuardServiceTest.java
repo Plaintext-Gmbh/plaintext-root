@@ -19,6 +19,7 @@ import org.mockito.quality.Strictness;
 import java.io.IOException;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static ch.plaintext.boot.security.PageAccessGuardTestFactory.eigenschaften;
 import static ch.plaintext.boot.security.PageAccessGuardTestFactory.guard;
 import static ch.plaintext.boot.security.PageAccessGuardTestFactory.guardMitFehler;
@@ -398,7 +399,11 @@ class PageAccessGuardServiceTest {
         PageAccessGuardService service = strictMitMenues();
         try (MockedStatic<FacesContext> mocked = mockStatic(FacesContext.class)) {
             mocked.when(FacesContext::getCurrentInstance).thenReturn(null);
-            service.redirectToAccessDenied();
+            // Sonar java:S2699 (Karte 891): "TutNichts" stand nur im Methodennamen. Ohne Assertion
+            // war der Test auch dann gruen, wenn der Aufruf eine NullPointerException geworfen
+            // haette — genau der Fall, den er abdecken soll. Jetzt steht die Zusage im Code.
+            assertDoesNotThrow(service::redirectToAccessDenied,
+                    "ohne FacesContext (z.B. im Cron-Lauf) darf der Aufruf folgenlos bleiben");
         }
     }
 }
