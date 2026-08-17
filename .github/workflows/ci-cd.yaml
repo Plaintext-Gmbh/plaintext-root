@@ -213,8 +213,16 @@ jobs:
       # hier keine umgebungsspezifischen Adressen im oeffentlichen Repo stehen.
       dev-url: ${{ vars.DEPLOY_DEV_URL }}
       prod-url: ${{ vars.DEPLOY_PROD_URL }}
-      # Sonar + Voll-Analyse NUR wöchentlich (Mo 04:00); nightly bleibt schnell. Dispatch = manueller
-      # Voll-Lauf, standardmässig ohne Deploy (siehe deploy-target oben).
+      # Sonar + Voll-Analyse NUR beim WÖCHENTLICHEN Lauf — welcher Tag und welche Stunde das ist,
+      # steht im `cron` oben und ist je Repo gestaffelt (Karte 889). Hier absichtlich KEINE Uhrzeit:
+      # bis zum 17.08.2026 stand an dieser Stelle "Mo 04:00", und nach der Staffelung war der
+      # Kommentar in fünf von sechs Repos falsch. Der tägliche Lauf ('0 3 * * *') bleibt schnell.
+      #
+      # ACHTUNG, Kosten: ein `workflow_dispatch` ist EBENFALLS ein Voll-Lauf — die Bedingung hängt am
+      # github.event_name, NICHT am deploy-target. Auch mit deploy-target=ci-only läuft damit
+      # OWASP-CVE und belegt die Gruppe testdb-<repo> bis zu zweieinhalb Stunden (gemessen 17.08.:
+      # zwei unbeabsichtigte Blockaden von 2 h). Wer nur einen BUILD braucht, macht einen
+      # Branch-Push — der läuft auf GitHub-Runnern und ist in Minuten durch.
       sonar-enabled: ${{ (github.event_name == 'schedule' && !endsWith(github.event.schedule, '* * *')) || github.event_name == 'workflow_dispatch' }}
       quality-analysis: ${{ (github.event_name == 'schedule' && !endsWith(github.event.schedule, '* * *')) || github.event_name == 'workflow_dispatch' }}
       # SICHERHEIT (Karte 426, Entscheidung Daniel 02.08.2026): Pull-Request-Laeufe laufen NICHT
