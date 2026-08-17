@@ -82,8 +82,20 @@ jobs:
           # fehlendes Payload) gehen in Richtung MELDEN.
           NEUTRAL='^\.github/|\.md$|^\.gitignore$|^LICENSE$|^renovate\.json$'
           DATEIEN="$(printf '%s\n%s\n%s\n' "$C_ADDED" "$C_MODIFIED" "$C_REMOVED" | grep -oE '"[^"]+"' | tr -d '"')"
+          ANZAHL="$(printf '%s\n' "$DATEIEN" | sed '/^$/d' | wc -l)"
+          # GitHub KUERZT diese Arrays bei sehr grossen Commits. Der leere Fall faellt oben schon
+          # auf "ja"; gefaehrlich ist der gekuerzte NICHT-leere: bleiben nach der Kuerzung zufaellig
+          # nur .github/-Pfade uebrig, wuerde eine echte Anwendungscode-Aenderung auf prio 0
+          # abgestuft — genau die Richtung, die diese Aenderung verhindern soll.
+          # Die genaue Kuerzungsgrenze ist hier NICHT gemessen; 50 ist bewusst weit darunter
+          # gewaehlt. Ein rein deploy-neutraler Commit mit mehr als 50 Dateien ist ohnehin so
+          # ungewoehnlich, dass eine Meldung angemessen ist.
+          MAX_VERLAESSLICH=50
           if [ -z "$DATEIEN" ]; then
             ANWENDUNGSCODE=ja
+          elif [ "$ANZAHL" -ge "$MAX_VERLAESSLICH" ]; then
+            ANWENDUNGSCODE=ja
+            echo "Dateiliste umfasst $ANZAHL Eintraege — moeglicherweise gekuerzt, daher als Anwendungscode behandelt."
           elif printf '%s\n' "$DATEIEN" | grep -qvE "$NEUTRAL"; then
             ANWENDUNGSCODE=ja
           else
