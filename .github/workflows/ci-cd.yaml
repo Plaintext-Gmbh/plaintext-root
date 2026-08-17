@@ -4,11 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       deploy-target:
-        description: 'Was der manuelle Lauf tun soll'
+        # Karte 904 (aus 902): 'release-all' ist hier ABSICHTLICH nicht mehr waehlbar, solange
+        # plaintext-root stillgelegt ist (Karte 776, 12.08.2026). Die Option deployt Container,
+        # und die gibt es nicht mehr — der Lauf scheitert dann am fehlenden plaintext-root-db-int,
+        # nachdem er den Service trotz 'profiles: ["stillgelegt"]' hochgefahren hat (das Profil
+        # greift nicht, weil das Deploy-Skript den Service NAMENTLICH startet).
+        #
+        # Ein blosser Kommentar haette das nicht verhindert: im GitHub-UI sieht man beim Starten
+        # nur die Optionsnamen und diese description, keine Kommentarzeilen. Genau so ist es am
+        # 17.08.2026 passiert.
+        #
+        # BEIM WIEDERANSCHALTEN von root gehoert '- release-all' hier zurueck, zusammen mit:
+        #   - den 'stillgelegt'-Profilen in /volume1/docker/plaintext-root/docker-compose.yaml
+        #   - 'release-only' -> 'release-all' und 'ci-only' -> 'snapshot-dev' im deploy-target
+        #     weiter unten in dieser Datei
+        #   - dem Eintrag 'plaintext-root-prod: 35' in plaintext-dockercompose:config.yml
+        #   - der Route in /volume1/docker/cloudflared/config.yml (Karte 903)
+        #   - der Reaktivierung von Kuma-Monitor 35
+        description: 'Was der manuelle Lauf tun soll (root ist stillgelegt: nur ci-only, kein Deploy)'
         type: choice
         options:
           - ci-only
-          - release-all
         default: ci-only
   schedule:
     - cron: '0 3 * * *'   # Nightly: schneller Test-Build (ci-only, KEIN Sonar)
