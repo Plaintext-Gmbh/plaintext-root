@@ -52,10 +52,10 @@ public class AdminEntityBackingBean implements Serializable {
     private PlaintextSecurity plaintextSecurity;
 
     @Autowired
-    private EntityRegistryService registryService;
+    private transient EntityRegistryService registryService;
 
     @Autowired
-    private JpaEntityService entityService;
+    private transient JpaEntityService entityService;
 
     private List<EntityDescriptor> availableEntities = new ArrayList<>();
     private EntityDescriptor selectedEntityType;

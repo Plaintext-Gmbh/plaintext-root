@@ -44,7 +44,7 @@ public class MandateMenuBackingBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Autowired
-    private MandateMenuVisibilityService service;
+    private transient MandateMenuVisibilityService service;
 
     @Autowired
     private PlaintextSecurity plaintextSecurity;
