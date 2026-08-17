@@ -23,7 +23,15 @@ permissions:
   packages: write
 
 concurrency:
-  group: ${{ github.repository }}-${{ github.ref }}
+  # Karte 890: Analyse und Rollout in GETRENNTE Gruppen. Vorher war es eine Gruppe fuer
+  # alles auf einem ref — eine 90-minuetige Sonar-Analyse hielt damit jeden Merge-Deploy
+  # auf (Karte 884 wartete 2h40). `inputs` ist hier NICHT verfuegbar (bei schedule/push ist
+  # der Kontext leer), deshalb die Unterscheidung am Ereignis: Analysen kommen per
+  # schedule, Rollouts per push/workflow_dispatch.
+  # Die Ressourcen bleiben unabhaengig davon geschuetzt: die Jobs der Pipeline haben eigene
+  # Gruppen (testdb-<project> fuer ci+sonar, deploy-<project> fuer den Deploy) und getrennte
+  # Postgres-Ports (DEPLOY_PGPORT = PGPORT + 100). Rollouts bleiben also seriell.
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.event_name == 'schedule' && 'analyse' || 'rollout' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
