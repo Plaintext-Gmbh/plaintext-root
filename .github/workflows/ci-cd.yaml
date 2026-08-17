@@ -89,7 +89,13 @@ jobs:
           # Die Commit-API liefert dieselbe Frage korrekt und braucht nur contents:read.
           # Scheitert der Aufruf (Rate-Limit, Netz), bleibt DATEIEN leer und der Fail-safe unten
           # greift: dann wird gemeldet.
-          DATEIEN="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq '.files[].filename' 2>/dev/null)"
+          # Der Fail-safe muss im Log SICHTBAR sein: sonst ist "Anwendungscode=ja, weil die API
+          # nicht antwortete" nicht von "Anwendungscode=ja, weil wirklich Code drin ist" zu
+          # unterscheiden — eine Pruefung, die ihre eigene Luecke verschweigt (Hinweis worker02).
+          if ! DATEIEN="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq '.files[].filename' 2>&1)"; then
+            echo "::warning::Commit-API nicht erreichbar — Fail-safe greift, Commit wird als Anwendungscode behandelt. Meldung: $DATEIEN"
+            DATEIEN=""
+          fi
           ANZAHL="$(printf '%s\n' "$DATEIEN" | sed '/^$/d' | wc -l)"
           # GitHub KUERZT diese Arrays bei sehr grossen Commits. Der leere Fall faellt oben schon
           # auf "ja"; gefaehrlich ist der gekuerzte NICHT-leere: bleiben nach der Kuerzung zufaellig
