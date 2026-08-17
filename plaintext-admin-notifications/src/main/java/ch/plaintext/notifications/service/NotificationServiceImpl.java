@@ -47,7 +47,13 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.save(n);
     }
 
+    // Sonar java:S2229 (Karte 891): notify() traegt @Transactional, wurde hier aber per SELBSTAUFRUF
+    // erreicht — dabei umgeht der Aufruf den Spring-Proxy, und die Annotation wirkt nicht. Die
+    // Benachrichtigungen liefen also ohne die zugesagte Transaktionsklammer, jede save() fuer sich.
+    // Die Klammer gehoert deshalb hierher: ein Ereignis erzeugt die Benachrichtigungen fuer alle
+    // Empfaenger des Mandanten oder keine.
     @Override
+    @Transactional
     public void notifyMandant(String mandat, String typ, String defaultTitel, String defaultText,
                                Map<String, String> platzhalter, String link) {
         for (String username : security.getUsersForMandat(mandat)) {

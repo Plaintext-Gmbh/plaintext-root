@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -54,7 +55,16 @@ public class WebhookDispatchService {
     private final WebhookHttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // Sonar java:S2229 (Karte 891): dispatch() traegt @Transactional, wurde hier aber per
+    // SELBSTAUFRUF erreicht — der umgeht den Spring-Proxy, die Annotation blieb also wirkungslos.
+    // Die Klammer gehoert deshalb hierher, und zwar zwingend als REQUIRES_NEW: in der Phase
+    // AFTER_COMMIT ist die ausloesende Transaktion zwar noch an den Thread gebunden, aber bereits
+    // abgeschlossen — Schreibvorgaenge, die sich ihr anschliessen, wuerden nie committet. Spring
+    // laesst hier darum nur REQUIRES_NEW oder NOT_SUPPORTED zu und verweigert jede andere
+    // Propagation schon beim Kontextstart ("@TransactionalEventListener method must not be
+    // annotated with @Transactional unless when declared as REQUIRES_NEW or NOT_SUPPORTED").
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onDomainEvent(PlaintextDomainEvent event) {
         List<WebhookEndpoint> endpoints = endpointRepo.findByMandatAndEnabledTrueAndDeletedFalse(event.mandant());
         for (WebhookEndpoint endpoint : endpoints) {
