@@ -51,6 +51,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * dieser Test eine Zusage, die <em>ohne Ausnahmenliste</em> erfuellbar ist — der Grund, warum er
  * genau so zugeschnitten ist.
  *
+ * <p><b>Ein Feldtyp, der SELBST session-scoped ist, ist ausgenommen.</b> Er ist kein zustandsloser
+ * Dienst, sondern ein Zustandstraeger — und wird er mit
+ * {@code @Scope(value = "session", proxyMode = ScopedProxyMode.TARGET_CLASS)} injiziert, haelt das
+ * Feld ohnehin nur einen Proxy, dessen Serialisierbarkeit an der Zielklasse haengt. Ob
+ * {@code transient} dort richtig ist, laesst sich nicht am Typ ablesen; es waere geraten.
+ * Aufgefallen an {@code GameSelectionHolder} in schuetu. root hat aktuell keinen solchen Fall
+ * (gegengeprueft: keiner der acht hier behandelten Typen ist session-scoped) — die Regel steht
+ * vorbeugend und haelt die drei Repo-Fassungen gleich.
+ *
  * <p><b>{@code final}-Felder sind ausgenommen, und das ist kein Schlupfloch.</b> Bei
  * Konstruktor-Injektion (Lombok {@code @RequiredArgsConstructor}) ist {@code transient} die
  * <em>falsche</em> Antwort: bei einer Deserialisierung laeuft kein Konstruktor, das Feld bliebe
@@ -142,7 +151,7 @@ class SessionBeanSerialisierbarTest {
                     continue;
                 }
                 JavaClass typ = feld.getRawType();
-                if (istSpringBean(typ) && !typ.isAssignableTo(Serializable.class)) {
+                if (istSpringBean(typ) && !istSessionScoped(typ) && !typ.isAssignableTo(Serializable.class)) {
                     verstoesse.add("%s.%s : %s".formatted(
                             klasse.getSimpleName(), feld.getName(), typ.getSimpleName()));
                 }
