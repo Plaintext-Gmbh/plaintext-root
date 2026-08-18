@@ -92,11 +92,25 @@
 
         <!--
           Security-Pins, die (auch) via Parent-Vererbung an die Consumer-Apps durchschlagen sollen.
-          Spring Boot 4.1.0 (Parent) pinnt spring-framework 7.0.8 / tomcat 11.0.22 / jackson-2 2.21.4 /
-          spring-security 7.0.6 / postgresql 42.7.11 selbst — hier nur die Ausnahme(n):
+          Spring Boot 4.1.0 (Parent) pinnt spring-framework 7.0.8 / tomcat 11.0.22 /
+          spring-security 7.0.6 / postgresql 42.7.11 selbst — hier nur die Ausnahme(n).
+          jackson-2 stand bis zum 18.08.2026 in dieser Aufzaehlung; seit Karte 931 ist es eine
+          Ausnahme und unten gepinnt:
         -->
         <!-- Jackson 3: Boot 4.1.0 pinnt bereits 3.1.4 (CVE-2026-54512 gefixt); explizit als Sicherheitsnetz. -->
         <jackson-bom.version>3.1.4</jackson-bom.version>
+        <!--
+          Jackson 2 (Karte 931): Boot 4.1.0 pinnt 2.21.4, darin CVE-2026-54515 (CVSS 5.3) —
+          @JsonIgnoreProperties je Property wird in BeanDeserializerBase.createContextual()
+          falsch behandelt; behoben ab 2.21.5, hier 2.21.6 als aktuelle der Linie.
+          ACHTUNG, die Namen sind NICHT symmetrisch: `jackson-bom` ist die 3er-Linie,
+          `jackson-2-bom` die 2er. Wer aus der Zeile darueber auf <jackson2.version> oder
+          <jackson-databind.version> schliesst, setzt eine Property, die niemand liest — die
+          Gegenprobe zeigt dann unveraendert 2.21.4, ein stiller Fehlschlag.
+          Beide Linien laufen NEBENEINANDER im Fat-Jar (jackson-databind-2.21.6 UND -3.1.4);
+          verschwindet eine davon nach der Aenderung, ist mehr passiert als beabsichtigt.
+        -->
+        <jackson-2-bom.version>2.21.6</jackson-2-bom.version>
         <!-- httpcore5: Boot 4.1.0 pinnt erst 5.4.2 -> hochziehen (CVE-2026-54399/54428). -->
         <httpcore5.version>5.4.3</httpcore5.version>
         <!--
