@@ -100,6 +100,13 @@
         <!-- httpcore5: Boot 4.1.0 pinnt erst 5.4.2 -> hochziehen (CVE-2026-54399/54428). -->
         <httpcore5.version>5.4.3</httpcore5.version>
         <!--
+          httpclient5: Boot 4.1.0 pinnt 5.6.1 — darin CVE-2026-71290 (CVSS 9.1, unwirksame
+          TLS-Hostname-Pruefung im async-Client, betroffen 5.4 bis <5.6.4) und CVE-2026-64607 (5.3).
+          Geeicht statt geraten: NVD-CPE-Abfrage meldet fuer 5.6.1 zwei Treffer, fuer 5.6.4 null;
+          5.7-alpha1 scheidet als Vorabversion aus. Karte 926.
+        -->
+        <httpclient5.version>5.6.4</httpclient5.version>
+        <!--
           Tomcat: Boot 4.1.0 pinnt 11.0.22 — darin stecken 8 CVEs (hoechste CVSS 9.1:
           CVE-2026-53434/55276/59083/59084), alle ab 11.0.23 behoben. Boot 4.1.0 ist die
           neueste Fassung, ein Boot-Bump steht also nicht zur Verfuegung -> Tomcat direkt
