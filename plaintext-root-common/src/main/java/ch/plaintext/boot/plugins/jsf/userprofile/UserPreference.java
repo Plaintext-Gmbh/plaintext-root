@@ -38,6 +38,29 @@ public class UserPreference implements SimpleStorable<UserPreference>, Serializa
 
     private Set<String> hiddenColors = new HashSet<>();
 
+    /**
+     * Karte 937: Breite des Wiki-Seitenbaums in Pixeln, {@code 0} = Vorgabe des Layouts.
+     *
+     * <p><b>Warum hier und nicht in einer eigenen Ablage von app.</b> Das ist Layout-Zustand je
+     * Benutzer — genau wie {@link #menuStatic} eine Zeile darueber. Eine zweite Ablage fuer
+     * Benutzereinstellungen waere ein konkurrierendes Muster: wer sie spaeter sucht, faende zwei
+     * Orte und muesste raten, welcher gilt.
+     *
+     * <p><b>Warum Pixel und nicht Prozent:</b> Ein Baum braucht eine Mindestbreite, damit
+     * Seitentitel lesbar bleiben; die haengt an der Schriftgroesse, nicht an der Fensterbreite. Die
+     * Oberflaeche begrenzt den Wert beim Laden zusaetzlich auf das aktuelle Fenster — sonst ist die
+     * am grossen Monitor eingestellte Breite auf dem Notebook unbrauchbar.
+     */
+    private int wikiTreeWidth = 0;
+
+    /**
+     * Karte 937: Breite der Mail-Liste in Pixeln, {@code 0} = Vorgabe des Layouts.
+     *
+     * <p>Getrennt vom Wiki-Wert mit Absicht: Die beiden Ansichten haben nichts miteinander zu tun,
+     * und ein gemeinsamer Wert wuerde beim Verschieben der einen die andere mitverstellen.
+     */
+    private int mailListWidth = 0;
+
     private String language = "de";
 
     private String user = "";

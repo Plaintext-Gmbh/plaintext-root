@@ -138,6 +138,43 @@ public class UserPreferencesBackingBean implements Serializable {
     }
 
     /**
+     * Karte 937: Breite eines verschiebbaren Trenners merken.
+     *
+     * <p><b>Warum diese Methode hier steht und die Oberflaeche nicht selbst am Feld dreht.</b> Das
+     * Setzen und das Speichern gehoeren zusammen — ein gesetzter Wert ohne {@code save()} ist beim
+     * naechsten Anmelden weg, und genau das waere der Fehler, den niemand bemerkt, weil er erst
+     * am naechsten Tag auffaellt. Ausserdem liegt die Bereichspruefung damit an EINER Stelle statt
+     * in jeder aufrufenden Seite.
+     *
+     * <p><b>Die untere Grenze ist der eigentliche Zweck der Pruefung.</b> Ohne sie laesst sich ein
+     * Baum auf 0 Pixel ziehen — danach ist der Griff nicht mehr zu fassen, und weil der Wert
+     * gespeichert wird, sperrt sich der Benutzer dauerhaft aus. Ein Wert von {@code 0} bleibt
+     * dagegen ausdruecklich erlaubt: er bedeutet „Vorgabe des Layouts" und ist der Weg zurueck.
+     *
+     * @param bereich {@code "wiki"} oder {@code "mail"} — unbekannte Bereiche werden ignoriert,
+     *                statt eine Ausnahme in eine Ajax-Antwort zu werfen
+     * @param breite  Pixel; 0 setzt auf die Layout-Vorgabe zurueck
+     */
+    public void merkeTrennerBreite(String bereich, int breite) {
+        int wert = breite <= 0 ? 0 : Math.max(MIN_TRENNER_PX, Math.min(MAX_TRENNER_PX, breite));
+        if ("wiki".equals(bereich)) {
+            prefs.setWikiTreeWidth(wert);
+        } else if ("mail".equals(bereich)) {
+            prefs.setMailListWidth(wert);
+        } else {
+            log.debug("Unbekannter Trenner-Bereich '{}' — ignoriert", bereich);
+            return;
+        }
+        save();
+    }
+
+    /** Untere Grenze: darunter ist der Griff nicht mehr zu treffen. */
+    public static final int MIN_TRENNER_PX = 140;
+
+    /** Obere Grenze: darueber bleibt fuer den Inhalt nichts uebrig. */
+    public static final int MAX_TRENNER_PX = 900;
+
+    /**
      * Save preferences with optimistic locking retry.
      * No longer synchronized — uses JPA @Version for concurrency control.
      */
