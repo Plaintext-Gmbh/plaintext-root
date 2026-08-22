@@ -5,6 +5,7 @@ package ch.plaintext.boot.menu;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
  * Auto-configuration for the menu module
  */
 @Configuration
+@EnableConfigurationProperties(ModuleRoleProperties.class)
 @Slf4j
 public class MenuAutoConfiguration {
 
@@ -56,6 +58,23 @@ public class MenuAutoConfiguration {
     public MenuRoleService menuRoleService() {
         log.info("Registering MenuRoleService");
         return new MenuRoleService();
+    }
+
+    /**
+     * Setzt die konfigurierbaren Modul-Rollen durch ({@code plaintext.menu.module-roles}). Hier
+     * registriert statt per {@code @Service} annotiert, damit auch Anwendungen ohne
+     * {@code ch.plaintext}-Component-Scan den Service bekommen.
+     *
+     * @param applicationContext liefert die registrierten Menuepunkt-Beans
+     * @param properties         die konfigurierte Modul-Rollen-Zuordnung
+     * @return der Modul-Rollen-Service
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public ModuleRoleService moduleRoleService(ApplicationContext applicationContext,
+                                               ModuleRoleProperties properties) {
+        log.info("Registering ModuleRoleService (plaintext.menu.module-roles)");
+        return new ModuleRoleService(applicationContext, properties);
     }
 
     /**

@@ -11,6 +11,15 @@ from `git log` and may not be exhaustive.
 ## [Unreleased]
 
 ### Added
+- Konfigurierbare Modul-Rollen: `plaintext.menu.module-roles.<modulKey>=<rolle>` schaltet ein
+  ganzes Modul pro App ein bzw. aus — Menuepunkt, Dashboard-Kachel und der Direktaufruf der
+  Seiten (`PageAccessGuard`) verlangen zusaetzlich die konfigurierte Rolle, `admin`/`root`
+  umgehen sie. Der Modul-Key ist die `moduleId` (Admin-Panel „Root | Module"), ersatzweise die
+  Menu-Root-Id; Module ohne Eintrag verhalten sich unveraendert. Die konfigurierten Rollen
+  erscheinen automatisch in der `PlaintextRoleRegistry`, ohne dass die App einen eigenen
+  `PlaintextRoleProvider` schreibt. Neu: `ModuleRoleProperties` (`plaintext-root-interfaces`),
+  `ModuleRoleService` (`plaintext-root-menu`), `ModuleRoleDeclarationProvider`
+  (`plaintext-root-common`). Doku: `docs/ROLE_REGISTRY.md`.
 - `plaintext-root-web`: reusable JSF/web infrastructure carved out of
   `plaintext-root-webapp` — `UrlRewriteConfig` (the `.html`/`.htm` → `.xhtml` rewrite
   filter), `SpringSecurityProvider`, `MenuBean` and the two debug controllers.
