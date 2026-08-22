@@ -4,18 +4,23 @@
 package ch.plaintext.rollenzuteilung.web;
 
 import ch.plaintext.PlaintextSecurity;
+import ch.plaintext.framework.PlaintextRoleRegistry;
 import ch.plaintext.rollenzuteilung.entity.Rollenzuteilung;
 import ch.plaintext.rollenzuteilung.service.RollenzuteilungService;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 
 @Component
 @Scope("session")
@@ -27,13 +32,27 @@ public class RollenzuteilungBackingBean implements Serializable {
     private final RollenzuteilungService service;
     private final PlaintextSecurity security;
 
+    /**
+     * Rollen-Registry (Modul-Rollen-Registrierung): liefert die von den Modulen deklarierten
+     * Rollen fuer die Auswahl. Optional ({@code null} erlaubt), damit Kontexte ohne Registry
+     * weiter funktionieren.
+     */
+    private final transient PlaintextRoleRegistry roleRegistry;
+
     private List<Rollenzuteilung> rollenzuteilungen;
     private Rollenzuteilung selected;
     private boolean admin;
 
     public RollenzuteilungBackingBean(RollenzuteilungService service, PlaintextSecurity security) {
+        this(service, security, null);
+    }
+
+    @Autowired
+    public RollenzuteilungBackingBean(RollenzuteilungService service, PlaintextSecurity security,
+                                      @Nullable PlaintextRoleRegistry roleRegistry) {
         this.service = service;
         this.security = security;
+        this.roleRegistry = roleRegistry;
     }
 
     /**
@@ -128,7 +147,32 @@ public class RollenzuteilungBackingBean implements Serializable {
         FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(severity, summary, detail));
     }
 
+    /**
+     * Die waehlbaren Rollen (Authority-Format {@code ROLE_<UPPERCASE>}): Union aus den von den
+     * Modulen DEKLARIERTEN Rollen ({@link PlaintextRoleRegistry}) und den bereits zugeteilten
+     * Rollen aus der Datenbank (Bestand — Rollen ohne Deklaration gehen nicht verloren).
+     * Ersetzt die fruehere hartcodierte Rollenliste.
+     *
+     * @return sortierte, deduplizierte Rollennamen
+     */
     public List<String> getAvailableRoles() {
-        return List.of("ROLE_USER", "ROLE_ADMIN", "ROLE_ROOT", "ROLE_MANAGER", "ROLE_VIEWER", "ROLE_POSTKONTO", "ROLE_PRIVATAUSGABEN");
+        TreeSet<String> roles = new TreeSet<>();
+        if (roleRegistry != null) {
+            try {
+                roles.addAll(roleRegistry.getDeclaredAuthorityNames());
+            } catch (Exception e) {
+                log.error("Error reading declared roles from registry", e);
+            }
+        }
+        try {
+            for (String bestand : service.getDistinctRoleNames()) {
+                if (bestand != null && !bestand.trim().isEmpty()) {
+                    roles.add(bestand.trim());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error reading existing role names", e);
+        }
+        return new ArrayList<>(roles);
     }
 }

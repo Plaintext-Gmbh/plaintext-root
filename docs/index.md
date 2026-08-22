@@ -38,6 +38,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 | [Architecture Overview](ARCHITECTURE.md) | System design, module dependencies, and data flow |
 | [Module Reference](MODULE_REFERENCE.md) | Detailed reference for all 17 modules |
 | [Flyway Migrations](FLYWAY_MIGRATIONS.md) | Database migration conventions and tooling |
+| [Role Registry](ROLE_REGISTRY.md) | How modules declare their roles for the user admin selection |
 
 ### Reference
 

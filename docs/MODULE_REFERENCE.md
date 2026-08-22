@@ -35,6 +35,9 @@ Shared utilities used across modules.
 | `XStreamSerializer` | XML serialization with XStream |
 | `SimpleStorableEntity` | Generic key-value object storage (JPA) |
 | `ObjectStoreService` | CRUD operations for storable entities |
+| `PlaintextRoleProvider` | Module contribution interface for declaring roles (see [Role Registry](ROLE_REGISTRY.md)) |
+| `PlaintextRole` | Declared role: technical name plus human-readable description |
+| `PlaintextRoleRegistry` | Collects all declared roles (union, deduplicated) for selection UIs |
 
 ### plaintext-root-jpa
 

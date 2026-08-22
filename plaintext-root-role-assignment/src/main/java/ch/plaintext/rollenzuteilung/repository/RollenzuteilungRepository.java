@@ -30,5 +30,14 @@ public interface RollenzuteilungRepository extends JpaRepository<Rollenzuteilung
     @Query("SELECT DISTINCT r.username FROM Rollenzuteilung r WHERE r.mandat = :mandat")
     List<String> findAllUsernamesByMandat(String mandat);
 
+    /**
+     * Alle jemals zugeteilten Rollennamen (Bestand) — Fallback fuer die Rollen-Auswahl, damit
+     * Rollen, die kein Modul (mehr) deklariert, nicht aus der Auswahl verschwinden.
+     *
+     * @return distinct roleNames aller Rollenzuteilungen
+     */
+    @Query("SELECT DISTINCT r.roleName FROM Rollenzuteilung r")
+    List<String> findDistinctRoleNames();
+
     void deleteByUsernameAndMandatAndRoleName(String username, String mandat, String roleName);
 }

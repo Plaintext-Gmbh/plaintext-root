@@ -43,6 +43,16 @@ public class RollenzuteilungService {
         return repository.findAllUsernamesByMandat(mandat);
     }
 
+    /**
+     * Alle jemals zugeteilten Rollennamen (Bestand, mandantenuebergreifend) — dient der
+     * Rollen-Auswahl als Fallback fuer nicht (mehr) deklarierte Rollen.
+     *
+     * @return distinct roleNames aller Rollenzuteilungen
+     */
+    public List<String> getDistinctRoleNames() {
+        return repository.findDistinctRoleNames();
+    }
+
     @Transactional
     public Rollenzuteilung save(Rollenzuteilung rollenzuteilung) {
         return repository.save(rollenzuteilung);

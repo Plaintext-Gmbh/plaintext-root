@@ -34,18 +34,18 @@ class RollenzuteilungBackingBeanTest {
     }
 
     @Test
-    void getAvailableRoles_returnsExpectedRoles() {
-        List<String> roles = bean.getAvailableRoles();
+    void getAvailableRoles_combinesRegistryAndBestand() {
+        ch.plaintext.framework.PlaintextRoleRegistry registry = mock(ch.plaintext.framework.PlaintextRoleRegistry.class);
+        when(registry.getDeclaredAuthorityNames()).thenReturn(
+                new java.util.LinkedHashSet<>(List.of("ROLE_ADMIN", "ROLE_ROOT", "ROLE_USER")));
+        when(service.getDistinctRoleNames()).thenReturn(List.of("ROLE_POSTKONTO", "ROLE_ADMIN"));
+
+        RollenzuteilungBackingBean beanWithRegistry = new RollenzuteilungBackingBean(service, security, registry);
+        List<String> roles = beanWithRegistry.getAvailableRoles();
 
         assertNotNull(roles);
-        assertTrue(roles.contains("ROLE_USER"));
-        assertTrue(roles.contains("ROLE_ADMIN"));
-        assertTrue(roles.contains("ROLE_ROOT"));
-        assertTrue(roles.contains("ROLE_MANAGER"));
-        assertTrue(roles.contains("ROLE_VIEWER"));
-        assertTrue(roles.contains("ROLE_POSTKONTO"));
-        assertTrue(roles.contains("ROLE_PRIVATAUSGABEN"));
-        assertEquals(7, roles.size());
+        // Union aus deklarierten Rollen und DB-Bestand, dedupliziert und sortiert
+        assertEquals(List.of("ROLE_ADMIN", "ROLE_POSTKONTO", "ROLE_ROOT", "ROLE_USER"), roles);
     }
 
     @Test

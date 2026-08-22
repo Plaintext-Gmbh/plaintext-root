@@ -121,7 +121,7 @@ class MyUserBackingBeanTest {
         // Then
         assertEquals(newUser, backingBean.getSelected());
         verify(repo, times(1)).save(any(MyUserEntity.class));
-        verify(repo, times(2)).findAll(); // Called by both init() and extractRolesFromDatabase()
+        verify(repo, times(1)).findAll(); // Called by init(); select() loads no role suggestions anymore
     }
 
     @Test

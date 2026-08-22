@@ -11,6 +11,8 @@ import ch.plaintext.boot.plugins.security.model.UserMandate;
 import ch.plaintext.boot.plugins.security.persistence.MyRememberMeRepository;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.boot.plugins.security.persistence.UserMandateRepository;
+import ch.plaintext.framework.PlaintextRole;
+import ch.plaintext.framework.PlaintextRoleRegistry;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
@@ -23,14 +25,10 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.*;
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @Scope("session")
@@ -55,11 +53,17 @@ public class MyUserBackingBean implements Serializable {
     private MyUserEntity selected;
     private String myUserPw;
     private MyRememberMe selectedRememberMe;
-    private List<String> tempRoles = new ArrayList<>();
-    private List<String> availableRolesList = new ArrayList<>();
 
     @Autowired
     private MyUserRepository repo;
+
+    /**
+     * Rollen-Registry (Karte: Modul-Rollen-Registrierung): liefert die von den Modulen
+     * deklarierten Rollen fuer die Auswahl im Benutzer-Dialog. Optional verdrahtet, damit
+     * Kontexte ohne Registry (z.B. schlanke Tests) weiter funktionieren.
+     */
+    @Autowired(required = false)
+    private transient PlaintextRoleRegistry roleRegistry;
 
     @Autowired
     private MyRememberMeRepository rememberMeRepo;
@@ -151,10 +155,19 @@ public class MyUserBackingBean implements Serializable {
         log.debug("SELECT called - selected: {}", selected != null ? selected.getId() + "/" + selected.getUsername() : "null");
         if (selected != null) {
             myUserPw = selected.getPassword();
-            tempRoles.clear();
-            updateAvailableRolesList();
             loadZusatzMandate();
         }
+    }
+
+    /**
+     * Oeffnet den Bearbeiten-Dialog fuer die uebergebene Zeile (Zeilen-Button in der
+     * Benutzer-Liste): setzt die Auswahl und laedt die Dialog-Daten wie {@link #select()}.
+     *
+     * @param user der Benutzer aus der angeklickten Tabellenzeile
+     */
+    public void edit(MyUserEntity user) {
+        selected = user;
+        select();
     }
 
     public void clearSelection() {
@@ -327,20 +340,25 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Scannt alle XHTML-Dateien nach p:ifGranted('ROLE_*') Patterns und extrahiert die Rollen.
-     * Zusätzlich werden alle Rollen aus der Datenbank geholt.
-     * Rollen werden in lowercase zurückgegeben und das 'ROLE_' Präfix wird entfernt.
+     * Alle in der Benutzerverwaltung anbietbaren Rollen (lowercase, ohne ROLE_ Präfix):
+     * die Union aus den von den Modulen DEKLARIERTEN Rollen ({@link PlaintextRoleRegistry},
+     * Rollen-Registry-Muster analog zum Menü-System) und den bereits in der Datenbank
+     * VERGEBENEN Rollen (Bestand — Rollen, die kein Modul mehr deklariert, bleiben so
+     * sichtbar und gehen nicht verloren).
      * Properties (PROPERTY_*) und Mandat-Rollen werden herausgefiltert.
+     *
+     * <p>Ersetzt den früheren Laufzeit-Scan der XHTML-Dateien nach ifGranted-Patterns, der
+     * nur im Dev-Checkout funktionierte (las {@code src/main/resources} vom Dateisystem).</p>
      *
      * @return Set von eindeutigen Rollennamen (lowercase, ohne ROLE_ Präfix)
      */
     public Set<String> getAvailableRoles() {
         Set<String> roles = new LinkedHashSet<>();
 
-        // 1. Rollen aus XHTML-Dateien extrahieren
-        roles.addAll(extractRolesFromXhtmlFiles());
+        // 1. Von Modulen deklarierte Rollen (Registry)
+        roles.addAll(extractRolesFromRegistry());
 
-        // 2. Rollen aus der Datenbank extrahieren
+        // 2. Rollen aus der Datenbank extrahieren (Bestand)
         roles.addAll(extractRolesFromDatabase());
 
         // 3. Filtere Properties und Mandat-Rollen heraus
@@ -351,46 +369,52 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Extrahiert Rollen aus allen XHTML-Dateien im Projekt
+     * Die von den Modulen deklarierten Rollen (normalisiert: lowercase, ohne ROLE_ Präfix).
      */
-    private Set<String> extractRolesFromXhtmlFiles() {
-        Set<String> roles = new LinkedHashSet<>();
-
-        // Pattern für p:ifGranted('ROLE_XXX') oder ähnliche Varianten
-        Pattern rolePattern = Pattern.compile("(?:p:ifGranted|ifGranted|hasRole|hasAuthority)\\s*\\(\\s*['\"]ROLE_([A-Z_]+)['\"]\\s*\\)", Pattern.CASE_INSENSITIVE);
-
-        try {
-            // Finde das resources Verzeichnis
-            String classPath = getClass().getClassLoader().getResource("").getPath();
-            Path resourcesPath = Paths.get(classPath).getParent().getParent().resolve("src/main/resources");
-
-            if (!Files.exists(resourcesPath)) {
-                log.warn("Resources path does not exist: {}", resourcesPath);
-                return roles;
-            }
-
-            // Durchsuche alle XHTML-Dateien
-            try (Stream<Path> paths = Files.walk(resourcesPath)) {
-                paths.filter(path -> path.toString().endsWith(".xhtml"))
-                     .forEach(path -> {
-                         try {
-                             String content = Files.readString(path);
-                             Matcher matcher = rolePattern.matcher(content);
-                             while (matcher.find()) {
-                                 String role = matcher.group(1).toLowerCase();
-                                 roles.add(role);
-                                 log.debug("Found role '{}' in file: {}", role, path.getFileName());
-                             }
-                         } catch (IOException e) {
-                             log.error("Error reading file: {}", path, e);
-                         }
-                     });
-            }
-        } catch (Exception e) {
-            log.error("Error scanning XHTML files for roles", e);
+    private Set<String> extractRolesFromRegistry() {
+        if (roleRegistry == null) {
+            return new LinkedHashSet<>();
         }
+        try {
+            Set<String> declared = roleRegistry.getDeclaredRoleNames();
+            return declared != null ? declared : new LinkedHashSet<>();
+        } catch (Exception e) {
+            log.error("Error reading declared roles from registry", e);
+            return new LinkedHashSet<>();
+        }
+    }
 
-        return roles;
+    /**
+     * Die Auswahl-Einträge für das Rollen-SelectCheckboxMenu im Benutzer-Dialog:
+     * {@link #getAvailableRoles()} plus die aktuell am Benutzer gesetzten Rollen (damit eine
+     * vorselektierte, aber nirgends mehr deklarierte Rolle im Menü sichtbar bleibt).
+     * Deklarierte Rollen tragen ihre Beschreibung im Label.
+     *
+     * @return sortierte Auswahl-Einträge
+     */
+    public List<RoleOption> getSelectableRoles() {
+        Set<String> names = new TreeSet<>(getAvailableRoles());
+        names.addAll(getSelectedRolesList().stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet()));
+
+        List<RoleOption> ret = new ArrayList<>();
+        for (String name : names) {
+            String description = roleRegistry != null ? roleRegistry.getDescription(name) : "";
+            String label = description == null || description.isEmpty() ? name : name + " — " + description;
+            ret.add(new RoleOption(name, label));
+        }
+        return ret;
+    }
+
+    /**
+     * Ein Eintrag der Rollen-Auswahl im Benutzer-Dialog: technischer Wert plus Anzeige-Label
+     * (Name, bei deklarierten Rollen inkl. Beschreibung aus der {@link PlaintextRole}).
+     */
+    @lombok.Value
+    public static class RoleOption implements Serializable {
+        String name;
+        String label;
     }
 
     /**
@@ -457,38 +481,6 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Gibt verfügbare Rollen zurück, die noch nicht ausgewählt sind.
-     */
-    public Set<String> getAvailableRolesNotSelected() {
-        Set<String> available = getAvailableRoles();
-        Set<String> selected = getSelectedRolesList().stream()
-                .map(String::toLowerCase)
-                .collect(Collectors.toSet());
-
-        return available.stream()
-                .filter(role -> !selected.contains(role.toLowerCase()))
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-    }
-
-    /**
-     * Fügt die ausgewählten vorgeschlagenen Rollen zur Rollenliste hinzu.
-     */
-    public void addSuggestedRoles() {
-        if (selected == null || tempRoles == null || tempRoles.isEmpty()) {
-            return;
-        }
-
-        List<String> currentRoles = getSelectedRolesList();
-        for (String role : tempRoles) {
-            if (!currentRoles.contains(role)) {
-                currentRoles.add(role);
-            }
-        }
-        setSelectedRolesList(currentRoles);
-        tempRoles.clear();
-    }
-
-    /**
      * Synchronisiert die Rollen von der Liste (UI) zurück zum Set (Entity).
      * Wird vor dem Speichern aufgerufen.
      */
@@ -498,98 +490,6 @@ public class MyUserBackingBean implements Serializable {
         }
         // Die setSelectedRolesList Methode macht bereits die Synchronisation
         setSelectedRolesList(getSelectedRolesList());
-    }
-
-    /**
-     * Aktualisiert die Liste der verfügbaren Rollen basierend auf den bereits ausgewählten Rollen.
-     */
-    private void updateAvailableRolesList() {
-        if (selected == null) {
-            availableRolesList.clear();
-            return;
-        }
-
-        Set<String> allRoles = getAvailableRoles();
-        Set<String> selectedRoles = getSelectedRolesList().stream()
-                .map(String::toLowerCase)
-                .collect(Collectors.toSet());
-
-        availableRolesList = allRoles.stream()
-                .filter(role -> !selectedRoles.contains(role.toLowerCase()))
-                .collect(Collectors.toList());
-
-        log.debug("Updated available roles list: {}", availableRolesList);
-    }
-
-    /**
-     * Getter für die Liste der verfügbaren Rollen (für das zweite Chips-Element).
-     */
-    public List<String> getAvailableRolesList() {
-        return availableRolesList;
-    }
-
-    /**
-     * Setter für die Liste der verfügbaren Rollen.
-     * Wird aufgerufen wenn Rollen im zweiten Chips-Element hinzugefügt/entfernt werden.
-     */
-    public void setAvailableRolesList(List<String> availableRolesList) {
-        this.availableRolesList = availableRolesList;
-    }
-
-    /**
-     * Event Handler wenn sich die ausgewählten Rollen ändern.
-     * Aktualisiert die Liste der verfügbaren Rollen entsprechend.
-     */
-    public void onSelectedRolesChanged() {
-        if (selected == null) {
-            return;
-        }
-
-        // Finde Rollen die aus den ausgewählten Rollen entfernt wurden
-        Set<String> allRoles = getAvailableRoles();
-        List<String> currentSelected = getSelectedRolesList();
-        List<String> previouslyAvailable = new ArrayList<>(availableRolesList);
-
-        // Aktualisiere die verfügbaren Rollen basierend auf den ausgewählten
-        updateAvailableRolesList();
-
-        log.debug("Selected roles changed. Selected: {}, Available: {}", currentSelected, availableRolesList);
-    }
-
-    /**
-     * Event Handler wenn sich die verfügbaren Rollen ändern.
-     * Verschiebt gelöschte Rollen zu den ausgewählten Rollen.
-     */
-    public void onAvailableRolesChanged() {
-        if (selected == null) {
-            return;
-        }
-
-        // Speichere die aktuellen Listen
-        Set<String> allPossibleRoles = getAvailableRoles();
-        List<String> currentSelected = new ArrayList<>(getSelectedRolesList());
-        List<String> currentAvailable = new ArrayList<>(availableRolesList);
-
-        // Finde Rollen die in allPossibleRoles sind aber weder in currentSelected noch in currentAvailable
-        // Diese wurden aus den verfügbaren Rollen gelöscht und sollten zu den ausgewählten hinzugefügt werden
-        for (String role : allPossibleRoles) {
-            boolean inSelected = currentSelected.stream().anyMatch(r -> r.equalsIgnoreCase(role));
-            boolean inAvailable = currentAvailable.stream().anyMatch(r -> r.equalsIgnoreCase(role));
-
-            if (!inSelected && !inAvailable) {
-                // Diese Rolle wurde aus den verfügbaren gelöscht → füge zu ausgewählten hinzu
-                currentSelected.add(role);
-                log.debug("Moving role '{}' from available to selected", role);
-            }
-        }
-
-        // Aktualisiere die ausgewählten Rollen
-        setSelectedRolesList(currentSelected);
-
-        // Aktualisiere die verfügbaren Rollen
-        updateAvailableRolesList();
-
-        log.debug("Available roles changed. Selected: {}, Available: {}", currentSelected, availableRolesList);
     }
 
     /**
