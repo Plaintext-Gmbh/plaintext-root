@@ -7,7 +7,7 @@
     <parent>
         <groupId>ch.plaintext</groupId>
         <artifactId>plaintext-root-parent</artifactId>
-        <version>1.600.0-SNAPSHOT</version>
+        <version>1.601.0</version>
     </parent>
 
     <artifactId>plaintext-root-pageguard</artifactId>
