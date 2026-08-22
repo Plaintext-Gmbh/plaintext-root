@@ -70,24 +70,6 @@
                                  oncomplete="PF('dlg').show()"
                                  update="fm"
                                  process="@this"/>
-
-                <p:commandButton value="#{i18n.t('Bearbeiten')}"
-                                 icon="pi pi-pencil"
-                                 actionListener="#{myUserBackingBean.select()}"
-                                 oncomplete="PF('dlg').show()"
-                                 update="fm"
-                                 process="@this"
-                                 disabled="#{myUserBackingBean.selected == null}"/>
-
-                <p:commandButton value="#{i18n.t('Benutzer löschen')}"
-                                 icon="pi pi-trash"
-                                 styleClass="ui-button-danger"
-                                 actionListener="#{myUserBackingBean.delete()}"
-                                 update="messages,tbl"
-                                 process="@this"
-                                 disabled="#{myUserBackingBean.selected == null}">
-                    <p:confirm header="#{i18n.t('Bestätigung')}" message="#{i18n.t('Wollen Sie den Benutzer wirklich löschen?')}" icon="pi pi-exclamation-triangle"/>
-                </p:commandButton>
             </div>
 
             <p:dataTable emptyMessage="-"
@@ -119,6 +101,15 @@
 
                 <p:column headerText="#{i18n.t('Startseite')}" priority="3">
                     <h:outputText value=" #{obj.startpage}"/>
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Bearbeiten')}" priority="1" style="width: 80px;">
+                    <p:commandButton icon="pi pi-pencil"
+                                     actionListener="#{myUserBackingBean.edit(obj)}"
+                                     oncomplete="PF('dlg').show()"
+                                     update="fm"
+                                     process="@this"
+                                     title="#{i18n.t('Bearbeiten')}"/>
                 </p:column>
 
                 <p:column headerText="Rem.Me" priority="4">
@@ -181,39 +172,20 @@
                                       style="display: block; margin-top: 4px; font-size: 0.85rem; color: var(--orange-500);"/>
                     </h:panelGroup>
 
-                    <h:outputText value="#{i18n.t('Ausgewählte Rollen')}:"/>
+                    <h:outputText value="#{i18n.t('Rollen')}:"/>
                     <h:panelGroup>
-                        <p:chips id="selectedRolesChips"
-                                 value="#{myUserBackingBean.selectedRolesList}"
-                                 max="20"
-                                 style="width: 450px;">
-                            <p:ajax event="itemSelect"
-                                    listener="#{myUserBackingBean.onSelectedRolesChanged()}"
-                                    update="availableRolesChips" />
-                            <p:ajax event="itemUnselect"
-                                    listener="#{myUserBackingBean.onSelectedRolesChanged()}"
-                                    update="availableRolesChips" />
-                        </p:chips>
+                        <p:selectCheckboxMenu id="rolesMenu"
+                                              value="#{myUserBackingBean.selectedRolesList}"
+                                              label="#{i18n.t('Rollen wählen')}"
+                                              multiple="true"
+                                              filter="true" filterMatchMode="contains"
+                                              panelStyle="width: 450px;"
+                                              style="width: 450px;">
+                            <f:selectItems value="#{myUserBackingBean.selectableRoles}"
+                                           var="r" itemLabel="#{r.label}" itemValue="#{r.name}"/>
+                        </p:selectCheckboxMenu>
                         <small style="display: block; margin-top: 5px; color: #6c757d;">
-                            #{i18n.t('Rolle eingeben und Enter drücken. Klick auf X zum Entfernen.')}
-                        </small>
-                    </h:panelGroup>
-
-                    <h:outputText value="#{i18n.t('Verfügbare Rollen')}:"/>
-                    <h:panelGroup>
-                        <p:chips id="availableRolesChips"
-                                 value="#{myUserBackingBean.availableRolesList}"
-                                 max="20"
-                                 style="width: 450px;">
-                            <p:ajax event="itemSelect"
-                                    listener="#{myUserBackingBean.onAvailableRolesChanged()}"
-                                    update="selectedRolesChips" />
-                            <p:ajax event="itemUnselect"
-                                    listener="#{myUserBackingBean.onAvailableRolesChanged()}"
-                                    update="selectedRolesChips" />
-                        </p:chips>
-                        <small style="display: block; margin-top: 5px; color: #6c757d;">
-                            #{i18n.t('Hier werden alle im System gefundenen Rollen angezeigt. Klick auf X um eine Rolle zu den ausgewählten Rollen hinzuzufügen.')}
+                            #{i18n.t('Von den Modulen deklarierte Rollen. Bereits zugewiesene Rollen ohne Deklaration bleiben in der Auswahl erhalten.')}
                         </small>
                     </h:panelGroup>
 
@@ -271,7 +243,17 @@
 
                     <br/>
                     <h:panelGroup colspan="3" styleClass="dialog-buttons">
-                        <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" action="#{myUserBackingBean.save()}" update="messages,fm:tbl,selectedRolesChips,availableRolesChips" oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
+                        <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" action="#{myUserBackingBean.save()}" update="messages,fm:tbl,rolesMenu" oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
+                        <p:commandButton value="#{i18n.t('Benutzer löschen')}"
+                                         icon="pi pi-trash"
+                                         styleClass="ui-button-danger"
+                                         actionListener="#{myUserBackingBean.delete()}"
+                                         update="messages,fm:tbl"
+                                         process="@this"
+                                         oncomplete="PF('dlg').hide()"
+                                         style="margin-left: 5px;">
+                            <p:confirm header="#{i18n.t('Bestätigung')}" message="#{i18n.t('Wollen Sie den Benutzer wirklich löschen?')}" icon="pi pi-exclamation-triangle"/>
+                        </p:commandButton>
                     </h:panelGroup>
 
                 </h:panelGrid>

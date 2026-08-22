@@ -327,19 +327,33 @@ class RollenzuteilungBackingBeanAdditionalTest {
     }
 
     @Nested
-    @DisplayName("getAvailableRoles")
+    @DisplayName("getAvailableRoles (Registry + Bestand)")
     class GetAvailableRoles {
 
         @Test
-        @DisplayName("Should return exactly 7 roles")
-        void shouldReturnExactly7Roles() {
-            assertEquals(7, bean.getAvailableRoles().size());
+        @DisplayName("Without registry, roles come from the Bestand (DB)")
+        void withoutRegistryUsesBestand() {
+            when(service.getDistinctRoleNames()).thenReturn(List.of("ROLE_PRIVATAUSGABEN", "ROLE_ADMIN"));
+
+            List<String> roles = bean.getAvailableRoles();
+
+            assertEquals(List.of("ROLE_ADMIN", "ROLE_PRIVATAUSGABEN"), roles);
         }
 
         @Test
-        @DisplayName("Should contain ROLE_PRIVATAUSGABEN")
-        void shouldContainRolePrivatausgaben() {
+        @DisplayName("Bestand role that is no longer declared stays selectable")
+        void undeclaredBestandRoleStaysSelectable() {
+            when(service.getDistinctRoleNames()).thenReturn(List.of("ROLE_PRIVATAUSGABEN"));
+
             assertTrue(bean.getAvailableRoles().contains("ROLE_PRIVATAUSGABEN"));
+        }
+
+        @Test
+        @DisplayName("Empty when neither registry nor Bestand provide roles")
+        void emptyWithoutSources() {
+            when(service.getDistinctRoleNames()).thenReturn(List.of());
+
+            assertTrue(bean.getAvailableRoles().isEmpty());
         }
     }
 }

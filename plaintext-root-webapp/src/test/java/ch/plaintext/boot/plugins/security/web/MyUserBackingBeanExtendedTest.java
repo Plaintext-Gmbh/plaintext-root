@@ -8,6 +8,7 @@ import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyRememberMeRepository;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.boot.plugins.security.persistence.UserMandateRepository;
+import ch.plaintext.framework.PlaintextRoleRegistry;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.ExternalContext;
 import jakarta.faces.context.FacesContext;
@@ -54,6 +55,10 @@ class MyUserBackingBeanExtendedTest {
 
     @Mock
     private UserMandateRepository userMandateRepo;
+
+    /** Rollen-Registry (Modul-Rollen-Registrierung): liefert die deklarierten Rollen. */
+    @Mock
+    private PlaintextRoleRegistry roleRegistry;
 
     /**
      * SECURITY (Karte 314, Punkt 7): der PasswordEncoder wird jetzt injiziert (zentrale Bean mit
@@ -561,76 +566,16 @@ class MyUserBackingBeanExtendedTest {
         assertNotNull(testUser.getRoles());
     }
 
-    @Test
-    void addSuggestedRoles_shouldDoNothing_whenNoSelection() {
-        bean.setSelected(null);
-        assertDoesNotThrow(() -> bean.addSuggestedRoles());
-    }
+    // ==================== edit() (Zeilen-Button in der Benutzer-Liste) ====================
 
     @Test
-    void addSuggestedRoles_shouldDoNothing_whenTempRolesEmpty() {
-        bean.setSelected(testUser);
-        bean.setTempRoles(new ArrayList<>());
-        bean.addSuggestedRoles();
-        // Should not throw
-    }
+    void edit_shouldSelectRowUserAndLoadDialogData() {
+        when(userMandateRepo.findByUsername(testUser.getUsername())).thenReturn(new ArrayList<>());
 
-    @Test
-    void addSuggestedRoles_shouldAddRoles() {
-        bean.setSelected(testUser);
-        bean.setTempRoles(new ArrayList<>(List.of("admin", "root")));
+        bean.edit(testUser);
 
-        bean.addSuggestedRoles();
-
-        List<String> roles = bean.getSelectedRolesList();
-        assertTrue(roles.contains("admin"));
-        assertTrue(roles.contains("root"));
-        assertTrue(bean.getTempRoles().isEmpty());
-    }
-
-    @Test
-    void addSuggestedRoles_shouldNotDuplicate() {
-        testUser.addRole("admin");
-        bean.setSelected(testUser);
-        bean.setTempRoles(new ArrayList<>(List.of("admin")));
-
-        bean.addSuggestedRoles();
-
-        long count = bean.getSelectedRolesList().stream()
-                .filter(r -> r.equals("admin"))
-                .count();
-        assertEquals(1, count);
-    }
-
-    // ==================== onSelectedRolesChanged / onAvailableRolesChanged ====================
-
-    @Test
-    void onSelectedRolesChanged_shouldDoNothing_whenNoSelection() {
-        bean.setSelected(null);
-        assertDoesNotThrow(() -> bean.onSelectedRolesChanged());
-    }
-
-    @Test
-    void onSelectedRolesChanged_shouldUpdateAvailableRoles() {
-        bean.setSelected(testUser);
-        bean.onSelectedRolesChanged();
-        // Should not throw, internal state is updated
-    }
-
-    @Test
-    void onAvailableRolesChanged_shouldDoNothing_whenNoSelection() {
-        bean.setSelected(null);
-        assertDoesNotThrow(() -> bean.onAvailableRolesChanged());
-    }
-
-    @Test
-    void onAvailableRolesChanged_shouldMoveMissingRolesToSelected() {
-        bean.setSelected(testUser);
-        // Initialize available roles list
-        bean.setAvailableRolesList(new ArrayList<>());
-
-        bean.onAvailableRolesChanged();
-        // Should not throw
+        assertSame(testUser, bean.getSelected());
+        assertEquals(testUser.getPassword(), bean.getMyUserPw());
     }
 
     // ==================== getAllMandate() Tests ====================
@@ -827,23 +772,87 @@ class MyUserBackingBeanExtendedTest {
     }
 
     @Test
-    void getAvailableRolesNotSelected_shouldFilterSelected() {
-        MyUserEntity user = new MyUserEntity();
-        user.addRole("admin");
-        user.addRole("user");
-        user.addRole("editor");
+    void getAvailableRoles_shouldIncludeDeclaredRolesFromRegistry() {
+        when(roleRegistry.getDeclaredRoleNames()).thenReturn(new LinkedHashSet<>(List.of("admin", "editor")));
+        when(repo.findAll()).thenReturn(List.of());
 
+        Set<String> roles = bean.getAvailableRoles();
+
+        assertTrue(roles.contains("admin"));
+        assertTrue(roles.contains("editor"));
+    }
+
+    @Test
+    void getAvailableRoles_shouldUnionRegistryAndDatabase() {
+        when(roleRegistry.getDeclaredRoleNames()).thenReturn(new LinkedHashSet<>(List.of("admin")));
+        MyUserEntity user = new MyUserEntity();
+        user.addRole("legacyrole");
         when(repo.findAll()).thenReturn(List.of(user));
 
-        // Select user with admin role
-        testUser.addRole("admin");
+        Set<String> roles = bean.getAvailableRoles();
+
+        assertTrue(roles.contains("admin"));
+        assertTrue(roles.contains("legacyrole"), "Bestandsrolle ohne Deklaration muss sichtbar bleiben");
+    }
+
+    @Test
+    void getAvailableRoles_shouldSurviveNullRegistry() throws Exception {
+        java.lang.reflect.Field field = MyUserBackingBean.class.getDeclaredField("roleRegistry");
+        field.setAccessible(true);
+        field.set(bean, null);
+
+        MyUserEntity user = new MyUserEntity();
+        user.addRole("admin");
+        when(repo.findAll()).thenReturn(List.of(user));
+
+        Set<String> roles = bean.getAvailableRoles();
+
+        assertTrue(roles.contains("admin"));
+    }
+
+    // ==================== getSelectableRoles Tests ====================
+
+    @Test
+    void getSelectableRoles_shouldCarryDescriptionInLabel() {
+        when(roleRegistry.getDeclaredRoleNames()).thenReturn(new LinkedHashSet<>(List.of("admin")));
+        when(roleRegistry.getDescription("admin")).thenReturn("Administration");
+        when(repo.findAll()).thenReturn(List.of());
         bean.setSelected(testUser);
 
-        Set<String> notSelected = bean.getAvailableRolesNotSelected();
+        List<MyUserBackingBean.RoleOption> options = bean.getSelectableRoles();
 
-        // "admin" is in selected, so should not be in notSelected
-        // but "editor" should be (if it's in available)
-        assertFalse(notSelected.contains("user")); // user is in testUser.roles already
+        MyUserBackingBean.RoleOption admin = options.stream()
+                .filter(o -> o.getName().equals("admin"))
+                .findFirst().orElseThrow();
+        assertEquals("admin — Administration", admin.getLabel());
+    }
+
+    @Test
+    void getSelectableRoles_shouldKeepSelectedUndeclaredRoles() {
+        when(roleRegistry.getDeclaredRoleNames()).thenReturn(new LinkedHashSet<>(List.of("admin")));
+        when(repo.findAll()).thenReturn(List.of());
+
+        testUser.addRole("vergessene_rolle");
+        bean.setSelected(testUser);
+
+        List<MyUserBackingBean.RoleOption> options = bean.getSelectableRoles();
+
+        assertTrue(options.stream().anyMatch(o -> o.getName().equals("vergessene_rolle")),
+                "Eine zugewiesene, aber nicht (mehr) deklarierte Rolle darf nicht verloren gehen");
+        assertTrue(options.stream().anyMatch(o -> o.getName().equals("admin")));
+    }
+
+    @Test
+    void getSelectableRoles_labelWithoutDescriptionIsPlainName() {
+        when(roleRegistry.getDeclaredRoleNames()).thenReturn(new LinkedHashSet<>(List.of("plain")));
+        when(roleRegistry.getDescription("plain")).thenReturn("");
+        when(repo.findAll()).thenReturn(List.of());
+        bean.setSelected(testUser);
+
+        MyUserBackingBean.RoleOption plain = bean.getSelectableRoles().stream()
+                .filter(o -> o.getName().equals("plain"))
+                .findFirst().orElseThrow();
+        assertEquals("plain", plain.getLabel());
     }
 
     // ==================== newUser() Tests ====================
