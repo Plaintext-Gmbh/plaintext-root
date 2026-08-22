@@ -11,6 +11,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
@@ -185,6 +187,96 @@ class VaultwardenValueResolverTest {
         lazy.resolve("p1", "vault:app.a");
         lazy.resolve("p2", "vault:app.b");
         assertThat(calls[0]).isEqualTo(1);
+    }
+
+    // ── Boot-Retry bei transienter Vault-Stoerung (Vorfaelle 18.+21.08.2026) ──
+
+    /** Rekorder statt Echtzeit: sammelt die angeforderten Wartezeiten. */
+    private List<Long> schlaefe;
+
+    private VaultwardenValueResolver resolverMitSchlafRekorder() {
+        schlaefe = new ArrayList<>();
+        return new VaultwardenValueResolver(() -> svc, ms -> schlaefe.add(ms));
+    }
+
+    @Test
+    void transienteStoerungWirdMitRetryUeberbrueckt() {
+        // Erster Versuch leer (Vault-Zugriff gescheitert), zweiter liefert den Wert.
+        when(svc.getPassword("app.wackel")).thenReturn(Optional.empty(), Optional.of("pw"));
+        when(svc.istLetzterZugriffTransientGescheitert()).thenReturn(true);
+        when(svc.warLetzterFehlerRateLimit()).thenReturn(false);
+        when(svc.letzteVaultFehlermeldung()).thenReturn("connect timed out");
+        VaultwardenValueResolver r = resolverMitSchlafRekorder();
+
+        assertThat(r.resolve("p", "vault:app.wackel")).isEqualTo("pw");
+        assertThat(schlaefe).containsExactly(5_000L);
+        verify(svc, times(1)).erzwingeNeuenVersuch();
+    }
+
+    @Test
+    void transienteStoerungOhneEndeFailtNachAllenVersuchenMitVerdoppelterWartezeit() {
+        when(svc.getPassword("app.wackel")).thenReturn(Optional.empty());
+        when(svc.istLetzterZugriffTransientGescheitert()).thenReturn(true);
+        when(svc.warLetzterFehlerRateLimit()).thenReturn(false);
+        when(svc.letzteVaultFehlermeldung()).thenReturn("connect timed out");
+        VaultwardenValueResolver r = resolverMitSchlafRekorder();
+
+        assertThatThrownBy(() -> r.resolve("p", "vault:app.wackel"))
+                .isInstanceOf(VaultwardenPropertyResolutionException.class)
+                .hasMessageContaining("transient")
+                .hasMessageContaining("connect timed out");
+        assertThat(schlaefe).containsExactly(5_000L, 10_000L, 20_000L);
+    }
+
+    @Test
+    void rateLimitWartetLangUndNenntDen429ImFehler() {
+        // Der Deploy-Retry (plaintext-scripts) erkennt die Transienz am String "HTTP 429" im
+        // Container-Log — die Fail-fast-Meldung muss ihn deshalb transportieren.
+        when(svc.getPassword("app.wackel")).thenReturn(Optional.empty());
+        when(svc.istLetzterZugriffTransientGescheitert()).thenReturn(true);
+        when(svc.warLetzterFehlerRateLimit()).thenReturn(true);
+        when(svc.letzteVaultFehlermeldung())
+                .thenReturn("token-Endpoint HTTP 429 ({\"message\":\"Too many login requests\"})");
+        VaultwardenValueResolver r = resolverMitSchlafRekorder();
+
+        assertThatThrownBy(() -> r.resolve("p", "vault:app.wackel"))
+                .isInstanceOf(VaultwardenPropertyResolutionException.class)
+                .hasMessageContaining("HTTP 429");
+        assertThat(schlaefe).containsExactly(65_000L, 65_000L, 65_000L);
+    }
+
+    @Test
+    void definitivFehlendesItemFailtSofortOhneRetry() {
+        // Sync war erfolgreich, das Item fehlt wirklich (Tippfehler-Fall schuetu.remember-me-keyn
+        // vom 18.08.2026): kein Warten, keine weiteren Versuche — der Boot bricht sofort ab.
+        when(svc.getPassword("app.fehlt")).thenReturn(Optional.empty());
+        when(svc.istLetzterZugriffTransientGescheitert()).thenReturn(false);
+        VaultwardenValueResolver r = resolverMitSchlafRekorder();
+
+        assertThatThrownBy(() -> r.resolve("p", "vault:app.fehlt"))
+                .isInstanceOf(VaultwardenPropertyResolutionException.class)
+                .hasMessageContaining("nicht im Tresor gefunden");
+        assertThat(schlaefe).isEmpty();
+        verify(svc, times(0)).erzwingeNeuenVersuch();
+    }
+
+    @Test
+    void unterbrochenerRetryFailtFastUndSetztDasInterruptFlag() {
+        when(svc.getPassword("app.wackel")).thenReturn(Optional.empty());
+        when(svc.istLetzterZugriffTransientGescheitert()).thenReturn(true);
+        when(svc.warLetzterFehlerRateLimit()).thenReturn(false);
+        when(svc.letzteVaultFehlermeldung()).thenReturn("timeout");
+        VaultwardenValueResolver r = new VaultwardenValueResolver(() -> svc, ms -> {
+            throw new InterruptedException("stop");
+        });
+
+        try {
+            assertThatThrownBy(() -> r.resolve("p", "vault:app.wackel"))
+                    .isInstanceOf(VaultwardenPropertyResolutionException.class);
+            assertThat(Thread.currentThread().isInterrupted()).isTrue();
+        } finally {
+            Thread.interrupted(); // Flag loeschen, damit Folge-Tests sauber laufen
+        }
     }
 
     @Test

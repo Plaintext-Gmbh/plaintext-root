@@ -84,6 +84,19 @@ class VaultwardenClient {
      */
     private int fehlversucheInFolge = 0;
 
+    // --- Diagnose des letzten Refresh-Versuchs (fuer den Boot-Retry im Resolver) -------------
+    // Ohne diese Unterscheidung sieht ein Consumer nach einem Fehlschlag nur eine leere
+    // Item-Liste und kann "Vaultwarden war gerade nicht erreichbar/429" nicht von "das Item
+    // gibt es wirklich nicht" trennen — genau daran scheiterte die Deploy-Diagnose am
+    // 21.08.2026 (guild 1.372.0 / app snapshot-dev).
+
+    /** {@code true}, wenn der LETZTE Login/Sync-Versuch fehlgeschlagen ist (transient). */
+    private boolean letzterRefreshGescheitert = false;
+    /** {@code true}, wenn der letzte Fehlschlag ein erkanntes Rate-Limit (HTTP 429) war. */
+    private boolean letzterFehlerWarRateLimit = false;
+    /** Secret-freie Meldung des letzten Fehlschlags (fuer Log und Fail-fast-Exception). */
+    private String letzteFehlermeldung = "";
+
     /** Backoff nach dem ersten Fehlschlag; verdoppelt sich je weiterem bis {@link #BACKOFF_MAX_SEK}. */
     private static final int BACKOFF_START_SEK = 30;
     /** Obergrenze des Backoffs — 15 Minuten. Danach wird weiter periodisch, aber selten versucht. */
@@ -400,6 +413,9 @@ class VaultwardenClient {
             cachedItems = sync();
             cacheExpiry = now.plusSeconds(Math.max(1, props.getCacheTtlSeconds()));
             fehlversucheInFolge = 0;
+            letzterRefreshGescheitert = false;
+            letzterFehlerWarRateLimit = false;
+            letzteFehlermeldung = "";
             log.debug("Vaultwarden-Sync ok: {} Login-Items, {} Org-Keys",
                     cachedItems.size(), orgKeys.size());
         } catch (Exception e) {
@@ -407,8 +423,25 @@ class VaultwardenClient {
             if (cachedItems == null) {
                 cachedItems = List.of();
             }
+            letzterRefreshGescheitert = true;
+            letzteFehlermeldung = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             cacheExpiry = now.plusSeconds(backoffSekunden(e));
         }
+    }
+
+    /** {@code true}, wenn der letzte Login/Sync-Versuch fehlgeschlagen ist (transiente Stoerung). */
+    synchronized boolean istLetzterRefreshGescheitert() {
+        return letzterRefreshGescheitert;
+    }
+
+    /** {@code true}, wenn der letzte Fehlschlag ein erkanntes Rate-Limit (HTTP 429) war. */
+    synchronized boolean warLetzterFehlerRateLimit() {
+        return letzterFehlerWarRateLimit;
+    }
+
+    /** Secret-freie Meldung des letzten Fehlschlags; leer nach einem Erfolg. */
+    synchronized String letzteFehlermeldung() {
+        return letzteFehlermeldung;
     }
 
     /**
@@ -433,6 +466,7 @@ class VaultwardenClient {
         fehlversucheInFolge++;
         String meldung = e.getMessage() == null ? "" : e.getMessage();
         boolean rateLimit = meldung.contains("429") || meldung.contains("Too many");
+        letzterFehlerWarRateLimit = rateLimit;
 
         int wartezeit;
         if (rateLimit) {

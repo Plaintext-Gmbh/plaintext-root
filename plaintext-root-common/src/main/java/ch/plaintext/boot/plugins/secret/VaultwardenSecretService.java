@@ -99,6 +99,37 @@ public class VaultwardenSecretService {
     }
 
     // ------------------------------------------------------------------
+    // Boot-Retry-Unterstuetzung (package-private, nur fuer den VaultwardenValueResolver)
+    // ------------------------------------------------------------------
+
+    /**
+     * {@code true}, wenn der letzte Vault-Zugriff an einer TRANSIENTEN Stoerung scheiterte
+     * (Login/Sync-Fehler, Timeout, HTTP 429) — die leere Antwort beweist dann NICHT, dass das
+     * Item fehlt. {@code false} nach erfolgreichem Sync: dann ist eine leere Antwort definitiv.
+     */
+    boolean istLetzterZugriffTransientGescheitert() {
+        return client.istLetzterRefreshGescheitert();
+    }
+
+    /** {@code true}, wenn der letzte Fehlschlag ein erkanntes Rate-Limit (HTTP 429) war. */
+    boolean warLetzterFehlerRateLimit() {
+        return client.warLetzterFehlerRateLimit();
+    }
+
+    /** Secret-freie Meldung des letzten Fehlschlags; leer nach einem Erfolg. */
+    String letzteVaultFehlermeldung() {
+        return client.letzteFehlermeldung();
+    }
+
+    /**
+     * Verwirft den (ggf. leeren) Cache samt Fehler-Backoff, damit der NAECHSTE Zugriff wirklich
+     * gegen Vaultwarden geht. Fuer den Boot-Retry im Resolver, der die Wartezeit selbst steuert.
+     */
+    void erzwingeNeuenVersuch() {
+        client.invalidate();
+    }
+
+    // ------------------------------------------------------------------
 
     private Optional<VaultwardenItem> findItem(String itemName) {
         if (!isEnabled()) {

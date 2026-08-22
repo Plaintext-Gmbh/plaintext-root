@@ -252,6 +252,45 @@ class VaultwardenClientTest {
         assertThat(vault.tokenCalls).isEqualTo(1); // Login klappte, erst Sync scheiterte
     }
 
+    // ------------------------------------------------------------------
+    // Diagnose-Flags fuer den Boot-Retry (Vorfaelle 18.+21.08.2026)
+    // ------------------------------------------------------------------
+
+    /** Nach einem 429 stehen die Flags auf transient+Rate-Limit; nach Erfolg sind sie geloescht. */
+    @Test
+    void fehlerFlags_nach429GesetztNachErfolgGeloescht() {
+        vault.tokenStatus = 429;
+        vault.tokenBody = "{\"message\":\"Too many login requests\"}";
+        VaultwardenClient client = newClient(props());
+
+        assertThat(client.getItems()).isEmpty();
+        assertThat(client.istLetzterRefreshGescheitert()).isTrue();
+        assertThat(client.warLetzterFehlerRateLimit()).isTrue();
+        assertThat(client.letzteFehlermeldung()).contains("429");
+
+        vault.tokenStatus = 200;
+        vault.tokenBody = tokenJson(3600);
+        client.invalidate();
+
+        assertThat(client.getItems()).hasSize(2);
+        assertThat(client.istLetzterRefreshGescheitert()).isFalse();
+        assertThat(client.warLetzterFehlerRateLimit()).isFalse();
+        assertThat(client.letzteFehlermeldung()).isEmpty();
+    }
+
+    /** Ein gewoehnlicher Fehlschlag ist transient, aber KEIN Rate-Limit. */
+    @Test
+    void fehlerFlags_gewoehnlicherFehlerOhneRateLimit() {
+        vault.tokenStatus = 500;
+        vault.tokenBody = "boom";
+        VaultwardenClient client = newClient(props());
+
+        assertThat(client.getItems()).isEmpty();
+        assertThat(client.istLetzterRefreshGescheitert()).isTrue();
+        assertThat(client.warLetzterFehlerRateLimit()).isFalse();
+        assertThat(client.letzteFehlermeldung()).isNotEmpty();
+    }
+
     @Test
     void getItems_unsupportedKdf_failsSafeEmpty() {
         vault.preloginBody = "{\"kdf\":1,\"kdfIterations\":3}"; // Argon2 -> nicht unterstuetzt
