@@ -16,9 +16,10 @@ import java.util.List;
 /**
  * Implementation of a menu item.
  * <p>
- * Visibility is decided in three independent steps, all of which must pass: the role check, whose
- * rules depend on the configured {@link MenuAccessPolicy}; the module check via
- * {@link ModuleEnablementProvider}; and the mandate check via {@link MenuVisibilityProvider}.
+ * Visibility is decided in four independent steps, all of which must pass: the role check, whose
+ * rules depend on the configured {@link MenuAccessPolicy}; the configurable module-role check via
+ * {@link ModuleRoleService}; the module enablement check via {@link ModuleEnablementProvider}; and
+ * the mandate check via {@link MenuVisibilityProvider}.
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -43,8 +44,17 @@ public class MenuItemImpl extends AbstractMenuItem {
     private SecurityProvider securityProvider;
     private MenuVisibilityProvider menuVisibilityProvider;
     private ModuleEnablementProvider moduleEnablementProvider;
+    private ModuleRoleService moduleRoleService;
     private BeanFactory beanFactory;
     private String badge;
+
+    /**
+     * Rollen (GROSS, ohne {@code ROLE_}-Prefix), die die Anwendungs-Konfiguration
+     * ({@code plaintext.menu.module-roles}) fuer das Modul dieses Menuepunkts fordert. Wird vom
+     * {@link ModuleRoleService} einmalig gesetzt; leer heisst „unkonfiguriert" und damit
+     * unveraendertes Verhalten.
+     */
+    private List<String> moduleRoles = new ArrayList<>();
 
     @Override
     public String getIc() {
@@ -124,10 +134,38 @@ public class MenuItemImpl extends AbstractMenuItem {
         if (!isRoleVisible()) {
             return false;
         }
+        if (!isModuleRoleVisible()) {
+            return false;
+        }
         if (!isModuleVisible()) {
             return false;
         }
         return isMandateVisible();
+    }
+
+    /**
+     * Konfigurierbare Modul-Rolle ({@code plaintext.menu.module-roles.<key>=<rolle>}): schaltet ein
+     * ganzes Modul pro Anwendung ein oder aus. Gilt unter beiden Access-Policies und — weil der
+     * {@code PageAccessGuard} ueber {@link #isOn()} geht — auch fuer den Direktaufruf der Seiten.
+     * {@code admin}/{@code root} umgehen die Pruefung (im {@link ModuleRoleService}).
+     */
+    private boolean isModuleRoleVisible() {
+        if (moduleRoleService == null && beanFactory != null) {
+            try {
+                moduleRoleService = beanFactory.getBean(ModuleRoleService.class);
+            } catch (Exception e) {
+                log.debug("No ModuleRoleService available for menu '{}': {}", title, e.getMessage());
+            }
+        }
+        if (moduleRoleService != null) {
+            // Fuellt moduleRoles an allen registrierten Menuepunkten (einmalig).
+            moduleRoleService.ensureResolved();
+        }
+        boolean visible = ModuleRoleService.holdsAny(moduleRoles, securityProvider);
+        if (!visible) {
+            log.debug("Modul-Rolle {} fehlt - Menuepunkt '{}' ausgeblendet", moduleRoles, title);
+        }
+        return visible;
     }
 
     /**

@@ -5,6 +5,7 @@ package ch.plaintext.boot.dashboard;
 
 import ch.plaintext.MenuVisibilityProvider;
 import ch.plaintext.TileRegistry;
+import ch.plaintext.boot.menu.ModuleRoleService;
 import ch.plaintext.boot.menu.SecurityProvider;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ public class TileItemImpl implements TileRegistry.TileItem {
     private List<String> roles = new ArrayList<>();
     private SecurityProvider securityProvider;
     private MenuVisibilityProvider menuVisibilityProvider;
+    private ModuleRoleService moduleRoleService;
     private BeanFactory beanFactory;
 
     /**
@@ -42,6 +44,32 @@ public class TileItemImpl implements TileRegistry.TileItem {
      */
     public String getVisibilityTitle() {
         return (menuTitle == null || menuTitle.trim().isEmpty()) ? title : menuTitle;
+    }
+
+    /**
+     * Konfigurierbare Modul-Rolle ({@code plaintext.menu.module-roles}): Die Kachel wird ueber
+     * ihren {@link #link} — ersatzweise ueber ihren {@link #menuTitle} — dem Modul-Menue
+     * zugeordnet und verschwindet damit konsistent mit dem Menuepunkt. {@code admin}/{@code root}
+     * umgehen die Pruefung.
+     *
+     * @return {@code true}, wenn keine Modul-Rolle gefordert ist oder der Benutzer sie haelt
+     */
+    private boolean isModuleRoleVisible() {
+        if (moduleRoleService == null && beanFactory != null) {
+            try {
+                moduleRoleService = beanFactory.getBean(ModuleRoleService.class);
+            } catch (Exception e) {
+                log.debug("Kein ModuleRoleService verfügbar für Kachel '{}': {}", title, e.getMessage());
+            }
+        }
+        if (moduleRoleService == null) {
+            return true;
+        }
+        boolean visible = moduleRoleService.isAllowedForLink(link, getVisibilityTitle(), securityProvider);
+        if (!visible) {
+            log.debug("Modul-Rolle fehlt - Kachel '{}' ausgeblendet", title);
+        }
+        return visible;
     }
 
     @Override
@@ -59,6 +87,11 @@ public class TileItemImpl implements TileRegistry.TileItem {
             if (!hasRole) {
                 return false;
             }
+        }
+
+        // Konfigurierbare Modul-Rolle: eine Kachel verschwindet zusammen mit ihrem Modul-Menue.
+        if (!isModuleRoleVisible()) {
+            return false;
         }
 
         // MenuVisibilityProvider bei Bedarf lazy aus der BeanFactory laden
