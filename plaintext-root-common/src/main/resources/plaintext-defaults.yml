@@ -1,10 +1,9 @@
 # Gemeinsame Grundeinstellungen fuer ALLE Plaintext-Anwendungen.
 #
-# WARUM DIESE DATEI EXISTIERT (Karte 620, 08.08.2026):
+# WARUM DIESE DATEI EXISTIERT (Karte 620):
 # Diese Werte standen frueher in plaintext-root-webapp/application.yml. Spring Boot laedt aber
-# nur EINE classpath:/application.yml — und jede App (app, guild, schuetu, iot, fwtool) bringt
-# eine eigene mit. Die root-Fassung war damit in allen fuenf Consumern unsichtbar; gemessen am
-# 08.08.2026 gingen so 14 Schluessel verloren, davon 7 sicherheitsrelevante.
+# nur EINE classpath:/application.yml — und jede konsumierende Anwendung bringt eine eigene mit.
+# Die root-Fassung war damit in den Consumern unsichtbar.
 #
 # Der Dateiname ist deshalb bewusst NICHT application.yml: Er kann nicht verdeckt werden.
 # Eingespeist wird sie vom PlaintextDefaultsEnvironmentPostProcessor mit der NIEDRIGSTEN
@@ -21,45 +20,22 @@ server:
       cookie:
         http-only: true
         same-site: lax
-        # Je Instanz gesetzt, nicht fest verdrahtet: PROD true, INT false.
-        #
-        # Der Default ist hier bewusst false — anders als in plaintext-root-webapp, wo er
-        # true lautet. Grund: Die INT-Instanzen laufen mit DEMSELBEN Profil wie PROD
-        # (SPRING_PROFILES_ACTIVE=prod,postgres, gemessen am 08.08.2026 an sechs
-        # Containern). Es gibt also kein Profil, ueber das man INT ausnehmen koennte, und
-        # ein Default true wuerde die Anmeldung auf http://<ip>:<port> sofort unmoeglich
-        # machen: Der Browser sendet ein Secure-Cookie ueber http gar nicht erst.
-        #
-        # Scharf geschaltet wird deshalb je Container ueber die Umgebungsvariable —
-        # dieselbe Bauform wie PLAINTEXT_BASEURL (Karte 584/598) und dieselbe Falle: Der
-        # Wert muss in plaintext-config UND auf dem NAS stehen, sonst raeumt ihn
-        # setup_blue_green() beim naechsten Reparaturlauf weg (Karte 592).
-        #
-        # Variablenname absichtlich identisch mit dem in plaintext-root-webapp: EIN Name
-        # fuer EINEN Schalter, sonst haertet man root und die Consumer versehentlich
-        # getrennt.
+        # Haertung — je Instanz per Umgebungsvariable gesetzt, nicht fest verdrahtet.
+        # Der Default ist hier bewusst false (anders als in plaintext-root-webapp, wo er true
+        # lautet); Begruendung und Betriebsfallen stehen in der internen Betriebsdokumentation:
+        # plaintext-config/docs/SECURITY_ENTSCHEIDE.md. Nicht ohne Ruecksprache aendern.
         secure: ${PLAINTEXT_COOKIE_SECURE:false}
 
 # SECURITY (Karte 623): Swagger-UI und OpenAPI-Beschreibung sind aus.
 #
-# root schaltet sie seit Karte 314 ab; die Consumer nicht, weil ihre eigene application.yml
-# die root-Fassung verdeckt. Gemessen am 08.08.2026:
+# Zentral hier und nicht je App: Es ist keine neue Bewertung, sondern das Nachziehen einer in
+# root bereits getroffenen Entscheidung (Karte 314). Haertung — nicht ohne Ruecksprache
+# aendern; Hintergrund in plaintext-config/docs/SECURITY_ENTSCHEIDE.md.
 #
-#   https://app.plaintext.ch/api-docs    200, 38 Pfade
-#   https://app.guild42.ch/api-docs      200, 11 Pfade
-#   https://guild.plaintext.ch/api-docs  200, 11 Pfade
-#   root / iot                           302 (abgeschaltet)
-#
-# Kein Datenleck -- die Endpunkte selbst sind geschuetzt. Aber die Beschreibung JEDES
-# Endpunkts samt Parametern und Rueckgabetypen liegt offen. Das ist die Landkarte, die man
-# liest, bevor man etwas anderes versucht.
-#
-# Hier zentral, nicht je App: Es ist keine neue Bewertung, sondern das Nachziehen einer in
-# root bereits getroffenen Entscheidung. Zum Einschalten in DEV genuegt SPRINGDOC_ENABLED=true.
+# Zum Einschalten in DEV genuegt SPRINGDOC_ENABLED=true.
 springdoc:
   swagger-ui:
     enabled: ${SPRINGDOC_ENABLED:false}
   api-docs:
     enabled: ${SPRINGDOC_ENABLED:false}
   show-actuator: false
-

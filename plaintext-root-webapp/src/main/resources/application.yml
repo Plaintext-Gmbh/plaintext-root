@@ -45,18 +45,14 @@ server:
   forward-headers-strategy: FRAMEWORK
   servlet:
     session:
-      # SECURITY (Karte 612): Sitzungen werden AUSSCHLIESSLICH ueber das Cookie gefuehrt.
-      # Ohne diese Zeile haengt der Container die Kennung an die URL, sobald ein Client keine
-      # Cookies mitschickt -- gemessen am 07.08.2026 erzeugte der Server sie selbst in jeder
-      # Weiterleitung (Location: /login.html;jsessionid=...). Solche URLs landen in Lesezeichen,
-      # im Referer und in Fehlermeldungen; eine davon ist als Zugang ohne Passwort und ohne
-      # zweiten Faktor in eine Aufgabenkarte gelangt. Der pathParameterFilter faengt die
-      # Altlasten, diese Zeile stoppt den Nachschub.
-      # ACHTUNG: Diese Zeile wirkt NUR in plaintext-root -- jede Anwendung bringt eine eigene
-      # application.yml mit, die diese hier verdeckt (belegt am Set-Cookie-Header: nur
-      # root.plaintext.ch traegt Secure/SameSite aus diesem Block, app/guild/iot/schuetu nicht).
-      # Wirksam fuer ALLE Anwendungen ist deshalb der SessionTrackingConfig-Initializer in
-      # plaintext-root-web; diese Zeile bleibt als Dokumentation an der erwarteten Stelle.
+      # SECURITY (Karte 612): Haertung — Sitzungen werden AUSSCHLIESSLICH ueber das Cookie
+      # gefuehrt; ohne diese Zeile kann der Container die Kennung an die URL haengen.
+      # Nicht ohne Ruecksprache aendern, Hintergrund in
+      # plaintext-config/docs/SECURITY_ENTSCHEIDE.md.
+      # ACHTUNG (Reichweite): Diese Zeile wirkt NUR in plaintext-root -- jede Anwendung bringt
+      # eine eigene application.yml mit, die diese hier verdeckt. Wirksam fuer ALLE Anwendungen
+      # ist der SessionTrackingConfig-Initializer in plaintext-root-web; diese Zeile bleibt als
+      # Dokumentation an der erwarteten Stelle.
       tracking-modes: cookie
       # SECURITY (Karte 314, Punkt 1): Session-Lebensdauer explizit statt implizitem
       # Servlet-Default (30 min). Wert unveraendert 30 min -> kein Verhaltensbruch, aber
@@ -144,14 +140,11 @@ plaintext:
     # kuerzere Standardgueltigkeit die risikoaermere Voreinstellung.
     remember-me-validity: ${PLAINTEXT_SECURITY_REMEMBER_ME_VALIDITY:7d}
     page-guard:
-      # SECURITY (Karte 308): Seiten-Zugriffsschutz fail-closed fuer DIESE App.
-      # Der Framework-Default in PlaintextSecurityProperties ist bewusst REPORT: jede
-      # konsumierende App (plaintext-app/-guild/-schuetu/-iot/-fwtool) bringt ihre eigene
-      # application.yml mit, die diese hier auf dem Klassenpfad verdeckt — sie bleibt also bei
-      # REPORT, bis ihre Views vollstaendig einem Menueeintrag/Alias zugeordnet sind. Die
-      # root-App selbst ist vollstaendig zugeordnet (siehe MenuLinkInvariantTest) und laeuft
-      # deshalb schon jetzt in STRICT: kein Menuetreffer -> verweigern, plus Vererbung der
-      # Eltern-Rollen.
+      # SECURITY (Karte 308): Haertung — Seiten-Zugriffsschutz fail-closed fuer DIESE App:
+      # kein Menuetreffer -> verweigern, plus Vererbung der Eltern-Rollen. Voraussetzung ist,
+      # dass alle Views einem Menueeintrag oder Alias zugeordnet sind (siehe
+      # MenuLinkInvariantTest); der Framework-Default in PlaintextSecurityProperties ist
+      # deshalb der Einfuehrungsmodus REPORT. Nicht ohne Ruecksprache aendern.
       mode: ${PLAINTEXT_SECURITY_PAGE_GUARD_MODE:STRICT}
 
 ---
