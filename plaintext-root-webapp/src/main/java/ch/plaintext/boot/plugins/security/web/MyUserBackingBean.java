@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security.web;
 
 import ch.plaintext.PlaintextSecurity;
+import ch.plaintext.audit.DestructiveActionAuditService;
 import ch.plaintext.boot.plugins.security.magiclink.MagicLinkService;
 import ch.plaintext.boot.plugins.security.model.MyRememberMe;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
@@ -43,6 +44,9 @@ public class MyUserBackingBean implements Serializable {
             "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
     );
 
+    /** Spaltenbreite von {@code destructive_action_audit.detail}; laengere Texte werden gekuerzt. */
+    private static final int AUDIT_DETAIL_MAX = 2000;
+
     /**
      * SECURITY (Karte 314, Punkt 7): zentrale {@link PasswordEncoder}-Bean statt eines lokalen
      * {@code new BCryptPasswordEncoder()}. Der lokale Aufruf haette den Spring-Default-Kostenfaktor
@@ -73,6 +77,26 @@ public class MyUserBackingBean implements Serializable {
     private transient MagicLinkService magicLinkService;
 
     /**
+     * SECURITY (Forensik 23.08.2026): Audit-Schreiber fuer Rollenaenderungen und Benutzerloeschungen. Wie
+     * {@link #roleRegistry} optional verdrahtet, damit schlanke Kontexte (Tests ohne JPA) die Bean
+     * weiter bauen koennen — fehlt er, bleibt nur das {@code log.warn} als Spur.
+     */
+    private transient DestructiveActionAuditService auditService;
+
+    /**
+     * SECURITY (Forensik 23.08.2026): Die Rueckfrage, die beim Entzug privilegierter Rollen durch einen
+     * root-Akteur angezeigt wird. {@code null} = keine Rueckfrage offen.
+     */
+    private String rollenEntzugFrage;
+
+    /**
+     * SECURITY (Forensik 23.08.2026): {@code true}, sobald der root-Akteur den Entzug im Dialog bestaetigt hat.
+     * Wird nach jedem abgeschlossenen Vorgang (Speichern, Abbruch, Auswahlwechsel) zurueckgesetzt,
+     * damit eine Bestaetigung nie fuer einen zweiten, ungesehenen Entzug weitergilt.
+     */
+    private boolean rollenEntzugBestaetigt;
+
+    /**
      * Konstruktor-Injection statt Feld-Injection (Sonar S6813): die Abhaengigkeiten stehen damit
      * schon vor {@code @PostConstruct} fest und die Bean laesst sich ohne Spring bauen.
      *
@@ -83,6 +107,7 @@ public class MyUserBackingBean implements Serializable {
      * @param plaintextSecurity Sicherheitskontext (Rollen, Mandat)
      * @param userMandateRepo Repository der Zusatz-Mandate
      * @param magicLinkService Versand der Magic-Links
+     * @param auditService    Audit-Log fuer Rollenaenderungen/Loeschungen; optional, darf {@code null} sein
      */
     @Autowired
     public MyUserBackingBean(PasswordEncoder passwordEncoder,
@@ -91,7 +116,8 @@ public class MyUserBackingBean implements Serializable {
                              MyRememberMeRepository rememberMeRepo,
                              PlaintextSecurity plaintextSecurity,
                              UserMandateRepository userMandateRepo,
-                             MagicLinkService magicLinkService) {
+                             MagicLinkService magicLinkService,
+                             @Nullable DestructiveActionAuditService auditService) {
         this.passwordEncoder = passwordEncoder;
         this.repo = repo;
         this.roleRegistry = roleRegistry;
@@ -99,6 +125,7 @@ public class MyUserBackingBean implements Serializable {
         this.plaintextSecurity = plaintextSecurity;
         this.userMandateRepo = userMandateRepo;
         this.magicLinkService = magicLinkService;
+        this.auditService = auditService;
     }
 
     /** Zusätzliche Mandate des gewählten Benutzers (Mehrfach-Mandant), im Dialog editierbar. */
@@ -166,17 +193,26 @@ public class MyUserBackingBean implements Serializable {
         init();
     }
 
+    /**
+     * Oeffnet den Dialog fuer einen neuen Benutzer.
+     *
+     * <p>DATENQUALITAET (Forensik 23.08.2026): Die leere Entity wird <b>nicht mehr sofort persistiert</b>.
+     * Vorher legte jeder Klick auf „Neuer Benutzer" — auch ein abgebrochener — eine Waisenzeile
+     * mit leerem {@code username} an, die von der Benutzerverwaltung nie wieder eingesammelt wurde.
+     * Die Entity bleibt jetzt transient, bis {@link #save()} sie mit gueltigem Benutzernamen und
+     * Passwort tatsaechlich schreibt; {@code save()} kommt mit {@code id == null} zurecht
+     * (Insert statt Update). Auch das {@code init()} entfaellt: Es gibt nichts nachzuladen.</p>
+     */
     public void newUser() {
         selected = new MyUserEntity();
         // Set default mandate for new user (can be changed in the dialog)
         selected.setMandat("default");
-        selected = repo.save(selected);
         select();
-        init();
     }
 
     public void select() {
         log.debug("SELECT called - selected: {}", selected != null ? selected.getId() + "/" + selected.getUsername() : "null");
+        resetRollenEntzug();
         if (selected != null) {
             myUserPw = selected.getPassword();
             loadZusatzMandate();
@@ -197,6 +233,7 @@ public class MyUserBackingBean implements Serializable {
     public void clearSelection() {
         log.debug("CLEAR SELECTION called");
         selected = null;
+        resetRollenEntzug();
     }
 
     public void validateUsername() {
@@ -280,6 +317,18 @@ public class MyUserBackingBean implements Serializable {
             return;
         }
 
+        // SECURITY (Forensik 23.08.2026, K1): die ENTZUGSSEITE. pruefeRollenAllowlist() sieht nur, was
+        // uebermittelt wurde — was FEHLT, sah bisher niemand. Genau so verlor ein Administratorkonto
+        // still 'root' und 'admin', als ein root-Akteur vom Telefon aus mit leerer Rollenauswahl
+        // speicherte. Die Differenz `persistiert \ uebermittelt` ist der einzige Ort, an dem ein
+        // solcher Verlust ueberhaupt sichtbar wird.
+        Set<String> neueRollen = selected.getRoles() == null
+                ? new HashSet<>() : new HashSet<>(selected.getRoles());
+        Set<String> entzogenePrivilegierte = entzogenePrivilegierteRollen(persistedRoles, neueRollen);
+        if (!entzogenePrivilegierte.isEmpty() && !pruefeRollenEntzug(context, entzogenePrivilegierte)) {
+            return;
+        }
+
         // Set default mandate if none is specified
         if (selected.getMandat() == null || selected.getMandat().trim().isEmpty()) {
             selected.setMandat("default");
@@ -292,8 +341,12 @@ public class MyUserBackingBean implements Serializable {
             selected.setPassword(myUserPw);
         }
         repo.save(selected);
+        // NACHVOLLZIEHBARKEIT (Forensik 23.08.2026): erst nach dem erfolgreichen Schreiben protokollieren —
+        // sonst behauptet das Log eine Aenderung, die es womoeglich nie gab.
+        protokolliereRollenaenderung(persistedRoles, selected.getRoles());
         saveZusatzMandate();
         selected = null;
+        resetRollenEntzug();
         init();
         context.addMessage(null,
                 new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Benutzer erfolgreich gespeichert."));
@@ -322,26 +375,195 @@ public class MyUserBackingBean implements Serializable {
         return true;
     }
 
-    public void delete() {
-        log.debug("DELETE called - selected: {}", selected != null ? selected.getId() + "/" + selected.getUsername() : "null");
-        if (selected != null && selected.getId() != null) {
-            try {
-                log.debug("Deleting user: {} with id: {}", selected.getUsername(), selected.getId());
-                repo.delete(selected);
-                log.debug("User deleted successfully");
-                FacesContext.getCurrentInstance().addMessage(null,
-                        new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Benutzer erfolgreich gelöscht."));
-            } catch (Exception e) {
-                log.error("Error deleting user", e);
-                FacesContext.getCurrentInstance().addMessage(null,
-                        new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Fehler beim Löschen des Benutzers: " + e.getMessage()));
+    /**
+     * Welche der persistierten Rollen dem Benutzer durch diese Speicherung ENTZOGEN wuerden und
+     * dabei privilegiert im Sinne von {@link PrivilegedRoleRules} sind.
+     *
+     * <p>Mandat-Rollen ({@code PROPERTY_MANDAT_*}) bleiben aussen vor: Der Mandant ist ein eigenes,
+     * sichtbares Dialogfeld mit eigener Semantik — ein Mandatswechsel ist kein stiller
+     * Rechteverlust, und eine Rueckfrage bei jedem Mandatswechsel wuerde die Warnung entwerten.</p>
+     *
+     * @param persistiert Rollen des persistierten Datensatzes
+     * @param neu         Rollen nach der Formularuebernahme
+     * @return die entzogenen privilegierten Rollen, sortiert; nie {@code null}
+     */
+    private static Set<String> entzogenePrivilegierteRollen(Set<String> persistiert, Set<String> neu) {
+        Set<String> entzogen = new TreeSet<>();
+        for (String role : persistiert) {
+            if (role == null || neu.contains(role) || istMandatRolle(role)) {
+                continue;
             }
-        } else {
-            log.debug("DELETE called but selected is null or has no ID");
+            if (PrivilegedRoleRules.isPrivileged(role)) {
+                entzogen.add(role);
+            }
+        }
+        return entzogen;
+    }
+
+    /**
+     * Der Entzugs-Schutz. Ein Nicht-root-Akteur darf privilegierte Rollen ueberhaupt nicht
+     * entziehen; ein root-Akteur darf es, muss es aber ausdruecklich bestaetigen. Der Vorfall, der
+     * zu dieser Karte fuehrte, war genau ein root-Akteur — ein reiner Nicht-root-Schutz haette ihn
+     * nicht verhindert.
+     *
+     * @param context  FacesContext fuer die Meldung
+     * @param entzogen die entzogenen privilegierten Rollen (nicht leer)
+     * @return {@code true}, wenn gespeichert werden darf
+     */
+    private boolean pruefeRollenEntzug(FacesContext context, Set<String> entzogen) {
+        String rollen = String.join(", ", entzogen);
+        String benutzer = selected.getUsername();
+        if (!isRoot()) {
+            log.warn("SECURITY (Rollen-Entzug): Nicht-ROOT-Akteur '{}' versuchte, dem Benutzer '{}' die "
+                    + "privilegierte(n) Rolle(n) {} zu ENTZIEHEN — abgelehnt, nichts gespeichert.",
+                    handelnderBenutzer(), benutzer, rollen);
+            context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
+                    "Nur ROOT darf die Rolle(n) " + rollen + " entziehen. Die Änderung wurde NICHT "
+                            + "gespeichert."));
+            context.validationFailed();
+            resetRollenEntzug();
+            return false;
+        }
+        if (!rollenEntzugBestaetigt) {
+            rollenEntzugFrage = "Dem Benutzer " + benutzer + " werden die Rollen " + rollen
+                    + " entzogen — fortfahren?";
+            log.warn("SECURITY (Rollen-Entzug): ROOT-Akteur '{}' entzieht dem Benutzer '{}' die "
+                    + "privilegierte(n) Rolle(n) {} — Bestaetigung angefordert, noch NICHT gespeichert.",
+                    handelnderBenutzer(), benutzer, rollen);
+            context.validationFailed();
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Der root-Akteur hat den Rollen-Entzug im Bestaetigungsdialog bejaht: gleicher
+     * {@link #save()}-Pfad, diesmal mit gesetztem Bestaetigungs-Flag.
+     */
+    public void bestaetigeRollenEntzugUndSpeichere() {
+        rollenEntzugBestaetigt = true;
+        rollenEntzugFrage = null;
+        save();
+    }
+
+    /** Der root-Akteur hat den Rollen-Entzug abgelehnt: nichts speichern, Rueckfrage schliessen. */
+    public void brichRollenEntzugAb() {
+        log.warn("SECURITY (Rollen-Entzug): ROOT-Akteur '{}' hat den Rollen-Entzug abgebrochen — "
+                + "nichts gespeichert.", handelnderBenutzer());
+        resetRollenEntzug();
+        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(FacesMessage.SEVERITY_INFO,
+                "Abgebrochen", "Der Rollen-Entzug wurde nicht gespeichert."));
+    }
+
+    /** Ob gerade eine unbeantwortete Rueckfrage zum Rollen-Entzug offen ist (fuer die Oberflaeche). */
+    public boolean isRollenEntzugAusstehend() {
+        return rollenEntzugFrage != null;
+    }
+
+    private void resetRollenEntzug() {
+        rollenEntzugFrage = null;
+        rollenEntzugBestaetigt = false;
+    }
+
+    /**
+     * Protokolliert eine Rollenaenderung als {@code WARN} (vorher → nachher, handelnder Benutzer)
+     * und schreibt sie zusaetzlich ins {@code destructive_action_audit}. Ohne Aenderung passiert
+     * nichts — sonst ertraenkt jedes Speichern eines Startseiten-Felds das Log.
+     *
+     * @param vorher  Rollen des persistierten Datensatzes vor der Speicherung
+     * @param nachher Rollen nach der Speicherung
+     */
+    private void protokolliereRollenaenderung(Set<String> vorher, Set<String> nachher) {
+        Set<String> alt = vorher == null ? new TreeSet<>() : new TreeSet<>(vorher);
+        Set<String> neu = nachher == null ? new TreeSet<>() : new TreeSet<>(nachher);
+        if (alt.equals(neu)) {
+            return;
+        }
+        Set<String> hinzugefuegt = new TreeSet<>(neu);
+        hinzugefuegt.removeAll(alt);
+        Set<String> entzogen = new TreeSet<>(alt);
+        entzogen.removeAll(neu);
+
+        log.warn("AUDIT Rollenaenderung: Benutzer '{}' (id={}) — vorher {} → nachher {} "
+                        + "[vergeben: {}, entzogen: {}]; handelnder Benutzer: '{}'",
+                selected.getUsername(), selected.getId(), alt, neu, hinzugefuegt, entzogen,
+                handelnderBenutzer());
+
+        if (auditService != null) {
+            auditService.logDestructiveAction("UI", "USER_ROLES_CHANGED", "MyUserEntity",
+                    String.valueOf(selected.getId()),
+                    kuerze("Benutzer '" + selected.getUsername() + "': vorher " + alt + " → nachher "
+                            + neu + "; entzogen: " + entzogen + "; vergeben: " + hinzugefuegt
+                            + "; durch: " + handelnderBenutzer()));
+        }
+    }
+
+    /**
+     * Loescht den gewaehlten Benutzer.
+     *
+     * <p>NACHVOLLZIEHBARKEIT (Forensik 23.08.2026): Die Loeschung lief bisher komplett auf {@code log.debug} —
+     * in Produktion (Level INFO) war sie damit unsichtbar und im Audit gar nicht vorhanden.
+     * Jetzt: {@code WARN} mit Benutzer, ID, Mandat, Rollen und handelndem Benutzer, plus ein
+     * Eintrag im {@code destructive_action_audit}.</p>
+     */
+    public void delete() {
+        if (selected == null || selected.getId() == null) {
+            log.warn("AUDIT Benutzerloeschung: durch '{}' angefordert, aber kein gespeicherter "
+                    + "Benutzer ausgewaehlt — nichts geloescht.", handelnderBenutzer());
+            selected = null;
+            resetRollenEntzug();
+            init();
+            return;
+        }
+
+        Long id = selected.getId();
+        String username = selected.getUsername();
+        String mandat = selected.getMandat();
+        Set<String> rollen = selected.getRoles() == null ? new TreeSet<>() : new TreeSet<>(selected.getRoles());
+        try {
+            repo.delete(selected);
+            log.warn("AUDIT Benutzerloeschung: '{}' (id={}, Mandat={}, Rollen {}) geloescht durch '{}'.",
+                    username, id, mandat, rollen, handelnderBenutzer());
+            if (auditService != null) {
+                auditService.logDestructiveAction("UI", "USER_DELETE", "MyUserEntity",
+                        String.valueOf(id),
+                        kuerze("Benutzer '" + username + "' (Mandat " + mandat + ") geloescht; Rollen "
+                                + rollen + "; durch: " + handelnderBenutzer()));
+            }
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Benutzer erfolgreich gelöscht."));
+        } catch (Exception e) {
+            log.error("AUDIT Benutzerloeschung FEHLGESCHLAGEN: '{}' (id={}) durch '{}'",
+                    username, id, handelnderBenutzer(), e);
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Fehler beim Löschen des Benutzers: " + e.getMessage()));
         }
 
         selected = null;
+        resetRollenEntzug();
         init();
+    }
+
+    /** Der angemeldete (bzw. impersonierende) Benutzer, der die Aenderung ausloest. */
+    private String handelnderBenutzer() {
+        if (plaintextSecurity == null) {
+            return "unbekannt";
+        }
+        String user = plaintextSecurity.getUser();
+        return user == null || user.isBlank() ? "unbekannt" : user;
+    }
+
+    /** Kuerzt einen Audit-Freitext auf die Spaltenbreite von {@code detail} (VARCHAR(2000)). */
+    private static String kuerze(String text) {
+        if (text == null || text.length() <= AUDIT_DETAIL_MAX) {
+            return text;
+        }
+        return text.substring(0, AUDIT_DETAIL_MAX - 3) + "...";
+    }
+
+    /** Ob die Rolle den Heimat-Mandanten kodiert ({@code PROPERTY_MANDAT_*}). */
+    private static boolean istMandatRolle(String role) {
+        return role != null && role.toUpperCase(Locale.ROOT).startsWith("PROPERTY_MANDAT_");
     }
 
     public void onToggle() {
@@ -491,14 +713,38 @@ public class MyUserBackingBean implements Serializable {
             return new ArrayList<>();
         }
         return selected.getRoles().stream()
-                .filter(role -> !role.toUpperCase().startsWith("PROPERTY_"))
-                .filter(role -> !role.toLowerCase().contains("mandat"))
+                .filter(role -> !istImDialogAusgeblendet(role))
                 .collect(Collectors.toList());
     }
 
     /**
-     * Setter für die Rollen als Liste (für p:chips Komponente).
-     * Aktualisiert das Set im Entity.
+     * Ob die Rolle im Rollen-Menue des Dialogs bewusst ausgeblendet wird: Properties
+     * ({@code PROPERTY_*}) und Mandat-Rollen. Sie werden dort weder angezeigt noch uebermittelt —
+     * und duerfen deshalb beim Speichern auch nicht als „abgewaehlt" gelten.
+     *
+     * @param role Rollenname, darf {@code null} sein
+     * @return {@code true}, wenn die Rolle im Dialog nicht sichtbar ist
+     */
+    private static boolean istImDialogAusgeblendet(String role) {
+        if (role == null) {
+            return true;
+        }
+        return role.toUpperCase(Locale.ROOT).startsWith("PROPERTY_")
+                || role.toLowerCase(Locale.ROOT).contains("mandat");
+    }
+
+    /**
+     * Setter für die Rollen als Liste (Rollen-Menü im Dialog). Aktualisiert das Set im Entity.
+     *
+     * <p>SECURITY (Forensik 23.08.2026, K2): Frueher ERSETZTE diese Methode das gesamte Rollen-Set durch die
+     * Formularliste. Da {@link #getSelectedRolesList()} die {@code PROPERTY_*}- und Mandat-Rollen
+     * ausblendet, kamen diese nie zurueck — jedes Speichern loeschte sie still mit. Und eine
+     * unvollstaendig uebermittelte Auswahl (bei fixen 450 px auf einem Telefon-Viewport: eine
+     * leere) bedeutete Totalverlust aller Rollen. Jetzt werden die im Dialog ausgeblendeten Rollen
+     * bewahrt und die Formularliste nur dazugemischt; ueber den Verlust der SICHTBAREN Rollen
+     * entscheidet {@link #pruefeRollenEntzug(FacesContext, Set)}.</p>
+     *
+     * @param rolesList die im Dialog gewaehlten (sichtbaren) Rollen, darf {@code null} sein
      */
     public void setSelectedRolesList(List<String> rolesList) {
         if (selected == null) {
@@ -507,8 +753,19 @@ public class MyUserBackingBean implements Serializable {
         // Bewahre die Mandat-Rolle
         String currentMandat = selected.getMandat();
 
-        // Erstelle ein neues Set mit den Rollen aus der Liste
-        selected.setRoles(rolesList != null ? new HashSet<>(rolesList) : new HashSet<>());
+        // Im Dialog ausgeblendete Rollen bewahren, sichtbare aus der Formularliste uebernehmen.
+        Set<String> neueRollen = selected.getRoles() == null
+                ? new HashSet<>()
+                : selected.getRoles().stream()
+                        .filter(MyUserBackingBean::istImDialogAusgeblendet)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toCollection(HashSet::new));
+        if (rolesList != null) {
+            rolesList.stream()
+                    .filter(role -> role != null && !role.trim().isEmpty())
+                    .forEach(neueRollen::add);
+        }
+        selected.setRoles(neueRollen);
 
         // Füge die Mandat-Rolle wieder hinzu, falls vorhanden
         if (currentMandat != null && !currentMandat.isEmpty()) {

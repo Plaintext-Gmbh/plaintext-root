@@ -64,6 +64,10 @@ class MyUserBackingBeanTest {
     @Mock
     private MagicLinkService magicLinkService;
 
+    /** Forensik 23.08.2026: Audit-Log fuer Rollenaenderungen und Loeschungen. */
+    @Mock
+    private ch.plaintext.audit.DestructiveActionAuditService auditService;
+
     @InjectMocks
     private MyUserBackingBean backingBean;
 
@@ -105,23 +109,22 @@ class MyUserBackingBeanTest {
         verify(rememberMeRepo, times(1)).findAll();
     }
 
+    /**
+     * Forensik 23.08.2026, Punkt 4: „Neuer Benutzer" legt KEINE Zeile mehr an. Die frueher sofort
+     * persistierte Leer-Entity hinterliess bei jedem abgebrochenen Dialog eine Waisenzeile mit
+     * leerem {@code username}.
+     */
     @Test
-    void testNewUser_ShouldCreateAndSaveUser() {
-        // Given
-        MyUserEntity newUser = new MyUserEntity();
-        newUser.setId(2L);
-
-        when(repo.save(any(MyUserEntity.class))).thenReturn(newUser);
-        when(repo.findAll()).thenReturn(Arrays.asList(newUser));
-        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
-
+    void testNewUser_ShouldNotPersistEmptyEntity() {
         // When
         backingBean.newUser();
 
         // Then
-        assertEquals(newUser, backingBean.getSelected());
-        verify(repo, times(1)).save(any(MyUserEntity.class));
-        verify(repo, times(1)).findAll(); // Called by init(); select() loads no role suggestions anymore
+        assertNotNull(backingBean.getSelected());
+        assertNull(backingBean.getSelected().getId(), "Die neue Entity darf noch keine ID haben");
+        assertEquals("default", backingBean.getSelected().getMandat());
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(repo, never()).findAll();
     }
 
     @Test
@@ -426,6 +429,247 @@ class MyUserBackingBeanTest {
 
         verify(repo).save(any(MyUserEntity.class));
         verify(facesContext, never()).validationFailed();
+    }
+
+    // ---- Forensik 23.08.2026, K1: die ENTZUGSSEITE. Die Allowlist prueft nur, was uebermittelt WURDE —
+    // ---- was fehlt, sah bisher niemand. Genau daran verlor ein Administratorkonto still root/admin.
+
+    /**
+     * Ein Nicht-root darf privilegierte Rollen ueberhaupt nicht entziehen: harte Ablehnung,
+     * nichts wird gespeichert.
+     */
+    @Test
+    void save_lehntEntzugPrivilegierterRolleAb_wennAkteurNichtRootIst() {
+        // Akteur = ADMIN (setUp). Der Benutzer hat persistiert 'admin' — die Uebermittlung laesst sie weg.
+        testUser.setMandat("test_mandat");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(List.of("user")));
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("admin", "user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(facesContext).validationFailed();
+        verify(facesContext).addMessage(isNull(), argThat(msg ->
+                msg.getSeverity() == FacesMessage.SEVERITY_ERROR
+                        && msg.getDetail().contains("admin")));
+        assertFalse(backingBean.isRollenEntzugAusstehend(),
+                "Ein Nicht-root bekommt keine Rueckfrage, sondern eine Ablehnung");
+    }
+
+    /**
+     * Der Vorfall vom Abend: ein <b>root</b>-Akteur entzieht root/admin. Nicht blockieren, aber
+     * nicht kommentarlos speichern — es wird eine ausdrueckliche Bestaetigung verlangt.
+     */
+    @Test
+    void save_verlangtBestaetigung_wennRootPrivilegierteRollenEntzieht() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        testUser.setMandat("test_mandat");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>()); // leere Auswahl vom Telefon
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("root", "admin", "user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(facesContext).validationFailed();
+        assertTrue(backingBean.isRollenEntzugAusstehend());
+        assertTrue(backingBean.getRollenEntzugFrage().contains("test@example.com"));
+        assertTrue(backingBean.getRollenEntzugFrage().contains("admin"));
+        assertTrue(backingBean.getRollenEntzugFrage().contains("root"));
+    }
+
+    /** Nach der Bestaetigung durch root wird gespeichert — und die Aenderung landet im Audit. */
+    @Test
+    void bestaetigterEntzug_speichertUndSchreibtAudit() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        when(plaintextSecurity.getUser()).thenReturn("root@root.root");
+        testUser.setMandat("test_mandat");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(List.of("user")));
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("root", "admin", "user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();                                   // 1. Anlauf: Rueckfrage
+            assertTrue(backingBean.isRollenEntzugAusstehend());
+            backingBean.bestaetigeRollenEntzugUndSpeichere();      // 2. Anlauf: bestaetigt
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        ArgumentCaptor<String> detail = ArgumentCaptor.forClass(String.class);
+        verify(auditService).logDestructiveAction(eq("UI"), eq("USER_ROLES_CHANGED"),
+                eq("MyUserEntity"), eq("1"), detail.capture());
+        assertTrue(detail.getValue().contains("entzogen: [admin, root]"), detail.getValue());
+        assertTrue(detail.getValue().contains("root@root.root"), detail.getValue());
+        assertFalse(backingBean.isRollenEntzugAusstehend(), "Bestaetigung darf nicht weitergelten");
+    }
+
+    /** „Abbrechen" speichert nichts und raeumt den Bestaetigungszustand ab. */
+    @Test
+    void brichRollenEntzugAb_speichertNichtsUndSetztZustandZurueck() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        testUser.setMandat("test_mandat");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(List.of("user")));
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("root", "user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+            assertTrue(backingBean.isRollenEntzugAusstehend());
+            backingBean.brichRollenEntzugAb();
+        }
+
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(auditService, never()).logDestructiveAction(any(), any(), any(), any(), any());
+        assertFalse(backingBean.isRollenEntzugAusstehend());
+    }
+
+    /**
+     * Ein Mandatswechsel entzieht formal die privilegierte Rolle {@code PROPERTY_MANDAT_*} — dafuer
+     * gibt es aber ein eigenes, sichtbares Feld. Eine Rueckfrage bei jedem Mandatswechsel wuerde
+     * die Warnung entwerten, deshalb bleibt er aussen vor.
+     */
+    @Test
+    void save_fragtNichtNach_beiReinemMandatswechsel() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(List.of("user")));
+        testUser.setMandat("neuer_mandant");
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        assertFalse(backingBean.isRollenEntzugAusstehend());
+    }
+
+    // ---- Forensik 23.08.2026, K2: eine unvollstaendige Uebermittlung darf keinen Totalverlust bedeuten ----
+
+    /**
+     * Die im Dialog ausgeblendeten Rollen ({@code PROPERTY_*}, Mandat) kommen aus dem Formular nie
+     * zurueck. Vorher loeschte sie jedes Speichern still mit.
+     */
+    @Test
+    void setSelectedRolesList_bewahrtImDialogAusgeblendeteRollen() {
+        testUser.setRoles(new HashSet<>(Arrays.asList(
+                "user", "admin", "PROPERTY_QUERZUGRIFF", "PROPERTY_MANDAT_TEST_MANDAT")));
+        backingBean.setSelected(testUser);
+
+        backingBean.setSelectedRolesList(new ArrayList<>(List.of("user")));
+
+        assertTrue(testUser.getRoles().contains("PROPERTY_QUERZUGRIFF"),
+                "PROPERTY_-Rollen sind im Dialog unsichtbar und duerfen nicht mitgeloescht werden");
+        assertTrue(testUser.getRoles().contains("PROPERTY_MANDAT_TEST_MANDAT"));
+        assertTrue(testUser.getRoles().contains("user"));
+        assertFalse(testUser.getRoles().contains("admin"),
+                "Sichtbare, abgewaehlte Rollen bleiben abgewaehlt — darueber entscheidet der Entzugs-Schutz");
+    }
+
+    // ---- Forensik 23.08.2026, K3: Loeschung ist in Produktion sichtbar und im Audit ----
+
+    @Test
+    void delete_schreibtAuditEintrag() {
+        when(plaintextSecurity.getUser()).thenReturn("admin@example.com");
+        testUser.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        backingBean.setSelected(testUser);
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.delete();
+        }
+
+        verify(repo).delete(testUser);
+        ArgumentCaptor<String> detail = ArgumentCaptor.forClass(String.class);
+        verify(auditService).logDestructiveAction(eq("UI"), eq("USER_DELETE"),
+                eq("MyUserEntity"), eq("1"), detail.capture());
+        assertTrue(detail.getValue().contains("test@example.com"), detail.getValue());
+        assertTrue(detail.getValue().contains("admin@example.com"), detail.getValue());
+    }
+
+    @Test
+    void delete_schreibtKeinAudit_wennLoeschenFehlschlaegt() {
+        backingBean.setSelected(testUser);
+        doThrow(new RuntimeException("DB weg")).when(repo).delete(any());
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.delete();
+        }
+
+        verify(auditService, never()).logDestructiveAction(any(), any(), any(), any(), any());
+    }
+
+    /** Eine Speicherung ohne Rollenaenderung darf das Audit-Log nicht fluten. */
+    @Test
+    void save_schreibtKeinAudit_ohneRollenaenderung() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        testUser.setMandat("test_mandat");
+        testUser.addRole("user");
+        backingBean.setSelected(testUser);
+        backingBean.setMyUserPw(testUser.getPassword());
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(auditService, never()).logDestructiveAction(any(), any(), any(), any(), any());
     }
 
 }

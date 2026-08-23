@@ -446,7 +446,10 @@ public class UserPreferencesBackingBean implements Serializable {
                     if (cookieName.equals(cookie.getName())) {
                         String value = cookie.getValue();
                         if (value != null && !value.isEmpty()) {
-                            log.debug("Loaded cookie '{}': {}", cookieName, value);
+                            // SECURITY (Forensik 23.08.2026): nur den Namen protokollieren. Diese Methode
+                            // liest einen BELIEBIGEN Cookie-Namen — wer sie einmal auf einen
+                            // Sitzungs-/Remember-Me-Cookie ansetzt, haette dessen Wert sonst im Log.
+                            log.debug("Loaded cookie '{}' ({} Zeichen)", cookieName, value.length());
                             return value;
                         }
                     }

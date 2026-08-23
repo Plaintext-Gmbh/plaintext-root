@@ -79,27 +79,35 @@ public class PlaintextInitLoader {
 
     private void createRootUser() {
         log.info("Creating root user with username: {}", ROOT_USERNAME);
-        String initialPassword = generateInitialPassword();
         MyUserEntity rootUser = new MyUserEntity();
         rootUser.addRole("root");
         rootUser.addRole("admin");
         rootUser.addRole("user");
         rootUser.setUsername(ROOT_USERNAME);
-        rootUser.setPassword(passwordEncoder.encode(initialPassword));
+        rootUser.setPassword(passwordEncoder.encode(generateInitialPassword()));
         rootUser.setMandat("default");
         rootUser.setMustChangePassword(true);
         userRepository.save(rootUser);
-        // SECURITY (Karte 306): KEIN statisches "root"-Passwort mehr. Das zufaellige Einmal-
-        // Initialpasswort wird GENAU EINMAL hier ins Log geschrieben; der User wird beim ersten
-        // Login zum Wechsel gezwungen (mustChangePassword). Danach ist es nirgends mehr abrufbar.
-        log.warn("=== ROOT-USER '{}' angelegt — EINMAL-INITIALPASSWORT: {} === "
-                + "Bitte SOFORT nach dem ersten Login aendern (Passwortwechsel wird erzwungen). "
-                + "Dieses Passwort erscheint NUR EINMAL im Log.", ROOT_USERNAME, initialPassword);
+        // SECURITY (Forensik 23.08.2026): Das Initialpasswort wird NICHT MEHR GELOGGT. Bisher stand es im
+        // Klartext im Container-Log und damit auch in Graylog — ein Log-Leser bekam damit den
+        // maechtigsten Zugang der Anwendung geschenkt, und "erscheint nur einmal" half nichts,
+        // weil Logs aufbewahrt werden. Das Passwort wird stattdessen gar nicht erst bekannt
+        // gegeben: es ist ein zufaelliger Wegwerfwert, den niemand kennt. Der Zugang entsteht
+        // ueber den bestehenden Passwort-vergessen-Weg (PasswordResetService, sofern fuer den
+        // Mandanten aktiviert) oder dadurch, dass ein bereits vorhandener root-Benutzer in der
+        // Benutzerverwaltung ein Passwort setzt. mustChangePassword bleibt gesetzt, damit auch
+        // ein so gesetztes Passwort beim ersten Login gewechselt werden muss.
+        log.warn("=== ROOT-USER '{}' angelegt === Es wurde ein zufaelliges Wegwerf-Passwort gesetzt, "
+                + "das NIRGENDS ausgegeben wird. Zugang herstellen ueber 'Passwort vergessen' fuer "
+                + "'{}' oder durch einen bestehenden root-Benutzer in der Benutzerverwaltung. "
+                + "Ein Passwortwechsel wird beim ersten Login erzwungen.", ROOT_USERNAME, ROOT_USERNAME);
     }
 
     /**
-     * Erzeugt ein zufaelliges Initialpasswort (128 Bit Entropie, 22 Zeichen Base64url) fuer den
-     * Root-Bootstrap-User. Ersetzt das frueher statische {@code "root"} (Karte 306).
+     * Erzeugt ein zufaelliges Wegwerf-Initialpasswort (128 Bit Entropie, 22 Zeichen Base64url) fuer
+     * den Root-Bootstrap-User. Ersetzt das frueher statische {@code "root"} (Karte 306). Der
+     * Klartext verlaesst diese Methode nur als bcrypt-Hash — er wird bewusst nicht geloggt und
+     * nicht zurueckgegeben (Forensik 23.08.2026).
      */
     private static String generateInitialPassword() {
         byte[] bytes = new byte[16];

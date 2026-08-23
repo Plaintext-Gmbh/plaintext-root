@@ -40,6 +40,26 @@
                 margin-left: 10px;
             }
 
+            /*
+             * SECURITY/UX (Forensik 23.08.2026): Die Auswahl-Menues im Dialog standen auf fixen 450 px bzw.
+             * 360 px. Auf einem Telefon-Viewport (typisch 360-390 px) ragten Feld UND Overlay-Panel
+             * ueber den Bildschirm hinaus — Kaestchen waren nur teilweise oder gar nicht treffbar.
+             * Genau daraus entstand die leere Rollenauswahl, die einem Administratorkonto still
+             * 'root' und 'admin' entzog. Die Breiten sind jetzt Obergrenzen statt Vorgaben.
+             */
+            .dialog-grid .ui-selectcheckboxmenu,
+            .dialog-grid .ui-selectonemenu,
+            .dialog-grid .ui-inputfield {
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+
+            /* Das Overlay-Panel haengt am body, nicht am Dialog — deshalb separat begrenzen. */
+            .ui-selectcheckboxmenu-panel {
+                max-width: calc(100vw - 20px);
+                box-sizing: border-box;
+            }
+
             /* Mobile optimizations */
             @media screen and (max-width: 768px) {
                 .user-action-buttons {
@@ -50,6 +70,16 @@
                 .user-action-buttons .ui-button {
                     width: 100% !important;
                     margin-left: 0 !important;
+                }
+
+                /* Zwei-Spalten-Raster des Dialogs untereinander stapeln, damit die Eingabe-
+                   felder die volle Breite bekommen statt in eine 70%-Spalte gequetscht zu werden. */
+                .dialog-grid,
+                .dialog-grid tbody,
+                .dialog-grid tr,
+                .dialog-grid td {
+                    display: block;
+                    width: 100%;
                 }
             }
         </style>
@@ -179,8 +209,8 @@
                                               label="#{i18n.t('Rollen wählen')}"
                                               multiple="true"
                                               filter="true" filterMatchMode="contains"
-                                              panelStyle="width: 450px;"
-                                              style="width: 450px;">
+                                              panelStyle="width: 450px; max-width: calc(100vw - 20px);"
+                                              style="width: 450px; max-width: 100%;">
                             <f:selectItems value="#{myUserBackingBean.selectableRoles}"
                                            var="r" itemLabel="#{r.label}" itemValue="#{r.name}"/>
                         </p:selectCheckboxMenu>
@@ -193,7 +223,7 @@
                     <p:selectOneMenu value="#{myUserBackingBean.selected.mandat}"
                                      editable="#{myUserBackingBean.root}"
                                      disabled="#{!myUserBackingBean.root}"
-                                     style="width: 360px;">
+                                     style="width: 360px; max-width: 100%;">
                         <f:selectItem itemLabel="-- Mandat wählen oder neu eingeben --" itemValue="" noSelectionOption="true"/>
                         <f:selectItems value="#{myUserBackingBean.allMandate}"
                                      var="m"
@@ -208,8 +238,8 @@
                                               label="Mandate wählen"
                                               multiple="true"
                                               filter="true" filterMatchMode="contains"
-                                              panelStyle="width:360px"
-                                              style="width: 360px;">
+                                              panelStyle="width: 360px; max-width: calc(100vw - 20px);"
+                                              style="width: 360px; max-width: 100%;">
                             <f:selectItems value="#{myUserBackingBean.allMandate}"
                                            var="zm" itemLabel="#{zm}" itemValue="#{zm}"/>
                         </p:selectCheckboxMenu>
@@ -243,7 +273,14 @@
 
                     <br/>
                     <h:panelGroup colspan="3" styleClass="dialog-buttons">
-                        <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" action="#{myUserBackingBean.save()}" update="messages,fm:tbl,rolesMenu" oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
+                        <!--
+                            SECURITY (Forensik 23.08.2026): Verlangt das Backing-Bean fuer den Entzug von
+                            root/admin eine ausdrueckliche Bestaetigung, kommt die Antwort mit
+                            validationFailed zurueck (Dialog bleibt offen) und rollenEntzugAusstehend
+                            ist gesetzt — dann wird die Rueckfrage gezeigt statt kommentarlos zu
+                            speichern.
+                        -->
+                        <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" action="#{myUserBackingBean.save()}" update="messages,fm:tbl,rolesMenu,fm:rollenEntzugDlg" oncomplete="if (args &amp;&amp; !args.validationFailed) { PF('dlg').hide(); } else if (#{myUserBackingBean.rollenEntzugAusstehend}) { PF('rollenEntzugDlg').show(); }"/>
                         <p:commandButton value="#{i18n.t('Benutzer löschen')}"
                                          icon="pi pi-trash"
                                          styleClass="ui-button-danger"
@@ -257,6 +294,39 @@
                     </h:panelGroup>
 
                 </h:panelGrid>
+            </p:dialog>
+
+            <!--
+                SECURITY (Forensik 23.08.2026): Rueckfrage beim Entzug privilegierter Rollen durch root.
+                Ein Nicht-root wird schon serverseitig abgewiesen und sieht diesen Dialog nie.
+                Der Vorfall, der zu dieser Karte fuehrte, war ein root-Akteur — deshalb reicht ein
+                reiner Nicht-root-Schutz nicht, root muss die Absicht bestaetigen.
+            -->
+            <p:dialog id="rollenEntzugDlg" widgetVar="rollenEntzugDlg" styleClass="mobile-safe"
+                      header="#{i18n.t('Rollen-Entzug bestätigen')}"
+                      modal="true" resizable="false" closable="false">
+                <h:panelGroup layout="block" style="max-width: 420px; margin-bottom: 15px;">
+                    <i class="pi pi-exclamation-triangle"
+                       style="font-size: 1.4rem; color: var(--orange-500); vertical-align: middle; margin-right: 8px;"/>
+                    <h:outputText value="#{myUserBackingBean.rollenEntzugFrage}"/>
+                </h:panelGroup>
+                <h:panelGroup layout="block" styleClass="dialog-buttons">
+                    <p:commandButton value="#{i18n.t('Fortfahren')}"
+                                     icon="pi pi-check"
+                                     styleClass="ui-button-danger"
+                                     action="#{myUserBackingBean.bestaetigeRollenEntzugUndSpeichere()}"
+                                     process="@this"
+                                     update="messages,fm:tbl,rolesMenu,fm:rollenEntzugDlg"
+                                     oncomplete="PF('rollenEntzugDlg').hide(); if (args &amp;&amp; !args.validationFailed) PF('dlg').hide();"/>
+                    <p:commandButton value="#{i18n.t('Abbrechen')}"
+                                     icon="pi pi-times"
+                                     styleClass="ui-button-secondary"
+                                     action="#{myUserBackingBean.brichRollenEntzugAb()}"
+                                     process="@this"
+                                     update="messages,fm:rollenEntzugDlg"
+                                     oncomplete="PF('rollenEntzugDlg').hide()"
+                                     style="margin-left: 5px;"/>
+                </h:panelGroup>
             </p:dialog>
 
         </p:fieldset>
