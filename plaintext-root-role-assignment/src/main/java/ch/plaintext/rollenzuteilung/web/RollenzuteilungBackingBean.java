@@ -5,6 +5,7 @@ package ch.plaintext.rollenzuteilung.web;
 
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.framework.PlaintextRoleRegistry;
+import ch.plaintext.framework.PrivilegedRoleRules;
 import ch.plaintext.rollenzuteilung.entity.Rollenzuteilung;
 import ch.plaintext.rollenzuteilung.service.RollenzuteilungService;
 import jakarta.faces.application.FacesMessage;
@@ -116,6 +117,10 @@ public class RollenzuteilungBackingBean implements Serializable {
             return;
         }
 
+        if (!darfVergeben(selected.getRoleName())) {
+            return;
+        }
+
         try {
             service.save(selected);
             addMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Rollenzuteilung gespeichert");
@@ -145,6 +150,35 @@ public class RollenzuteilungBackingBean implements Serializable {
 
     private void addMessage(FacesMessage.Severity severity, String summary, String detail) {
         FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(severity, summary, detail));
+    }
+
+    /**
+     * Darf der aktuelle Akteur diese Rolle vergeben?
+     *
+     * <p>Die Rollenzuteilung steht ADMIN und ROOT offen — das ist die Stelle, an der admin die
+     * <b>Modul-Rollen</b> verteilt, und genau dafuer soll sie offen sein. Privilegierte Rollen
+     * ({@code root}, {@code admin}, {@code PROPERTY_*}) bleiben root vorbehalten: sonst koennte ein
+     * admin sich hier die Rolle beschaffen, die ihm die Benutzerverwaltung verwehrt.</p>
+     *
+     * <p>Eine bereits gespeicherte Zuteilung derselben Rolle bleibt aenderbar (Bestand).</p>
+     *
+     * @param roleName die zu vergebende Rolle
+     * @return {@code true}, wenn gespeichert werden darf
+     */
+    private boolean darfVergeben(String roleName) {
+        if (security.ifGranted("ROLE_ROOT") || !PrivilegedRoleRules.isPrivileged(roleName)) {
+            return true;
+        }
+        boolean bestand = service
+                .findByUsernameAndMandatAndRole(selected.getUsername(), selected.getMandat(), roleName)
+                .isPresent();
+        if (bestand) {
+            return true;
+        }
+        log.warn("SECURITY: Nicht-ROOT-Akteur versuchte, privilegierte Rolle '{}' an '{}' (Mandant {}) "
+                + "zu vergeben — abgelehnt.", roleName, selected.getUsername(), selected.getMandat());
+        addMessage(FacesMessage.SEVERITY_ERROR, "Fehler", PrivilegedRoleRules.rejectionMessage(roleName));
+        return false;
     }
 
     /**

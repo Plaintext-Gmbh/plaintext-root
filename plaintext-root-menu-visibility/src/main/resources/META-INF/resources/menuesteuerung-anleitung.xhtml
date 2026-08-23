@@ -1,0 +1,304 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Menüsteuerung – Anleitung (root)</ui:define>
+
+    <ui:define name="head">
+        <style>
+            .anl-wrap { max-width: 860px; line-height: 1.6; }
+            .anl-wrap h2 { margin: 26px 0 8px; padding-top: 12px; border-top: 1px solid var(--surface-border, #e2e5e9); }
+            .anl-wrap h2:first-of-type { border-top: 0; padding-top: 0; }
+            .anl-wrap h3 { margin: 16px 0 4px; }
+            .anl-wrap ol, .anl-wrap ul { padding-left: 22px; }
+            .anl-wrap li { margin: 3px 0; }
+            .anl-wrap table { border-collapse: collapse; margin: 10px 0; width: 100%; }
+            .anl-wrap th, .anl-wrap td { border: 1px solid var(--surface-border, #e2e5e9); padding: 6px 10px; text-align: left; }
+            .anl-wrap th { background: var(--surface-50, #f7f8fa); }
+            .anl-toc { background: var(--surface-50, #f7f8fa); border: 1px solid var(--surface-border, #e2e5e9);
+                border-radius: 8px; padding: 12px 18px; margin: 8px 0 8px; columns: 2; }
+            .anl-toc a { text-decoration: none; }
+            .anl-card { background: var(--surface-50, #f7f8fa); border: 1px solid var(--surface-border, #e2e5e9);
+                border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+            .anl-tip { background: #eef7ee; border-left: 4px solid #33a02c; border-radius: 4px; padding: 8px 14px; margin: 10px 0; }
+            .anl-warn { background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 4px; padding: 8px 14px; margin: 10px 0; }
+            .anl-btn { display: inline-block; background: #1f78b4; color: #fff !important; text-decoration: none;
+                border-radius: 4px; padding: 6px 13px; font-weight: bold; margin: 2px 4px 2px 0; font-size: 13px; }
+            .anl-key { display: inline-block; background: #eceff3; border: 1px solid #d4d9e0; border-radius: 4px;
+                padding: 0 6px; font-family: monospace; font-size: 12px; }
+        </style>
+    </ui:define>
+
+    <ui:define name="content">
+        <div class="anl-wrap">
+            <p style="font-size:16px;color:#444">
+                Diese Anleitung ist für <b>root</b>. Sie erklärt, wie du steuerst, <b>welche Module zu
+                einem Mandanten gehören</b> – und wie du herausfindest, warum ein Menüpunkt fehlt.
+                Die Vergabe von Rollen an Benutzer ist <b>nicht</b> Thema dieser Seite; dafür gibt es
+                die Anleitung <b>Admin → Anleitung Modul-Rollen</b>.
+            </p>
+
+            <div class="anl-toc">
+                <a href="#zustaendigkeit">1. Wer entscheidet was</a><br/>
+                <a href="#vierfilter">2. Die vier Filter</a><br/>
+                <a href="#listen">3. White- oder Blacklist</a><br/>
+                <a href="#eintraege">4. Modul-Eintrag oder Titel</a><br/>
+                <a href="#tot">5. Einträge, die ins Leere zeigen</a><br/>
+                <a href="#diagnose">6. Die Diagnose-Ansicht lesen</a><br/>
+                <a href="#impersonate">7. Impersonate</a><br/>
+                <a href="#mandanten">8. Mandanten anlegen und entfernen</a><br/>
+                <a href="#rezepte">9. Kurzrezepte</a>
+            </div>
+
+            <h2 id="zustaendigkeit">1. Wer entscheidet was</h2>
+            <p>
+                Die Sichtbarkeit eines Menüpunkts hat <b>zwei Zuständige</b>, und sie beantworten
+                verschiedene Fragen:
+            </p>
+            <table>
+                <tr><th>Frage</th><th>Wer</th><th>Wo</th></tr>
+                <tr>
+                    <td><b>Welche Module gehören zu diesem Mandanten?</b></td>
+                    <td>root</td>
+                    <td>Root → Menüsteuerung (Mandanten-White-/Blacklist)</td>
+                </tr>
+                <tr>
+                    <td><b>Wer darf sie benutzen?</b></td>
+                    <td>admin</td>
+                    <td>Modul-Rollen an Benutzer vergeben (Benutzerverwaltung, Rollenzuteilung)</td>
+                </tr>
+            </table>
+            <div class="anl-warn">
+                <b>Eine Rolle hebt den Mandantenfilter nicht auf.</b> Auch root und admin sehen einen
+                Menüpunkt nicht, wenn er für den aktiven Mandanten nicht freigeschaltet ist. Die
+                einzige Ausnahme ist der <b>Root-Zweig</b> (Menü <span class="anl-key">Root</span> und
+                alles darunter): er ist für root vom Mandantenfilter ausgenommen. Sonst könntest du
+                dich mit einer Whitelist aus der Menüsteuerung aussperren, mit der du sie korrigieren
+                müsstest – genau das war der Zustand, bevor es diese Ausnahme gab.
+            </div>
+
+            <h2 id="vierfilter">2. Die vier Filter</h2>
+            <p>Ein Menüpunkt erscheint nur, wenn <b>alle vier</b> Ja sagen (UND-Verknüpfung):</p>
+            <ol>
+                <li><b>Rolle</b> – die am Menüpunkt deklarierten Rollen (z.B. <span class="anl-key">ADMIN, ROOT</span>).</li>
+                <li><b>Modul-Rolle</b> – die pro Anwendung konfigurierte Rolle
+                    (<span class="anl-key">plaintext.menu.module-roles</span>). admin und root umgehen
+                    diesen Filter immer.</li>
+                <li><b>Modul aktiv</b> – ist das Modul unter <b>Root → Module</b> eingeschaltet?</li>
+                <li><b>Mandant</b> – steht der Punkt in der Liste dieses Mandanten (Whitelist) bzw.
+                    nicht darin (Blacklist)? <b>Hier gibt es keinen Rollen-Bypass.</b></li>
+            </ol>
+            <p>
+                Dieselbe Prüfung entscheidet auch über den <b>Direktaufruf per URL</b> – der
+                Seiten-Zugriffsschutz fragt exakt dieselbe Methode. Ein ausgeblendeter Menüpunkt ist
+                also nicht nur unsichtbar, sondern auch nicht erreichbar.
+            </p>
+
+            <h2 id="listen">3. White- oder Blacklist</h2>
+            <p>Jeder Mandant hat <b>eine</b> Liste und <b>einen</b> Modus:</p>
+            <table>
+                <tr><th>Modus</th><th>Bedeutung der Liste</th><th>Neues Modul erscheint …</th></tr>
+                <tr>
+                    <td><b>Blacklist</b> (Standard)</td>
+                    <td>was drinsteht, ist <b>ausgeblendet</b></td>
+                    <td>… automatisch. Nichts zu tun.</td>
+                </tr>
+                <tr>
+                    <td><b>Whitelist</b></td>
+                    <td>nur was drinsteht, ist <b>sichtbar</b></td>
+                    <td>… <b>nicht</b>. Es muss aufgenommen werden.</td>
+                </tr>
+            </table>
+            <h3>Wann welcher Modus</h3>
+            <ul>
+                <li><b>Blacklist</b> für Mandanten, die im Grossen und Ganzen alles nutzen und bei denen
+                    nur einzelne Module wegsollen. Wartungsarm – neue Module sind sofort da.</li>
+                <li><b>Whitelist</b> für Mandanten mit einem eng umrissenen Auftrag (ein Verein, ein
+                    Anlass, ein Kunde mit genau zwei Modulen). Sie ist die schärfere Aussage, kostet
+                    aber Pflege: <b>jedes</b> neue Modul muss aufgenommen werden, sonst fehlt es
+                    kommentarlos.</li>
+            </ul>
+            <div class="anl-warn">
+                <b>Die Whitelist ist die häufigste Fehlerquelle.</b> Wenn ein Mandant weniger als etwa
+                ein Fünftel aller Menüpunkte freigeschaltet hat, ist das meistens keine Absicht,
+                sondern eine Liste, die beim Wachsen der Anwendung nicht mitgepflegt wurde. Prüfe im
+                Zweifel mit der <a href="#{request.contextPath}/menudiagnose.html">Diagnose-Ansicht</a>,
+                was tatsächlich ankommt.
+            </div>
+            <p>
+                Der Knopf <span class="anl-key">Zu Whitelist wechseln</span> bzw.
+                <span class="anl-key">Zu Blacklist wechseln</span> dreht Modus <b>und</b> Auswahl
+                gleichzeitig um – die sichtbaren Menüpunkte bleiben dabei dieselben.
+            </p>
+
+            <h2 id="eintraege">4. Modul-Eintrag oder Titel</h2>
+            <p>Eine Liste kennt <b>zwei Arten</b> von Einträgen:</p>
+            <table>
+                <tr><th>Form</th><th>Beispiel</th><th>Wirkung</th></tr>
+                <tr>
+                    <td><b>Modul</b></td>
+                    <td><span class="anl-key">modul:wiki</span></td>
+                    <td>das ganze Modul samt allen Untermenüs</td>
+                </tr>
+                <tr>
+                    <td><b>Menü-Titel</b></td>
+                    <td><span class="anl-key">Wiki | Projekte</span></td>
+                    <td>genau dieser eine Menüpunkt</td>
+                </tr>
+            </table>
+            <div class="anl-tip">
+                <b>Nimm für neue Einträge das Modul.</b> Ein Modul-Eintrag überlebt Umbenennungen und
+                deckt neue Untermenüs automatisch mit ab. Ein Titel-Eintrag ist eine Zeichenkette: wird
+                der Menüpunkt umbenannt, passt der gespeicherte Titel auf nichts mehr – im
+                Whitelist-Modus verschwindet der Punkt dann still.
+            </div>
+            <p>
+                <b>Bestehende Titel-Einträge bleiben gültig</b> und behalten ihre Wirkung; du musst
+                nichts umstellen. Der Modul-Key ist derselbe, den auch die Modul-Rollen benutzen und
+                den <b>Root → Module</b> in der Spalte <i>Modul-Id</i> anzeigt.
+            </p>
+
+            <h2 id="tot">5. Einträge, die ins Leere zeigen</h2>
+            <p>
+                Auf der Detailseite gibt es eine dritte Gruppe: <b>Einträge ohne Entsprechung im
+                Menübaum</b>. Das sind gespeicherte Titel, die auf keinen heutigen Menüpunkt und kein
+                Modul mehr passen – fast immer die Folge einer Umbenennung.
+            </p>
+            <ul>
+                <li>Im <b>Blacklist</b>-Modus blenden sie nichts mehr aus – der Punkt, den sie einmal
+                    ausblendeten, ist wieder sichtbar.</li>
+                <li>Im <b>Whitelist</b>-Modus blenden sie den umbenannten Punkt <b>aus</b>, weil er
+                    nicht mehr in der Liste steht.</li>
+            </ul>
+            <p>
+                Sie bleiben <b>vorausgewählt</b>, damit Speichern nichts wegwirft, was du nicht bewusst
+                abgewählt hast. Zum Bereinigen: abwählen und speichern. Beim Start meldet die Anwendung
+                ausserdem pro Mandant, welche Einträge betroffen sind – im Log unter
+                <span class="anl-key">Menuesteuerung: Mandant '…' hat … Listen-Eintraege ohne
+                Entsprechung</span>.
+            </p>
+
+            <h2 id="diagnose">6. Die Diagnose-Ansicht lesen</h2>
+            <p>
+                <b>Root → Menü-Diagnose</b> zeigt jeden Menüpunkt mit den vier Filtern als eigene
+                Spalten und nennt zu jedem <i>Nein</i> den Grund.
+            </p>
+            <p><a class="anl-btn" href="#{request.contextPath}/menudiagnose.html">Diagnose-Ansicht öffnen</a></p>
+            <table>
+                <tr><th>Spalte sagt Nein</th><th>Bedeutet</th><th>Wer repariert es</th></tr>
+                <tr>
+                    <td>Rolle – <i>„Rolle WIKI fehlt"</i></td>
+                    <td>Der Benutzer hat die am Menüpunkt deklarierte Rolle nicht.</td>
+                    <td>admin (Rolle vergeben)</td>
+                </tr>
+                <tr>
+                    <td>Modul-Rolle – <i>„Modul-Rolle WIKI fehlt"</i></td>
+                    <td>Die Anwendung verlangt für dieses Modul eine Rolle, der Benutzer hat sie nicht.</td>
+                    <td>admin (Rolle vergeben)</td>
+                </tr>
+                <tr>
+                    <td>Modul aktiv – <i>„Modul 'wiki' ist deaktiviert"</i></td>
+                    <td>Das Modul ist global abgeschaltet.</td>
+                    <td>root (Root → Module)</td>
+                </tr>
+                <tr>
+                    <td>Mandant – <i>„nicht in Whitelist von lauftage2026"</i></td>
+                    <td>Der Punkt gehört für diesen Mandanten nicht dazu.</td>
+                    <td>root (Root → Menüsteuerung)</td>
+                </tr>
+            </table>
+            <p>
+                Die Spalte <b>Sichtbar</b> nennt den <b>ersten</b> Filter, der Nein sagt – das ist die
+                Ursache, die du zuerst beheben musst. Es können mehrere gleichzeitig Nein sagen.
+                Zeigt die Mandanten-Spalte <i>„Root-Zweig: für root vom Mandantenfilter ausgenommen"</i>,
+                hat die Liste hier bewusst nicht entschieden.
+            </p>
+            <p>
+                Der Schalter <b>Nur ausgeblendete Menüpunkte</b> reduziert die Tabelle auf die Fälle,
+                um die es geht. Die Kopfzeile nennt Benutzer, Mandant und das Verhältnis
+                <i>sichtbar / gesamt</i> – eine sehr kleine Zahl ist der Hinweis auf eine ungepflegte
+                Whitelist.
+            </p>
+
+            <h2 id="impersonate">7. Impersonate</h2>
+            <p>
+                Die Diagnose zeigt immer die Sicht <b>des gerade angemeldeten Benutzers</b>. Um zu
+                sehen, was ein bestimmter Benutzer sieht, übernimmst du in der <b>Benutzerverwaltung</b>
+                dessen Identität (Impersonate) und öffnest dann die Diagnose. Der gelbe Hinweis
+                <i>„Impersonate aktiv"</i> in der Kopfzeile bestätigt, dass die Tabelle jetzt dessen
+                Sicht zeigt – inklusive seines Mandanten.
+            </p>
+            <div class="anl-tip">
+                Das ist der schnellste Weg von einer Meldung wie „ich sehe die Rechnungen nicht mehr"
+                zur Ursache: impersonieren, Diagnose öffnen, nach dem Menüpunkt filtern, Grund ablesen.
+            </div>
+            <p>
+                Solange Impersonate aktiv ist, gelten <b>dessen</b> Rollen – ist er nicht root, greift
+                auch die Root-Zweig-Ausnahme nicht mehr. Beende Impersonate, bevor du etwas änderst.
+            </p>
+
+            <h2 id="mandanten">8. Mandanten anlegen und entfernen</h2>
+            <p>
+                Unter <b>Root → Mandate</b> legst du Mandanten an und ordnest Benutzer zu.
+                Zwei Dinge, die dort regelmässig für Verwirrung sorgen:
+            </p>
+            <h3>Mandantenzugehörigkeit gibt es zweimal</h3>
+            <ul>
+                <li><b>Heimat-Mandant</b> – steckt als Rollen-Property
+                    <span class="anl-key">PROPERTY_MANDAT_&lt;NAME&gt;</span> am Benutzer.</li>
+                <li><b>Zusatz-Mandate</b> – stehen in der Tabelle
+                    <span class="anl-key">user_mandate</span> und erlauben den Mandanten-Wechsler.</li>
+            </ul>
+            <p>
+                Wer prüfen will, ob einem Mandanten noch jemand zugeordnet ist, muss <b>beide</b>
+                ansehen. Die Prüfung vor dem Entfernen tut das inzwischen.
+            </p>
+            <h3>Mandantennamen sind nicht case-konsistent</h3>
+            <div class="anl-warn">
+                In den Daten stehen Mandantennamen mal klein, mal gross – in
+                <span class="anl-key">user_session</span> etwa <span class="anl-key">BUTSCHER</span>,
+                während derselbe Mandant überall sonst <span class="anl-key">butscher</span> heisst.
+                <b>Vergleiche beim Suchen nach Mandantendaten immer case-insensitiv</b>, sonst hältst du
+                einen Mandanten für leer, der es nicht ist.
+            </div>
+            <h3>„Aus Verwaltung entfernen" löscht keine Fachdaten</h3>
+            <p>
+                Der Knopf entfernt genau das, was das Framework besitzt: die <b>Menükonfiguration</b>
+                des Mandanten und damit seinen Eintrag in der Auswahlliste. Die <b>Fachdaten der
+                Anwendung</b> – Zeiterfassung, Rechnungen, Cron-Konfiguration und so weiter – bleiben
+                bestehen. Das Framework kennt diese Tabellen nicht und kann sie nicht löschen.
+            </p>
+            <p>Eine <b>vollständige</b> Löschung läuft deshalb so:</p>
+            <ol>
+                <li>Alle Benutzer vom Mandanten lösen – Heimat-Mandant <b>und</b> Zusatz-Mandate.</li>
+                <li>Die Fachdaten in der Anwendung bereinigen (dort, wo die Tabellen bekannt sind –
+                    case-insensitiv suchen, siehe oben).</li>
+                <li>Erst dann hier <b>Aus Verwaltung entfernen</b>.</li>
+            </ol>
+
+            <h2 id="rezepte">9. Kurzrezepte</h2>
+            <div class="anl-card">
+                <b>„Ein Mandant soll ein Modul nicht sehen."</b><br/>
+                Menüsteuerung → Mandant wählen → im Blacklist-Modus <span class="anl-key">modul:&lt;id&gt;</span>
+                ankreuzen; im Whitelist-Modus abwählen. Speichern, in der Diagnose gegenprüfen.
+            </div>
+            <div class="anl-card">
+                <b>„Ein Mandant sieht ein neues Modul nicht."</b><br/>
+                Fast sicher Whitelist-Modus. Menüsteuerung → Mandant → Modul-Eintrag ankreuzen.
+            </div>
+            <div class="anl-card">
+                <b>„Ein einzelner Benutzer sieht etwas nicht, seine Kollegen schon."</b><br/>
+                Dann ist es keine Mandanten-Sache, sondern eine Rolle. Impersonieren, Diagnose öffnen –
+                die Spalte Rolle oder Modul-Rolle sagt es. Beheben tut das <b>admin</b>.
+            </div>
+            <div class="anl-card">
+                <b>„Ich komme selbst nicht mehr in die Menüsteuerung."</b><br/>
+                Der Root-Zweig ist für root vom Mandantenfilter ausgenommen – das kann nicht mehr
+                passieren. Falls doch: fehlt dir die Rolle <span class="anl-key">ROOT</span>.
+            </div>
+        </div>
+    </ui:define>
+
+</ui:composition>

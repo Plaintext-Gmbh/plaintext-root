@@ -56,6 +56,16 @@ public class MenuItemImpl extends AbstractMenuItem {
      */
     private List<String> moduleRoles = new ArrayList<>();
 
+    /**
+     * Die Modul-Keys, unter denen dieser Menuepunkt ansprechbar ist (eigene {@code moduleId}, die
+     * {@code moduleId} jedes Elternmenues und die Menu-Root-Id des obersten Elternmenues). Wird vom
+     * {@link ModuleRoleService} einmalig gesetzt — dieselbe Ableitung, die auch die Modul-Rollen
+     * benutzen, damit root (Mandanten-Listen) und admin (Modul-Rollen) dasselbe Vokabular teilen.
+     *
+     * @since 1.608.0
+     */
+    private List<String> moduleKeys = new ArrayList<>();
+
     @Override
     public String getIc() {
         return icon;
@@ -148,19 +158,15 @@ public class MenuItemImpl extends AbstractMenuItem {
      * ganzes Modul pro Anwendung ein oder aus. Gilt unter beiden Access-Policies und — weil der
      * {@code PageAccessGuard} ueber {@link #isOn()} geht — auch fuer den Direktaufruf der Seiten.
      * {@code admin}/{@code root} umgehen die Pruefung (im {@link ModuleRoleService}).
+     *
+     * <p>Oeffentlich, damit die Diagnose-Ansicht die vier Filter <i>einzeln</i> abfragen kann,
+     * ohne die Logik nachzubauen — eine zweite Kopie wuerde von {@link #isOn()} abdriften.</p>
+     *
+     * @return {@code true}, wenn keine Modul-Rolle gefordert ist oder der Benutzer sie haelt
+     * @since 1.608.0 oeffentlich
      */
-    private boolean isModuleRoleVisible() {
-        if (moduleRoleService == null && beanFactory != null) {
-            try {
-                moduleRoleService = beanFactory.getBean(ModuleRoleService.class);
-            } catch (Exception e) {
-                log.debug("No ModuleRoleService available for menu '{}': {}", title, e.getMessage());
-            }
-        }
-        if (moduleRoleService != null) {
-            // Fuellt moduleRoles an allen registrierten Menuepunkten (einmalig).
-            moduleRoleService.ensureResolved();
-        }
+    public boolean isModuleRoleVisible() {
+        ensureModuleMetadataResolved();
         boolean visible = ModuleRoleService.holdsAny(moduleRoles, securityProvider);
         if (!visible) {
             log.debug("Modul-Rolle {} fehlt - Menuepunkt '{}' ausgeblendet", moduleRoles, title);
@@ -169,9 +175,31 @@ public class MenuItemImpl extends AbstractMenuItem {
     }
 
     /**
-     * Role half of the visibility decision, dispatched by access policy.
+     * Laesst den {@link ModuleRoleService} die Modul-Zugehoerigkeit einmalig aufloesen; danach sind
+     * {@link #moduleRoles} und {@link #moduleKeys} an allen registrierten Menuepunkten gesetzt.
      */
-    private boolean isRoleVisible() {
+    private void ensureModuleMetadataResolved() {
+        if (moduleRoleService == null && beanFactory != null) {
+            try {
+                moduleRoleService = beanFactory.getBean(ModuleRoleService.class);
+            } catch (Exception e) {
+                log.debug("No ModuleRoleService available for menu '{}': {}", title, e.getMessage());
+            }
+        }
+        if (moduleRoleService != null) {
+            moduleRoleService.ensureResolved();
+        }
+    }
+
+    /**
+     * Role half of the visibility decision, dispatched by access policy.
+     *
+     * <p>Oeffentlich fuer die Diagnose-Ansicht (siehe {@link #isModuleRoleVisible()}).</p>
+     *
+     * @return {@code true}, wenn die Rollen-Regeln den Benutzer zulassen
+     * @since 1.608.0 oeffentlich
+     */
+    public boolean isRoleVisible() {
         if (accessPolicy == MenuAccessPolicy.STRICT) {
             return isStrictRoleVisible();
         }
@@ -227,8 +255,13 @@ public class MenuItemImpl extends AbstractMenuItem {
     /**
      * Module half of the visibility decision (Task #016 Phase 2) — a disabled module hides all
      * its menu items. Applies under both policies.
+     *
+     * <p>Oeffentlich fuer die Diagnose-Ansicht (siehe {@link #isModuleRoleVisible()}).</p>
+     *
+     * @return {@code true}, wenn das Modul des Menuepunkts aktiviert ist
+     * @since 1.608.0 oeffentlich
      */
-    private boolean isModuleVisible() {
+    public boolean isModuleVisible() {
         if (moduleId == null || moduleId.isBlank()) {
             return true;
         }
@@ -248,8 +281,18 @@ public class MenuItemImpl extends AbstractMenuItem {
 
     /**
      * Mandate half of the visibility decision — applies under both policies.
+     *
+     * <p>Oeffentlich fuer die Diagnose-Ansicht (siehe {@link #isModuleRoleVisible()}).</p>
+     *
+     * @return {@code true}, wenn der Menuepunkt fuer den aktuellen Mandanten sichtbar ist
+     * @since 1.608.0 oeffentlich
      */
-    private boolean isMandateVisible() {
+    public boolean isMandateVisible() {
+        if (isRootBranchExemptFromMandate()) {
+            log.debug("Root-Zweig fuer ROLE_ROOT vom Mandantenfilter ausgenommen: {}", buildFullTitle());
+            return true;
+        }
+
         // Lazy load MenuVisibilityProvider if not set and BeanFactory is available
         if (menuVisibilityProvider == null && beanFactory != null) {
             try {
@@ -266,7 +309,7 @@ public class MenuItemImpl extends AbstractMenuItem {
         // Check mandate-specific visibility if provider is available
         if (menuVisibilityProvider != null) {
             String fullTitle = buildFullTitle();
-            boolean visible = menuVisibilityProvider.isMenuVisible(fullTitle);
+            boolean visible = askVisibilityProvider(fullTitle);
             if (!visible) {
                 log.debug("MenuVisibilityProvider hid menu: {}", fullTitle);
             }
@@ -274,6 +317,46 @@ public class MenuItemImpl extends AbstractMenuItem {
         }
 
         return true;
+    }
+
+    /**
+     * Fragt den {@link MenuVisibilityProvider}. Ohne aufgeloeste Modul-Keys wird bewusst die alte
+     * Ein-Argument-Form gerufen: Provider-Implementierungen ausserhalb dieses Frameworks (und die
+     * bestehenden Tests) sehen dadurch exakt denselben Aufruf wie bisher.
+     *
+     * @param fullTitle voller Menue-Titel
+     * @return Antwort des Providers
+     */
+    private boolean askVisibilityProvider(String fullTitle) {
+        ensureModuleMetadataResolved();
+        if (moduleKeys == null || moduleKeys.isEmpty()) {
+            return menuVisibilityProvider.isMenuVisible(fullTitle);
+        }
+        return menuVisibilityProvider.isMenuVisible(fullTitle, moduleKeys);
+    }
+
+    /**
+     * Der <b>Root-Zweig ist fuer {@code ROLE_ROOT} vom Mandantenfilter ausgenommen</b> — und nur
+     * der, und nur fuer root.
+     *
+     * <p><b>Warum.</b> Der Mandantenfilter kennt keinen Bypass; die Menuesteuerung selbst
+     * ({@code Root | Menüsteuerung}) haengt aber im Root-Zweig. Steht ein Mandant im
+     * Whitelist-Modus und ist dieser Titel nicht in der Liste, sperrt sich root aus der einzigen
+     * Oberflaeche aus, mit der sich die Liste korrigieren liesse — per Menue <i>und</i> per
+     * Direkt-URL, weil der {@code PageAccessGuard} dieselbe {@link #isOn()} auswertet. Erhoben auf
+     * app.plaintext.ch: in 8 von 10 Mandanten war die Menuesteuerung so unerreichbar.</p>
+     *
+     * <p><b>Wie eng.</b> Die Ausnahme greift nur, wenn beides zutrifft: der Menuepunkt liegt im
+     * Root-Zweig ({@link #isUnderRootMenu()}: Titel {@code Root} oder Elternmenue {@code Root})
+     * <i>und</i> der Benutzer haelt {@code ROLE_ROOT}. Die drei anderen Filter (Rolle, Modul-Rolle,
+     * Modul aktiviert) bleiben unangetastet, und fuer jeden Nicht-root-Benutzer bleibt auch der
+     * Mandantenfilter unveraendert in Kraft. Ohne {@link SecurityProvider} gibt es keine Ausnahme.</p>
+     *
+     * @return {@code true}, wenn der Mandantenfilter fuer diesen Menuepunkt uebersprungen wird
+     * @since 1.608.0
+     */
+    public boolean isRootBranchExemptFromMandate() {
+        return isUnderRootMenu() && securityProvider != null && securityProvider.hasRole(ROLE_ROOT);
     }
 
     /**

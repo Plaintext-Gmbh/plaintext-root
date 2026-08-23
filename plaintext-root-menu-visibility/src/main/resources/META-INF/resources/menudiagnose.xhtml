@@ -1,0 +1,139 @@
+<ui:composition xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml"
+                template="/includes/template.xhtml">
+
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{menuDiagnoseBackingBean.onLoad()}"/>
+    </f:metadata>
+
+    <ui:define name="title">#{i18n.t('Menü-Diagnose')}</ui:define>
+
+    <ui:define name="head">
+        <style>
+            .diag-ja { color: #2e7d32; font-weight: bold; }
+            .diag-nein { color: #c62828; font-weight: bold; }
+            .diag-grund { color: #666; font-size: 0.9em; }
+            .diag-kopf { background: var(--surface-50, #f7f8fa); border: 1px solid var(--surface-border, #e2e5e9);
+                border-radius: 8px; padding: 10px 16px; margin-bottom: 12px; }
+            .diag-tabelle { overflow-x: auto; }
+        </style>
+    </ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:messages id="messages" showDetail="true" closable="true"/>
+
+            <div class="diag-kopf">
+                <p style="margin:0 0 6px 0;">
+                    <b>#{i18n.t('Sicht von')}:</b> #{menuDiagnoseBackingBean.benutzer}
+                    &#183;
+                    <b>#{i18n.t('Mandant')}:</b> #{menuDiagnoseBackingBean.mandant}
+                    &#183;
+                    <b>#{i18n.t('Sichtbar')}:</b>
+                    #{menuDiagnoseBackingBean.anzahlSichtbar} / #{menuDiagnoseBackingBean.anzahlGesamt}
+                </p>
+                <h:panelGroup layout="block" style="margin:0; color:#b26a00; font-weight:bold;"
+                              rendered="#{menuDiagnoseBackingBean.impersonating}">
+                    <i class="pi pi-user-edit"></i>
+                    Impersonate aktiv — die Tabelle zeigt die Sicht des impersonierten Benutzers.
+                </h:panelGroup>
+                <p style="margin:6px 0 0 0;" class="diag-grund">
+                    Ein Menüpunkt ist sichtbar, wenn ALLE vier Filter Ja sagen. Rolle und Modul-Rolle
+                    beantworten „wer darf das benutzen" (admin), die Mandanten-Spalte beantwortet
+                    „gehört das Modul zu diesem Mandanten" (root). Eine Rolle hebt den Mandantenfilter
+                    nicht auf.
+                </p>
+            </div>
+
+            <div style="margin-bottom: 10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <p:selectBooleanCheckbox id="nurUnsichtbare"
+                                         value="#{menuDiagnoseBackingBean.nurUnsichtbare}"
+                                         itemLabel="#{i18n.t('Nur ausgeblendete Menüpunkte')}">
+                    <p:ajax update="fm:tabelle"/>
+                </p:selectBooleanCheckbox>
+                <p:commandButton value="#{i18n.t('Neu auswerten')}"
+                                 icon="pi pi-refresh"
+                                 styleClass="ui-button-outlined"
+                                 action="#{menuDiagnoseBackingBean.aktualisieren}"
+                                 update="fm"
+                                 process="@this"/>
+            </div>
+
+            <div class="diag-tabelle">
+                <p:dataTable id="tabelle"
+                             var="z"
+                             value="#{menuDiagnoseBackingBean.anzeigeZeilen}"
+                             rows="50"
+                             paginator="true"
+                             paginatorPosition="both"
+                             emptyMessage="#{i18n.t('Keine Menüpunkte gefunden.')}"
+                             rowStyleClass="#{z.sichtbar ? '' : 'ui-state-highlight'}">
+
+                    <p:column headerText="#{i18n.t('Menüpunkt')}" sortBy="#{z.titel}" filterBy="#{z.titel}"
+                              filterMatchMode="contains">
+                        <h:outputText value="#{z.titel}"/>
+                        <br/>
+                        <h:outputText value="#{z.link}" styleClass="diag-grund"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Modul-Keys')}">
+                        <h:outputText value="#{z.modulKeysText}" styleClass="diag-grund"/>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Rolle')}">
+                        <h:outputText value="Ja" styleClass="diag-ja" rendered="#{z.rolleOk}"/>
+                        <h:outputText value="Nein" styleClass="diag-nein" rendered="#{not z.rolleOk}"/>
+                        <h:panelGroup rendered="#{not z.rolleOk}">
+                            <br/><h:outputText value="#{z.rolleGrund}" styleClass="diag-grund"/>
+                        </h:panelGroup>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Modul-Rolle')}">
+                        <h:outputText value="Ja" styleClass="diag-ja" rendered="#{z.modulRolleOk}"/>
+                        <h:outputText value="Nein" styleClass="diag-nein" rendered="#{not z.modulRolleOk}"/>
+                        <h:panelGroup rendered="#{not z.modulRolleOk}">
+                            <br/><h:outputText value="#{z.modulRolleGrund}" styleClass="diag-grund"/>
+                        </h:panelGroup>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Modul aktiv')}">
+                        <h:outputText value="Ja" styleClass="diag-ja" rendered="#{z.modulOk}"/>
+                        <h:outputText value="Nein" styleClass="diag-nein" rendered="#{not z.modulOk}"/>
+                        <h:panelGroup rendered="#{not z.modulOk}">
+                            <br/><h:outputText value="#{z.modulGrund}" styleClass="diag-grund"/>
+                        </h:panelGroup>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Mandant')}">
+                        <h:outputText value="Ja" styleClass="diag-ja" rendered="#{z.mandantOk}"/>
+                        <h:outputText value="Nein" styleClass="diag-nein" rendered="#{not z.mandantOk}"/>
+                        <h:panelGroup rendered="#{not empty z.mandantGrund}">
+                            <br/><h:outputText value="#{z.mandantGrund}" styleClass="diag-grund"/>
+                        </h:panelGroup>
+                    </p:column>
+
+                    <p:column headerText="#{i18n.t('Sichtbar')}">
+                        <h:outputText value="Ja" styleClass="diag-ja" rendered="#{z.sichtbar}"/>
+                        <h:panelGroup rendered="#{not z.sichtbar}">
+                            <h:outputText value="Nein" styleClass="diag-nein"/>
+                            <br/><h:outputText value="#{z.ersterGrund}" styleClass="diag-grund"/>
+                        </h:panelGroup>
+                    </p:column>
+                </p:dataTable>
+            </div>
+
+            <div style="margin-top: 14px;">
+                <p:button value="#{i18n.t('Zur Menüsteuerung')}" icon="pi pi-list"
+                          outcome="mandatemenu" styleClass="ui-button-outlined"/>
+                <p:button value="#{i18n.t('Anleitung')}" icon="pi pi-question-circle"
+                          outcome="menuesteuerung-anleitung" styleClass="ui-button-outlined"
+                          style="margin-left:8px;"/>
+            </div>
+        </h:form>
+    </ui:define>
+
+</ui:composition>

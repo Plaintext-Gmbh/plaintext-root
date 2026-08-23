@@ -235,7 +235,7 @@ class RollenzuteilungBackingBeanAdditionalTest {
         void shouldSaveSuccessfullyAndReloadData() {
             Rollenzuteilung rz = new Rollenzuteilung();
             rz.setUsername("user1");
-            rz.setRoleName("ROLE_ADMIN");
+            rz.setRoleName("ROLE_WIKI");
             bean.setSelected(rz);
             when(service.save(rz)).thenReturn(rz);
             when(service.getAllRollenzuteilungenForCurrentUser()).thenReturn(List.of(rz));
@@ -252,7 +252,7 @@ class RollenzuteilungBackingBeanAdditionalTest {
         void shouldShowErrorWhenSaveThrows() {
             Rollenzuteilung rz = new Rollenzuteilung();
             rz.setUsername("user1");
-            rz.setRoleName("ROLE_ADMIN");
+            rz.setRoleName("ROLE_WIKI");
             bean.setSelected(rz);
             when(service.save(rz)).thenThrow(new RuntimeException("DB Error"));
 

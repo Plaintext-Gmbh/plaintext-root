@@ -123,6 +123,12 @@ public class PlaintextSecurityConfig {
             // Verwaltungsinformation).
             "/deeplinks.*",
             "/mandate*.*",
+            // Menue-Diagnose: zeigt die Sichtbarkeit JEDES Menuepunkts inkl. der Gruende (welche
+            // Rolle fehlt, welche Mandanten-Liste greift). Verwaltungsinformation — nur ROOT.
+            "/menudiagnose.*",
+            // Anleitung der Menuesteuerung: verweist auf Mandanten-Listen und Diagnose, also auf
+            // Dinge, die admin nicht sieht.
+            "/menuesteuerung-anleitung.*",
             "/rootentities.*",
             "/root-api-token.*",
             "/secrets.*",
@@ -148,6 +154,7 @@ public class PlaintextSecurityConfig {
             "/admin-api-token.*",
             "/i18n-translations.*",
             "/rollenzuteilung.*",
+            "/modulrollen-anleitung.*",
             "/sessions.*",
             "/cron.*",
             "/debug.*",
