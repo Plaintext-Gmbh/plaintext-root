@@ -235,6 +235,11 @@ public class ModuleRoleService implements SmartInitializingSingleton {
             Set<String> candidates = moduleKeysOf(item, byTitle);
             keys.addAll(candidates);
 
+            // Dieselbe Ableitung dient zwei Zwecken: admin steuert ueber die Modul-Rollen, WER ein
+            // Modul benutzen darf; root steuert ueber die Mandanten-Listen, WELCHE Module zu einem
+            // Mandanten gehoeren. Beide sprechen damit dasselbe Modul-Vokabular.
+            item.setModuleKeys(List.copyOf(candidates));
+
             List<String> required = requiredRolesOf(candidates, configured);
             item.setModuleRoles(required);
             indexRequiredRoles(item, required, byLink, byMenuTitle);

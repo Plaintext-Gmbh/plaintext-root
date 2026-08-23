@@ -28,6 +28,22 @@ public interface UserMandateRepository extends JpaRepository<UserMandate, Long> 
     /** Aktive Zuordnungen für einen Mandanten (alle Benutzer mit diesem Zusatz-Mandant). */
     List<UserMandate> findByMandatAndActiveTrue(String mandat);
 
+    /**
+     * Alle Zuordnungen (auch inaktive) zu einem Mandanten, ohne Rücksicht auf
+     * Groß-/Kleinschreibung.
+     *
+     * <p>Mandantennamen sind im Bestand <b>nicht</b> case-konsistent — in {@code user_session}
+     * stand {@code BUTSCHER} groß, während derselbe Mandant überall sonst klein geschrieben ist.
+     * Wer prüfen will, ob einem Mandanten noch Benutzer zugeordnet sind, muss deshalb
+     * case-insensitiv vergleichen; sonst meldet die Prüfung „keine Benutzer betroffen", obwohl
+     * welche zugeordnet sind.</p>
+     *
+     * @param mandat der Mandantenname in beliebiger Schreibweise
+     * @return alle Zuordnungen zu diesem Mandanten
+     * @since 1.608.0
+     */
+    List<UserMandate> findByMandatIgnoreCase(String mandat);
+
     /** Entfernt alle Zuordnungen eines Benutzers (für vollständiges Neusetzen). */
     void deleteByUsername(String username);
 }

@@ -353,4 +353,79 @@ class MyUserBackingBeanTest {
         verify(facesContext, never()).validationFailed();
     }
 
+    // ---- Zustaendigkeitstrennung: admin vergibt Modul-Rollen, root vergibt Verwaltungsrechte ----
+
+    @Test
+    void save_erlaubtModulRolle_wennAkteurAdminIst() {
+        // Modul-Rollen sind KEINE privilegierten Rollen — sie zu vergeben ist admins Aufgabe.
+        testUser.setMandat("test_mandat");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user", "wiki", "finanzen")));
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+    }
+
+    @Test
+    void save_lehntAdminRolleAb_wennAkteurNichtRootIst() {
+        // Vorher war nur "root" privilegiert — ein admin konnte also weitere admins ernennen und
+        // seine eigene Beschraenkung damit aushebeln.
+        testUser.setMandat("test_mandat");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user", "admin")));
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(facesContext).validationFailed();
+    }
+
+    @Test
+    void save_erlaubtBestehendeAdminRolle_auchFuerNichtRoot() {
+        // Bestand bleibt editierbar: die Einschraenkung gilt nur fuer das NEU-Vergeben.
+        testUser.setMandat("test_mandat");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("admin", "wiki")));
+
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("admin", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+    }
+
 }

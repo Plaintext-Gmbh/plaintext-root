@@ -33,4 +33,17 @@ public interface MandateMenuConfigRepository extends JpaRepository<MandateMenuCo
      * @return true if exists
      */
     boolean existsByMandateName(String mandateName);
+
+    /**
+     * Wie {@link #findByMandateName(String)}, aber ohne Ruecksicht auf Gross-/Kleinschreibung.
+     *
+     * <p>Mandantennamen sind im Bestand <b>nicht</b> case-konsistent — in {@code user_session}
+     * stand {@code BUTSCHER} gross, waehrend derselbe Mandant ueberall sonst klein geschrieben ist.
+     * Wer eine Mandanten-Konfiguration sicher treffen will, muss case-insensitiv suchen.</p>
+     *
+     * @param mandateName der Mandantenname in beliebiger Schreibweise
+     * @return die Konfiguration, wenn vorhanden
+     * @since 1.608.0
+     */
+    Optional<MandateMenuConfig> findByMandateNameIgnoreCase(String mandateName);
 }

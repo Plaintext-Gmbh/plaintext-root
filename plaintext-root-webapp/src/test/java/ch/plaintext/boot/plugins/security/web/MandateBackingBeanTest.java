@@ -5,7 +5,9 @@ package ch.plaintext.boot.plugins.security.web;
 
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
+import ch.plaintext.boot.plugins.security.model.UserMandate;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
+import ch.plaintext.boot.plugins.security.persistence.UserMandateRepository;
 import ch.plaintext.menuesteuerung.model.MandateMenuConfig;
 import ch.plaintext.menuesteuerung.persistence.MandateMenuConfigRepository;
 import jakarta.faces.application.FacesMessage;
@@ -42,6 +44,9 @@ class MandateBackingBeanTest {
 
     @Mock
     private MandateMenuConfigRepository mandateMenuConfigRepository;
+
+    @Mock
+    private UserMandateRepository userMandateRepository;
 
     @Mock
     private FacesContext facesContext;
@@ -337,6 +342,114 @@ class MandateBackingBeanTest {
 
             assertNull(bean.getSelectedMandat());
         }
+    }
+
+    // ------------------------------------------------------------------
+    // „Aus Verwaltung entfernen" — was die Aktion wirklich tut (Teil 7)
+    // ------------------------------------------------------------------
+
+    @Test
+    void deleteMandat_shouldDeleteMenuConfig_notOnlyTheSessionList() {
+        try (MockedStatic<FacesContext> mocked = mockStatic(FacesContext.class)) {
+            mocked.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+
+            MandateMenuConfig config = new MandateMenuConfig();
+            config.setMandateName("dev");
+            when(mandateMenuConfigRepository.findByMandateNameIgnoreCase("dev")).thenReturn(Optional.of(config));
+
+            bean.reload();
+            bean.setSelectedMandat("dev");
+            bean.deleteMandat();
+
+            // Vorher entfernte die Methode den Mandanten NUR aus einer ArrayList in der Session und
+            // meldete trotzdem Erfolg — nach reload() war er wieder da.
+            verify(mandateMenuConfigRepository).delete(config);
+            assertFalse(bean.getMandate().contains("dev"));
+        }
+    }
+
+    @Test
+    void deleteMandat_shouldSayWhatItActuallyDid() {
+        try (MockedStatic<FacesContext> mocked = mockStatic(FacesContext.class)) {
+            mocked.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+
+            bean.reload();
+            bean.setSelectedMandat("dev");
+            bean.deleteMandat();
+
+            ArgumentCaptor<FacesMessage> captor = ArgumentCaptor.forClass(FacesMessage.class);
+            verify(facesContext).addMessage(isNull(), captor.capture());
+            FacesMessage message = captor.getValue();
+            assertEquals(FacesMessage.SEVERITY_INFO, message.getSeverity());
+            assertTrue(message.getDetail().contains("Fachdaten"),
+                    "Die Meldung muss sagen, dass die Fachdaten bestehen bleiben: " + message.getDetail());
+        }
+    }
+
+    @Test
+    void deleteMandat_shouldBlock_whenUserHasMandatAsZusatzMandat() {
+        try (MockedStatic<FacesContext> mocked = mockStatic(FacesContext.class)) {
+            mocked.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+
+            // Kein Benutzer hat 'dev' als Heimat-Mandant — aber einer hat ihn als Zusatz-Mandant.
+            UserMandate zuordnung = new UserMandate();
+            zuordnung.setUsername("anna@example.com");
+            zuordnung.setMandat("dev");
+            when(userMandateRepository.findByMandatIgnoreCase("dev")).thenReturn(List.of(zuordnung));
+
+            bean.reload();
+            bean.setSelectedMandat("dev");
+            bean.deleteMandat();
+
+            verify(mandateMenuConfigRepository, never()).delete(any(MandateMenuConfig.class));
+            assertTrue(bean.getMandate().contains("dev"));
+            verify(facesContext).addMessage(isNull(), argThat(msg ->
+                    msg.getSeverity() == FacesMessage.SEVERITY_ERROR));
+        }
+    }
+
+    @Test
+    void zugeordneteBenutzer_shouldCountBothFormsCaseInsensitively() {
+        MyUserEntity heimat = new MyUserEntity();
+        heimat.setUsername("bob@example.com");
+        // Mandantennamen sind im Bestand nicht case-konsistent (user_session: 'BUTSCHER').
+        heimat.setMandat("BUTSCHER");
+        when(userRepository.findAll()).thenReturn(List.of(heimat));
+
+        UserMandate zusatz = new UserMandate();
+        zusatz.setUsername("anna@example.com");
+        zusatz.setMandat("Butscher");
+        when(userMandateRepository.findByMandatIgnoreCase("butscher")).thenReturn(List.of(zusatz));
+
+        bean.reload();
+
+        assertEquals(2, bean.zugeordneteBenutzer("butscher"));
+    }
+
+    @Test
+    void zugeordneteBenutzer_shouldNotCountTheSameUserTwice() {
+        MyUserEntity heimat = new MyUserEntity();
+        heimat.setUsername("anna@example.com");
+        heimat.setMandat("dev");
+        when(userRepository.findAll()).thenReturn(List.of(heimat));
+
+        UserMandate zusatz = new UserMandate();
+        zusatz.setUsername("ANNA@example.com");
+        zusatz.setMandat("dev");
+        when(userMandateRepository.findByMandatIgnoreCase("dev")).thenReturn(List.of(zusatz));
+
+        bean.reload();
+
+        assertEquals(1, bean.zugeordneteBenutzer("dev"));
+    }
+
+    @Test
+    void zugeordneteBenutzer_shouldBlockWhenLookupFails() {
+        when(userMandateRepository.findByMandatIgnoreCase("dev")).thenThrow(new IllegalStateException("DB weg"));
+        bean.reload();
+
+        assertEquals(Integer.MAX_VALUE, bean.zugeordneteBenutzer("dev"),
+                "Bei unbekanntem Zustand darf nicht geloescht werden");
     }
 
     @Test

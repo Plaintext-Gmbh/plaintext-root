@@ -1,0 +1,204 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Modul-Rollen – Anleitung (admin)</ui:define>
+
+    <ui:define name="head">
+        <style>
+            .anl-wrap { max-width: 860px; line-height: 1.6; }
+            .anl-wrap h2 { margin: 26px 0 8px; padding-top: 12px; border-top: 1px solid var(--surface-border, #e2e5e9); }
+            .anl-wrap h2:first-of-type { border-top: 0; padding-top: 0; }
+            .anl-wrap h3 { margin: 16px 0 4px; }
+            .anl-wrap ol, .anl-wrap ul { padding-left: 22px; }
+            .anl-wrap li { margin: 3px 0; }
+            .anl-wrap table { border-collapse: collapse; margin: 10px 0; width: 100%; }
+            .anl-wrap th, .anl-wrap td { border: 1px solid var(--surface-border, #e2e5e9); padding: 6px 10px; text-align: left; }
+            .anl-wrap th { background: var(--surface-50, #f7f8fa); }
+            .anl-toc { background: var(--surface-50, #f7f8fa); border: 1px solid var(--surface-border, #e2e5e9);
+                border-radius: 8px; padding: 12px 18px; margin: 8px 0 8px; columns: 2; }
+            .anl-toc a { text-decoration: none; }
+            .anl-card { background: var(--surface-50, #f7f8fa); border: 1px solid var(--surface-border, #e2e5e9);
+                border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+            .anl-tip { background: #eef7ee; border-left: 4px solid #33a02c; border-radius: 4px; padding: 8px 14px; margin: 10px 0; }
+            .anl-warn { background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 4px; padding: 8px 14px; margin: 10px 0; }
+            .anl-btn { display: inline-block; background: #1f78b4; color: #fff !important; text-decoration: none;
+                border-radius: 4px; padding: 6px 13px; font-weight: bold; margin: 2px 4px 2px 0; font-size: 13px; }
+            .anl-key { display: inline-block; background: #eceff3; border: 1px solid #d4d9e0; border-radius: 4px;
+                padding: 0 6px; font-family: monospace; font-size: 12px; }
+        </style>
+    </ui:define>
+
+    <ui:define name="content">
+        <div class="anl-wrap">
+            <p style="font-size:16px;color:#444">
+                Diese Anleitung ist für <b>admin</b>. Sie erklärt, wie du steuerst, <b>wer welches Modul
+                benutzen darf</b> – und woran du erkennst, dass ein Problem nicht bei dir liegt.
+            </p>
+
+            <div class="anl-toc">
+                <a href="#zustaendigkeit">1. Deine Zuständigkeit</a><br/>
+                <a href="#was">2. Was eine Modul-Rolle bewirkt</a><br/>
+                <a href="#vergeben">3. Rolle an einen Benutzer vergeben</a><br/>
+                <a href="#welche">4. Welche Rollen es gibt</a><br/>
+                <a href="#zusammenspiel">5. Zusammenspiel mit den Mandanten-Listen</a><br/>
+                <a href="#grenzen">6. Wann du root brauchst</a><br/>
+                <a href="#rezepte">7. Kurzrezepte</a>
+            </div>
+
+            <h2 id="zustaendigkeit">1. Deine Zuständigkeit</h2>
+            <p>Zwei Fragen, zwei Zuständige – und sie werden oft verwechselt:</p>
+            <table>
+                <tr><th>Frage</th><th>Wer</th><th>Wo</th></tr>
+                <tr>
+                    <td><b>Wer darf ein Modul benutzen?</b></td>
+                    <td><b>admin – du</b></td>
+                    <td>Admin → Rollenzuteilung, bzw. Benutzerverwaltung</td>
+                </tr>
+                <tr>
+                    <td>Welche Module gehören überhaupt zu diesem Mandanten?</td>
+                    <td>root</td>
+                    <td>Root → Menüsteuerung</td>
+                </tr>
+            </table>
+            <p>
+                Du vergibst Rollen. Ob ein Modul für den Mandanten überhaupt freigeschaltet ist,
+                entscheidet root – und <b>keine Rolle hebt das auf</b>. Das ist der wichtigste Satz
+                dieser Seite; Abschnitt 5 erklärt, was das praktisch heisst.
+            </p>
+
+            <h2 id="was">2. Was eine Modul-Rolle bewirkt</h2>
+            <p>
+                Eine <b>Modul-Rolle</b> ist eine Rolle, die eine Anwendung einem ganzen Modul
+                zugeordnet hat (in der Konfiguration, z.B. <span class="anl-key">wiki → ROLE_WIKI</span>).
+                Wer sie nicht hat, für den ist das Modul <b>nicht vorhanden</b>:
+            </p>
+            <ul>
+                <li>der <b>Menüpunkt</b> und alle Untermenüs sind unsichtbar,</li>
+                <li>die <b>Dashboard-Kachel</b> ist unsichtbar,</li>
+                <li>der <b>Direktaufruf per URL</b> wird abgewiesen.</li>
+            </ul>
+            <div class="anl-tip">
+                <b>admin und root umgehen diese Prüfung immer.</b> Du siehst also auch Module, für die
+                du die Rolle gar nicht hast – ein Grund mehr, Sichtbarkeitsfragen nicht an deiner
+                eigenen Ansicht zu prüfen, sondern beim betroffenen Benutzer (Impersonate).
+            </div>
+            <p>
+                Modul-Rollen sind reine <b>Zugangsrollen</b> zu einem Fachmodul. Sie verleihen keine
+                Verwaltungsrechte – deshalb darfst du sie vergeben.
+            </p>
+
+            <h2 id="vergeben">3. Rolle an einen Benutzer vergeben</h2>
+            <p>Es gibt zwei Wege; beide führen zum selben Ergebnis:</p>
+            <h3>Admin → Rollenzuteilung (empfohlen)</h3>
+            <ol>
+                <li><b>Neu</b> anklicken.</li>
+                <li><b>Benutzername</b> eintragen (die Login-/E-Mail-Adresse).</li>
+                <li><b>Rolle</b> aus der Liste wählen – sie enthält alle von den Modulen deklarierten
+                    Rollen plus die bereits vergebenen.</li>
+                <li><b>Aktiv</b> anhaken und speichern.</li>
+            </ol>
+            <p><a class="anl-btn" href="#{request.contextPath}/rollenzuteilung.html">Zur Rollenzuteilung</a></p>
+            <h3>Benutzerverwaltung</h3>
+            <p>
+                Unter <b>Admin → Benutzer</b> kannst du die Rollen direkt am Benutzer pflegen. Das ist
+                praktisch, wenn du ohnehin gerade andere Angaben änderst.
+            </p>
+            <div class="anl-warn">
+                <b>Eine neu konfigurierte Modul-Rolle hat zunächst niemand.</b> Direkt nach dem
+                Einrichten sehen nur admin und root das Modul – alle anderen erst, wenn du ihnen die
+                Rolle gegeben hast. Wirksam wird sie beim nächsten Anmelden des Benutzers.
+            </div>
+
+            <h2 id="welche">4. Welche Rollen es gibt</h2>
+            <p>
+                Die Auswahlliste zeigt die Rollen, die die Module <b>deklariert</b> haben – mit
+                Beschreibung, damit du nicht raten musst. Dazu kommen die Rollen, die im Bestand schon
+                vergeben sind. Rollen, die eine Anwendung einem Modul zugeordnet hat, erscheinen
+                automatisch mit einer Beschreibung wie <i>„Zugriff auf das Modul wiki"</i>.
+            </p>
+            <p>
+                Teilen sich mehrere Module eine Rolle (etwa <span class="anl-key">finanzen</span> für
+                Rechnungen, Buchhaltung und Postkonto), öffnet eine Vergabe alle davon – das steht dann
+                auch so in der Beschreibung.
+            </p>
+
+            <h2 id="zusammenspiel">5. Zusammenspiel mit den Mandanten-Listen</h2>
+            <p>
+                Ein Menüpunkt erscheint nur, wenn <b>alle vier</b> Filter Ja sagen:
+            </p>
+            <ol>
+                <li><b>Rolle</b> am Menüpunkt – dein Bereich.</li>
+                <li><b>Modul-Rolle</b> – dein Bereich.</li>
+                <li><b>Modul aktiv</b> (Root → Module) – root.</li>
+                <li><b>Mandanten-Liste</b> (Root → Menüsteuerung) – root.</li>
+            </ol>
+            <div class="anl-warn">
+                <b>Die Rolle hilft nicht gegen den Mandantenfilter.</b> Wenn ein Modul für den
+                Mandanten nicht freigeschaltet ist, ändert auch die grosszügigste Rollenvergabe
+                nichts. Symptom: du hast die Rolle vergeben, der Benutzer sieht trotzdem nichts – und
+                es betrifft <b>alle</b> Benutzer dieses Mandanten gleichermassen.
+            </div>
+            <p>
+                <b>Die Faustregel zur Abgrenzung:</b> Betrifft es <i>einen</i> Benutzer, während
+                Kollegen im selben Mandanten das Modul sehen, ist es eine <b>Rolle</b> – dein Fall.
+                Betrifft es <i>alle</i> Benutzer eines Mandanten, ist es die <b>Mandanten-Liste</b> –
+                ein Fall für root.
+            </p>
+
+            <h2 id="grenzen">6. Wann du root brauchst</h2>
+            <table>
+                <tr><th>Situation</th><th>Warum nicht du</th></tr>
+                <tr>
+                    <td>Ein Modul soll für einen ganzen Mandanten sichtbar/unsichtbar werden.</td>
+                    <td>Das ist die Mandanten-Liste (Root → Menüsteuerung).</td>
+                </tr>
+                <tr>
+                    <td>Ein Modul ist global abgeschaltet.</td>
+                    <td>Root → Module.</td>
+                </tr>
+                <tr>
+                    <td>Jemand soll die Rolle <span class="anl-key">admin</span> oder
+                        <span class="anl-key">root</span> bekommen.</td>
+                    <td>Verwaltungsrechte vergibt nur root – sonst könnte admin seine eigene
+                        Beschränkung aufheben.</td>
+                </tr>
+                <tr>
+                    <td>Jemand soll zwischen Mandanten wechseln
+                        (<span class="anl-key">PROPERTY_*</span>).</td>
+                    <td>Wirkt über den eigenen Mandanten hinaus – nur root.</td>
+                </tr>
+            </table>
+            <p>
+                Versuchst du eine dieser Rollen zu vergeben, lehnt das System es mit einer klaren
+                Meldung ab. <b>Bestehende</b> Zuweisungen bleiben davon unberührt und weiter
+                editierbar – es geht nur um das Neu-Vergeben.
+            </p>
+
+            <h2 id="rezepte">7. Kurzrezepte</h2>
+            <div class="anl-card">
+                <b>„Neuer Mitarbeiter soll die Rechnungen sehen."</b><br/>
+                Admin → Rollenzuteilung → Neu → Benutzername + die Rolle des Rechnungs-Moduls → Aktiv →
+                Speichern. Der Benutzer muss sich neu anmelden.
+            </div>
+            <div class="anl-card">
+                <b>„Rolle vergeben, er sieht es trotzdem nicht."</b><br/>
+                Hat er sich neu angemeldet? Wenn ja und es betrifft alle im Mandanten: root bitten, in
+                der Menüsteuerung nachzusehen (Abschnitt 5).
+            </div>
+            <div class="anl-card">
+                <b>„Jemand soll ein Modul nicht mehr sehen."</b><br/>
+                Zuteilung auf <b>inaktiv</b> setzen oder löschen. Gilt ab der nächsten Anmeldung.
+            </div>
+            <div class="anl-card">
+                <b>„Ich weiss nicht, welche Rolle das Modul braucht."</b><br/>
+                Die Beschreibungen in der Rollen-Auswahl nennen das Modul. Hilft das nicht weiter,
+                kann root es in der Menü-Diagnose direkt ablesen – dort steht bei jedem Menüpunkt,
+                welche Rolle fehlt.
+            </div>
+        </div>
+    </ui:define>
+
+</ui:composition>

@@ -13,8 +13,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Service implementing MenuVisibilityProvider to control menu visibility per mandate.
@@ -47,35 +50,34 @@ public class MandateMenuVisibilityService implements MenuVisibilityProvider {
 
     @Override
     public boolean isMenuVisible(String menuTitle) {
+        return isMenuVisible(menuTitle, List.of());
+    }
+
+    @Override
+    public boolean isMenuVisible(String menuTitle, Collection<String> moduleKeys) {
         if (plaintextSecurity == null) {
             log.debug("PlaintextSecurity not available yet, showing all menus");
             return true;
         }
         String currentMandate = plaintextSecurity.getMandat();
-        boolean visible = isMenuVisibleForMandate(menuTitle, currentMandate);
+        boolean visible = isMenuVisibleForMandate(menuTitle, moduleKeys, currentMandate);
         log.debug("Menu '{}' visibility for mandate '{}': {}", menuTitle, currentMandate, visible);
         return visible;
     }
 
     @Override
     public boolean isMenuVisibleForMandate(String menuTitle, String mandate) {
-        if (mandate == null || mandate.isEmpty()) {
-            log.debug("No mandate set, showing menu '{}'", menuTitle);
-            return true; // Show all menus if no mandate is set
+        return isMenuVisibleForMandate(menuTitle, List.of(), mandate);
+    }
+
+    @Override
+    public boolean isMenuVisibleForMandate(String menuTitle, Collection<String> moduleKeys, String mandate) {
+        MandateMenuConfig menuConfig = findConfigFor(menuTitle, mandate);
+        if (menuConfig == null) {
+            return true;
         }
 
-        // Normalize mandate name to lowercase for case-insensitive matching
-        String normalizedMandate = mandate.toLowerCase();
-
-        Optional<MandateMenuConfig> config = repository.findByMandateName(normalizedMandate);
-        if (config.isEmpty()) {
-            log.debug("No configuration for mandate '{}' (normalized: '{}'), showing menu '{}'",
-                mandate, normalizedMandate, menuTitle);
-            return true; // Show all menus if no configuration exists for this mandate
-        }
-
-        MandateMenuConfig menuConfig = config.get();
-        boolean isInList = menuConfig.isMenuHidden(menuTitle);
+        boolean isInList = menuConfig.isListed(menuTitle, moduleKeys);
 
         // In blacklist mode: menu is visible if it's NOT in the list
         // In whitelist mode: menu is visible ONLY if it IS in the list
@@ -83,11 +85,88 @@ public class MandateMenuVisibilityService implements MenuVisibilityProvider {
         boolean isWhitelistMode = Boolean.TRUE.equals(menuConfig.getWhitelistMode());
         boolean isVisible = isWhitelistMode ? isInList : !isInList;
 
-        log.debug("Menu '{}' for mandate '{}' (normalized: '{}'): mode={}, inList={}, visible={}",
-            menuTitle, mandate, normalizedMandate,
-            Boolean.TRUE.equals(menuConfig.getWhitelistMode()) ? "whitelist" : "blacklist",
-            isInList, isVisible);
+        log.debug("Menu '{}' (Modul-Keys {}) for mandate '{}': mode={}, inList={}, visible={}",
+            menuTitle, moduleKeys, mandate,
+            isWhitelistMode ? "whitelist" : "blacklist", isInList, isVisible);
         return isVisible;
+    }
+
+    /**
+     * Die Konfiguration eines Mandanten, oder {@code null}, wenn der Mandant keine hat (bzw. gar
+     * kein Mandant gesetzt ist) — dann gilt „alles sichtbar".
+     *
+     * @param menuTitle nur fuer die Protokollierung
+     * @param mandate   der Mandant, darf leer sein
+     * @return die Konfiguration oder {@code null}
+     */
+    private MandateMenuConfig findConfigFor(String menuTitle, String mandate) {
+        if (mandate == null || mandate.isEmpty()) {
+            log.debug("No mandate set, showing menu '{}'", menuTitle);
+            return null;
+        }
+        String normalizedMandate = mandate.toLowerCase();
+        Optional<MandateMenuConfig> config = repository.findByMandateName(normalizedMandate);
+        if (config.isEmpty()) {
+            log.debug("No configuration for mandate '{}' (normalized: '{}'), showing menu '{}'",
+                mandate, normalizedMandate, menuTitle);
+            return null;
+        }
+        return config.get();
+    }
+
+    /**
+     * Der Grund, warum der Mandantenfilter einen Menuepunkt ausblendet — fuer die Diagnose-Ansicht.
+     *
+     * @param menuTitle  voller Menue-Titel
+     * @param moduleKeys Modul-Keys des Menuepunkts
+     * @param mandate    der Mandant
+     * @return Klartext-Grund, oder {@code ""} wenn der Mandantenfilter den Punkt durchlaesst
+     * @since 1.608.0
+     */
+    public String mandateReason(String menuTitle, Collection<String> moduleKeys, String mandate) {
+        MandateMenuConfig menuConfig = findConfigFor(menuTitle, mandate);
+        if (menuConfig == null) {
+            return "";
+        }
+        boolean isInList = menuConfig.isListed(menuTitle, moduleKeys);
+        boolean isWhitelistMode = Boolean.TRUE.equals(menuConfig.getWhitelistMode());
+        if (isWhitelistMode) {
+            return isInList ? "" : "nicht in Whitelist von " + menuConfig.getMandateName();
+        }
+        return isInList ? "in Blacklist von " + menuConfig.getMandateName() : "";
+    }
+
+    /**
+     * Die Listen-Eintraege eines Mandanten, die im aktuellen Menuebaum ins Leere zeigen — Titel,
+     * die es nicht (mehr) gibt (typisch nach einer Umbenennung), und {@code modul:}-Eintraege auf
+     * unbekannte Modul-Keys.
+     *
+     * @param config      die Mandanten-Konfiguration
+     * @param knownTitles alle aktuell vorhandenen vollen Menue-Titel
+     * @param knownKeys   alle aktuell erkannten Modul-Keys
+     * @return tote Eintraege, alphabetisch (nie {@code null})
+     * @since 1.608.0
+     */
+    public static Set<String> deadEntries(MandateMenuConfig config,
+                                          Collection<String> knownTitles,
+                                          Collection<String> knownKeys) {
+        Set<String> dead = new TreeSet<>();
+        if (config == null || config.getHiddenMenus() == null) {
+            return dead;
+        }
+        for (String entry : config.getHiddenMenus()) {
+            if (entry == null || entry.isBlank()) {
+                continue;
+            }
+            String moduleKey = MandateMenuConfig.moduleKeyOf(entry);
+            boolean lebt = moduleKey.isEmpty()
+                    ? knownTitles != null && knownTitles.contains(entry)
+                    : knownKeys != null && knownKeys.contains(moduleKey);
+            if (!lebt) {
+                dead.add(entry);
+            }
+        }
+        return dead;
     }
 
     /**

@@ -70,8 +70,29 @@
                     </div>
                 </div>
 
+                <h4 style="margin: 6px 0 2px;">Module <span style="font-weight:normal; color:#666;">(empfohlen)</span></h4>
+                <p style="margin: 0 0 8px; font-size: 0.9em; color: #666;">
+                    Ein Modul-Eintrag (<code>modul:&lt;id&gt;</code>) schaltet das ganze Modul mit allen
+                    Untermenüs. Er überlebt Umbenennungen von Menüpunkten — deshalb ist er für neue
+                    Einträge die bessere Wahl als der einzelne Titel.
+                </p>
+                <p:selectManyCheckbox id="moduleEntries"
+                                      value="#{mandateMenuBackingBean.selectedModuleEntries}"
+                                      layout="pageDirection"
+                                      columns="1">
+                    <f:selectItems value="#{mandateMenuBackingBean.availableModuleEntries}"
+                                   var="modul"
+                                   itemLabel="#{modul}"
+                                   itemValue="#{modul}"/>
+                </p:selectManyCheckbox>
+                <h:panelGroup layout="block" style="margin: 4px 0 0; font-size: 0.9em; color: #666;"
+                              rendered="#{empty mandateMenuBackingBean.availableModuleEntries}">
+                    Keine Modul-Keys erkannt.
+                </h:panelGroup>
+
+                <h4 style="margin: 18px 0 2px;">Einzelne Menüpunkte</h4>
                 <p:selectManyCheckbox id="hiddenMenus"
-                                      value="#{mandateMenuBackingBean.selected.hiddenMenus}"
+                                      value="#{mandateMenuBackingBean.selectedTitleEntries}"
                                       layout="pageDirection"
                                       columns="1">
                     <f:selectItems value="#{mandateMenuBackingBean.availableMenus}"
@@ -80,8 +101,30 @@
                                    itemValue="#{menu}"/>
                 </p:selectManyCheckbox>
 
+                <h:panelGroup layout="block" rendered="#{not empty mandateMenuBackingBean.deadEntries}">
+                    <h4 style="margin: 18px 0 2px; color: #b26a00;">
+                        Einträge ohne Entsprechung im Menübaum
+                    </h4>
+                    <p style="margin: 0 0 8px; font-size: 0.9em; color: #666;">
+                        Diese gespeicherten Einträge passen auf keinen heutigen Menüpunkt und kein Modul
+                        (typisch nach einer Umbenennung) — sie wirken nicht. Sie bleiben ausgewählt und
+                        damit erhalten; zum Bereinigen abwählen und speichern.
+                    </p>
+                    <p:selectManyCheckbox id="deadEntries"
+                                          value="#{mandateMenuBackingBean.selectedDeadEntries}"
+                                          layout="pageDirection"
+                                          columns="1">
+                        <f:selectItems value="#{mandateMenuBackingBean.deadEntries}"
+                                       var="tot"
+                                       itemLabel="#{tot}"
+                                       itemValue="#{tot}"/>
+                    </p:selectManyCheckbox>
+                </h:panelGroup>
+
                 <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                    Verfügbare Menüpunkte: #{mandateMenuBackingBean.availableMenus.size()}
+                    Verfügbare Module: #{mandateMenuBackingBean.availableModuleEntries.size()} &#183;
+                    Verfügbare Menüpunkte: #{mandateMenuBackingBean.availableMenus.size()} &#183;
+                    Tote Einträge: #{mandateMenuBackingBean.deadEntries.size()}
                 </p>
 
                 <div style="margin-top: 20px;">

@@ -120,7 +120,7 @@
                         </p:dataList>
 
                         <h:panelGroup id="deleteButtonPanel" rendered="#{not empty mandateBackingBean.selectedMandat}">
-                            <p:commandButton value="#{i18n.t('Löschen')}"
+                            <p:commandButton value="#{i18n.t('Aus Verwaltung entfernen')}"
                                            icon="pi pi-trash"
                                            action="#{mandateBackingBean.deleteMandat()}"
                                            update="messages,mandateList,deleteButtonPanel,usersTable"
@@ -129,9 +129,14 @@
                                            style="width: 100%; margin-top: 15px;"
                                            disabled="#{mandateBackingBean.selectedMandat eq 'default'}">
                                 <p:confirm header="#{i18n.t('Bestätigung')}"
-                                         message="#{i18n.t('Wollen Sie das Mandat wirklich löschen?')}"
+                                         message="#{i18n.t('Der Mandant wird aus der Auswahlliste entfernt und seine Menükonfiguration gelöscht. Die Fachdaten der Anwendung (Zeiterfassung, Rechnungen, ...) bleiben bestehen und müssen separat bereinigt werden. Fortfahren?')}"
                                          icon="pi pi-exclamation-triangle"/>
                             </p:commandButton>
+                            <p style="margin-top: 8px; font-size: 0.85em; color: #666;">
+                                Entfernt nur, was das Framework verwaltet: Menükonfiguration und
+                                Auswahlliste. Eine vollständige Löschung der Mandantendaten liegt bei
+                                der jeweiligen Anwendung.
+                            </p>
                         </h:panelGroup>
                     </p:panel>
                 </div>

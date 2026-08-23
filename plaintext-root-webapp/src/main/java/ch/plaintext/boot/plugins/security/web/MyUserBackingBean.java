@@ -13,6 +13,7 @@ import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.boot.plugins.security.persistence.UserMandateRepository;
 import ch.plaintext.framework.PlaintextRole;
 import ch.plaintext.framework.PlaintextRoleRegistry;
+import ch.plaintext.framework.PrivilegedRoleRules;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
@@ -269,25 +270,14 @@ public class MyUserBackingBean implements Serializable {
         syncRolesFromListToSet();
 
         // SECURITY (Karte 307, K1): serverseitige Rollen-Allowlist. Ein Nicht-ROOT-Akteur darf ueber die
-        // (fuer ihn legitime) Benutzerverwaltung KEINE privilegierten Rollen NEU vergeben — privilegiert =
-        // "root" (jede Schreibweise) ODER jede "PROPERTY_*"-Rolle (z.B. Mandat-Wechsel/Cross-Mandant).
+        // (fuer ihn legitime) Benutzerverwaltung KEINE privilegierten Rollen NEU vergeben. Welche Rollen
+        // das sind, entscheidet zentral PrivilegedRoleRules: "root"/"admin" (Verwaltungsrechte, die sich
+        // sonst selbst weiterreichen liessen) und jede "PROPERTY_*"-Rolle (Mandat-Wechsel/Cross-Mandant).
+        // Modul-Rollen sind ausdruecklich NICHT privilegiert — sie zu vergeben ist admins Aufgabe.
         // Bereits am persistierten Datensatz vorhandene Rollen bleiben erlaubt (Bestand editierbar). Der
         // Serverseiten-Check ist der eigentliche Fix; die UI-Freitext-Chips sind nur Bequemlichkeit.
-        if (!isRoot()) {
-            for (String role : selected.getRoles()) {
-                if (role == null) {
-                    continue;
-                }
-                boolean privileged = role.equalsIgnoreCase("root") || role.toUpperCase().startsWith("PROPERTY_");
-                if (privileged && !persistedRoles.contains(role)) {
-                    log.warn("SECURITY (Karte 307, K1): Nicht-ROOT-Akteur versuchte, privilegierte Rolle '{}' "
-                            + "an Benutzer '{}' zu vergeben — abgelehnt.", role, selected.getUsername());
-                    context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                            "Nur ROOT darf die Rolle '" + role + "' vergeben."));
-                    context.validationFailed();
-                    return;
-                }
-            }
+        if (!isRoot() && !pruefeRollenAllowlist(context, persistedRoles)) {
+            return;
         }
 
         // Set default mandate if none is specified
@@ -307,6 +297,29 @@ public class MyUserBackingBean implements Serializable {
         init();
         context.addMessage(null,
                 new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Benutzer erfolgreich gespeichert."));
+    }
+
+    /**
+     * Prueft die am Formular gewaehlten Rollen gegen {@link PrivilegedRoleRules}. Bereits
+     * persistierte Rollen sind immer erlaubt — nur die NEUE Vergabe ist eingeschraenkt.
+     *
+     * @param context        FacesContext fuer die Fehlermeldung
+     * @param persistedRoles die Rollen des persistierten Datensatzes (Bestand)
+     * @return {@code true}, wenn gespeichert werden darf
+     */
+    private boolean pruefeRollenAllowlist(FacesContext context, Set<String> persistedRoles) {
+        for (String role : selected.getRoles()) {
+            if (role == null || !PrivilegedRoleRules.isPrivileged(role) || persistedRoles.contains(role)) {
+                continue;
+            }
+            log.warn("SECURITY (Karte 307, K1): Nicht-ROOT-Akteur versuchte, privilegierte Rolle '{}' "
+                    + "an Benutzer '{}' zu vergeben — abgelehnt.", role, selected.getUsername());
+            context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
+                    PrivilegedRoleRules.rejectionMessage(role)));
+            context.validationFailed();
+            return false;
+        }
+        return true;
     }
 
     public void delete() {
