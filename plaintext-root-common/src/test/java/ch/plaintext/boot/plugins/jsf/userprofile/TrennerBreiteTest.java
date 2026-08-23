@@ -96,4 +96,51 @@ class TrennerBreiteTest {
         assertThat(prefs.getMailListWidth()).isZero();
         verify(storage, never()).save(prefs);
     }
+
+    @Test
+    @DisplayName("Was gemerkt wurde, laesst sich auch wieder lesen")
+    void gemerktesLaesstSichLesen() {
+        bean.merkeTrennerBreite("wiki", 320);
+        bean.merkeTrennerBreite("mail", 500);
+
+        assertThat(bean.trennerBreite("wiki")).isEqualTo(320);
+        assertThat(bean.trennerBreite("mail")).isEqualTo(500);
+    }
+
+    @Test
+    @DisplayName("Ohne gemerkten Wert kommt 0 zurueck — die Seite nimmt ihre Vorgabe")
+    void ohneWertKommtVorgabe() {
+        assertThat(bean.trennerBreite("wiki")).isZero();
+    }
+
+    @Test
+    @DisplayName("Ein unbekannter Bereich liefert die Vorgabe statt einer Ausnahme")
+    void unbekannterBereichLiefertVorgabe() {
+        assertThat(bean.trennerBreite("gibtsnicht")).isZero();
+    }
+
+    @Test
+    @DisplayName("Ohne geladene Einstellungen liefert das Lesen die Vorgabe statt zu werfen")
+    void ohneEinstellungenKeineAusnahme() {
+        ReflectionTestUtils.setField(bean, "prefs", null);
+
+        assertThat(bean.trennerBreite("wiki"))
+                .as("das Feld ist transient; nach dem Wiederherstellen einer Sitzung ist es leer, "
+                        + "und eine Ausnahme aus einem style-Attribut heraus zerreisst die Seite")
+                .isZero();
+    }
+
+    @Test
+    @DisplayName("Die Breite ist aus EL erreichbar — genau daran ist wiki.xhtml gescheitert")
+    void ausElErreichbar() throws Exception {
+        // wiki.xhtml las #{userPreferencesBackingBean.prefs.wikiTreeWidth}. 'prefs' ist privat und
+        // transient, also keine Property: EL warf zur Laufzeit. Dieser Test haelt fest, dass der
+        // Lesepfad eine oeffentliche Methode ist und bleibt.
+        assertThat(UserPreferencesBackingBean.class.getMethod("trennerBreite", String.class))
+                .as("ohne oeffentlichen Lesepfad rendert die Seite wieder ins Leere")
+                .isNotNull();
+        assertThat(UserPreference.class.getDeclaredField("wikiTreeWidth").getModifiers())
+                .as("das Feld selbst bleibt gekapselt")
+                .isNotZero();
+    }
 }

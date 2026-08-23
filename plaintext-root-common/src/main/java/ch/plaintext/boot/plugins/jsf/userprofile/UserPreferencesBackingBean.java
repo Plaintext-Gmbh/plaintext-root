@@ -168,6 +168,39 @@ public class UserPreferencesBackingBean implements Serializable {
         save();
     }
 
+    /**
+     * Karte 937: Die gemerkte Breite eines verschiebbaren Trenners, {@code 0} = Vorgabe des Layouts.
+     *
+     * <p><b>Warum es diese Methode braucht und die Seite nicht {@code prefs} liest.</b> Das Feld ist
+     * privat und {@code transient} und damit aus einem EL-Ausdruck nicht erreichbar. Eine Seite, die
+     * es trotzdem versucht, faellt nicht beim Uebersetzen auf, sondern erst beim Rendern — mit einer
+     * {@code ELException} mitten in der bereits gesendeten Antwort: Das Menue steht dann schon, der
+     * Inhalt fehlt, und im Browser bleibt eine weisse Flaeche ohne Fehlermeldung zurueck. Genau so
+     * ist wiki.xhtml ab dem 19.08.2026 ausgefallen.
+     *
+     * <p>Gegenstueck zu {@link #merkeTrennerBreite(String, int)}: Lesen und Schreiben teilen sich
+     * dieselben Bereichsnamen, damit die Zuordnung nicht an zwei Stellen auseinanderlaufen kann.
+     *
+     * @param bereich {@code "wiki"} oder {@code "mail"}
+     * @return die gemerkte Breite in Pixeln; {@code 0} fuer unbekannte Bereiche und solange keine
+     *         Einstellungen geladen sind — beides heisst fuer die Seite „nimm deine Vorgabe"
+     */
+    public int trennerBreite(String bereich) {
+        if (prefs == null) {
+            // Nach dem Wiederherstellen einer Sitzung ist das transiente Feld leer: lieber die
+            // Layout-Vorgabe als eine Ausnahme aus einem Attribut heraus.
+            return 0;
+        }
+        if ("wiki".equals(bereich)) {
+            return prefs.getWikiTreeWidth();
+        }
+        if ("mail".equals(bereich)) {
+            return prefs.getMailListWidth();
+        }
+        log.debug("Unbekannter Trenner-Bereich '{}' — Vorgabe", bereich);
+        return 0;
+    }
+
     /** Untere Grenze: darunter ist der Griff nicht mehr zu treffen. */
     public static final int MIN_TRENNER_PX = 140;
 
