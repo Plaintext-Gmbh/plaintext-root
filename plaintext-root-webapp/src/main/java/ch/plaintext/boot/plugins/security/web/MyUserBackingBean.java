@@ -20,6 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -47,14 +48,12 @@ public class MyUserBackingBean implements Serializable {
      * 10 behalten, waehrend die Bean in {@code PlaintextSecurityConfig} auf 12 steht — die
      * Kostenfaktoren waeren also je nach Codepfad auseinandergedriftet.
      */
-    @Autowired
     private transient PasswordEncoder passwordEncoder;
     private boolean remlistcolapsed = false;
     private MyUserEntity selected;
     private String myUserPw;
     private MyRememberMe selectedRememberMe;
 
-    @Autowired
     private MyUserRepository repo;
 
     /**
@@ -62,20 +61,44 @@ public class MyUserBackingBean implements Serializable {
      * deklarierten Rollen fuer die Auswahl im Benutzer-Dialog. Optional verdrahtet, damit
      * Kontexte ohne Registry (z.B. schlanke Tests) weiter funktionieren.
      */
-    @Autowired(required = false)
     private transient PlaintextRoleRegistry roleRegistry;
 
-    @Autowired
     private MyRememberMeRepository rememberMeRepo;
 
-    @Autowired
     private PlaintextSecurity plaintextSecurity;
 
-    @Autowired
     private transient UserMandateRepository userMandateRepo;
 
-    @Autowired
     private transient MagicLinkService magicLinkService;
+
+    /**
+     * Konstruktor-Injection statt Feld-Injection (Sonar S6813): die Abhaengigkeiten stehen damit
+     * schon vor {@code @PostConstruct} fest und die Bean laesst sich ohne Spring bauen.
+     *
+     * @param passwordEncoder zentrale Encoder-Bean (Kostenfaktor 12)
+     * @param repo            Benutzer-Repository
+     * @param roleRegistry    Rollen-Registry; optional, darf {@code null} sein
+     * @param rememberMeRepo  Remember-Me-Repository
+     * @param plaintextSecurity Sicherheitskontext (Rollen, Mandat)
+     * @param userMandateRepo Repository der Zusatz-Mandate
+     * @param magicLinkService Versand der Magic-Links
+     */
+    @Autowired
+    public MyUserBackingBean(PasswordEncoder passwordEncoder,
+                             MyUserRepository repo,
+                             @Nullable PlaintextRoleRegistry roleRegistry,
+                             MyRememberMeRepository rememberMeRepo,
+                             PlaintextSecurity plaintextSecurity,
+                             UserMandateRepository userMandateRepo,
+                             MagicLinkService magicLinkService) {
+        this.passwordEncoder = passwordEncoder;
+        this.repo = repo;
+        this.roleRegistry = roleRegistry;
+        this.rememberMeRepo = rememberMeRepo;
+        this.plaintextSecurity = plaintextSecurity;
+        this.userMandateRepo = userMandateRepo;
+        this.magicLinkService = magicLinkService;
+    }
 
     /** Zusätzliche Mandate des gewählten Benutzers (Mehrfach-Mandant), im Dialog editierbar. */
     private List<String> selectedZusatzMandate = new ArrayList<>();

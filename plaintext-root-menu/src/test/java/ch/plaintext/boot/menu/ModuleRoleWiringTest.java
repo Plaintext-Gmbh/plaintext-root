@@ -11,6 +11,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -55,7 +56,7 @@ class ModuleRoleWiringTest {
     @Test
     void unbekannterKeyLaesstDenStartUnberuehrt() {
         runner.withPropertyValues("plaintext.menu.module-roles.gibtesnicht=irgendwas").run(context -> {
-            assertFalse(context.getStartupFailure() != null, "unbekannter Key darf den Start nicht brechen");
+            assertNull(context.getStartupFailure(), "unbekannter Key darf den Start nicht brechen");
             ModuleRoleService service = context.getBean(ModuleRoleService.class);
             assertFalse(service.getKnownModuleKeys().contains("gibtesnicht"));
         });
