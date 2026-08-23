@@ -156,7 +156,7 @@ public class UserPreferencesBackingBean implements Serializable {
      * @param breite  Pixel; 0 setzt auf die Layout-Vorgabe zurueck
      */
     public void merkeTrennerBreite(String bereich, int breite) {
-        int wert = breite <= 0 ? 0 : Math.max(MIN_TRENNER_PX, Math.min(MAX_TRENNER_PX, breite));
+        int wert = breite <= 0 ? 0 : Math.clamp(breite, MIN_TRENNER_PX, MAX_TRENNER_PX);
         if ("wiki".equals(bereich)) {
             prefs.setWikiTreeWidth(wert);
         } else if ("mail".equals(bereich)) {

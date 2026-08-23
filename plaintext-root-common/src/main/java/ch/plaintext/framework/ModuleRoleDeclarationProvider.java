@@ -4,6 +4,7 @@
 package ch.plaintext.framework;
 
 import ch.plaintext.boot.menu.ModuleRoleProperties;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -34,22 +35,23 @@ import java.util.TreeMap;
 @Component
 public class ModuleRoleDeclarationProvider implements PlaintextRoleProvider {
 
-    @Autowired(required = false)
-    private ModuleRoleProperties moduleRoleProperties;
+    private final ModuleRoleProperties moduleRoleProperties;
 
     /**
-     * Fuer den Spring-Betrieb; die Properties kommen per Feld-Injection.
+     * Fuer Kontexte ohne {@link ModuleRoleProperties}-Bean: Spring faellt auf diesen Konstruktor
+     * zurueck, wenn die Properties nicht aufloesbar sind (dann werden keine Rollen deklariert).
      */
     public ModuleRoleDeclarationProvider() {
-        // Spring
+        this(null);
     }
 
     /**
-     * Fuer Tests und programmatische Nutzung.
+     * Der von Spring bevorzugte Konstruktor; auch fuer Tests und programmatische Nutzung.
      *
      * @param moduleRoleProperties die konfigurierte Modul-Rollen-Zuordnung, darf {@code null} sein
      */
-    public ModuleRoleDeclarationProvider(ModuleRoleProperties moduleRoleProperties) {
+    @Autowired(required = false)
+    public ModuleRoleDeclarationProvider(@Nullable ModuleRoleProperties moduleRoleProperties) {
         this.moduleRoleProperties = moduleRoleProperties;
     }
 

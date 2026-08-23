@@ -4,6 +4,7 @@
 package ch.plaintext.framework;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -33,8 +34,25 @@ import java.util.Set;
 @Slf4j
 public class PlaintextRoleRegistry {
 
-    @Autowired(required = false)
     private List<PlaintextRoleProvider> roleProviders;
+
+    /**
+     * Fuer Kontexte ohne {@link PlaintextRoleProvider}-Bean: Spring faellt auf diesen Konstruktor
+     * zurueck, wenn keine Provider aufloesbar sind (dann bleibt die Registry leer).
+     */
+    public PlaintextRoleRegistry() {
+        this(null);
+    }
+
+    /**
+     * Der von Spring bevorzugte Konstruktor: sammelt alle Provider-Beans ein.
+     *
+     * @param roleProviders alle {@link PlaintextRoleProvider}-Beans, darf {@code null} sein
+     */
+    @Autowired(required = false)
+    public PlaintextRoleRegistry(@Nullable List<PlaintextRoleProvider> roleProviders) {
+        this.roleProviders = roleProviders;
+    }
 
     /**
      * Alle deklarierten Rollen, dedupliziert ueber den normalisierten Namen und alphabetisch

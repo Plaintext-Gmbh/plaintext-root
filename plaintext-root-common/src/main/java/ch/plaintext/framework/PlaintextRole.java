@@ -27,6 +27,9 @@ import java.util.Locale;
  */
 public record PlaintextRole(String name, String description) implements Serializable {
 
+    /** Spring-Security-Prefix der Authority-Schreibweise. */
+    private static final String ROLE_PREFIX = "ROLE_";
+
     public PlaintextRole {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Rollenname darf nicht leer sein");
@@ -54,8 +57,8 @@ public record PlaintextRole(String name, String description) implements Serializ
      */
     public String normalizedName() {
         String n = name;
-        if (n.toUpperCase(Locale.ROOT).startsWith("ROLE_")) {
-            n = n.substring("ROLE_".length());
+        if (n.toUpperCase(Locale.ROOT).startsWith(ROLE_PREFIX)) {
+            n = n.substring(ROLE_PREFIX.length());
         }
         return n.toLowerCase(Locale.ROOT);
     }
@@ -66,6 +69,6 @@ public record PlaintextRole(String name, String description) implements Serializ
      * @return Authority-Name, z.B. {@code ROLE_ADMIN}
      */
     public String authorityName() {
-        return "ROLE_" + normalizedName().toUpperCase(Locale.ROOT);
+        return ROLE_PREFIX + normalizedName().toUpperCase(Locale.ROOT);
     }
 }

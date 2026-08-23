@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Setzt die konfigurierbaren Modul-Rollen durch ({@link ModuleRoleProperties}): Ein Modul, dem in
@@ -52,14 +53,22 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     private final ApplicationContext applicationContext;
     private final ModuleRoleProperties properties;
 
-    /** Kanonischer Menue-Link -&gt; geforderte Rollen; fuer die Kacheln. */
-    private volatile Map<String, List<String>> rolesByLink = Map.of();
+    /**
+     * Kanonischer Menue-Link -&gt; geforderte Rollen; fuer die Kacheln.
+     *
+     * <p>Die drei Nachschlagetabellen werden in {@link #resolve(Collection)} als fertige,
+     * unveraenderliche Momentaufnahme gebaut und danach in einem Zug veroeffentlicht. Ein
+     * {@code volatile}-Feld wuerde zwar die Referenz sicher publizieren, aber nichts darueber
+     * aussagen, ob am dahinterliegenden Objekt noch geschrieben wird — deshalb
+     * {@link AtomicReference} als ausdruecklich thread-sicherer Halter fuer den Schnappschuss.</p>
+     */
+    private final AtomicReference<Map<String, List<String>>> rolesByLink = new AtomicReference<>(Map.of());
 
     /** Menue-Titel -&gt; geforderte Rollen; Fallback fuer Kacheln ohne passenden Link. */
-    private volatile Map<String, List<String>> rolesByMenuTitle = Map.of();
+    private final AtomicReference<Map<String, List<String>>> rolesByMenuTitle = new AtomicReference<>(Map.of());
 
     /** Alle im Klassenpfad erkannten Modul-Keys (fuer Startup-Report und Doku-Hinweis). */
-    private volatile Set<String> knownModuleKeys = Set.of();
+    private final AtomicReference<Set<String>> knownModuleKeys = new AtomicReference<>(Set.of());
 
     private volatile boolean resolved;
 
@@ -85,18 +94,20 @@ public class ModuleRoleService implements SmartInitializingSingleton {
 
     private void reportAtStartup() {
         Map<String, String> configured = properties.canonicalModuleRoles();
+        Set<String> bekannteKeys = knownModuleKeys.get();
         if (configured.isEmpty()) {
             log.info("Keine Modul-Rollen konfiguriert (plaintext.menu.module-roles) — "
-                    + "erkannte Modul-Keys: {}", knownModuleKeys);
+                    + "erkannte Modul-Keys: {}", bekannteKeys);
             return;
         }
-        log.info("Modul-Rollen aktiv: {} — erkannte Modul-Keys: {}", configured, knownModuleKeys);
-        for (String key : configured.keySet()) {
-            if (!knownModuleKeys.contains(key)) {
+        log.info("Modul-Rollen aktiv: {} — erkannte Modul-Keys: {}", configured, bekannteKeys);
+        for (Map.Entry<String, String> eintrag : configured.entrySet()) {
+            String key = eintrag.getKey();
+            if (!bekannteKeys.contains(key)) {
                 log.warn("Modul-Rolle konfiguriert fuer unbekannten Modul-Key '{}' "
                                 + "(plaintext.menu.module-roles.{}={}) — die Zuordnung greift nirgends. "
                                 + "Bekannte Keys: {}",
-                        key, key, configured.get(key), knownModuleKeys);
+                        key, key, eintrag.getValue(), bekannteKeys);
             }
         }
     }
@@ -116,9 +127,9 @@ public class ModuleRoleService implements SmartInitializingSingleton {
             return true;
         }
         ensureResolved();
-        List<String> required = rolesByLink.get(canonicalLink(link));
+        List<String> required = rolesByLink.get().get(canonicalLink(link));
         if (required == null && menuTitle != null && !menuTitle.trim().isEmpty()) {
-            required = rolesByMenuTitle.get(menuTitle.trim());
+            required = rolesByMenuTitle.get().get(menuTitle.trim());
         }
         return holdsAny(required, securityProvider);
     }
@@ -131,7 +142,7 @@ public class ModuleRoleService implements SmartInitializingSingleton {
      */
     public Set<String> getKnownModuleKeys() {
         ensureResolved();
-        return knownModuleKeys;
+        return knownModuleKeys.get();
     }
 
     /**
@@ -224,31 +235,59 @@ public class ModuleRoleService implements SmartInitializingSingleton {
             Set<String> candidates = moduleKeysOf(item, byTitle);
             keys.addAll(candidates);
 
-            List<String> required = new ArrayList<>();
-            for (String candidate : candidates) {
-                String role = configured.get(candidate);
-                if (role != null && !required.contains(role)) {
-                    required.add(role);
-                }
-            }
+            List<String> required = requiredRolesOf(candidates, configured);
             item.setModuleRoles(required);
-
-            if (!required.isEmpty()) {
-                String link = canonicalLink(item.getCommand());
-                if (!link.isEmpty()) {
-                    byLink.merge(link, required, ModuleRoleService::union);
-                }
-                String title = item.getTitle();
-                if (title != null && !title.trim().isEmpty()) {
-                    byMenuTitle.merge(title.trim(), required, ModuleRoleService::union);
-                }
-            }
+            indexRequiredRoles(item, required, byLink, byMenuTitle);
         }
 
-        this.knownModuleKeys = Collections.unmodifiableSet(new TreeSet<>(keys));
-        this.rolesByLink = Map.copyOf(byLink);
-        this.rolesByMenuTitle = Map.copyOf(byMenuTitle);
+        this.knownModuleKeys.set(Collections.unmodifiableSet(new TreeSet<>(keys)));
+        this.rolesByLink.set(Map.copyOf(byLink));
+        this.rolesByMenuTitle.set(Map.copyOf(byMenuTitle));
         this.resolved = true;
+    }
+
+    /**
+     * Die geforderten Rollen eines Menuepunkts: fuer jeden Kandidaten-Key die konfigurierte Rolle,
+     * in Fundreihenfolge und ohne Dubletten.
+     *
+     * @param candidates Kandidaten-Keys des Menuepunkts
+     * @param configured konfigurierte Zuordnung Modul-Key -&gt; Rolle
+     * @return geforderte Rollen, ggf. leer (nie {@code null})
+     */
+    private static List<String> requiredRolesOf(Set<String> candidates, Map<String, String> configured) {
+        List<String> required = new ArrayList<>();
+        for (String candidate : candidates) {
+            String role = configured.get(candidate);
+            if (role != null && !required.contains(role)) {
+                required.add(role);
+            }
+        }
+        return required;
+    }
+
+    /**
+     * Traegt einen rollenpflichtigen Menuepunkt in die Nachschlagetabellen der Kacheln ein — ueber
+     * seinen kanonischen Link und ersatzweise ueber seinen Titel.
+     *
+     * @param item        der Menuepunkt
+     * @param required    seine geforderten Rollen; ist die Liste leer, passiert nichts
+     * @param byLink      Tabelle Link -&gt; Rollen, wird ergaenzt
+     * @param byMenuTitle Tabelle Titel -&gt; Rollen, wird ergaenzt
+     */
+    private static void indexRequiredRoles(MenuItemImpl item, List<String> required,
+                                           Map<String, List<String>> byLink,
+                                           Map<String, List<String>> byMenuTitle) {
+        if (required.isEmpty()) {
+            return;
+        }
+        String link = canonicalLink(item.getCommand());
+        if (!link.isEmpty()) {
+            byLink.merge(link, required, ModuleRoleService::union);
+        }
+        String title = item.getTitle();
+        if (title != null && !title.trim().isEmpty()) {
+            byMenuTitle.merge(title.trim(), required, ModuleRoleService::union);
+        }
     }
 
     private static List<String> union(List<String> a, List<String> b) {
