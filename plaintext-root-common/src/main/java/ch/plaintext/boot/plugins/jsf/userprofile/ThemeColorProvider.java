@@ -3,21 +3,32 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
- * Provides color palette data for 8 theme colors in both light and dark mode.
+ * Provides color palette data for the predefined theme colors in both light and dark mode.
  * Used by template.xhtml to set CSS custom properties.
  */
 @Component("themeColorProvider")
 @Scope(value = "application", proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class ThemeColorProvider implements Serializable {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ThemeColorProvider.class);
+
+    /** Nur zum Schreiben reiner String-Maps verwendet — zustandslos und damit teilbar. */
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Getter
     public static class ColorPalette implements Serializable {
@@ -244,33 +255,79 @@ public class ThemeColorProvider implements Serializable {
     }
 
     /**
-     * Returns a JSON map of all color palettes for client-side JavaScript.
+     * Die Farbpalette als <b>JSON</b> fuer die Browserseite — Ziel ist das Attribut
+     * {@code data-theme-colors} an {@code #layout-config} (includes/config.xhtml), aus dem
+     * {@code plaintext-layout/js/config.js} sie mit {@code JSON.parse} liest.
+     *
+     * <p><b>Karte 938.</b> Bis zum 23.08.2026 baute diese Methode ein
+     * <i>JavaScript-Objektliteral</i> statt JSON: Schluessel unquotiert ({@code light:{ … }}),
+     * Werte in einfachen Anfuehrungszeichen ({@code primary:'#2196F3'}). Solange der Wert direkt
+     * in einen {@code <script>}-Block geschrieben wurde, war das gueltiges JavaScript. Seit
+     * Karte 502 steht er in einem data-Attribut und wird mit {@code JSON.parse} gelesen — und
+     * JSON kennt weder unquotierte Schluessel noch einfache Anfuehrungszeichen. Auf
+     * <b>jeder</b> Seite <b>jeder</b> Anwendung stand seither in der Browserkonsole:</p>
+     *
+     * <pre>SyntaxError: Expected property name or '}' in JSON at position 1</pre>
+     *
+     * <p><b>Was das kostete</b> (gemessen am 23.08.2026 gegen PROD 2.1646.0, Skript
+     * {@code pw-test/test-themecolors-prod.js}): Der Wurf beendet den Lauf der Datei auf oberster
+     * Ebene. Die Funktionsdeklarationen darunter ueberleben zwar — sie werden beim Parsen
+     * hochgezogen —, aber jede Anweisung ab Zeile 39 wurde nie ausgefuehrt:</p>
+     * <ul>
+     *   <li>{@code themeColors} blieb {@code undefined}; ein Klick auf eine Farbe endete in
+     *       {@code Cannot read properties of undefined (reading 'green')}.</li>
+     *   <li>Der Initialisierungsblock lief nicht, {@code isInitializing} blieb dauerhaft
+     *       {@code true} — und {@code handleChange()} steigt in dem Fall sofort aus. Damit taten
+     *       auch die Radiogruppen fuer Menuetyp, Hell/Dunkel und Eingabestil <b>nichts</b>.</li>
+     *   <li>Die Zuhoerer fuer {@code beforeunload} und den Klick ausserhalb des Panels wurden nie
+     *       registriert; nichts wurde gespeichert.</li>
+     * </ul>
+     *
+     * <p>Dieselbe Fehlerform wie in den Karten 430/502: HTTP 200, kein Serverlog, kein
+     * {@code console.error} — die Meldung ist ein <i>uncaught error</i> und taucht nur im
+     * {@code pageerror}-Ereignis auf. Genau deshalb hat sie auch der Smoke-Test nicht gesehen,
+     * der ausschliesslich Konsolenmeldungen vom Typ {@code error} sammelt.</p>
+     *
+     * <p>Erzeugt wird das JSON deshalb nicht mehr von Hand, sondern von Jackson: Anfuehrungs-
+     * zeichen und Escaping sind damit keine Frage der Sorgfalt mehr.</p>
+     *
+     * <p><b>Reihenfolge.</b> Der Attributwert soll zwischen zwei Starts derselben Version
+     * identisch sein — sonst unterscheidet sich ausgeliefertes HTML ohne inhaltlichen Grund, was
+     * jeden Vergleich (Diff, Cache, Fehlersuche) verrauscht. Beide Ebenen brauchen dafuer eine
+     * Zusicherung: {@link Map#ofEntries} <b>und</b> {@link Map#of} iterieren je JVM-Lauf anders
+     * (ihre Streuung haengt an einem beim Start gewuerfelten SALT). Aussen sorgt eine
+     * {@link TreeMap} fuer alphabetische Ordnung, innen eine {@link LinkedHashMap} fuer
+     * light-vor-dark.</p>
      */
     public String getColorsJson() {
-        StringBuilder sb = new StringBuilder("{");
-        boolean first = true;
-        for (var entry : PALETTES.entrySet()) {
-            if (!first) sb.append(",");
-            first = false;
-            ColorPalette p = entry.getValue();
-            sb.append("'").append(entry.getKey()).append("':{")
-                    .append("light:{")
-                    .append("primary:'").append(p.getPrimary()).append("',")
-                    .append("primaryText:'").append(p.getPrimaryText()).append("',")
-                    .append("primaryLighter:'").append(p.getPrimaryLighter()).append("',")
-                    .append("primaryBg16:'").append(p.getPrimaryBg16()).append("',")
-                    .append("primaryBg04:'").append(p.getPrimaryBg04()).append("',")
-                    .append("focusRing:'").append(p.getFocusRing()).append("'")
-                    .append("},dark:{")
-                    .append("primary:'").append(p.getPrimaryDark()).append("',")
-                    .append("primaryText:'").append(p.getPrimaryText()).append("',")
-                    .append("primaryLighter:'").append(p.getPrimaryLighterDark()).append("',")
-                    .append("primaryBg16:'").append(p.getPrimaryBg16Dark()).append("',")
-                    .append("primaryBg04:'").append(p.getPrimaryBg04Dark()).append("',")
-                    .append("focusRing:'").append(p.getFocusRingDark()).append("'")
-                    .append("}}");
+        Map<String, Object> alle = new TreeMap<>();
+        PALETTES.forEach((name, p) -> {
+            Map<String, Object> modi = new LinkedHashMap<>();
+            modi.put("light", modus(p.getPrimary(), p.getPrimaryText(), p.getPrimaryLighter(),
+                    p.getPrimaryBg16(), p.getPrimaryBg04(), p.getFocusRing()));
+            modi.put("dark", modus(p.getPrimaryDark(), p.getPrimaryText(), p.getPrimaryLighterDark(),
+                    p.getPrimaryBg16Dark(), p.getPrimaryBg04Dark(), p.getFocusRingDark()));
+            alle.put(name, modi);
+        });
+        try {
+            return JSON.writeValueAsString(alle);
+        } catch (JsonProcessingException e) {
+            // Kann mit reinen String-Maps nicht eintreten; ein leeres Objekt ist immer noch
+            // gueltiges JSON und laesst config.js weiterlaufen (statt die Datei abbrechen zu lassen).
+            LOG.error("Farbpalette liess sich nicht als JSON schreiben", e);
+            return "{}";
         }
-        sb.append("}");
-        return sb.toString();
+    }
+
+    private static Map<String, String> modus(String primary, String primaryText, String primaryLighter,
+                                             String primaryBg16, String primaryBg04, String focusRing) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("primary", primary);
+        m.put("primaryText", primaryText);
+        m.put("primaryLighter", primaryLighter);
+        m.put("primaryBg16", primaryBg16);
+        m.put("primaryBg04", primaryBg04);
+        m.put("focusRing", focusRing);
+        return m;
     }
 }
