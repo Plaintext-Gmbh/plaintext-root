@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -27,6 +28,16 @@ class PlaintextInitLoaderTest2 {
 
     @Mock
     private ISetupConfigService setupConfigService;
+
+    /**
+     * Forensik 23.08.2026: Der {@link org.springframework.security.crypto.password.PasswordEncoder} fehlte
+     * hier — {@code @InjectMocks} laeuft wegen des parametrisierten Konstruktors ueber
+     * Konstruktor-Injection und reichte {@code null} durch, sodass die Klasse beim gefilterten
+     * Ausfuehren (z. B. {@code -Dtest=PlaintextInitLoaderTest2}) mit einer NPE abbrach. Als
+     * {@code @Spy} mit echter Instanz, analog zu {@code PlaintextInitLoaderTest}.
+     */
+    @org.mockito.Spy
+    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @InjectMocks
     private PlaintextInitLoader initLoader;

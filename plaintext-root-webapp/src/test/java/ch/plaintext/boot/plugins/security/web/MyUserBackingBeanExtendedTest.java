@@ -68,6 +68,14 @@ class MyUserBackingBeanExtendedTest {
     @org.mockito.Spy
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    /**
+     * Forensik 23.08.2026: Audit-Log fuer Rollenaenderungen/Loeschungen. Muss als Mock dabei sein, weil ein
+     * parametrisierter Konstruktor die Konstruktor-Injection von {@code @InjectMocks} aktiviert —
+     * eine fehlende Abhaengigkeit kaeme sonst als {@code null} in der Bean an.
+     */
+    @Mock
+    private ch.plaintext.audit.DestructiveActionAuditService auditService;
+
     @InjectMocks
     private MyUserBackingBean bean;
 
@@ -857,15 +865,18 @@ class MyUserBackingBeanExtendedTest {
 
     // ==================== newUser() Tests ====================
 
+    /**
+     * Forensik 23.08.2026, Punkt 4: der Mandant wird weiterhin vorbelegt — aber die Entity bleibt transient,
+     * bis {@code save()} sie wirklich schreibt.
+     */
     @Test
-    void newUser_shouldCreateWithDefaultMandate() {
-        MyUserEntity newUser = new MyUserEntity();
-        newUser.setId(2L);
-        when(repo.save(any(MyUserEntity.class))).thenReturn(newUser);
-
+    void newUser_shouldCreateWithDefaultMandate_withoutPersisting() {
         bean.newUser();
 
-        verify(repo).save(argThat(u -> "default".equals(u.getMandat())));
+        assertNotNull(bean.getSelected());
+        assertEquals("default", bean.getSelected().getMandat());
+        assertNull(bean.getSelected().getId());
+        verify(repo, never()).save(any(MyUserEntity.class));
     }
 
     // ==================== deleteRememberMe Tests ====================
