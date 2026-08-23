@@ -12,7 +12,7 @@
 
     <groupId>ch.plaintext</groupId>
     <artifactId>plaintext-root-parent</artifactId>
-    <version>1.613.0</version>
+    <version>1.614.0</version>
     <packaging>pom</packaging>
 
     <name>plaintext-root-parent</name>
