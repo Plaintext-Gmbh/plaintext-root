@@ -35,8 +35,32 @@ var isInitializing = true;
 var autoSaveTimer = null;
 var AUTO_SAVE_DELAY = 2000;
 
-// Color palette data (server-rendered)
-var themeColors = JSON.parse(cfgWurzel.dataset.themeColors || '{}');
+// Farbpalette (serverseitig gerendert, ThemeColorProvider.getColorsJson()).
+//
+// KARTE 938: Hier stand ein nacktes JSON.parse(). Der Server lieferte bis zum 23.08.2026 ein
+// JavaScript-Objektliteral statt JSON ({'green':{light:{primary:'#4CAF50', ... — unquotierte
+// Schluessel, einfache Anfuehrungszeichen). JSON.parse warf darauf auf JEDER Seite JEDER
+// Anwendung "SyntaxError: Expected property name or '}' in JSON at position 1".
+//
+// Der Wurf beendet den Lauf dieser Datei auf oberster Ebene. Die Funktionsdeklarationen darunter
+// ueberleben (sie werden beim Parsen hochgezogen) — jede ANWEISUNG ab hier aber nicht. Gemessen
+// gegen PROD: themeColors blieb undefined (Farbklick endete in "Cannot read properties of
+// undefined"), der Initialisierungsblock lief nie, isInitializing blieb dauerhaft true und
+// handleChange() stieg deshalb bei jedem Radioknopf sofort aus, und die Zuhoerer fuer
+// beforeunload / Klick-ausserhalb wurden nie registriert. Das Konfigurationspanel war tot.
+//
+// Der Server erzeugt jetzt echtes JSON (ThemeColorProvider.getColorsJson, dort steht die
+// ausfuehrliche Fassung). Der Fallback hier ist die zweite Verteidigungslinie, nicht die
+// Behebung: eine kaputte Palette darf hoechstens die Farbwahl kosten, nie die ganze Datei.
+// Ausserdem wird die Meldung damit zu einem console.error — ein uncaught SyntaxError erscheint
+// nur im pageerror-Ereignis und blieb genau deshalb allen Smoke-Tests verborgen.
+var themeColors = {};
+try {
+    themeColors = JSON.parse(cfgWurzel.dataset.themeColors || '{}') || {};
+} catch (e) {
+    console.error('Farbpalette (data-theme-colors) ist kein gueltiges JSON:', e,
+        cfgWurzel.dataset.themeColors);
+}
 
 // Initialize
 (function() {
