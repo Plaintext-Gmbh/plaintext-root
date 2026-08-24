@@ -105,7 +105,26 @@ jobs:
           # Der Waechter wird praezisiert, nicht abgeschaltet: gemeldet wird weiterhin, nur mit
           # der Dringlichkeit und dem Text, die zutreffen. Alle Zweifelsfaelle (gemischter Commit,
           # fehlendes Payload) gehen in Richtung MELDEN.
-          NEUTRAL='^\.github/|\.md$|^\.gitignore$|^LICENSE$|^renovate\.json$'
+          # NACHTRAG 24.08.2026 (Anlass Karte 940): (^|/)src/test/ ergaenzt. Drei Merges an
+          # diesem Tag trugen je genau eine neue Testdatei (iot #160, schuetu #192, guild #208)
+          # und loesten je einen Prioritaets-1-Alarm "die gemergte Aenderung laeuft nirgends" aus.
+          # Auf Testcode trifft der Satz nicht zu: Maven packt src/test/ in KEIN Artefakt, ein
+          # Test wird nirgends deployt, er laeuft ab dem naechsten Build mit. Das ist derselbe
+          # Fall, fuer den Karte 886 die Abstufung eingefuehrt hat - gemeldet wird weiterhin, nur
+          # mit Prioritaet 0 und dem zutreffenden Text.
+          #
+          # BEWUSST ENG gefasst: nur das Maven-Segment src/test/ (mit Schraegstrich, also NICHT
+          # src/testdata/), nicht das Playwright-Verzeichnis e2e/ aus schuetu und nicht die
+          # main-Quellen von plaintext-root-archtests - das Modul wird als Jar veroeffentlicht.
+          # src/test/ traegt seine Bedeutung vom Build-Werkzeug; ein blosser Verzeichnisname
+          # traegt sie nur, solange sich alle daran halten. src/it/ gibt es in der Familie
+          # nirgends (nachgezaehlt), deshalb steht es hier nicht: ein Muster fuer etwas, das
+          # niemand baut, ist ein ungeprueftes Muster.
+          #
+          # Gemischte Commits bleiben bei "ja" - grep -qv schaut auf JEDE Zeile, eine einzige
+          # Nicht-Test-Datei genuegt. Damit bleibt die Regel von oben gewahrt: Zweifelsfaelle
+          # gehen in Richtung MELDEN.
+          NEUTRAL='^\.github/|(^|/)src/test/|\.md$|^\.gitignore$|^LICENSE$|^renovate\.json$'
           # NACHGEBESSERT (Karte 886, zweiter Anlauf): zuerst stand hier die Dateiliste aus dem
           # push-Payload (github.event.head_commit.added/modified/removed). Am lebenden System
           # gemessen: nach einem SQUASH-MERGE sind diese Felder leer — vier Merges am 17.08.2026
