@@ -67,6 +67,31 @@ public class MyUserEntity {
     @Convert(converter = MyUserSetConverter.class)
     private Set<String> roles = new HashSet<>();
 
+    /**
+     * Vor- und Nachname, beide optional.
+     *
+     * <p><b>Warum sie neu sind (Auftrag Daniel, 25.08.2026: „noch Vor- und Nachname einblenden").</b>
+     * Am Benutzer gab es sie bis hierher <b>nicht</b> — weder als Feld noch als Spalte in
+     * {@code my_user_entity}. Das Rahmenwerk erwartet sie allerdings seit jeher:
+     * {@code ch.plaintext.framework.PlaintextUser} deklariert {@code getVorname()} und
+     * {@code getNachname()}. Nur hatte diese Schnittstelle <b>keine einzige Implementierung</b>,
+     * die Erwartung lief also ins Leere.
+     *
+     * <p>Sie bleiben bewusst {@code null}-fähig: bestehende Konten haben keine Namen, und ein
+     * Pflichtfeld wuerde jedes Speichern eines Altkontos blockieren.
+     */
+    private String vorname;
+
+    private String nachname;
+
+    /** Vor- und Nachname zusammen, oder leer — fuer Anzeige und Sortierung in einer Spalte. */
+    @Transient
+    public String getAnzeigename() {
+        String v = vorname == null ? "" : vorname.trim();
+        String n = nachname == null ? "" : nachname.trim();
+        return (v + " " + n).trim();
+    }
+
     public void addRole(String role) {
         roles.add(role);
     }

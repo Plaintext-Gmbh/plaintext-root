@@ -155,6 +155,51 @@ public class UserPreferencesBackingBean implements Serializable {
      *                statt eine Ausnahme in eine Ajax-Antwort zu werfen
      * @param breite  Pixel; 0 setzt auf die Layout-Vorgabe zurueck
      */
+    /**
+     * Auftrag Daniel, 25.08.2026: die Spaltenauswahl einer Tabelle je Benutzer merken.
+     *
+     * <p>Gebaut wie {@link #merkeTrennerBreite(String, int)} und aus demselben Grund: Setzen und
+     * Speichern gehoeren zusammen. Eine Auswahl, die nur im Feld steht, ist beim naechsten
+     * Anmelden weg — der Fehler faellt erst am naechsten Tag auf, und dann sucht niemand mehr
+     * hier.
+     *
+     * <p>Eine <b>leere</b> Auswahl wird gespeichert wie jede andere: „ich will keine dieser
+     * Spalten sehen" ist eine gueltige Aussage und darf nicht stillschweigend in die
+     * Voreinstellung zurueckfallen. Deshalb unterscheidet {@link #tabellenSpalten(String)}
+     * zwischen „leer" und „nie gesetzt" ({@code null}).
+     *
+     * @param tabelle Kennung der Tabelle, z.B. {@code "useradmin"}
+     * @param spalten die sichtbaren Spaltenschluessel; {@code null} wird als leer behandelt
+     */
+    public void merkeTabellenSpalten(String tabelle, List<String> spalten) {
+        if (prefs == null || tabelle == null || tabelle.isBlank()) {
+            log.debug("Spaltenauswahl nicht gespeichert (Tabelle '{}', Einstellungen geladen: {})",
+                    tabelle, prefs != null);
+            return;
+        }
+        prefs.getTabellenSpalten().put(tabelle,
+                spalten == null ? new ArrayList<>() : new ArrayList<>(spalten));
+        save();
+    }
+
+    /**
+     * Die gemerkte Spaltenauswahl einer Tabelle.
+     *
+     * <p>Gegenstueck zu {@link #merkeTabellenSpalten(String, List)}. Der Rueckgabewert
+     * {@code null} heisst ausdruecklich <b>„nie gesetzt"</b> und ist von einer leeren Liste zu
+     * unterscheiden: die aufrufende Tabelle muss {@code null} als ihre eigene Voreinstellung
+     * auslegen, eine leere Liste dagegen als bewusste Auswahl des Benutzers.
+     *
+     * @return die gespeicherten Spaltenschluessel oder {@code null}
+     */
+    public List<String> tabellenSpalten(String tabelle) {
+        if (prefs == null || tabelle == null) {
+            // Nach dem Wiederherstellen einer Sitzung ist das transiente Feld leer.
+            return null;
+        }
+        return prefs.getTabellenSpalten().get(tabelle);
+    }
+
     public void merkeTrennerBreite(String bereich, int breite) {
         int wert = breite <= 0 ? 0 : Math.clamp(breite, MIN_TRENNER_PX, MAX_TRENNER_PX);
         if ("wiki".equals(bereich)) {

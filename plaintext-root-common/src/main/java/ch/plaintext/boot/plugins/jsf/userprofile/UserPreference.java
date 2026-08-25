@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -37,6 +39,22 @@ public class UserPreference implements SimpleStorable<UserPreference>, Serializa
     private List<NamedColor> customColors = new ArrayList<>();
 
     private Set<String> hiddenColors = new HashSet<>();
+
+    /**
+     * Je Tabelle die Spalten, die dieser Benutzer sehen will (Auftrag Daniel, 25.08.2026:
+     * „gerne oben noch eine Auswahl mit Checkbox, dass man sich pro Benutzer die Auswahl der
+     * Spalten speichern kann").
+     *
+     * <p>Schluessel ist eine Tabellen-Kennung ({@code "useradmin"}), Wert die sichtbaren
+     * Spaltenschluessel. Bewusst als Karte und nicht als eigenes Feld je Tabelle: die naechste
+     * Tabelle, die das braucht, kommt ohne Aenderung an dieser Klasse aus.
+     *
+     * <p>Ein <b>fehlender</b> Eintrag heisst „noch nie etwas ausgewaehlt" und muss von der
+     * jeweiligen Tabelle als ihre Voreinstellung ausgelegt werden — nicht als „alle Spalten aus".
+     * Gespeichert wird als JSON ({@code SimpleStorableConverter}), ein neues Feld ist fuer
+     * bestehende Datensaetze deshalb unkritisch.
+     */
+    private Map<String, List<String>> tabellenSpalten = new HashMap<>();
 
     /**
      * Karte 937: Breite des Wiki-Seitenbaums in Pixeln, {@code 0} = Vorgabe des Layouts.

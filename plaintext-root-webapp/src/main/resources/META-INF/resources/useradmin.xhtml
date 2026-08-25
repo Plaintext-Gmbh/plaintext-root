@@ -100,6 +100,26 @@
                                  oncomplete="PF('dlg').show()"
                                  update="fm"
                                  process="@this"/>
+
+                <!--
+                    Spaltenauswahl je Benutzer (Auftrag Daniel, 25.08.2026). Gespeichert wird am
+                    change-Ereignis, also bei JEDER Aenderung im aufgeklappten Menue - kein
+                    Speichern-Knopf, den man vergessen kann. Die Spalte "Bearbeiten" steht
+                    bewusst nicht zur Wahl: sie ist der einzige Weg, einen Benutzer zu oeffnen.
+                -->
+                <p:selectCheckboxMenu id="spalten"
+                                      value="#{myUserBackingBean.sichtbareSpalten}"
+                                      label="#{i18n.t('Spalten')}"
+                                      filter="true"
+                                      filterMatchMode="contains"
+                                      multiple="true"
+                                      panelStyle="width: 16rem"
+                                      style="margin-left: .5rem;">
+                    <f:selectItems value="#{myUserBackingBean.spaltenAuswahl}"/>
+                    <p:ajax event="change"
+                            listener="#{myUserBackingBean.spaltenGeaendert()}"
+                            update="fm:tbl"/>
+                </p:selectCheckboxMenu>
             </div>
 
             <p:dataTable emptyMessage="-"
@@ -112,24 +132,73 @@
                          var="obj"
                          rowKey="#{obj.id}"
                          value="#{myUserBackingBean.users}"
+                         filteredValue="#{myUserBackingBean.gefilterteUsers}"
                          rowIndexVar="ri">
 
                 <p:ajax event="rowSelect" listener="#{myUserBackingBean.select()}" update="fm"/>
                 <p:ajax event="rowUnselect" listener="#{myUserBackingBean.clearSelection()}" update="fm"/>
 
-                <p:column headerText="ID" priority="5">
+                <p:column headerText="ID" priority="5"
+                          visible="#{myUserBackingBean.spalteSichtbar('id')}"
+                          sortBy="#{obj.id}">
                     <h:outputText value=" #{obj.id}"/>
                 </p:column>
 
-                <p:column headerText="#{i18n.t('Benutzername')}" priority="1">
+                <p:column headerText="#{i18n.t('Benutzername')}" priority="1"
+                          visible="#{myUserBackingBean.spalteSichtbar('username')}"
+                          sortBy="#{obj.username}"
+                          filterBy="#{obj.username}"
+                          filterMatchMode="contains">
                     <h:outputText value=" #{obj.username}"/>
                 </p:column>
 
-                <p:column headerText="Mandat" priority="2">
+                <p:column headerText="#{i18n.t('Vorname')}" priority="2"
+                          visible="#{myUserBackingBean.spalteSichtbar('vorname')}"
+                          sortBy="#{obj.vorname}"
+                          filterBy="#{obj.vorname}"
+                          filterMatchMode="contains">
+                    <h:outputText value=" #{obj.vorname}"/>
+                </p:column>
+
+                <p:column headerText="#{i18n.t('Nachname')}" priority="2"
+                          visible="#{myUserBackingBean.spalteSichtbar('nachname')}"
+                          sortBy="#{obj.nachname}"
+                          filterBy="#{obj.nachname}"
+                          filterMatchMode="contains">
+                    <h:outputText value=" #{obj.nachname}"/>
+                </p:column>
+
+                <!--
+                    Mehrfachauswahl statt Freitext: die Mandantennamen sind kurz und wiederholen
+                    sich, eine Liste zum Ankreuzen trifft schneller als Tippen. filter="true"
+                    macht die Liste selbst durchsuchbar, sobald es viele Mandanten sind.
+                    filterMatchMode="in" ist zwingend - mit "contains" wuerde eine Mehrfachauswahl
+                    gegen den Wert nur der Reihe nach verglichen und traefe nichts.
+                -->
+                <p:column headerText="Mandat" priority="2"
+                          visible="#{myUserBackingBean.spalteSichtbar('mandat')}"
+                          sortBy="#{obj.mandat}"
+                          filterBy="#{obj.mandat}"
+                          filterMatchMode="in">
+                    <f:facet name="filter">
+                        <p:selectCheckboxMenu onchange="PF('tbl').filter()"
+                                              styleClass="custom-filter"
+                                              label="Mandat"
+                                              filter="true"
+                                              filterMatchMode="contains"
+                                              multiple="true"
+                                              panelStyle="width: 14rem">
+                            <f:selectItems value="#{myUserBackingBean.mandatFilterAuswahl}"/>
+                        </p:selectCheckboxMenu>
+                    </f:facet>
                     <h:outputText value=" #{obj.mandat}"/>
                 </p:column>
 
-                <p:column headerText="#{i18n.t('Startseite')}" priority="3">
+                <p:column headerText="#{i18n.t('Startseite')}" priority="3"
+                          visible="#{myUserBackingBean.spalteSichtbar('startpage')}"
+                          sortBy="#{obj.startpage}"
+                          filterBy="#{obj.startpage}"
+                          filterMatchMode="contains">
                     <h:outputText value=" #{obj.startpage}"/>
                 </p:column>
 
@@ -142,7 +211,8 @@
                                      title="#{i18n.t('Bearbeiten')}"/>
                 </p:column>
 
-                <p:column headerText="Rem.Me" priority="4">
+                <p:column headerText="Rem.Me" priority="4"
+                          visible="#{myUserBackingBean.spalteSichtbar('remember')}">
                     <p:commandButton icon="pi pi-trash"
                                      styleClass="ui-button-danger"
                                      actionListener="#{myUserBackingBean.deleteRememberMeForUser(obj.username)}"
@@ -152,7 +222,8 @@
                                      title="Delete RememberMe"/>
                 </p:column>
 
-                <p:column headerText="Impersonate" priority="5" rendered="#{myUserBackingBean.root}">
+                <p:column headerText="Impersonate" priority="5" rendered="#{myUserBackingBean.root}"
+                          visible="#{myUserBackingBean.spalteSichtbar('impersonate')}">
                     <p:commandButton icon="pi pi-user-edit"
                                      styleClass="ui-button-warning"
                                      actionListener="#{myUserBackingBean.impersonateUser(obj)}"
@@ -180,6 +251,17 @@
                         <f:validateRegex pattern="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"/>
                         <p:ajax event="blur" update="messages" listener="#{myUserBackingBean.validateUsername()}"/>
                     </p:inputText>
+
+                    <!--
+                        Vor- und Nachname (Auftrag Daniel, 25.08.2026). Beide sind freiwillig:
+                        bestehende Konten haben keine Namen, ein Pflichtfeld wuerde das Speichern
+                        jedes Altkontos blockieren.
+                    -->
+                    <h:outputText value="#{i18n.t('Vorname')}:"/>
+                    <p:inputText id="vorname" size="45" value="#{myUserBackingBean.selected.vorname}"/>
+
+                    <h:outputText value="#{i18n.t('Nachname')}:"/>
+                    <p:inputText id="nachname" size="45" value="#{myUserBackingBean.selected.nachname}"/>
 
                     <h:outputText value="#{i18n.t('Ohne Passwort (nur OIDC)')}:"/>
                     <h:panelGroup>

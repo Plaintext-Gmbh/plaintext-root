@@ -7,6 +7,7 @@ import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.audit.DestructiveActionAuditService;
 import ch.plaintext.boot.plugins.security.magiclink.MagicLinkService;
 import ch.plaintext.boot.plugins.security.model.MyRememberMe;
+import ch.plaintext.boot.plugins.jsf.userprofile.UserPreferencesBackingBean;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.model.UserMandate;
 import ch.plaintext.boot.plugins.security.persistence.MyRememberMeRepository;
@@ -16,6 +17,7 @@ import ch.plaintext.framework.PlaintextRole;
 import ch.plaintext.framework.PlaintextRoleRegistry;
 import ch.plaintext.framework.PrivilegedRoleRules;
 import jakarta.annotation.PostConstruct;
+import jakarta.faces.model.SelectItem;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 import jakarta.servlet.http.HttpServletRequest;
@@ -117,7 +119,8 @@ public class MyUserBackingBean implements Serializable {
                              PlaintextSecurity plaintextSecurity,
                              UserMandateRepository userMandateRepo,
                              MagicLinkService magicLinkService,
-                             @Nullable DestructiveActionAuditService auditService) {
+                             @Nullable DestructiveActionAuditService auditService,
+                             @Nullable UserPreferencesBackingBean userPreferences) {
         this.passwordEncoder = passwordEncoder;
         this.repo = repo;
         this.roleRegistry = roleRegistry;
@@ -126,6 +129,7 @@ public class MyUserBackingBean implements Serializable {
         this.userMandateRepo = userMandateRepo;
         this.magicLinkService = magicLinkService;
         this.auditService = auditService;
+        this.userPreferences = userPreferences;
     }
 
     /** Zusätzliche Mandate des gewählten Benutzers (Mehrfach-Mandant), im Dialog editierbar. */
@@ -134,9 +138,111 @@ public class MyUserBackingBean implements Serializable {
     private List<MyUserEntity> users = new ArrayList<>();
     private List<MyRememberMe> rememberMes = new ArrayList<>();
 
+    /** Von der Tabelle gefuellt (filteredValue) - ohne dieses Feld verliert PrimeFaces beim Sortieren den Filter. */
+    private List<MyUserEntity> gefilterteUsers;
+
+    // ------------------------------------------------------------------ Spaltenauswahl
+
+    /**
+     * Kennung dieser Tabelle in {@code UserPreference.tabellenSpalten}. Die Karte ist bewusst
+     * je Tabelle geschluesselt, damit die naechste Tabelle ohne Aenderung an der
+     * Einstellungsklasse dazukommen kann.
+     */
+    static final String TABELLE = "useradmin";
+
+    /**
+     * Alle abschaltbaren Spalten in Anzeigereihenfolge, Schluessel und Beschriftung.
+     *
+     * <p>Die Spalte „Bearbeiten" fehlt hier mit Absicht: sie ist die einzige Moeglichkeit, einen
+     * Benutzer zu oeffnen. Waere sie abwaehlbar, koennte man sich die Verwaltung unbrauchbar
+     * machen und haette danach keinen Weg mehr zurueck.
+     */
+    private static final List<String[]> SPALTEN = List.of(
+            new String[]{"id", "ID"},
+            new String[]{"username", "Benutzername"},
+            new String[]{"vorname", "Vorname"},
+            new String[]{"nachname", "Nachname"},
+            new String[]{"mandat", "Mandat"},
+            new String[]{"startpage", "Startseite"},
+            new String[]{"remember", "Remember-Me"},
+            new String[]{"impersonate", "Impersonate"});
+
+    /** Voreinstellung, wenn dieser Benutzer noch nie etwas ausgewaehlt hat: der bisherige Bestand. */
+    private static final List<String> SPALTEN_VOREINSTELLUNG =
+            List.of("id", "username", "vorname", "nachname", "mandat", "startpage", "remember", "impersonate");
+
+    /**
+     * Optional verdrahtet: Kontexte ohne Benutzereinstellungen (schlanke Tests) sollen die Bean
+     * weiter bauen koennen. Fehlt sie, gilt dauerhaft die Voreinstellung.
+     */
+    private transient UserPreferencesBackingBean userPreferences;
+
+    private List<String> sichtbareSpalten = new ArrayList<>(SPALTEN_VOREINSTELLUNG);
+
+    /** Die Auswahl fuer das Checkbox-Menue ueber der Tabelle. */
+    public List<SelectItem> getSpaltenAuswahl() {
+        List<SelectItem> items = new ArrayList<>();
+        for (String[] spalte : SPALTEN) {
+            items.add(new SelectItem(spalte[0], spalte[1]));
+        }
+        return items;
+    }
+
+    /** @return {@code true}, wenn die Spalte fuer diesen Benutzer eingeblendet ist */
+    public boolean spalteSichtbar(String schluessel) {
+        return sichtbareSpalten != null && sichtbareSpalten.contains(schluessel);
+    }
+
+    /**
+     * Uebernimmt die Spaltenauswahl <b>sofort</b> in die Benutzereinstellungen.
+     *
+     * <p>Auftrag Daniel, 25.08.2026: „immer wenn man dort aufklappt und die Spaltenauswahl macht,
+     * soll gespeichert werden". Deshalb haengt das am {@code change}-Ereignis des Menues und
+     * nicht an einem Speichern-Knopf - ein Knopf, den man vergessen kann, ist hier genau das,
+     * was nicht gewollt war.
+     */
+    public void spaltenGeaendert() {
+        if (userPreferences == null) {
+            log.debug("Spaltenauswahl nicht gespeichert - keine Benutzereinstellungen verfuegbar");
+            return;
+        }
+        userPreferences.merkeTabellenSpalten(TABELLE, sichtbareSpalten);
+        log.debug("Spaltenauswahl fuer {} gespeichert: {}", TABELLE, sichtbareSpalten);
+    }
+
+    /** Holt die gespeicherte Auswahl; ohne gespeicherten Eintrag bleibt es bei der Voreinstellung. */
+    private void ladeSpaltenauswahl() {
+        if (userPreferences == null) {
+            return;
+        }
+        List<String> gespeichert = userPreferences.tabellenSpalten(TABELLE);
+        // null heisst "nie gesetzt" -> Voreinstellung. Eine LEERE Liste ist dagegen eine bewusste
+        // Auswahl und bleibt leer.
+        if (gespeichert != null) {
+            sichtbareSpalten = new ArrayList<>(gespeichert);
+        }
+    }
+
+    /**
+     * Die Mandanten, die in der Tabelle wirklich vorkommen - fuer den Mehrfachauswahl-Filter.
+     *
+     * <p>Absichtlich aus den geladenen Benutzern und nicht aus allen bekannten Mandanten: ein
+     * Filterwert, der zu null Zeilen fuehrt, ist fuer den Benutzer nur verwirrend. Ein Benutzer
+     * ohne Mandant erscheint als leerer Eintrag und bleibt damit auffindbar.
+     */
+    public List<SelectItem> getMandatFilterAuswahl() {
+        return users.stream()
+                .map(u -> u.getMandat() == null ? "" : u.getMandat())
+                .distinct()
+                .sorted()
+                .map(m -> new SelectItem(m, m.isEmpty() ? "(ohne Mandant)" : m))
+                .toList();
+    }
+
     @PostConstruct
     public void init() {
         log.info("Loading users for user administration");
+        ladeSpaltenauswahl();
 
         users.clear();
 
