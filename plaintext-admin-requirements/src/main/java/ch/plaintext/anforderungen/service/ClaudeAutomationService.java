@@ -494,8 +494,22 @@ public class ClaudeAutomationService {
     /**
      * Check all recurring tasks (wiederkehrend=true) that are ERLEDIGT
      * and reopen them if lastModifiedDate is older than wiederkehrendTage days
+     *
+     * <p><b>Karte 968 (Sonar {@code java:S6809}): das {@code @Transactional} ist entfallen.</b> Es
+     * stand an einer <i>privaten</i> Methode und war damit doppelt wirkungslos — Spring legt seinen
+     * Proxy um die Bean, private Methoden erreicht er nie, und gerufen wurde sie zusaetzlich per
+     * Selbstaufruf aus {@link #getNextTask(String)}, die selbst keine Klammer aufspannt. Es gab
+     * hier also nie eine Transaktion; die Annotation behauptete nur eine.
+     *
+     * <p><b>Warum sie nicht stattdessen nach oben gewandert ist.</b> Jeder
+     * {@code anforderungRepository.save(...)} laeuft ohnehin in seiner eigenen Transaktion
+     * (Spring Data). Faellt der Lauf in der Mitte aus, sind einige Aufgaben wieder offen und
+     * andere noch nicht — das ist hier harmlos, weil der naechste Aufruf genau dieselbe Pruefung
+     * erneut macht und den Rest nachholt. Eine Klammer um {@code getNextTask} haette dafuer die
+     * gesamte Leseschleife in eine Transaktion gezogen und die zurueckgegebene Anforderung
+     * verwaltet gehalten. Wer Atomizitaet wirklich braucht, muss die Klammer an eine
+     * <b>oeffentliche</b> Methode haengen — an dieser hier wuerde sie wieder nichts tun.
      */
-    @Transactional
     private void checkAndReopenRecurringTasks(List<Anforderung> allAnforderungen) {
         LocalDateTime now = LocalDateTime.now();
 
