@@ -5,7 +5,7 @@ package ch.plaintext.sessions.config;
 
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.sessions.service.HttpSessionRegistry;
-import ch.plaintext.sessions.service.SessionAuditServiceImpl;
+import ch.plaintext.sessions.service.SessionAuditWriter;
 import ch.plaintext.settings.ISetupConfigService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
@@ -22,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -29,7 +30,7 @@ import static org.mockito.Mockito.*;
 class SessionTrackingFilterTest {
 
     @Mock
-    private SessionAuditServiceImpl sessionAuditService;
+    private SessionAuditWriter sessionAuditWriter;
 
     @Mock
     private PlaintextSecurity security;
@@ -65,7 +66,7 @@ class SessionTrackingFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new SessionTrackingFilter(sessionAuditService, security, sessionRegistry, setupConfigProvider);
+        filter = new SessionTrackingFilter(sessionAuditWriter, security, sessionRegistry, setupConfigProvider);
         // Karte 627: Voreinstellung fuer die bestehenden Faelle ist „Schalter an" — sie pruefen das
         // Verhalten VOR dem Schalter und muessen es unveraendert weiter belegen. lenient(), weil die
         // meisten Faelle abbrechen, bevor der Schalter ueberhaupt gelesen wird.
@@ -93,7 +94,7 @@ class SessionTrackingFilterTest {
     }
 
     @Test
-    void trackSessionAsyncTracksAuthenticatedUser() {
+    void sitzungsverfolgung_TracksAuthenticatedUser() throws Exception {
         SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.isAuthenticated()).thenReturn(true);
@@ -103,64 +104,64 @@ class SessionTrackingFilterTest {
         when(security.getId()).thenReturn(42L);
         when(httpRequest.getHeader("User-Agent")).thenReturn("TestAgent/1.0");
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verify(sessionRegistry).registerSession("sess-123", httpSession);
-        verify(sessionAuditService).updateOrCreate(42L, "sess-123", authentication, "TestAgent/1.0");
+        verify(sessionAuditWriter).schreibe(42L, "sess-123", authentication, "TestAgent/1.0");
     }
 
     @Test
-    void trackSessionAsyncSkipsAnonymousUser() {
+    void sitzungsverfolgung_SkipsAnonymousUser() throws Exception {
         SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.isAuthenticated()).thenReturn(true);
         when(authentication.getPrincipal()).thenReturn("anonymousUser");
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verifyNoInteractions(sessionRegistry);
-        verifyNoInteractions(sessionAuditService);
+        verifyNoInteractions(sessionAuditWriter);
     }
 
     @Test
-    void trackSessionAsyncSkipsUnauthenticatedUser() {
+    void sitzungsverfolgung_SkipsUnauthenticatedUser() throws Exception {
         SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.isAuthenticated()).thenReturn(false);
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verifyNoInteractions(sessionRegistry);
-        verifyNoInteractions(sessionAuditService);
+        verifyNoInteractions(sessionAuditWriter);
     }
 
     @Test
-    void trackSessionAsyncSkipsNullAuthentication() {
+    void sitzungsverfolgung_SkipsNullAuthentication() throws Exception {
         SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(null);
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verifyNoInteractions(sessionRegistry);
-        verifyNoInteractions(sessionAuditService);
+        verifyNoInteractions(sessionAuditWriter);
     }
 
     @Test
-    void trackSessionAsyncSkipsNullSession() {
+    void sitzungsverfolgung_SkipsNullSession() throws Exception {
         SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.isAuthenticated()).thenReturn(true);
         when(authentication.getPrincipal()).thenReturn("admin");
         when(httpRequest.getSession(false)).thenReturn(null);
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verifyNoInteractions(sessionRegistry);
-        verifyNoInteractions(sessionAuditService);
+        verifyNoInteractions(sessionAuditWriter);
     }
 
     @Test
-    void trackSessionAsyncSkipsNullUserId() {
+    void sitzungsverfolgung_SkipsNullUserId() throws Exception {
         SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.isAuthenticated()).thenReturn(true);
@@ -169,22 +170,22 @@ class SessionTrackingFilterTest {
         when(httpSession.getId()).thenReturn("sess-123");
         when(security.getId()).thenReturn(null);
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verifyNoInteractions(sessionRegistry);
-        verifyNoInteractions(sessionAuditService);
+        verifyNoInteractions(sessionAuditWriter);
     }
 
     @Test
-    void trackSessionAsyncHandlesExceptionGracefully() {
+    void sitzungsverfolgung_HandlesExceptionGracefully() throws Exception {
         SecurityContextHolder.setContext(securityContext);
         when(securityContext.getAuthentication()).thenThrow(new RuntimeException("Unexpected error"));
 
         // Should not throw
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verifyNoInteractions(sessionRegistry);
-        verifyNoInteractions(sessionAuditService);
+        verifyNoInteractions(sessionAuditWriter);
     }
 
     @Test
@@ -201,7 +202,7 @@ class SessionTrackingFilterTest {
         filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verify(sessionRegistry).registerSession("sess-456", httpSession);
-        verify(sessionAuditService).updateOrCreate(99L, "sess-456", authentication, "Mozilla/5.0");
+        verify(sessionAuditWriter).schreibe(99L, "sess-456", authentication, "Mozilla/5.0");
         verify(filterChain).doFilter(httpRequest, httpResponse);
     }
 
@@ -212,37 +213,37 @@ class SessionTrackingFilterTest {
      * {@link HttpSessionRegistry} läuft weiter, sonst verlöre ROOT das Zwangs-Abmelden.
      */
     @Test
-    void schalterAusZeichnetNichtAufLaesstAberDasAbmeldenIntakt() {
+    void schalterAusZeichnetNichtAufLaesstAberDasAbmeldenIntakt() throws Exception {
         angemeldeteSitzung("sess-aus", 7L, "Firefox/1.0");
         when(security.getMandat()).thenReturn("default");
         when(setupConfigService.isSessionTrackingEnabled("default")).thenReturn(false);
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
         verify(sessionRegistry).registerSession("sess-aus", httpSession);
-        verifyNoInteractions(sessionAuditService);
+        verifyNoInteractions(sessionAuditWriter);
     }
 
     @Test
-    void schalterAnZeichnetAuf() {
+    void schalterAnZeichnetAuf() throws Exception {
         angemeldeteSitzung("sess-an", 7L, "Firefox/1.0");
         when(security.getMandat()).thenReturn("default");
         when(setupConfigService.isSessionTrackingEnabled("default")).thenReturn(true);
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
-        verify(sessionAuditService).updateOrCreate(7L, "sess-an", authentication, "Firefox/1.0");
+        verify(sessionAuditWriter).schreibe(7L, "sess-an", authentication, "Firefox/1.0");
     }
 
     /** Anwendung ohne Modul {@code plaintext-admin-settings}: aufzeichnen wie vor der Karte. */
     @Test
-    void ohneSettingsModulWirdAufgezeichnet() {
+    void ohneSettingsModulWirdAufgezeichnet() throws Exception {
         angemeldeteSitzung("sess-ohne", 8L, "curl/8.0");
         when(setupConfigProvider.getIfAvailable()).thenReturn(null);
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
-        verify(sessionAuditService).updateOrCreate(8L, "sess-ohne", authentication, "curl/8.0");
+        verify(sessionAuditWriter).schreibe(8L, "sess-ohne", authentication, "curl/8.0");
     }
 
     /**
@@ -250,13 +251,13 @@ class SessionTrackingFilterTest {
      * das wäre ein Datenverlust, den niemand bemerkt, weil kein Request fehlschlägt.
      */
     @Test
-    void schalterNichtLesbarZeichnetAuf() {
+    void schalterNichtLesbarZeichnetAuf() throws Exception {
         angemeldeteSitzung("sess-fehler", 9L, "curl/8.0");
         when(security.getMandat()).thenThrow(new IllegalStateException("kein Mandant im Kontext"));
 
-        filter.trackSessionAsync(httpRequest);
+        filter.doFilter(httpRequest, httpResponse, filterChain);
 
-        verify(sessionAuditService).updateOrCreate(9L, "sess-fehler", authentication, "curl/8.0");
+        verify(sessionAuditWriter).schreibe(9L, "sess-fehler", authentication, "curl/8.0");
     }
 
     private void angemeldeteSitzung(String sessionId, Long userId, String userAgent) {
@@ -268,5 +269,31 @@ class SessionTrackingFilterTest {
         when(httpSession.getId()).thenReturn(sessionId);
         when(security.getId()).thenReturn(userId);
         when(httpRequest.getHeader("User-Agent")).thenReturn(userAgent);
+    }
+
+    // ---------------------------------------------------------------- Karte 968: Proxy-Vertrag
+
+    /**
+     * Haelt fest, warum {@code @Async} nicht mehr im Filter steht (Sonar {@code java:S6809}).
+     *
+     * <p>Vorher trug {@code trackSessionAsync} die Annotation und wurde per {@code this} gerufen —
+     * am Spring-Proxy vorbei, also wirkungslos. Wer sie zurueckholt, muss sie an eine <b>andere</b>
+     * Bean haengen: die Methode las {@code SecurityContextHolder}, den {@code HttpServletRequest}
+     * und {@code PlaintextSecurity}, und die sind auf einem Pool-Thread nicht mehr da. Die
+     * Aufzeichnung haette still aufgehoert — ein Datenverlust, den niemand bemerkt.
+     */
+    @Test
+    void asyncGehoertAnDenSchreiber_nichtAnDenFilter() {
+        assertThat(java.util.Arrays.stream(SessionTrackingFilter.class.getDeclaredMethods())
+                .filter(m -> m.isAnnotationPresent(org.springframework.scheduling.annotation.Async.class))
+                .map(java.lang.reflect.Method::getName).toList())
+                .as("Ein @Async im Filter selbst wuerde per Selbstaufruf wieder wirkungslos sein")
+                .isEmpty();
+
+        assertThat(java.util.Arrays.stream(SessionAuditWriter.class.getDeclaredMethods())
+                .filter(m -> m.isAnnotationPresent(org.springframework.scheduling.annotation.Async.class))
+                .map(java.lang.reflect.Method::getName).toList())
+                .as("Ohne @Async am Schreiber liefe die Aufzeichnung wieder im Request-Thread")
+                .containsExactly("schreibe");
     }
 }

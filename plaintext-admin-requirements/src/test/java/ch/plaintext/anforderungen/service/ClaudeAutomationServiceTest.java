@@ -1049,4 +1049,80 @@ class ClaudeAutomationServiceTest {
 
         assertThat(service.getFullContextForAnforderung(999L, "token")).isNull();
     }
+
+    // --- Karte 968: wiederkehrende Aufgaben (java:S6809) ---
+
+    private static AnforderungApiSettings aktiveEinstellungen() {
+        AnforderungApiSettings settings = new AnforderungApiSettings();
+        settings.setApiToken("token");
+        settings.setMandat("mandatA");
+        settings.setClaudeAutomationEnabled(true);
+        return settings;
+    }
+
+    private static Anforderung wiederkehrend(long id, int tage, LocalDateTime zuletzt) {
+        Anforderung a = new Anforderung();
+        a.setId(id);
+        a.setStatus("ERLEDIGT");
+        a.setPriority("MITTEL");
+        a.setWiederkehrend(true);
+        a.setWiederkehrendTage(tage);
+        a.setLastModifiedDate(zuletzt);
+        return a;
+    }
+
+    /**
+     * Das Wiedereroeffnen war bis Karte 968 durch keinen Test gedeckt — und trug ein
+     * {@code @Transactional}, das an einer privaten Methode ohnehin wirkungslos war. Beim Entfernen
+     * der Annotation musste belegt sein, <b>was</b> die Methode tut, sonst waere es eine
+     * Aenderung ins Blaue gewesen.
+     */
+    @Test
+    void ueberfaelligeWiederkehrendeAufgabeWirdWiederEroeffnetUndSofortAusgeliefert() {
+        when(apiSettingsRepository.findByApiToken("token")).thenReturn(Optional.of(aktiveEinstellungen()));
+        Anforderung ueberfaellig = wiederkehrend(10L, 7, LocalDateTime.now().minusDays(8));
+        when(anforderungRepository.findByMandatOrderByCreatedDateDesc("mandatA"))
+                .thenReturn(new ArrayList<>(List.of(ueberfaellig)));
+
+        Optional<Anforderung> ergebnis = service.getNextTask("token");
+
+        ArgumentCaptor<Anforderung> gespeichert = ArgumentCaptor.forClass(Anforderung.class);
+        verify(anforderungRepository).save(gespeichert.capture());
+        assertThat(gespeichert.getValue().getStatus()).isEqualTo("OFFEN");
+        // Und sie kommt im selben Aufruf zurueck - der Filter arbeitet auf derselben Instanz.
+        assertThat(ergebnis).isPresent();
+        assertThat(ergebnis.get().getId()).isEqualTo(10L);
+    }
+
+    @Test
+    void nochNichtFaelligeWiederkehrendeAufgabeBleibtErledigt() {
+        when(apiSettingsRepository.findByApiToken("token")).thenReturn(Optional.of(aktiveEinstellungen()));
+        Anforderung frisch = wiederkehrend(11L, 7, LocalDateTime.now().minusDays(2));
+        when(anforderungRepository.findByMandatOrderByCreatedDateDesc("mandatA"))
+                .thenReturn(new ArrayList<>(List.of(frisch)));
+
+        // Gegenprobe zum Fall darueber: ohne sie waere ein Dienst, der ALLES wiedereroeffnet,
+        // ebenfalls gruen.
+        assertThat(service.getNextTask("token")).isEmpty();
+        verify(anforderungRepository, never()).save(any());
+        assertThat(frisch.getStatus()).isEqualTo("ERLEDIGT");
+    }
+
+    @Test
+    void eineFehlgeschlageneAufgabeHaeltDieUebrigenNichtAuf() {
+        // Jeder save() laeuft in seiner eigenen Transaktion - genau das steht seit Karte 968 auch
+        // im Javadoc der Methode. Bricht einer weg, muss der naechste Aufruf den Rest nachholen
+        // koennen; ein halb durchgelaufener Lauf darf nicht in sich zusammenfallen.
+        when(apiSettingsRepository.findByApiToken("token")).thenReturn(Optional.of(aktiveEinstellungen()));
+        Anforderung a = wiederkehrend(20L, 3, LocalDateTime.now().minusDays(9));
+        when(anforderungRepository.findByMandatOrderByCreatedDateDesc("mandatA"))
+                .thenReturn(new ArrayList<>(List.of(a)));
+        when(anforderungRepository.save(any())).thenThrow(new RuntimeException("DB weg"));
+
+        assertThatThrownBy(() -> service.getNextTask("token")).isInstanceOf(RuntimeException.class);
+
+        // Der Status im Speicher steht bereits auf OFFEN - in der DB nicht. Beim naechsten Lauf
+        // wird die Aufgabe erneut als ueberfaellig erkannt und noch einmal versucht.
+        assertThat(a.getStatus()).isEqualTo("OFFEN");
+    }
 }

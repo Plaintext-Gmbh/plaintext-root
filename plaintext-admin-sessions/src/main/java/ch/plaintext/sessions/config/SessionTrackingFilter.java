@@ -6,6 +6,7 @@ package ch.plaintext.sessions.config;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.sessions.service.HttpSessionRegistry;
 import ch.plaintext.sessions.service.SessionAuditServiceImpl;
+import ch.plaintext.sessions.service.SessionAuditWriter;
 import ch.plaintext.settings.ISetupConfigService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,7 +14,6 @@ import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.annotation.Order;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -21,7 +21,8 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /**
- * Filter that tracks user sessions asynchronously for minimal performance impact.
+ * Filter, der Sitzungen mitschreibt. Das Schreiben in die Datenbank laeuft ausserhalb des
+ * Request-Threads ({@link SessionAuditWriter}); alles Thread-Gebundene wird vorher hier gelesen.
  * Updates session audit trail on every request to keep track of active sessions.
  *
  * <p>Karte 627: Das <em>Aufzeichnen</em> in {@code USER_SESSION} lässt sich über
@@ -34,7 +35,7 @@ import java.io.IOException;
 @Slf4j
 public class SessionTrackingFilter implements Filter {
 
-    private final SessionAuditServiceImpl sessionAuditService;
+    private final SessionAuditWriter sessionAuditWriter;
     private final PlaintextSecurity security;
     private final HttpSessionRegistry sessionRegistry;
     /**
@@ -44,11 +45,11 @@ public class SessionTrackingFilter implements Filter {
      */
     private final ObjectProvider<ISetupConfigService> setupConfigService;
 
-    public SessionTrackingFilter(SessionAuditServiceImpl sessionAuditService,
+    public SessionTrackingFilter(SessionAuditWriter sessionAuditWriter,
                                 PlaintextSecurity security,
                                 HttpSessionRegistry sessionRegistry,
                                 ObjectProvider<ISetupConfigService> setupConfigService) {
-        this.sessionAuditService = sessionAuditService;
+        this.sessionAuditWriter = sessionAuditWriter;
         this.security = security;
         this.sessionRegistry = sessionRegistry;
         this.setupConfigService = setupConfigService;
@@ -59,39 +60,59 @@ public class SessionTrackingFilter implements Filter {
             throws IOException, ServletException {
 
         if (request instanceof HttpServletRequest httpRequest) {
-            // Track session asynchronously to avoid performance impact
-            trackSessionAsync(httpRequest);
+            sammleUndUebergib(httpRequest);
         }
 
-        // Continue with the request
         chain.doFilter(request, response);
     }
 
-    @Async
-    public void trackSessionAsync(HttpServletRequest request) {
+    /**
+     * Liest alles Thread- und Request-Gebundene <b>hier</b>, im Request-Thread, und reicht nur den
+     * DB-Schreibvorgang an {@link SessionAuditWriter} weiter.
+     *
+     * <p><b>Karte 968 (Sonar {@code java:S6809}).</b> Vorher trug diese Methode selbst
+     * {@code @Async} und wurde per {@code this} gerufen — der Selbstaufruf geht am Spring-Proxy
+     * vorbei, die Annotation war wirkungslos, alles lief auf dem Request-Thread. Der Kommentar
+     * daneben behauptete das Gegenteil.
+     *
+     * <p>Der naheliegende Weg — die Bean sich selbst injizieren — waere hier <b>falsch</b>
+     * gewesen: {@code SecurityContextHolder}, {@code HttpServletRequest} und
+     * {@link PlaintextSecurity} haengen am Request-Thread. Auf einem Pool-Thread waere die
+     * Anmeldung nicht mehr sichtbar gewesen und die Aufzeichnung haette still aufgehoert. Der
+     * Selbstaufruf war also versehentlich tragend; genau das macht diesen Befund gefaehrlicher
+     * als die 71 uebrigen S6809-Stellen, an denen die aeussere Methode dieselbe Klammer schon
+     * mitbringt.
+     *
+     * <p>Auch {@link #aufzeichnungAktiv()} wird bewusst hier ausgewertet: es fragt
+     * {@code security.getMandat()}.
+     */
+    private void sammleUndUebergib(HttpServletRequest request) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()
+                    || "anonymousUser".equals(authentication.getPrincipal())) {
+                return;
+            }
 
-            if (authentication != null && authentication.isAuthenticated()
-                    && !"anonymousUser".equals(authentication.getPrincipal())) {
+            HttpSession session = request.getSession(false);
+            if (session == null) {
+                return;
+            }
+            String sessionId = session.getId();
+            Long userId = security.getId();
+            if (userId == null || sessionId == null) {
+                return;
+            }
+            String userAgent = request.getHeader("User-Agent");
 
-                HttpSession session = request.getSession(false);
-                if (session != null) {
-                    String sessionId = session.getId();
-                    Long userId = security.getId();
-                    String userAgent = request.getHeader("User-Agent");
+            // Bleibt synchron: eine Eintragung in eine Map im Speicher, und die Grundlage dafuer,
+            // eine Sitzung zwangsweise zu beenden. Sie darf nicht hinterherhinken.
+            sessionRegistry.registerSession(sessionId, session);
 
-                    if (userId != null && sessionId != null) {
-                        // Register session in the registry for cross-session access
-                        sessionRegistry.registerSession(sessionId, session);
-
-                        // Karte 627: genau eine Auswertung des Schalters, unmittelbar vor dem
-                        // einzigen Schreibpfad — nicht auf mehrere Aufrufstellen verteilt.
-                        if (aufzeichnungAktiv()) {
-                            sessionAuditService.updateOrCreate(userId, sessionId, authentication, userAgent);
-                        }
-                    }
-                }
+            // Karte 627: genau eine Auswertung des Schalters, unmittelbar vor dem einzigen
+            // Schreibpfad - nicht auf mehrere Aufrufstellen verteilt.
+            if (aufzeichnungAktiv()) {
+                sessionAuditWriter.schreibe(userId, sessionId, authentication, userAgent);
             }
         } catch (Exception e) {
             // Log but don't fail the request
