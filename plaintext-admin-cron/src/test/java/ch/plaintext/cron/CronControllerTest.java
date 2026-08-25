@@ -406,8 +406,12 @@ class CronControllerTest {
 
         cronController.schedule(entity);
 
-        // Verify the cron is scheduled by checking we can unschedule it without error
-        cronController.unschedule(entity);
+        // Karte 968 (java:S2699): hier stand nur ein unschedule() „to verify it works". Beides
+        // zusammen prueft nichts - schedule() faengt jede Ausnahme selbst ab und weicht auf das
+        // Ersatzmuster aus, unschedule() wirft ohnehin nicht. Der Beleg ist die Id UND dass der
+        // Ersatzweg nicht gegangen wurde.
+        assertThat(cronsId()).containsKey("TestCronmandatA");
+        verify(cronConfigStore, never()).save(entity);
     }
 
     @Test
@@ -658,8 +662,14 @@ class CronControllerTest {
         // Clear the map so findCronEntity returns null
         cronController.getCronsMap().clear();
 
-        // Trigger should still work but entity will be null (logged as error)
         cronController.trigger("TestCron", "mandatA");
+
+        // Karte 968 (java:S2699): Der Fall heisst „Entity nicht in der Map" - und genau das ist
+        // die Aussage: die Aufgabe laeuft, aber es gibt kein Entity, in das die Statistik
+        // zurueckgeschrieben werden koennte. Ohne diese Zusicherung war der Test der Gegenprobe zu
+        // trigger_exceptionDuringExecutionIsPropagated (dort WIRD gespeichert) nicht zu
+        // unterscheiden.
+        verify(cronConfigStore, never()).save(any(CronConfigEntity.class));
     }
 
     // --- createCronsMap (via init) ---

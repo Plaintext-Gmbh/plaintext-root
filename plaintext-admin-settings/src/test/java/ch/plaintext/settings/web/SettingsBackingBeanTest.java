@@ -74,9 +74,22 @@ class SettingsBackingBeanTest {
 
     // --- select / clearSelection ---
 
+    /**
+     * Karte 968 (Sonar {@code java:S2699}): Hier stand nur der Aufruf mit dem Kommentar „just
+     * verifies it doesn't throw". {@code select()} ist ein leerer Aufhaenger fuer die Oberflaeche —
+     * dass er nicht wirft, kann er gar nicht verletzen.
+     *
+     * <p>Die Aussage, die tatsaechlich zaehlt: er darf die Auswahl <b>nicht antasten</b>. Legt
+     * jemand spaeter Logik hinein, die {@code selected} umsetzt oder loescht, faellt das hier auf.
+     */
     @Test
-    void selectDoesNothing() {
-        bean.select(); // just verifies it doesn't throw
+    void selectLaesstDieAuswahlUnberuehrt() {
+        Setting s = new Setting();
+        bean.setSelected(s);
+
+        bean.select();
+
+        assertThat(bean.getSelected()).isSameAs(s);
     }
 
     @Test
@@ -161,10 +174,22 @@ class SettingsBackingBeanTest {
         assertThat(s.getValue()).isEqualTo("false");
     }
 
+    /**
+     * Karte 968 (Sonar {@code java:S2699}): „should not throw" war zu wenig. Der Schutz vor der
+     * NPE ist nur die halbe Aussage — die andere ist, dass der Wert dann auch <b>nirgendwo
+     * anders</b> landet, etwa auf der zuletzt gewaehlten Einstellung.
+     */
     @Test
-    void setBooleanValueDoesNothingWhenNoSelected() {
+    void setBooleanValueSchreibtNichtsOhneAuswahl() {
+        Setting vorher = new Setting();
+        vorher.setValue("alt");
+        bean.setSelected(vorher);
         bean.setSelected(null);
-        bean.setBooleanValue(true); // should not throw
+
+        bean.setBooleanValue(true);
+
+        assertThat(bean.getSelected()).isNull();
+        assertThat(vorher.getValue()).isEqualTo("alt");
     }
 
     // --- getDateValue / setDateValue ---
@@ -232,10 +257,18 @@ class SettingsBackingBeanTest {
         assertThat(s.getValue()).isEmpty();
     }
 
+    /** Gegenstueck zu {@link #setBooleanValueSchreibtNichtsOhneAuswahl()} fuer das Datum. */
     @Test
-    void setDateValueDoesNothingWhenNoSelected() {
+    void setDateValueSchreibtNichtsOhneAuswahl() {
+        Setting vorher = new Setting();
+        vorher.setValue("alt");
+        bean.setSelected(vorher);
         bean.setSelected(null);
-        bean.setDateValue(LocalDateTime.now()); // should not throw
+
+        bean.setDateValue(LocalDateTime.now());
+
+        assertThat(bean.getSelected()).isNull();
+        assertThat(vorher.getValue()).isEqualTo("alt");
     }
 
     // --- getFilteredSettings ---
