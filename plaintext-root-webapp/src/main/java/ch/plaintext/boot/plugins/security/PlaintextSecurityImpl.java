@@ -26,6 +26,10 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -57,14 +61,78 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
     private final UserMandateRepository userMandateRepository;
     private final ImpersonationAuditRepository impersonationAuditRepository;
 
+    /**
+     * Wird nur gebraucht, um die session-scoped Beans zu benennen, die beim Rollenwechsel
+     * wegmuessen. Optional verdrahtet, damit schlanke Kontexte (Tests ohne vollen
+     * Anwendungskontext) die Bean weiter bauen koennen.
+     */
+    private final ObjectProvider<ConfigurableListableBeanFactory> beanFactory;
+
     public PlaintextSecurityImpl(MyUserRepository userRepository,
                                   MandateMenuConfigRepository mandateMenuConfigRepository,
                                   UserMandateRepository userMandateRepository,
-                                  ImpersonationAuditRepository impersonationAuditRepository) {
+                                  ImpersonationAuditRepository impersonationAuditRepository,
+                                  ObjectProvider<ConfigurableListableBeanFactory> beanFactory) {
         this.userRepository = userRepository;
         this.mandateMenuConfigRepository = mandateMenuConfigRepository;
         this.userMandateRepository = userMandateRepository;
         this.impersonationAuditRepository = impersonationAuditRepository;
+        this.beanFactory = beanFactory;
+    }
+
+    /**
+     * Wirft alle session-scoped Beans aus der Sitzung, damit sie sich beim naechsten Zugriff neu
+     * aufbauen.
+     *
+     * <p><b>Warum es das braucht (Meldung Daniel, 25.08.2026).</b> „Mein Konto" zeigte nach dem
+     * Impersonieren weiter den vorherigen Benutzer. Der Grund liegt hier: weder
+     * {@link #startImpersonation(Long)} noch {@link #switchActiveMandat(String)} haben je etwas
+     * aus der Sitzung entfernt — getauscht wurde nur die {@code Authentication} im
+     * {@code SecurityContextHolder}. Der Kommentar in startImpersonation lautete seit jeher
+     * „clear all attributes except security-related ones"; im Code stand kein einziges
+     * {@code removeAttribute}. Jede session-scoped Bean, die ihren Zustand einmalig im
+     * {@code @PostConstruct} aufbaut, blieb damit beim alten Benutzer stehen.
+     *
+     * <p><b>Warum nicht einfach alles loeschen.</b> In derselben Sitzung liegen der
+     * Spring-Security-Kontext, die Impersonation-Merker und der JSF-Ansichtszustand. Ein
+     * pauschales Leeren wuerde den Benutzer abmelden oder die laufende Ansicht zerstoeren.
+     * Deshalb werden ausschliesslich Attribute entfernt, die nachweislich <b>Spring-Beans mit
+     * Scope "session"</b> sind — die Liste kommt aus den Bean-Definitionen, nicht aus einer
+     * Namensregel. Beide Ablageformen sind damit erfasst: der einfache Bean-Name und der
+     * {@code scopedTarget.}-Name eines Beans mit Scope-Proxy.
+     *
+     * <p>Entfernt wird ueber {@code RequestAttributes}, nicht ueber {@code HttpSession}, damit die
+     * bei Spring hinterlegten Aufraeum-Rueckrufe ({@code @PreDestroy}) regulaer laufen.
+     */
+    // Paket-sichtbar statt private, damit der Test genau diesen Schritt messen kann.
+    void verwerfeSessionBeans() {
+        ConfigurableListableBeanFactory factory = beanFactory == null ? null : beanFactory.getIfAvailable();
+        if (factory == null) {
+            log.debug("Session-Beans nicht verworfen - keine BeanFactory verfuegbar");
+            return;
+        }
+        RequestAttributes attrs;
+        try {
+            attrs = RequestContextHolder.currentRequestAttributes();
+        } catch (IllegalStateException e) {
+            log.debug("Session-Beans nicht verworfen - kein Request-Kontext");
+            return;
+        }
+        int verworfen = 0;
+        for (String name : factory.getBeanDefinitionNames()) {
+            try {
+                if (!WebApplicationContext.SCOPE_SESSION.equals(factory.getBeanDefinition(name).getScope())) {
+                    continue;
+                }
+                if (attrs.getAttribute(name, RequestAttributes.SCOPE_SESSION) != null) {
+                    attrs.removeAttribute(name, RequestAttributes.SCOPE_SESSION);
+                    verworfen++;
+                }
+            } catch (Exception e) {
+                log.debug("Session-Bean '{}' konnte nicht verworfen werden: {}", name, e.getMessage());
+            }
+        }
+        log.info("Rollenwechsel: {} session-scoped Bean(s) verworfen", verworfen);
     }
 
     @PostConstruct
@@ -284,6 +352,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         if (previous != null && !previous.equalsIgnoreCase(target)) {
             ensureSwitchableMandate(getUser(), previous);
         }
+        verwerfeSessionBeans();
         log.info("Aktiver Mandant dauerhaft gewechselt zu {} (Benutzer {})", target, getUser());
     }
 
@@ -598,6 +667,10 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
             // Update security context
             SecurityContextHolder.getContext().setAuthentication(newAuth);
 
+            // Erst nach dem Wechsel: eine Bean, die sich dazwischen neu aufbaut, wuerde sonst
+            // wieder die alte Identitaet sehen.
+            verwerfeSessionBeans();
+
             recordImpersonationStart(currentUserId, currentAuth.getName(), userId, targetUser.getUsername(),
                     session.getId());
 
@@ -645,6 +718,10 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
 
             // Restore original authentication
             SecurityContextHolder.getContext().setAuthentication(originalAuth);
+
+            // Auch der Rueckweg braucht es: sonst behalten die Beans die Daten des
+            // impersonierten Benutzers.
+            verwerfeSessionBeans();
 
             // Clear impersonation session attributes
             session.removeAttribute(SESSION_ORIGINAL_USER_ID);
