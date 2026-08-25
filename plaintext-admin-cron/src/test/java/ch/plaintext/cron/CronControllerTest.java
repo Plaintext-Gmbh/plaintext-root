@@ -82,6 +82,26 @@ class CronControllerTest {
         cronsField.set(cronController, new ArrayList<PlaintextCron>());
     }
 
+    /**
+     * Die Zuordnung „CronName+Mandant &rarr; Scheduler-Id", die {@code schedule()} fuellt.
+     *
+     * <p><b>Warum ueber Reflection und nicht ueber „wirft nicht".</b> Zehn Tests dieser Klasse
+     * riefen {@code schedule()} bzw. {@code scheduleTheMap()} auf und pruefen danach nichts
+     * (Sonar {@code java:S2699}, Karte 968). Sie waren auch dann gruen, wenn ueberhaupt nichts
+     * eingeplant wurde: {@code schedule()} faengt <b>jede</b> Ausnahme selbst ab und weicht auf
+     * das Ersatzmuster {@code "59 23 31 12 2"} aus. „Wirft nicht" ist hier also die eine Aussage,
+     * die der Code gar nicht verletzen <i>kann</i> — der Test konnte nie fehlschlagen.
+     *
+     * <p>Diese Map ist der Beleg, dass wirklich eingeplant wurde. Der Test
+     * {@code trigger_throwsWhenTaskNotFoundInScheduler} greift seit jeher genauso darauf zu.
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, String> cronsId() throws Exception {
+        Field f = CronController.class.getDeclaredField("cronsId");
+        f.setAccessible(true);
+        return (Map<String, String>) f.get(cronController);
+    }
+
     // --- validateAndFixCronExpression (private, tested via schedule indirectly) ---
 
     @Test
@@ -429,7 +449,13 @@ class CronControllerTest {
 
         cronController.schedule(entity);
 
-        // validateAndFixCronExpression replaces null with "0 0 * * *", so it should schedule fine
+        // Der Null-Ausdruck wird durch "0 0 * * *" ersetzt und regulaer eingeplant. Belegt wird
+        // beides: die Id existiert, UND der Ersatzweg wurde NICHT gegangen. Ohne die zweite
+        // Zusicherung waere der Test auch bei einem abgewiesenen Ausdruck gruen - schedule()
+        // traegt dann ebenfalls eine Id ein, aber mit dem Muster "59 23 31 12 2".
+        assertThat(cronsId()).containsKey("TestCronmandatA");
+        assertThat(entity.getCronExpression()).isNull();
+        verify(cronConfigStore, never()).save(entity);
     }
 
     @Test
@@ -446,7 +472,10 @@ class CronControllerTest {
         entity.setCron(sc);
 
         cronController.schedule(entity);
-        // Should not throw - empty expression gets replaced with default
+
+        assertThat(cronsId()).containsKey("TestCronmandatA");
+        assertThat(entity.getCronExpression()).isEmpty();
+        verify(cronConfigStore, never()).save(entity);
     }
 
     // --- scheduleTheMap ---
@@ -469,7 +498,11 @@ class CronControllerTest {
         // trigger() needs the entity to be findable in cronsMap
         cronController.scheduleTheMap();
 
-        // If we got here without exceptions, scheduling and trigger worked
+        // Eingeplant UND ausgeloest. Das Ausloesen ist an der Statistik ablesbar: trigger()
+        // schreibt nach dem Lauf ueber cronConfigStore.save() zurueck. Genau daran unterscheidet
+        // sich dieser Fall von scheduleTheMap_enabledWithoutStartupDoesNotTrigger.
+        assertThat(cronsId()).containsKey("TestCronmandatA");
+        verify(cronConfigStore).save(enabledWithStartup);
     }
 
     @Test
@@ -487,7 +520,8 @@ class CronControllerTest {
         cronController.getCronsMap().put("mandatA", new ArrayList<>(List.of(disabledEntity)));
         cronController.scheduleTheMap();
 
-        // Disabled cron should not throw; no scheduling
+        assertThat(cronsId()).doesNotContainKey("DisabledCronmandatA");
+        verify(cronConfigStore, never()).save(any(CronConfigEntity.class));
     }
 
     @Test
@@ -505,7 +539,9 @@ class CronControllerTest {
         cronController.getCronsMap().put("mandatA", new ArrayList<>(List.of(enabledNoStartup)));
         cronController.scheduleTheMap();
 
-        // No startup trigger, but scheduled successfully
+        assertThat(cronsId()).containsKey("NoStartupCronmandatA");
+        // Kein Startlauf: trigger() haette die Statistik zurueckgeschrieben.
+        verify(cronConfigStore, never()).save(any(CronConfigEntity.class));
     }
 
     @Test
@@ -533,7 +569,10 @@ class CronControllerTest {
         cronController.getCronsMap().put("mandatB", new ArrayList<>(List.of(entity2)));
         cronController.scheduleTheMap();
 
-        // Both should be scheduled without error
+        // Zwei Mandanten, zwei getrennte Eintraege. Der Schluessel ist CronName+Mandant - waeren
+        // die Ids gleich, wuerde unschedule() des einen den anderen mit abraeumen.
+        assertThat(cronsId()).containsKeys("Cron1mandatA", "Cron2mandatB");
+        assertThat(cronsId().get("Cron1mandatA")).isNotEqualTo(cronsId().get("Cron2mandatB"));
     }
 
     // --- unschedule ---
@@ -552,8 +591,16 @@ class CronControllerTest {
         entity.setCron(sc);
 
         cronController.schedule(entity);
-        // Should not throw
+        assertThat(cronsId()).containsKey("TestCronmandatA");
+
         cronController.unschedule(entity);
+
+        // unschedule() nimmt den Eintrag aus cronsId NICHT heraus - die Id bleibt stehen und
+        // zeigt danach ins Leere. Der Beleg ist deshalb das Verhalten: ein Ausloesen findet die
+        // Id, aber keine Aufgabe mehr dazu.
+        assertThatThrownBy(() -> cronController.trigger("TestCron", "mandatA"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cron task not found in scheduler");
     }
 
     // --- trigger ---
@@ -862,7 +909,13 @@ class CronControllerTest {
         entity.setCron(sc);
 
         cronController.schedule(entity);
-        // Should auto-convert to "30 6 * * *" and schedule successfully
+
+        // cron4j kennt nur fuenf Felder und wuerde "0 30 6 * * *" abweisen. Dass der Ersatzweg
+        // NICHT gegangen wurde, ist damit der Beleg fuer die Umrechnung auf "30 6 * * *":
+        // andernfalls stuende im Entity "59 23 31 12 2" und es waere abgeschaltet.
+        assertThat(cronsId()).containsKey("SixFieldCronmandatA");
+        assertThat(entity.getCronExpression()).isEqualTo("0 30 6 * * *");
+        verify(cronConfigStore, never()).save(entity);
     }
 
     @Test
@@ -919,6 +972,11 @@ class CronControllerTest {
         // The trigger method catches exceptions from the scheduled task via scheduler.launch()
         // which is async. The trigger method itself should complete.
         cronController.trigger("FailCron", "mandatA");
+
+        // scheduler.launch() faengt die Ausnahme der Aufgabe selbst ab; trigger() laeuft durch
+        // und schreibt die Statistik trotzdem zurueck. Ohne diese Zusicherung war der Test auch
+        // dann gruen, wenn trigger() gar nicht bis zum Speichern gekommen waere.
+        verify(cronConfigStore).save(entity);
     }
 
     // --- adoptLegacyProxyRow (private) — Karte 574 ---

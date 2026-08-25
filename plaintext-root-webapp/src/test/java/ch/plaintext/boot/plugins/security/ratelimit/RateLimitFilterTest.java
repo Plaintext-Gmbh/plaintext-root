@@ -238,9 +238,39 @@ class RateLimitFilterTest {
         verify(filterChain, times(2)).doFilter(request, response); // still 2
     }
 
+    /**
+     * Karte 968 (Sonar {@code java:S2699}): Der Test rief nur {@code cleanupExpiredBuckets()} auf
+     * und pruefte nichts — er war gruen, egal was die Methode tut.
+     *
+     * <p>Die Aussage, auf die es ankommt, ist keine technische, sondern eine Sicherheitsaussage:
+     * <b>das Aufraeumen darf laufende Sperren nicht aufheben.</b> Wuerde es die Buckets pauschal
+     * leeren statt nur die abgelaufenen, bekaeme ein Angreifer sein Kontingent alle fuenf Minuten
+     * schenkt ({@code @Scheduled(fixedRate = 300000)}) — die Bremse waere praktisch wirkungslos.
+     *
+     * <p>Das Ablaufen selbst ist eine Ebene tiefer belegt ({@code RateLimiterTest}, beide
+     * Richtungen). Hier geht es um das Zusammenspiel im Filter.
+     */
     @Test
-    void shouldHandleCleanup() {
-        filter.cleanupExpiredBuckets(); // Should not throw
+    void cleanupHebtLaufendeSperrenNichtAuf() throws Exception {
+        when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("10.0.9.9");
+        StringWriter sw = new StringWriter();
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        // Kontingent aufbrauchen (Login: 3 je Fenster) und die Sperre ausloesen.
+        for (int i = 0; i < 4; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(3)).doFilter(request, response);
+        verify(response).setStatus(429);
+
+        filter.cleanupExpiredBuckets();
+
+        // Der Bucket ist frisch, also nicht abgelaufen: die Sperre muss stehen bleiben.
+        filter.doFilter(request, response, filterChain);
+        verify(filterChain, times(3)).doFilter(request, response);
+        verify(response, times(2)).setStatus(429);
     }
 
     @Test

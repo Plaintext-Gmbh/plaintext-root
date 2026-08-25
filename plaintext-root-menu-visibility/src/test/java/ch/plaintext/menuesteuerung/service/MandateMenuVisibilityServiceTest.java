@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -537,15 +538,24 @@ class MandateMenuVisibilityServiceTest {
             Thread modificationThread = new Thread(() ->
                     testConfig.getHiddenMenus().add("Menu3"));
 
+            // assertTrue(true) stand hier und war dieselbe Krankheit wie der Fall darunter, nur
+            // von Sonar nicht erfasst: eine Zusicherung, die keine ist. Vor allem verschluckte
+            // sie die Ausnahme aus dem Pruef-Thread - eine ConcurrentModificationException aus
+            // isMenuVisibleForMandate waere im Thread gestorben und der Test trotzdem gruen.
+            AtomicReference<Boolean> ergebnis = new AtomicReference<>();
+            AtomicReference<Throwable> fehler = new AtomicReference<>();
             Thread checkThread = new Thread(() ->
-                    service.isMenuVisibleForMandate("Menu1", "test-mandate"));
+                    ergebnis.set(service.isMenuVisibleForMandate("Menu1", "test-mandate")));
+            checkThread.setUncaughtExceptionHandler((t, e) -> fehler.set(e));
 
             modificationThread.start();
             checkThread.start();
             modificationThread.join();
             checkThread.join();
 
-            assertTrue(true, "Concurrent access should be handled gracefully");
+            assertNull(fehler.get(), () -> "Der Pruef-Thread ist gestorben: " + fehler.get());
+            assertEquals(Boolean.FALSE, ergebnis.get(),
+                    "Menu1 steht in hiddenMenus - die nebenlaeufige Aenderung an Menu3 aendert daran nichts");
         }
 
         @Test
@@ -560,8 +570,19 @@ class MandateMenuVisibilityServiceTest {
                 testConfig.setWhitelistMode(!oldMode);
             }
 
-            boolean finalVisible = service.isMenuVisibleForMandate("Menu1", "test-mandate");
-            assertNotNull(finalVisible);
+            // Karte 968 (Sonar java:S5845): hier stand assertNotNull(finalVisible) auf einem
+            // primitiven boolean. Der kann nie null sein - der Test konnte nicht fehlschlagen und
+            // haette auch eine vertauschte Sichtbarkeit durchgewinkt.
+            //
+            // 100 Umschaltungen sind eine gerade Anzahl, der Modus steht also wieder auf false
+            // (Blacklist). Menu1 steht in hiddenMenus, ist damit unsichtbar. Und eine weitere
+            // Umschaltung muss die Aussage umkehren - sonst wirkt der Modus gar nicht.
+            assertFalse(service.isMenuVisibleForMandate("Menu1", "test-mandate"),
+                    "Blacklist-Modus: ein gelistetes Menue ist unsichtbar");
+
+            testConfig.setWhitelistMode(true);
+            assertTrue(service.isMenuVisibleForMandate("Menu1", "test-mandate"),
+                    "Whitelist-Modus: dasselbe gelistete Menue ist sichtbar");
         }
     }
 
