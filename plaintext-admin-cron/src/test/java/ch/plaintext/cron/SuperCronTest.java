@@ -21,6 +21,7 @@ import java.util.Date;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -421,7 +422,10 @@ class SuperCronTest {
     void afterPropertiesSetDoesNotThrowWhenBeanIsPrototype() throws Exception {
         when(applicationContext.isSingleton("testCronBean")).thenReturn(false);
 
-        cron.afterPropertiesSet(); // should not throw
+        // Karte 968 (java:S2699): „should not throw" war hier keine Nebensache, sondern die
+        // GANZE Aussage der Methode - sie wirft bei Singleton und tut sonst nichts. Genau das
+        // gehoert dann auch zugesichert und nicht kommentiert.
+        assertDoesNotThrow(() -> cron.afterPropertiesSet());
     }
 
     // --- originalBeanClass ---
