@@ -181,8 +181,40 @@ public class ModuleRoleService implements SmartInitializingSingleton {
      * @param role             Rollenname GROSS und ohne {@code ROLE_}-Prefix
      * @return {@code true}, wenn der Benutzer die Rolle in einer der beiden Schreibweisen haelt
      */
+    /**
+     * Fragt eine Rolle ab — <b>unabhaengig davon, wie sie in der Konfiguration geschrieben ist</b>.
+     *
+     * <p><b>Warum das noetig ist (Meldung Daniel, 26.08.2026: „Auszahlungen fuer Jasmin in Mandat
+     * trimstein geht nicht mehr").</b> Rollen stehen in der Datenbank klein ({@code auszahlungen},
+     * {@code wiki}); {@code MyUserDetailsService} macht daraus beim Anmelden
+     * {@code "ROLE_" + role.toUpperCase()}, also {@code ROLE_AUSZAHLUNGEN}. Die Schluessel-Werte
+     * aus {@code plaintext.menu.module-roles} sind dagegen klein geschrieben — und
+     * {@code SpringSecurityProvider.hasRole} vergleicht bewusst mit Beachtung der Schreibweise
+     * (siehe {@code SpringSecurityProviderTest.hasRole_shouldBeCaseSensitive}).
+     *
+     * <p>Die Folge war schlimmer als „ein Modul fehlt": ein Modul hinter einer Rolle war fuer
+     * jeden ausser ROOT/ADMIN <b>dauerhaft</b> unsichtbar, auch fuer die Person, der man die
+     * Rolle ausdruecklich zugewiesen hatte. Der Riegel liess sich schliessen, aber nicht mehr
+     * oeffnen. Dass es lange niemandem auffiel, liegt am ROOT/ADMIN-Vorbehalt in
+     * {@link #holdsAny(List, SecurityProvider)} — wer den Riegel einrichtet, ist Admin und sieht
+     * das Modul weiter.
+     *
+     * <p><b>Warum hier und nicht in {@code SpringSecurityProvider}.</b> Dessen Verhalten ist
+     * ausdruecklich getestet, und die Menue-Annotationen im Bestand schreiben ihre Rollen gross
+     * ({@code "POSTKONTO"}, {@code "ROOT"}) — die Konvention des Systems ist also die
+     * Grossschreibung. Ein zentral aufgeweichter Rollenvergleich waere eine viel groessere
+     * Aenderung an einem Sicherheitsbaustein, um einen Konfigurationsfall zu heilen. Normalisiert
+     * wird deshalb genau dort, wo die frei geschriebene Konfiguration hereinkommt.
+     */
     private static boolean hasRole(SecurityProvider securityProvider, String role) {
-        return securityProvider.hasRole(role) || securityProvider.hasRole("ROLE_" + role);
+        if (role == null || role.isBlank()) {
+            return false;
+        }
+        String gross = role.toUpperCase(java.util.Locale.ROOT);
+        return securityProvider.hasRole(role)
+                || securityProvider.hasRole("ROLE_" + role)
+                || securityProvider.hasRole(gross)
+                || securityProvider.hasRole("ROLE_" + gross);
     }
 
     /**
