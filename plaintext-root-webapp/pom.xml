@@ -129,6 +129,17 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Nur fuer die MCP-Annotationen der Benutzerverwaltung (BenutzerMcpTools). optional=true wie
+             in plaintext-admin-apitoken: das Bean haengt an @ConditionalOnClass und laedt ausschliesslich
+             in Apps mit eigenem MCP-Server (app/guild/schuetu/iot). plaintext-root selbst hat keinen und
+             bleibt unberuehrt; nicht-transitiv, damit kein Consumer die Abhaengigkeit ungefragt erbt. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+            <version>1.1.8</version>
+            <optional>true</optional>
+        </dependency>
+
         <!-- === Spring Boot Starters === -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
