@@ -125,8 +125,20 @@
           CVE-2026-53434/55276/59083/59084), alle ab 11.0.23 behoben. Boot 4.1.0 ist die
           neueste Fassung, ein Boot-Bump steht also nicht zur Verfuegung -> Tomcat direkt
           hochziehen. Betrifft tomcat-embed-core UND tomcat-embed-websocket.
+          28.08.2026: 11.0.24 -> 11.0.25. Geeicht per NVD-CPE-Abfrage: 11.0.24 traegt 11 CVEs
+          (4x CRITICAL bis 9.8, u.a. CVE-2026-65637/65905/65182/68525), 11.0.25 null.
         -->
-        <tomcat.version>11.0.24</tomcat.version>
+        <tomcat.version>11.0.25</tomcat.version>
+        <!--
+          log4j-api: Boot 4.1.0 pinnt 2.25.4 — darin CVE-2026-49844 (CVSS 5.9, MapMessage-
+          JSON-Serialisierung erzeugt ungueltiges JSON bei non-finite Floats), behoben ab 2.25.5.
+        -->
+        <log4j2.version>2.25.5</log4j2.version>
+        <!--
+          pgjdbc: Boot 4.1.0 pinnt 42.7.11 — darin CVE-2026-54291 (CVSS 5.9, channelBinding=require
+          faellt still von SCRAM-SHA-256-PLUS auf plain zurueck), behoben ab 42.7.12.
+        -->
+        <postgresql.version>42.7.12</postgresql.version>
         <!--
           swagger-ui: springdoc 3.0.3 zieht 5.32.2, darin gebuendelt DOMPurify 3.3.2 mit
           CVE-2026-65898 (CVSS 7.2) und 12 weiteren DOMPurify-CVEs. Ab swagger-ui 5.32.11
