@@ -171,6 +171,7 @@
              ConfirmDialog-Buttons innerhalb eines Formulars liegen muessen und das Template
              keine Annahme ueber Seiten-Formulare treffen darf. -->
         <h:form id="globalMessagesForm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
             <p:growl id="globalGrowl" widgetVar="globalGrowl" showDetail="true" life="5000"/>
             <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
                 <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes" icon="pi pi-check"/>
