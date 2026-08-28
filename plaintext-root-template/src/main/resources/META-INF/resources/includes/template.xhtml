@@ -164,6 +164,20 @@
             <ui:include src="/includes/footer.xhtml"/>
         </div>
 
+        <!-- Phase 1 JSF-Quick-Wins (Daniel, 28.08.2026): EIN globales Growl + EIN globaler
+             ConfirmDialog fuer alle Seiten. Seitenlokale Growls duerfen (vorerst) bestehen
+             bleiben — doppelte Anzeige stoert nicht und die Seiten koennen ihre Kopien
+             release-weise abbauen. Das eigene kleine Formular ist noetig, weil die
+             ConfirmDialog-Buttons innerhalb eines Formulars liegen muessen und das Template
+             keine Annahme ueber Seiten-Formulare treffen darf. -->
+        <h:form id="globalMessagesForm">
+            <p:growl id="globalGrowl" widgetVar="globalGrowl" showDetail="true" life="5000"/>
+            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes" icon="pi pi-check"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no ui-button-secondary" icon="pi pi-times"/>
+            </p:confirmDialog>
+        </h:form>
+
         <p:ajaxStatus style="width:32px;height:32px;position:fixed;right:7px;bottom:7px">
             <f:facet name="start">
                 <i class="pi pi-spin pi-spinner ajax-loader" aria-hidden="true"/>
