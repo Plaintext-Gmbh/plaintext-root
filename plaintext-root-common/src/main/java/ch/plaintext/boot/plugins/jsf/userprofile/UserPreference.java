@@ -57,6 +57,19 @@ public class UserPreference implements SimpleStorable<UserPreference>, Serializa
     private Map<String, List<String>> tabellenSpalten = new HashMap<>();
 
     /**
+     * Null-sicherer Getter (ersetzt den Lombok-Getter): Alt-Datensaetze, die VOR diesem Feld
+     * gespeichert wurden, kommen aus der XStream-Deserialisierung mit {@code null} zurueck —
+     * der Feld-Initializer laeuft dort nie. In guild-PROD fuehrte das am 28.08.2026 zu einem
+     * 500 auf der Benutzerverwaltung (NPE in UserPreferencesBackingBean.tabellenSpalten).
+     */
+    public Map<String, List<String>> getTabellenSpalten() {
+        if (tabellenSpalten == null) {
+            tabellenSpalten = new HashMap<>();
+        }
+        return tabellenSpalten;
+    }
+
+    /**
      * Karte 937: Breite des Wiki-Seitenbaums in Pixeln, {@code 0} = Vorgabe des Layouts.
      *
      * <p><b>Warum hier und nicht in einer eigenen Ablage von app.</b> Das ist Layout-Zustand je
