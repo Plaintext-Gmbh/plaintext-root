@@ -49,6 +49,12 @@
                                 <p:ajax update="oidcConfigLabel oidcConfigPanel"/>
                             </p:toggleSwitch>
 
+                            <!-- Beide Zellen IMMER rendern (Fix 29.08.2026): Das Label hing frueher
+                                 direkt an oidcAutoRedirectEnabled, die Wert-Zelle nicht. Fiel das
+                                 Label weg, rutschten in diesem zweispaltigen Raster ALLE folgenden
+                                 Zeilen um eine Zelle — ab "Selbst-Registrierung" standen Beschriftung
+                                 und Schalter vertauscht (Screenshot Daniel, app.guild42.ch). Die
+                                 Sichtbarkeit steuert jetzt der Zellen-INHALT, nicht die Zelle. -->
                             <h:panelGroup id="oidcConfigLabel">
                                 <h:outputText value="#{i18n.t('OIDC-Provider')}:" style="font-weight:bold;"
                                               rendered="#{setupBackingBean.oidcAutoRedirectEnabled}"/>
