@@ -4,13 +4,11 @@
 package ch.plaintext.i18n.web;
 
 import ch.plaintext.I18nProvider;
+import ch.plaintext.boot.plugins.jsf.userprofile.UserPreferencesBackingBean;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Application-scoped CDI bean for i18n translations in XHTML pages.
@@ -20,10 +18,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
  *   #{i18n.t('Speichern')}         - translates "Speichern" to the current user's language
  *   #{i18n.t('Speichern', 'en')}   - translates "Speichern" to English
  * </pre>
- * <p>
- * The current user's language is resolved from the session-scoped
- * UserPreferencesBackingBean (which stores the preferred language).
- * If no user is logged in or no language is set, the default German label is returned.
  * <p>
  * This bean is the recommended way to internationalize XHTML pages in plaintext-root
  * and all child projects. Simply replace hardcoded German text like:
@@ -35,6 +29,16 @@ import org.springframework.security.core.context.SecurityContextHolder;
  *   value="#{i18n.t('Speichern')}"
  * </pre>
  *
+ * <p><b>Kopplung an {@link UserPreferencesBackingBean} (plaintext-root-common).</b> Die Sprache des
+ * Benutzers liegt in dessen session-scoped Einstellungen. Bis zum Zustandsbericht 29.08.2026 holte
+ * diese Klasse sie per Reflection ({@code getClass().getMethod("getLanguage")}) aus einem
+ * {@code Object}-Feld — bei <em>jedem</em> {@code i18n.t()}-Aufruf, also hunderte Male pro
+ * Seitenaufbau, mit der Begruendung, eine Modulabhaengigkeit zu vermeiden. Die gab es nicht:
+ * plaintext-admin-i18n haengt an plaintext-root-common, wo die Bean wohnt. Jetzt wird der
+ * Scoped-Proxy ({@code ScopedProxyMode.TARGET_CLASS}) typsicher injiziert; ausserhalb einer
+ * HTTP-Session (Cron, REST, Tests ohne Web-Kontext) wirft der Proxy beim Zugriff, das faengt
+ * {@link #resolveUserLanguage()} ab und faellt auf Deutsch zurueck.
+ *
  * @author plaintext.ch
  * @since 1.67.0
  */
@@ -43,12 +47,19 @@ import org.springframework.security.core.context.SecurityContextHolder;
 @Slf4j
 public class I18nEL {
 
+    /** Sprachcode, auf den alles zurueckfaellt — die Vorgabetexte in den Views sind deutsch. */
+    static final String DEFAULT_LANGUAGE = "de";
+
     @Autowired(required = false)
     private I18nProvider i18nProvider;
 
+    /**
+     * Session-scoped Einstellungen des Benutzers, als Scoped-Proxy. {@code required = false}, weil
+     * Kontexte ohne die Bean (Modultests, Konsolen-Laeufe) diese Klasse trotzdem laden duerfen —
+     * dann bleibt es bei Deutsch.
+     */
     @Autowired(required = false)
-    @Qualifier("userPreferencesBackingBean")
-    private transient Object userPreferencesBean;
+    private UserPreferencesBackingBean userPreferences;
 
     /**
      * Translates a default German label to the current user's preferred language.
@@ -69,7 +80,7 @@ public class I18nEL {
         }
 
         String language = resolveUserLanguage();
-        if (language == null || "de".equalsIgnoreCase(language)) {
+        if (DEFAULT_LANGUAGE.equalsIgnoreCase(language)) {
             return defaultGerman;
         }
 
@@ -92,7 +103,7 @@ public class I18nEL {
             return defaultGerman;
         }
 
-        if (targetLanguage == null || "de".equalsIgnoreCase(targetLanguage)) {
+        if (targetLanguage == null || DEFAULT_LANGUAGE.equalsIgnoreCase(targetLanguage)) {
             return defaultGerman;
         }
 
@@ -100,37 +111,23 @@ public class I18nEL {
     }
 
     /**
-     * Resolves the current user's preferred language from the session-scoped
-     * UserPreferencesBackingBean via reflection (to avoid circular module dependencies).
-     *
-     * @return language code (e.g., "de", "en") or "de" as fallback
+     * Sprache des angemeldeten Benutzers aus {@link UserPreferencesBackingBean}; Deutsch, wenn keine
+     * Bean, keine Session oder keine Sprache gesetzt ist.
      */
-    private String resolveUserLanguage() {
-        try {
-            // Try to get language from UserPreferencesBackingBean via reflection
-            // (avoids compile-time dependency on plaintext-root-webapp)
-            if (userPreferencesBean != null) {
-                java.lang.reflect.Method getLanguage = userPreferencesBean.getClass().getMethod("getLanguage");
-                Object lang = getLanguage.invoke(userPreferencesBean);
-                if (lang instanceof String s && !s.isBlank()) {
-                    return s;
-                }
-            }
-        } catch (Exception e) {
-            log.debug("Could not resolve user language from UserPreferencesBackingBean: {}", e.getMessage());
+    String resolveUserLanguage() {
+        if (userPreferences == null) {
+            return DEFAULT_LANGUAGE;
         }
-
-        // Fallback: try to get from Spring Security authentication
         try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated()) {
-                // Default to "de" for authenticated users without explicit language preference
-                return "de";
+            String language = userPreferences.getLanguage();
+            if (language != null && !language.isBlank()) {
+                return language;
             }
-        } catch (Exception e) {
-            log.debug("Could not resolve authentication: {}", e.getMessage());
+        } catch (RuntimeException e) {
+            // Scoped-Proxy ohne aktive Session (BeanCreationException/ScopeNotActiveException) oder
+            // Einstellungen noch nicht geladen — kein Fehler, nur keine Sprachwahl.
+            log.debug("Could not resolve user language from UserPreferencesBackingBean: {}", e.toString());
         }
-
-        return "de";
+        return DEFAULT_LANGUAGE;
     }
 }

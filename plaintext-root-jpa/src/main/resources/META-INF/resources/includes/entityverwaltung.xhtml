@@ -1,0 +1,314 @@
+<ui:composition xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns:c="http://xmlns.jcp.org/jsp/jstl/core"
+                xmlns="http://www.w3.org/1999/xhtml">
+
+    <!-- Gemeinsamer Seitenkoerper der generischen Datenverwaltung (Zustandsbericht 29.08.2026, R2).
+         rootentities.xhtml und adminentities.xhtml waren zwei Kopien mit 54 Zeilen Unterschied
+         (Bean-Name, Export/Import). Ein Fix musste zweimal gemacht werden — jetzt einmal hier.
+
+         Parameter (ui:param):
+           bean         die Backing-Bean (rootEntityBackingBean | adminEntityBackingBean),
+                        beide sind eine AbstractEntityBackingBean
+           pageUrl      URL fuer history.pushState (z. B. /rootentities.html)
+           exportImport true = JSON-Export/-Import anbieten (nur Root; braucht bean.exportFile,
+                        bean.exportEntities(), bean.importEntities())
+
+         Die Komponenten-IDs (selectorForm:entityType, listForm:entityTable, editForm, importForm)
+         sind Vertrag: der Playwright-IT RootPagesPlaywrightIT haengt daran. -->
+
+    <style>
+        /* Defining column widths */
+        .label-column {
+            width: 30%;
+        }
+
+        .input-column {
+            width: 70%;
+        }
+
+        /* Add spacing between rows in dialog */
+        .dialog-grid td {
+            padding: 8px 4px;
+        }
+
+        .action-buttons {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            align-items: center;
+        }
+
+        .entity-selector {
+            margin-bottom: 20px;
+        }
+
+        /* Mobile optimizations */
+        @media screen and (max-width: 768px) {
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .action-buttons .ui-button {
+                width: 100% !important;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .action-buttons {
+                background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            }
+        }
+    </style>
+
+    <h:outputScript>
+        history.pushState(null, null, '#{pageUrl}');
+    </h:outputScript>
+
+    <p:growl id="messages" showDetail="true" life="3000"/>
+
+    <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
+        <h:form>
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes"/>
+            <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no"/>
+        </h:form>
+    </p:confirmDialog>
+
+    <!-- Entity Type Selector -->
+    <div class="entity-selector">
+        <h:form id="selectorForm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:panel header="#{i18n.t('Entitätstyp auswählen')}">
+                <div class="p-fluid">
+                    <!-- Auftrag Daniel, 29.08.2026: Die Auswahl lief ueber onchange="submit()" +
+                         valueChangeListener. Im Betrieb (PrimeFaces 15) loeste das keinen Request
+                         aus — die Auswahl blieb wirkungslos, keine Tabelle erschien. Jetzt ein
+                         regulaeres Ajax-Ereignis: Wert setzen, Listener rufen, Liste und
+                         Meldungen nachladen. -->
+                    <p:selectOneMenu id="entityType" value="#{bean.selectedEntityType}"
+                                     converter="entityDescriptorConverter">
+                        <f:attribute name="backingBean" value="#{bean}"/>
+                        <p:ajax listener="#{bean.entityTypeChanged}"
+                                update=":listForm :messages" process="@this"/>
+                        <f:selectItem itemLabel="-- Bitte wählen --" itemValue="#{null}" noSelectionOption="true"/>
+                        <f:selectItems value="#{bean.availableEntities}"
+                                       var="entity"
+                                       itemLabel="#{entity.displayName}"
+                                       itemValue="#{entity}"/>
+                    </p:selectOneMenu>
+                </div>
+            </p:panel>
+        </h:form>
+    </div>
+
+    <!-- Entity List -->
+    <h:form id="listForm">
+        <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+        <p:panel header="#{bean.selectedEntityType != null ? bean.selectedEntityType.displayName : 'Keine Entität ausgewählt'}"
+                 rendered="#{bean.selectedEntityType != null}">
+
+            <h:panelGroup id="actionButtons" layout="block" styleClass="action-buttons">
+                <p:commandButton value="Neu"
+                                 icon="pi pi-plus"
+                                 action="#{bean.newEntity()}"
+                                 update="@(#editForm)"
+                                 oncomplete="PF('editDialog').show()"
+                                 process="@this"/>
+                <p:commandButton value="Bearbeiten"
+                                 icon="pi pi-pencil"
+                                 action="#{bean.selectEntity()}"
+                                 update="@(#editForm)"
+                                 oncomplete="PF('editDialog').show()"
+                                 process="@this"
+                                 disabled="#{bean.selectedEntity == null}"/>
+                <p:commandButton value="Löschen"
+                                 icon="pi pi-trash"
+                                 styleClass="ui-button-danger"
+                                 action="#{bean.deleteEntity()}"
+                                 update="messages,entityTable,actionButtons"
+                                 process="@this"
+                                 disabled="#{bean.selectedEntity == null}">
+                    <p:confirm header="Bestätigung"
+                               message="Möchten Sie diesen Eintrag wirklich löschen?"
+                               icon="pi pi-exclamation-triangle"/>
+                </p:commandButton>
+                <p:commandButton value="Aktualisieren"
+                                 icon="pi pi-refresh"
+                                 action="#{bean.loadEntities()}"
+                                 update="entityTable,actionButtons"
+                                 process="@this"/>
+                <ui:fragment rendered="#{exportImport}">
+                    <p:commandButton value="Export"
+                                     icon="pi pi-download"
+                                     styleClass="ui-button-success"
+                                     ajax="false"
+                                     action="#{bean.exportEntities()}">
+                        <p:fileDownload value="#{bean.exportFile}"/>
+                    </p:commandButton>
+                    <p:commandButton value="Import"
+                                     icon="pi pi-upload"
+                                     styleClass="ui-button-warning"
+                                     onclick="PF('importDialog').show()"
+                                     type="button"/>
+                </ui:fragment>
+            </h:panelGroup>
+
+            <p:dataTable id="entityTable"
+                         value="#{bean.entities}"
+                         var="entity"
+                         selectionMode="single"
+                         selection="#{bean.selectedEntity}"
+                         rowKey="#{bean.getEntityId(entity)}"
+                         paginator="true"
+                         rows="100"
+                         rowsPerPageTemplate="20,50,100,200,300,500,1000"
+                         paginatorPosition="bottom"
+                         emptyMessage="#{i18n.t('Keine Daten gefunden')}"
+                         reflow="true">
+
+                <p:ajax event="rowSelect" update="@form"/>
+                <p:ajax event="rowUnselect" update="@form"/>
+
+                <p:columns value="#{bean.displayFields}"
+                           var="field"
+                           headerText="#{field.displayName}"
+                           sortBy="#{bean.getFieldValue(entity, field)}"
+                           priority="1">
+                    <h:outputText value="#{bean.getFieldValue(entity, field)}"/>
+                </p:columns>
+            </p:dataTable>
+        </p:panel>
+    </h:form>
+
+    <!-- Import Dialog (nur Root) -->
+    <ui:fragment rendered="#{exportImport}">
+        <h:form id="importForm" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:dialog id="importDialog"
+                      header="#{i18n.t('Daten importieren')}"
+                      widgetVar="importDialog"
+                      modal="true"
+                      resizable="false"
+                      showEffect="fade"
+                      hideEffect="fade"
+                      styleClass="mobile-safe">
+                <p:messages id="importMessages" showDetail="true"/>
+
+                <div class="p-fluid">
+                    <p:fileUpload id="fileUpload"
+                                  mode="simple"
+                                  skinSimple="true"
+                                  label="JSON-Datei auswählen"
+                                  accept=".json"
+                                  required="true"/>
+
+                    <div style="margin-top: 20px; padding: 10px; background: #fffacd; border-radius: 5px;">
+                        <strong>#{i18n.t('Warnung')}:</strong> #{i18n.t('Beim Import werden bestehende Daten überschrieben, wenn dieselbe ID vorhanden ist.')}
+                    </div>
+                </div>
+
+                <f:facet name="footer">
+                    <p:commandButton value="#{i18n.t('Importieren')}"
+                                     icon="pi pi-upload"
+                                     action="#{bean.importEntities()}"
+                                     update="@form,@(#messages),@(#listForm)"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('importDialog').hide();"/>
+                    <p:commandButton value="#{i18n.t('Abbrechen')}"
+                                     icon="pi pi-times"
+                                     onclick="PF('importDialog').hide()"
+                                     type="button"/>
+                </f:facet>
+            </p:dialog>
+        </h:form>
+    </ui:fragment>
+
+    <!-- Edit Dialog -->
+    <h:form id="editForm">
+        <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+        <p:dialog styleClass="mobile-safe" id="editDialog"
+                  header="#{bean.selectedEntityType != null ? bean.selectedEntityType.displayName.concat(' Details') : 'Details'}"
+                  widgetVar="editDialog"
+                  modal="true"
+                  resizable="false"
+                  columnClasses="label-column, input-column"
+                  showEffect="fade"
+                  hideEffect="fade"
+                  height="700"
+                  dynamic="true">
+
+            <h:panelGrid columns="2" styleClass="dialog-grid">
+                <c:forEach items="#{bean.editableFields}" var="field">
+                    <h:outputText value="#{field.displayName}:"/>
+
+                    <h:panelGroup>
+                        <!-- Mandat Dropdown -->
+                        <p:selectOneMenu id="mandatDropdown"
+                                         value="#{bean.fieldValues[field.fieldName]}"
+                                         rendered="#{field.fieldName == 'mandat'}"
+                                         required="#{field.required}"
+                                         style="width: 450px;">
+                            <f:selectItem itemLabel="-- Kein Mandat --" itemValue="" noSelectionOption="true"/>
+                            <f:selectItems value="#{bean.allMandate}"
+                                           var="m"
+                                           itemLabel="#{m}"
+                                           itemValue="#{m}"/>
+                        </p:selectOneMenu>
+
+                        <!-- Text input -->
+                        <p:inputText id="textInput"
+                                     value="#{bean.fieldValues[field.fieldName]}"
+                                     rendered="#{field.text and not field.lob and field.fieldName != 'mandat'}"
+                                     required="#{field.required}"
+                                     size="45"/>
+
+                        <!-- Large text area -->
+                        <p:inputTextarea id="textareaInput"
+                                         value="#{bean.fieldValues[field.fieldName]}"
+                                         rows="5"
+                                         rendered="#{field.lob}"
+                                         required="#{field.required}"
+                                         style="width: 450px;"/>
+
+                        <!-- Numeric input -->
+                        <p:inputNumber id="numberInput"
+                                       value="#{bean.fieldValues[field.fieldName]}"
+                                       decimalPlaces="0"
+                                       rendered="#{field.numeric}"
+                                       required="#{field.required}"/>
+
+                        <!-- Boolean checkbox -->
+                        <p:selectBooleanCheckbox id="checkboxInput"
+                                                 value="#{bean.fieldValues[field.fieldName]}"
+                                                 rendered="#{field.booleanType}"
+                                                 required="#{field.required}"/>
+
+                        <!-- Date/Time picker -->
+                        <p:datePicker id="dateInput"
+                                      value="#{bean.fieldValues[field.fieldName]}"
+                                      showTime="true"
+                                      pattern="dd.MM.yyyy HH:mm"
+                                      rendered="#{field.dateTime}"
+                                      required="#{field.required}"/>
+                    </h:panelGroup>
+                </c:forEach>
+
+                <br/>
+                <h:panelGroup colspan="3">
+                    <p:commandButton value="Speichern"
+                                     icon="pi pi-check"
+                                     action="#{bean.saveEntity()}"
+                                     update="@form @(#messages) @(#listForm)"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('editDialog').hide();"/>
+                </h:panelGroup>
+            </h:panelGrid>
+        </p:dialog>
+    </h:form>
+</ui:composition>

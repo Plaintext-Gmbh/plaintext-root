@@ -13,14 +13,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Linter-Guard gegen den Facelets-EL-Fallstrick in ALLEN Framework-XHTML von plaintext-root.
+ * Geteilter Linter-Guard gegen den Facelets-EL-Fallstrick in ALLEN {@code src/main/resources/**}
+ * {@code .xhtml} des jeweiligen Reactors.
  *
  * <p>Ausloeser (real in {@code setup.xhtml} aufgetreten): ein gerades {@code "} in einem inline-EL
  * im Body-Text — z. B. {@code #{i18n.t('... „Global – System" ...')}} — sprengt den Facelets-
@@ -28,31 +28,45 @@ import static org.junit.jupiter.api.Assertions.fail;
  * endet in einem 500 / Whitelabel-Error. Der Test verhindert, dass so etwas erneut unbemerkt
  * hinzukommt.
  *
- * <p>Der Scan-Code lebt in {@link FaceletsElLinter} (in plaintext-root-common) und ist damit
- * transitiv auf dem Test-Classpath jedes abhaengigen Projekts (app, iot, fwtool, schuetu), das
- * diesen Test nach dem naechsten root-Release 1:1 uebernehmen kann.
+ * <p><b>Zustandsbericht 29.08.2026, Paket R2:</b> Dieser Test lag bisher als lokale Kopie in
+ * {@code plaintext-root-webapp/src/test} (und in guild/schuetu nochmals). Jetzt liegt er wie die
+ * uebrigen Regeln in {@code src/main/java} von {@code plaintext-root-archtests} und laeuft im
+ * Consumer via Surefire {@code <dependenciesToScan>} ab dessen Reactor-Wurzel ueber jedes
+ * Modul-{@code src/main/resources} ({@link ReactorLayout}). Consumer ohne eigene XHTML bestehen.
+ *
+ * <p><b>Ausnahmen:</b> {@code <!-- el-quote-ok -->} in derselben Zeile (praktisch nie noetig — es
+ * ist immer ein echter Fehler); ganze Dateien ueber die Allowlist des Reactors
+ * ({@code plaintext-arch-allowlist.txt}, Regel {@code facelets-el}, siehe {@link ArchAllowlist}).
  *
  * @author info@plaintext.ch
  * @since 2026
  */
-class FaceletsElLinterTest {
+class PlaintextFaceletsElLinterTest {
 
-    private static final String RESOURCES_SUFFIX = "src/main/resources/META-INF/resources";
+    static final String ALLOWLIST_REGEL = "facelets-el";
+
+    private static final String RESOURCES_SUFFIX = "src/main/resources";
 
     /**
-     * Scannt jedes {@code src/main/resources/META-INF/resources} aller root-Module (ab Repo-Wurzel)
-     * und schlaegt bei jedem geraden {@code "} in einem inline-Body-EL mit Datei + Zeile fehl.
+     * Scannt jedes {@code src/main/resources} aller Reactor-Module und schlaegt bei jedem geraden
+     * {@code "} in einem inline-Body-EL mit Datei + Zeile fehl.
      */
     @Test
-    void keinGeradesQuoteInInlineElVonFrameworkXhtml() throws IOException {
-        List<Path> resourceRoots = findResourceRoots();
-        assertTrue(!resourceRoots.isEmpty(),
-                "Keine META-INF/resources-Verzeichnisse gefunden (cwd="
-                        + Path.of("").toAbsolutePath() + ")");
+    void keinGeradesQuoteInInlineElVonXhtml() {
+        List<Path> resourceRoots = ReactorLayout.sourceRoots(RESOURCES_SUFFIX);
+        if (resourceRoots.isEmpty()) {
+            return;
+        }
+        ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
 
-        List<Violation> violations = new ArrayList<>();
+        List<String> violations = new ArrayList<>(allowlist.fehler());
         for (Path root : resourceRoots) {
-            violations.addAll(FaceletsElLinter.scan(root));
+            for (Violation v : FaceletsElLinter.scan(root)) {
+                String rel = ReactorLayout.relativ(v.file());
+                if (!allowlist.erlaubt(rel)) {
+                    violations.add(rel + ":" + v.line() + " -> " + v.message());
+                }
+            }
         }
 
         if (!violations.isEmpty()) {
@@ -61,10 +75,10 @@ class FaceletsElLinterTest {
                     === FACELETS-EL-FALLSTRICK: gerades " in inline-#{...} im Body-Text ===
                     (bricht ELText.findVarLength -> 500/Whitelabel auf der ganzen Seite)
                     """);
-            for (Violation v : violations) {
-                msg.append("  ! ").append(v).append("\n");
-            }
-            msg.append("\nFix: im EL-String deutsche Typografie-Quotes („ “) statt geradem \" verwenden.\n");
+            violations.forEach(v -> msg.append("  ! ").append(v).append("\n"));
+            msg.append("\nFix: im EL-String deutsche Typografie-Quotes („ “) statt geradem \" verwenden.\n")
+               .append("Begruendete Ausnahme: <!-- el-quote-ok --> in derselben Zeile oder Eintrag '")
+               .append(ALLOWLIST_REGEL).append(" <pfad>  # <Grund>' in ").append(ArchAllowlist.DATEINAME).append(".\n");
             fail(msg.toString());
         }
     }
@@ -105,45 +119,5 @@ class FaceletsElLinterTest {
     void scanAufNichtVorhandenemPfadLiefertLeereListe() {
         assertTrue(FaceletsElLinter.scan(Path.of("does/not/exist/xyz")).isEmpty());
         assertTrue(FaceletsElLinter.scan(null).isEmpty());
-    }
-
-    /**
-     * Findet ab dem Arbeitsverzeichnis nach oben die Repo-Wurzel und sammelt jedes
-     * {@code <modul>/src/main/resources/META-INF/resources}. Faellt auf das eigene Modul zurueck,
-     * falls die Wurzel nicht gefunden wird (z. B. isolierter Modul-Build).
-     */
-    private static List<Path> findResourceRoots() throws IOException {
-        Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-
-        List<Path> roots = new ArrayList<>();
-        Path own = start.resolve(RESOURCES_SUFFIX);
-        if (Files.isDirectory(own)) {
-            roots.add(own);
-        }
-
-        Path repoRoot = findRepoRoot(start);
-        if (repoRoot != null) {
-            try (Stream<Path> modules = Files.list(repoRoot)) {
-                modules.filter(Files::isDirectory)
-                       .map(m -> m.resolve(RESOURCES_SUFFIX))
-                       .filter(Files::isDirectory)
-                       .filter(p -> !roots.contains(p))
-                       .forEach(roots::add);
-            }
-        }
-        return roots;
-    }
-
-    /** Repo-Wurzel = erstes Verzeichnis nach oben, das einen Maven-Reactor (pom.xml mit &lt;modules&gt;) hat. */
-    private static Path findRepoRoot(Path start) throws IOException {
-        Path dir = start;
-        for (int i = 0; i < 8 && dir != null; i++) {
-            Path pom = dir.resolve("pom.xml");
-            if (Files.isRegularFile(pom) && Files.readString(pom).contains("<modules>")) {
-                return dir;
-            }
-            dir = dir.getParent();
-        }
-        return null;
     }
 }

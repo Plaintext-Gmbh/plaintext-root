@@ -63,20 +63,42 @@ public class WebhookDispatchService {
     // laesst hier darum nur REQUIRES_NEW oder NOT_SUPPORTED zu und verweigert jede andere
     // Propagation schon beim Kontextstart ("@TransactionalEventListener method must not be
     // annotated with @Transactional unless when declared as REQUIRES_NEW or NOT_SUPPORTED").
+    //
+    // Zustandsbericht 29.08.2026 (R2): Der Selbstaufruf selbst ist jetzt weg. Beide oeffentlichen
+    // Einstiege — dieser Listener und dispatch() fuer den Test-Ping aus WebhookEndpointService —
+    // rufen den privaten Kern anlegenUndZustellen(); keiner ruft mehr eine eigene @Transactional-
+    // Methode. Bewusst NICHT ueber einen ObjectProvider<WebhookDispatchService>-Self-Proxy (Muster
+    // BuildstatsSyncService in plaintext-app): dispatch() haette mit REQUIRED nur die hier bereits
+    // offene REQUIRES_NEW-Klammer betreten, der Umweg ueber den Proxy brachte zur Laufzeit nichts
+    // und haette den Konstruktor (und damit beide Tests) veraendert. Das innere @Transactional an
+    // dispatch() bleibt, denn der externe Aufruf WebhookEndpointService.testPing() hat sonst keine
+    // Klammer: Delivery anlegen und Ergebnis schreiben sind dort zwei Repository-Aufrufe, die
+    // zusammengehoeren. TransaktionsklammerVertragTest misst weiterhin genau EINE Transaktion je
+    // Event.
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onDomainEvent(PlaintextDomainEvent event) {
         List<WebhookEndpoint> endpoints = endpointRepo.findByMandatAndEnabledTrueAndDeletedFalse(event.mandant());
         for (WebhookEndpoint endpoint : endpoints) {
             if (abonniert(endpoint, event.eventType())) {
-                dispatch(endpoint, event.eventType(), payloadJson(event));
+                anlegenUndZustellen(endpoint, event.eventType(), payloadJson(event));
             }
         }
     }
 
-    /** Legt eine neue Delivery an und versucht sie sofort best-effort zuzustellen. */
+    /**
+     * Legt eine neue Delivery an und versucht sie sofort best-effort zuzustellen. Externer Einstieg
+     * (Test-Ping aus {@link WebhookEndpointService#testPing}); die Transaktionsklammer hier ist fuer
+     * genau diesen Weg da — {@link #onDomainEvent} bringt seine eigene (REQUIRES_NEW) mit und ruft
+     * den Kern direkt.
+     */
     @Transactional
     public WebhookDelivery dispatch(WebhookEndpoint endpoint, String eventType, String payloadJson) {
+        return anlegenUndZustellen(endpoint, eventType, payloadJson);
+    }
+
+    /** Gemeinsamer Kern von {@link #onDomainEvent} und {@link #dispatch}: Delivery anlegen, zustellen, Ergebnis schreiben. */
+    private WebhookDelivery anlegenUndZustellen(WebhookEndpoint endpoint, String eventType, String payloadJson) {
         WebhookDelivery delivery = new WebhookDelivery();
         delivery.setMandat(endpoint.getMandat());
         delivery.setEndpointId(endpoint.getId());
