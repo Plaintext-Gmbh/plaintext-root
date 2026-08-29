@@ -4,8 +4,12 @@
       xmlns:f="http://java.sun.com/jsf/core"
       xmlns:ui="http://java.sun.com/jsf/facelets"
       xmlns:p="http://primefaces.org/ui"
-      lang="en"
+      lang="#{empty languageBean ? 'en' : languageBean.languageCode}"
       data-theme="#{userPreferencesBackingBean.darkMode}">
+<!-- Phase 1 Punkt 4 (schuetu-Fork aufloesen): f:view traegt die App-Locale, wenn die App eine
+     languageBean stellt (schuetu-Mehrsprachigkeit). Ohne Bean ist locale null = Default-
+     Verhalten, fuer alle uebrigen Apps aendert sich nichts. -->
+<f:view locale="#{empty languageBean ? null : languageBean.locale}">
 
 <h:head>
     <f:facet name="first">
@@ -151,6 +155,11 @@
 <h:body styleClass="#{userPreferencesBackingBean.inputStyleClass}">
     <div class="layout-wrapper layout-topbar-#{userPreferencesBackingBean.topbarTheme} layout-menu-#{userPreferencesBackingBean.menuTheme} #{userPreferencesBackingBean.menuMode} #{userPreferencesBackingBean.menuStaticClass}">
         <ui:include src="/includes/topbar.xhtml"/>
+        <!-- App-Hook (Phase 1 Punkt 4): Apps legen bei Bedarf eine EIGENE kleine
+             /includes/app-template-extra.xhtml in den Classpath (z.B. schuetus Sprach-
+             Umschalter) — der Default hier ist leer. So braucht keine App mehr einen
+             Komplett-Fork dieses Templates. -->
+        <ui:include src="/includes/app-template-extra.xhtml"/>
         <ui:include src="/includes/config.xhtml"/>
 
         <div class="layout-main">
@@ -201,4 +210,5 @@
 
 </h:body>
 
+</f:view>
 </html>
