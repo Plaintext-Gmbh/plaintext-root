@@ -239,9 +239,10 @@
 
             </p:dataTable>
 
-            <p:dialog styleClass="mobile-safe" header="#{i18n.t('Benutzer Details')}" id="dlg" widgetVar="dlg" modal="true" columnClasses="label-column, input-column" showEffect="fade" hideEffect="fade" resizable="false" height="700">
+            <p:dialog styleClass="mobile-safe" header="#{i18n.t('Benutzer Details')}" id="dlg" widgetVar="dlg" modal="true" showEffect="fade" hideEffect="fade" resizable="false" height="700">
 
-                <h:panelGrid columns="2" styleClass="dialog-grid">
+                <h:panelGrid columns="2" styleClass="dialog-grid"
+                             columnClasses="label-column, input-column">
 
                     <h:outputText value="ID:"/>
                     <h:outputText value="#{myUserBackingBean.selected.id}"/>
@@ -353,15 +354,20 @@
                                       style="font-size: 0.85rem; color: var(--text-color-secondary);"/>
                     </h:panelGroup>
 
-                    <br/>
-                    <h:panelGroup colspan="3" styleClass="dialog-buttons">
-                        <!--
-                            SECURITY (Forensik 23.08.2026): Verlangt das Backing-Bean fuer den Entzug von
-                            root/admin eine ausdrueckliche Bestaetigung, kommt die Antwort mit
-                            validationFailed zurueck (Dialog bleibt offen) und rollenEntzugAusstehend
-                            ist gesetzt — dann wird die Rueckfrage gezeigt statt kommentarlos zu
-                            speichern.
-                        -->
+                    <!--
+                        Die Knopfzeile liegt im FUSS des Rasters, nicht als weitere Zelle darin.
+                        Zwei Gruende, beide hier vorgefallen: Ein h:panelGroup kennt kein colspan
+                        (das Attribut wurde stillschweigend ignoriert), und das <br/> davor war
+                        selbst eine Zelle und verschob alles Nachfolgende um eine Spalte.
+
+                        SECURITY (Forensik 23.08.2026): Verlangt das Backing-Bean fuer den Entzug von
+                        root/admin eine ausdrueckliche Bestaetigung, kommt die Antwort mit
+                        validationFailed zurueck (Dialog bleibt offen) und rollenEntzugAusstehend
+                        ist gesetzt — dann wird die Rueckfrage gezeigt statt kommentarlos zu
+                        speichern.
+                    -->
+                    <f:facet name="footer">
+                      <h:panelGroup styleClass="dialog-buttons">
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" action="#{myUserBackingBean.save()}" update="messages,fm:tbl,rolesMenu,fm:rollenEntzugDlg" oncomplete="if (args &amp;&amp; !args.validationFailed) { PF('dlg').hide(); } else if (#{myUserBackingBean.rollenEntzugAusstehend}) { PF('rollenEntzugDlg').show(); }"/>
                         <p:commandButton value="#{i18n.t('Benutzer löschen')}"
                                          icon="pi pi-trash"
@@ -373,7 +379,8 @@
                                          style="margin-left: 5px;">
                             <p:confirm header="#{i18n.t('Bestätigung')}" message="#{i18n.t('Wollen Sie den Benutzer wirklich löschen?')}" icon="pi pi-exclamation-triangle"/>
                         </p:commandButton>
-                    </h:panelGroup>
+                      </h:panelGroup>
+                    </f:facet>
 
                 </h:panelGrid>
             </p:dialog>
