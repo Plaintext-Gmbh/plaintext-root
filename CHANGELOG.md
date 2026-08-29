@@ -32,6 +32,17 @@ exhaustive.
 - `I18nService.importSeedTranslations()` und `I18nExportController` lesen CSV-Zeilen ueber
   `I18nSeedLinter` statt ueber je eine private Kopie des Parsers.
 
+### Fixed
+- Session-Beans in `plaintext-admin-requirements` sind wieder serialisierbar:
+  `AnforderungSettingsBackingBean.apiSettingsRepository`/`.claudeAutomationService` und
+  `HowtoBackingBean.howtoRepository` sind `transient` (Regel `PlaintextSessionBeanSerialisierbarTest`,
+  Karte 915). root hatte die Verstoesse nicht gesehen, weil die geteilten ArchUnit-Regeln nur in
+  `plaintext-root-webapp` laufen und die nicht an `plaintext-admin-requirements` haengt — das
+  Basispaket war schon `ch.plaintext`, der Classpath nicht. Jetzt faehrt das Modul die
+  klassenbasierten Regeln (`PlaintextSessionBeanSerialisierbarTest`, `PlaintextMcpScopeVertragTest`)
+  selbst per Surefire `dependenciesToScan`, und der neue `SessionBeanRegelDeckungTest` in der webapp
+  meldet jede session-scoped Bean im Reactor, die weder die webapp sieht noch ihr Modul selbst prueft.
+
 ## [1.635.0] — 2026-08-29
 
 ### Fixed
