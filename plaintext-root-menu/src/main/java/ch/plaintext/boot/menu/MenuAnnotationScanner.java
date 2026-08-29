@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.core.env.Environment;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import java.util.ArrayList;
@@ -28,6 +29,19 @@ public class MenuAnnotationScanner {
     private final MenuAccessPolicy accessPolicy;
 
     /**
+     * Umgebung der Anwendung — optional. Ist sie gesetzt, wertet der Scanner Spring-Bedingungen
+     * ({@code @Conditional}, {@code @ConditionalOnProperty}, {@code @Profile}) an den
+     * {@code @MenuAnnotation}-Klassen gegen die echte Konfiguration aus; ohne sie sieht die
+     * Bedingung nur System-Properties und Umgebungsvariablen (Spring-Standard).
+     *
+     * <p>Auftrag Daniel, 29.08.2026: Der Menuepunkt „Swagger" stand in jeder App im Root-Menue,
+     * obwohl springdoc in PROD abgeschaltet ist — der Klick lief auf 404 und von dort auf das
+     * Dashboard. Mit {@code @ConditionalOnProperty} an der Menueklasse verschwindet er, wenn es
+     * nichts zu zeigen gibt.</p>
+     */
+    private Environment environment;
+
+    /**
      * Keeps the three-argument form working for callers that predate the access policy; they get
      * {@link MenuAccessPolicy#PERMISSIVE}, the historic behaviour.
      *
@@ -39,6 +53,17 @@ public class MenuAnnotationScanner {
                                  MenuVisibilityProvider menuVisibilityProvider,
                                  BeanFactory beanFactory) {
         this(securityProvider, menuVisibilityProvider, beanFactory, MenuAccessPolicy.PERMISSIVE);
+    }
+
+    /**
+     * Umgebung fuer die Auswertung von {@code @Conditional}-Annotationen an Menueklassen setzen.
+     *
+     * @param umgebung die Spring-Umgebung, darf {@code null} sein
+     * @return dieser Scanner (fluent)
+     */
+    public MenuAnnotationScanner mitUmgebung(Environment umgebung) {
+        this.environment = umgebung;
+        return this;
     }
 
     public List<MenuItemImpl> findAnnotatedClasses(String scanPackage) {
@@ -65,6 +90,12 @@ public class MenuAnnotationScanner {
     private ClassPathScanningCandidateComponentProvider createComponentScanner() {
         ClassPathScanningCandidateComponentProvider provider =
             new ClassPathScanningCandidateComponentProvider(false);
+        if (environment != null) {
+            // Der Provider prueft @Conditional selbst (isConditionMatch) — aber nur gegen die
+            // Umgebung, die er kennt. Ohne diese Zeile waere das eine StandardEnvironment ohne
+            // application.yml, und @ConditionalOnProperty saehe die Konfiguration nie.
+            provider.setEnvironment(environment);
+        }
         provider.addIncludeFilter(new AnnotationTypeFilter(MenuAnnotation.class));
         return provider;
     }

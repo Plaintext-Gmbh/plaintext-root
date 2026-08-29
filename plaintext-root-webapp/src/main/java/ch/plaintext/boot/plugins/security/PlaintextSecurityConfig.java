@@ -139,7 +139,6 @@ public class PlaintextSecurityConfig {
             "/sessioninsights.*",
             "/settings.*",
             "/setup.*",
-            "/mailtemplates.*",
             "/webhooks.*"
     };
 
@@ -150,6 +149,9 @@ public class PlaintextSecurityConfig {
      */
     private static final String[] ADMIN_PAGES = {
             "/useradmin.*",
+            // Auftrag Daniel, 29.08.2026: Mailtexte sind mandantenbezogen und gehoeren dem admin —
+            // aus ROOT_ONLY_PAGES hierher verschoben, Menuepunkt jetzt unter „Admin".
+            "/mailtemplates.*",
             "/adminentities.*",
             "/admin-api-token.*",
             "/i18n-translations.*",

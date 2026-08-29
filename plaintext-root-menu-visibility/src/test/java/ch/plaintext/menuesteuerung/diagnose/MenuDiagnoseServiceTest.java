@@ -105,7 +105,7 @@ class MenuDiagnoseServiceTest {
         assertTrue(zeile.modulOk());
         assertTrue(zeile.mandantOk());
         assertTrue(zeile.sichtbar());
-        assertEquals("", zeile.getErsterGrund());
+        assertEquals("", zeile.ersterGrund());
     }
 
     @Test
@@ -120,7 +120,7 @@ class MenuDiagnoseServiceTest {
         assertFalse(zeile.sichtbar());
         assertTrue(zeile.rolleGrund().contains("USER"), zeile.rolleGrund());
         assertTrue(zeile.rolleGrund().contains("ADMIN"), zeile.rolleGrund());
-        assertEquals(zeile.rolleGrund(), zeile.getErsterGrund());
+        assertEquals(zeile.rolleGrund(), zeile.ersterGrund());
     }
 
     @Test
@@ -164,7 +164,7 @@ class MenuDiagnoseServiceTest {
         assertTrue(zeile.rolleOk());
         assertFalse(zeile.mandantOk());
         assertEquals("nicht in Whitelist von " + MANDANT, zeile.mandantGrund());
-        assertEquals("nicht in Whitelist von " + MANDANT, zeile.getErsterGrund());
+        assertEquals("nicht in Whitelist von " + MANDANT, zeile.ersterGrund());
     }
 
     @Test
@@ -203,7 +203,7 @@ class MenuDiagnoseServiceTest {
 
         assertFalse(zeile.rolleOk());
         assertFalse(zeile.mandantOk());
-        assertEquals(zeile.rolleGrund(), zeile.getErsterGrund());
+        assertEquals(zeile.rolleGrund(), zeile.ersterGrund());
     }
 
     @Test
@@ -227,8 +227,8 @@ class MenuDiagnoseServiceTest {
         mitKeys.setModuleKeys(List.of("wiki", "wissen"));
         MenuItemImpl ohneKeys = menu("Adressen", "", Set.of("USER"));
 
-        assertEquals("wiki, wissen", diagnose.analysiere(mitKeys, MANDANT).getModulKeysText());
-        assertEquals("—", diagnose.analysiere(ohneKeys, MANDANT).getModulKeysText());
+        assertEquals("wiki, wissen", diagnose.analysiere(mitKeys, MANDANT).modulKeysText());
+        assertEquals("—", diagnose.analysiere(ohneKeys, MANDANT).modulKeysText());
     }
 
     @Test

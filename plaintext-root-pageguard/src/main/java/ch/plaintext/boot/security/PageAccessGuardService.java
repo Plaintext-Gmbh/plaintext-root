@@ -74,7 +74,11 @@ public class PageAccessGuardService {
             // Benutzerverwaltung: hat ein eigenes Gate (MyUserBackingBean.checkAccess) UND ist in
             // PlaintextSecurityConfig hart auf ADMIN/ROOT verdrahtet. Der Menue-Guard hat hier
             // nichts zu entscheiden.
-            "useradmin"
+            "useradmin",
+            // Anleitung der Menuesteuerung (Auftrag Daniel, 29.08.2026): kein eigener Menuepunkt
+            // mehr, sondern der Info-Knopf auf mandatemenu/mandatemenudetail/menudiagnose. In
+            // PlaintextSecurityConfig hart auf ROOT verdrahtet (ROOT_ONLY_PAGES).
+            "menuesteuerung-anleitung"
     );
 
     /**

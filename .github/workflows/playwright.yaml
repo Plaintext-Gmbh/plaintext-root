@@ -96,7 +96,7 @@ jobs:
         run: |
           mvn -B -pl plaintext-root-webapp \
               failsafe:integration-test failsafe:verify \
-              -Dit.test=SelfServicePlaywrightIT
+              -Dit.test='SelfServicePlaywrightIT,RootPagesPlaywrightIT'
 
       - name: Upload surefire/failsafe reports on failure
         if: failure()

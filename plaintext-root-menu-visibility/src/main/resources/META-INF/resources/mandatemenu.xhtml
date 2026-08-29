@@ -40,12 +40,19 @@
 
         <p:fieldset legend="#{i18n.t('Mandat-spezifische Menükonfiguration')} - #{i18n.t('Übersicht')}">
 
-                <div style="margin-bottom: 20px;">
+                <div style="margin-bottom: 20px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <p:commandButton value="#{i18n.t('Neues Mandat')}"
                                      icon="pi pi-plus"
                                      styleClass="ui-button-success"
                                      action="#{mandateMenuBackingBean.newMandate}"
                                      ajax="false"/>
+                    <!-- Auftrag Daniel, 29.08.2026: Die Anleitung hat keinen eigenen Menuepunkt mehr —
+                         sie gehoert zu dieser Seite und wird hier ueber den Info-Knopf geoeffnet. -->
+                    <p:button id="anleitung" icon="pi pi-info-circle" value="#{i18n.t('Anleitung')}"
+                              outcome="menuesteuerung-anleitung"
+                              styleClass="ui-button-outlined ui-button-secondary"
+                              style="margin-left:auto;"
+                              title="#{i18n.t('Anleitung zur Menüsteuerung öffnen')}"/>
                 </div>
 
                 <p:dataTable id="mandatesTable"
