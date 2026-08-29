@@ -59,6 +59,10 @@ Details je Modul: `docs/MODULE_REFERENCE.md`. Es gibt **kein** `plaintext-admin-
 
 ## Tests
 
+- JaCoCo-Gate (seit 29.08.2026 scharf): `mvn verify` bricht ab, wenn ein Modul unter 40 %
+  Zeilenabdeckung faellt (`jacoco.coverage.minimum` im Parent). Ein Modul darunter bekommt Tests
+  oder — begruendet und datiert — ein eigenes `<jacoco.coverage.minimum>` in seiner pom, nie 0.
+  Tests gehoeren ins Modul der getesteten Klasse, sonst zaehlen sie dort nicht (root-web-Lehre).
 - `mvn clean test` — Unit-Tests + JaCoCo. `mvn clean verify` — zusätzlich die ITs; die booten
   ein **eingebettetes PostgreSQL** (`io.zonky.test:embedded-postgres`, Karte 451), **kein**
   Docker und keine Testcontainers. `-DskipITs` überspringt sie.

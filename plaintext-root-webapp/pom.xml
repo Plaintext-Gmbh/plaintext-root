@@ -355,6 +355,32 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- JaCoCo (Zustandsbericht 29.08.2026, Massnahme 13): Ausgeschlossen ist nur, was keine
+                 pruefbare Logik traegt — nicht, was ungetestet ist. Jede Gruppe mit Grund; eine
+                 Klasse mit Verzweigung (PlaintextSecurityConfig, RateLimitFilterConfig,
+                 JpaAuditingConfig, FaceletsKommentarConfig) bleibt drin. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- Spring-Boot-Einstieg: main() + Annotationen, kein eigener Code. -->
+                        <exclude>ch/RootBootApplication.class</exclude>
+                        <!-- Menue-Deklarationen: leere Klassen, die nur @MenuAnnotation tragen; die
+                             Annotationen selbst prueft MenuClassesTest per Reflection. -->
+                        <exclude>ch/plaintext/boot/menu/*Menu.class</exclude>
+                        <exclude>ch/plaintext/boot/performance/PerformanceMenu.class</exclude>
+                        <exclude>ch/plaintext/boot/deeplink/web/DeepLinkMenu.class</exclude>
+                        <exclude>ch/plaintext/boot/plugins/security/web/MandateMenu.class</exclude>
+                        <!-- Reine Bean-Verdrahtung: @Bean-Methoden ohne Verzweigung, nur new/Registrierung. -->
+                        <exclude>ch/plaintext/boot/plugins/config/JacksonConfig.class</exclude>
+                        <exclude>ch/plaintext/boot/plugins/security/config/SecurityJpaConfig.class</exclude>
+                        <exclude>ch/plaintext/boot/plugins/security/SecurityContextRepositoryConfig.class</exclude>
+                        <exclude>ch/plaintext/boot/plugins/maintenance/MaintenanceModeConfig.class</exclude>
+                        <exclude>ch/plaintext/boot/performance/SlowRequestConfig.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <!-- Geteilte Architektur-/Lint-Tests aus plaintext-root-archtests mitlaufen lassen.
                  dependenciesToScan laesst Surefire das (Test-scope) Jar nach Testklassen durchsuchen;
                  die JUnit-Platform fuehrt sie ueber Jupiter- (@Test) und ArchUnit-Engine (@ArchTest)

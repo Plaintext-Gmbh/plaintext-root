@@ -32,6 +32,15 @@
 
         <!-- Build Tools -->
         <jacoco.version>0.8.15</jacoco.version>
+        <!-- JaCoCo-Gate (Zustandsbericht 29.08.2026, Massnahme 13): root haelt die Schwelle ein und
+             faehrt das Gate scharf. Consumer (app, guild, iot, schuetu) erben die coverage-check-
+             Ausfuehrung aus diesem Parent und schalten sie mit
+                 <jacoco.halt-on-failure>false</jacoco.halt-on-failure>
+             in ihrer pom ab, bis sie selbst sauber sind — dann steht das Gate dort nur im Log.
+             Ein Modul unter der Schwelle setzt gestaffelt <jacoco.coverage.minimum> in seiner pom
+             (mit Begruendung und Datum, nie 0) — nie den Schalter. -->
+        <jacoco.halt-on-failure>true</jacoco.halt-on-failure>
+        <jacoco.coverage.minimum>0.40</jacoco.coverage.minimum>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
 
         <!-- Test Tools -->
@@ -637,11 +646,14 @@
                         </goals>
                     </execution>
                     <!--
-                      Soft coverage gate: surfaces dropping coverage in the build
-                      log but does NOT fail the build (haltOnFailure=false). Once
-                      every module hits the BUNDLE LINE 0.40 floor consistently we
-                      can flip haltOnFailure to true. See
-                      docs/IMPROVEMENT_PROPOSALS.md (DX § "JaCoCo coverage gate").
+                      Coverage-Gate (BUNDLE, LINE, COVEREDRATIO): bis 29.08.2026 nur eine Warnung
+                      (haltOnFailure=false), seither scharf — jedes root-Modul haelt
+                      ${jacoco.coverage.minimum} ein oder traegt eine begruendete, datierte Staffelung
+                      in seiner pom. Beide Werte sind Properties, damit Consumer das Gate abschalten
+                      und Module die Schwelle staffeln koennen (siehe <properties>).
+                      Module ohne Tests (kein jacoco.exec) laesst JaCoCo unbewertet durch; das ist
+                      fuer plaintext-root-template (nur Ressourcen) in Ordnung, fuer Java-Module nicht
+                      — die haben Tests zu haben (plaintext-root-flyway: FlywayServiceTest).
                     -->
                     <execution>
                         <id>coverage-check</id>
@@ -650,7 +662,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <haltOnFailure>false</haltOnFailure>
+                            <haltOnFailure>${jacoco.halt-on-failure}</haltOnFailure>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
@@ -658,7 +670,7 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.40</minimum>
+                                            <minimum>${jacoco.coverage.minimum}</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
