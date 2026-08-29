@@ -27,10 +27,38 @@ exhaustive.
 - `I18nSeedLinter` (plaintext-root-common): gemeinsamer CSV-Parser und Facelet-Scanner fuer
   Importer und Test; loest das Schutz-Apostroph des Exports auf, damit ein Export unveraendert als
   Seed eingecheckt werden kann.
+- Geteilter Test `PlaintextLayeringTest` (plaintext-root-archtests, Zustandsbericht 29.08.2026,
+  Massnahme 12) mit zwei Regeln: **L1** — eine Klasse in einem `service`/`services`-Paket haengt
+  nicht an `jakarta.faces..` oder `org.primefaces..` (Allowlist-Regel `layering-jsf-in-service`);
+  **L2** — eine `*BackingBean` liegt nicht in einem Paket mit dem Segment `service`, `services`,
+  `repository`, `repositories` oder `jpa`, es sei denn, dasselbe Paket benennt auch die Web-Schicht
+  (`web`, `view(s)`, `ui`, `gui`, `jsf`, `bean(s)`; Allowlist-Regel `layering-backingbean-paket`).
+  `jakarta.servlet..` steht bewusst **nicht** in L1: der Befund des Berichts ist die JSF-Kopplung,
+  und eine Session-Registry oder ein Servlet-Filter braucht die Servlet-API zu Recht. Die
+  Web-Ausnahme in L2 verhindert, dass der Modulnamensraum (`ch.plaintext.jpa.web`) gegen die Klasse
+  zaehlt. Anders als die uebrigen ArchUnit-Regeln importiert dieser Test nur die `target/classes`
+  des eigenen Reactors — ein Consumer soll seinen eigenen Code beurteilen und nicht root-Klassen
+  aus Jars, an denen er nichts aendern kann. root ist mit beiden Regeln **ohne Ausnahme** gruen und
+  fuehrt weiterhin keine `plaintext-arch-allowlist.txt`.
+- Geteilter Test `PlaintextGroessenLeitplankeTest` (plaintext-root-archtests): keine `.java`-Datei
+  in `src/main/java` oder `src/test/java` des Reactors ueber 1500 Zeilen (Allowlist-Regel
+  `groesse-max-loc`). Die Schwelle ist bewusst keine Property — eine begruendete Ausnahme ist
+  nachvollziehbar, ein hochgedrehter Grenzwert nicht. root haelt sie ohne Ausnahme ein (groesste
+  Datei: `ClaudeAutomationServiceTest`, 1128 Zeilen).
+- **Nicht** umgesetzt: die geplante dritte Regel „keine Zyklen zwischen den `ch.plaintext.*`-Paketen".
+  Die Messung ergab 31 Zyklengruppen ueber praktisch alle Top-Level-Pakete (Drehscheibe
+  `ch.plaintext.boot`, z. B. `boot -> settings -> modules -> jpa -> boot`). Eine Regel mit dreissig
+  Ausnahmen prueft nichts; der Befund steht als Javadoc-Abschnitt in `PlaintextLayeringTest` und die
+  Entflechtung ist eine eigene Etappe.
 
 ### Changed
 - `I18nService.importSeedTranslations()` und `I18nExportController` lesen CSV-Zeilen ueber
   `I18nSeedLinter` statt ueber je eine private Kopie des Parsers.
+- `plaintext-root-jpa` haengt nicht mehr an `plaintext-admin-sessions` (Zustandsbericht 29.08.2026,
+  Massnahme 12): das war eine Schichtungsinversion — ein Basismodul haengte an einem Admin-Modul,
+  das umgekehrt auf dem Unterbau aufsetzt. Keine Quelle des Moduls nennt `ch.plaintext.sessions`;
+  die Abhaengigkeit war tot und ist ersatzlos entfernt. Fuer Consumer aendert sich nichts,
+  `plaintext-root-webapp` deklariert `plaintext-admin-sessions` selbst.
 
 ### Fixed
 - Session-Beans in `plaintext-admin-requirements` sind wieder serialisierbar:

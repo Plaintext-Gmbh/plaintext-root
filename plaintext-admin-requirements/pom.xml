@@ -105,7 +105,13 @@
                             <dependenciesToScan>
                                 <dependency>ch.plaintext:plaintext-root-archtests</dependency>
                             </dependenciesToScan>
-                            <test>PlaintextSessionBeanSerialisierbarTest,PlaintextMcpScopeVertragTest</test>
+                            <!-- PlaintextLayeringTest (Massnahme 12) gehoert dazu: er liest die
+                                 target/classes der Module des Reactors, und dieses Modul wird NACH
+                                 plaintext-root-webapp gebaut — im webapp-Lauf eines sauberen Builds
+                                 gibt es seine Klassen also noch nicht. Ohne diesen Eintrag bliebe
+                                 plaintext-admin-requirements ungeprueft, genau wie zuvor beim
+                                 Session-Bean-Test. -->
+                            <test>PlaintextSessionBeanSerialisierbarTest,PlaintextMcpScopeVertragTest,PlaintextLayeringTest</test>
                             <failIfNoSpecifiedTests>true</failIfNoSpecifiedTests>
                         </configuration>
                     </execution>
