@@ -94,7 +94,10 @@ jobs:
           # ("Prepare next development iteration ...", "chore(quality): Quality-Gate-Status ...")
           # setzen den Marker mit Absicht und machen 206 der 214 uebersprungenen master-Laeufe der
           # letzten 100 Laeufe je Repo aus. Wer die mitmeldet, gewoehnt sich die Meldung ab.
-          AUTOMATIK='^(Prepare next development iteration|chore\(quality\): Quality-Gate-Status)'
+          # Lokaler Release (./build 3/5/56/8, plaintext-scripts do_release/do_local_release): der
+          # Release-Commit traegt [skip-ci], damit dieser Push nicht parallel zum lokalen Deploy
+          # einen zweiten CI-Release startet. Er ist ausgerollt — "laeuft nirgends" waere falsch.
+          AUTOMATIK='^(Prepare next development iteration|chore\(quality\): Quality-Gate-Status|Release version)'
           # Karte 886: "laeuft nirgends" stimmt nur fuer Anwendungscode. Eine reine Workflow-
           # oder Doku-Aenderung wirkt ab dem naechsten Lauf, ganz ohne Deploy — und genau die soll
           # laut Rollen-Regel mit [skip-ci] gemergt werden. Wer nach Vorschrift arbeitete, loeste
@@ -124,7 +127,8 @@ jobs:
           # Gemischte Commits bleiben bei "ja" - grep -qv schaut auf JEDE Zeile, eine einzige
           # Nicht-Test-Datei genuegt. Damit bleibt die Regel von oben gewahrt: Zweifelsfaelle
           # gehen in Richtung MELDEN.
-          NEUTRAL='^\.github/|(^|/)src/test/|\.md$|^\.gitignore$|^LICENSE$|^renovate\.json$'
+          # ^build$: der Build-Wrapper wird nirgends deployt (kein Bestandteil des Jars) — wie .github/.
+          NEUTRAL='^\.github/|(^|/)src/test/|\.md$|^\.gitignore$|^LICENSE$|^renovate\.json$|^build$'
           # NACHGEBESSERT (Karte 886, zweiter Anlauf): zuerst stand hier die Dateiliste aus dem
           # push-Payload (github.event.head_commit.added/modified/removed). Am lebenden System
           # gemessen: nach einem SQUASH-MERGE sind diese Felder leer — vier Merges am 17.08.2026
