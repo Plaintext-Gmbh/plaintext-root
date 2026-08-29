@@ -5,18 +5,24 @@ package ch.plaintext.mailtemplate.menu;
 
 import ch.plaintext.boot.menu.MenuAnnotation;
 
-    // SECURITY (Karte 308, H4): explizite roles. Ohne sie prueft MenuItemImpl.isOn() nichts —
-    // und weil der PageAccessGuardService nur isOn() DIESES Eintrags auswertet (nicht die des
-    // Elternmenues), war die Seite per Direkt-URL fuer jeden eingeloggten USER offen, obwohl sie
-    // im gerenderten Menue nur unter dem ROOT-Elternmenue haengt. Aendert die Menue-Darstellung
-    // nicht: fuer Nicht-ROOT wurde das Elternmenue schon vorher nicht gerendert.
+/**
+ * Menuepunkt „Mailtexte" im Untermenue <b>Admin</b> (Auftrag Daniel, 29.08.2026 — vorher Root).
+ *
+ * <p>Die Overrides gelten je Mandant, und der Backing-Bean arbeitet ohnehin nur auf dem Mandanten
+ * der Session ({@code PlaintextSecurityHolder.getMandat()}). Ein admin soll die Mailtexte seines
+ * Mandanten selbst pflegen koennen, ohne root zu bemuehen. Die Seite ist in
+ * {@code PlaintextSecurityConfig.ADMIN_PAGES} hart auf ADMIN/ROOT verdrahtet.</p>
+ *
+ * <p>SECURITY (Karte 308, H4): explizite {@code roles}. Ohne sie prueft {@code MenuItemImpl.isOn()}
+ * nichts, und der PageAccessGuardService wertet nur diesen Eintrag aus, nicht das Elternmenue.</p>
+ */
 @MenuAnnotation(
     title = "Mailtexte",
     link = "mailtemplates.html",
-    parent = "Root",
-    order = 11,
+    parent = "Admin",
+    order = 60,
     icon = "pi pi-envelope",
-    roles = {"ROOT"},
+    roles = {"ADMIN", "ROOT"},
     moduleId = "mailtemplate"
 )
 public class MailTemplateMenu {

@@ -108,6 +108,22 @@ class RootEntityBackingBeanTest {
     }
 
     @Test
+    void entityTypeChanged_laedtListeUndVerwirftAlteAuswahl() {
+        // Auftrag Daniel, 29.08.2026: Ajax-Listener der Typ-Auswahl.
+        bean.setSelectedEntityType(descriptor);
+        bean.setSelectedEntity("altes-objekt");
+        bean.setEditMode(true);
+        List<Object> expected = List.of("entity1", "entity2");
+        doReturn(expected).when(entityService).findAll("TestEntity");
+
+        bean.entityTypeChanged();
+
+        assertEquals(expected, bean.getEntities());
+        assertNull(bean.getSelectedEntity());
+        assertFalse(bean.isEditMode());
+    }
+
+    @Test
     void loadEntities_handlesException() {
         bean.setSelectedEntityType(descriptor);
         when(entityService.findAll("TestEntity")).thenThrow(new RuntimeException("DB error"));

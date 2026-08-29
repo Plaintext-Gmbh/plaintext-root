@@ -10,6 +10,31 @@ from `git log` and may not be exhaustive.
 
 ## [Unreleased]
 
+### Fixed
+- Menü-Diagnose (`menudiagnose.html`) rendert wieder: `MenuDiagnoseZeile` ist ein Record, und
+  der RecordELResolver loest `#{z.modulKeysText}` nur ueber eine Methode `modulKeysText()`
+  auf — die bisherigen Bean-Getter `getModulKeysText()`/`getErsterGrund()` liessen die Seite
+  mit `PropertyNotFoundException` leer bleiben. Neuer `MenuDiagnoseZeileElTest` prueft jede
+  `#{z.…}`-Referenz der Seite gegen die Record-Methoden.
+- Datenverwaltung (`rootentities.html`, `adminentities.html`): Die Typ-Auswahl loeste ueber
+  `onchange="submit()"` keinen Request aus, keine Tabelle erschien. Jetzt ein `p:ajax`-Ereignis
+  mit Listener `entityTypeChanged()`, das Liste und Meldungen nachlaedt und die Auswahl des
+  alten Typs verwirft.
+- Menuepunkt „Swagger" erscheint nur noch, wenn `springdoc.swagger-ui.enabled=true` ist.
+  Vorher fuehrte er in PROD (springdoc aus) auf 404 und von dort — per
+  `PlaintextErrorViewResolver` — aufs Dashboard. Der `MenuAnnotationScanner` wertet dafuer
+  `@Conditional`-Annotationen an `@MenuAnnotation`-Klassen gegen die Anwendungsumgebung aus
+  (`mitUmgebung(Environment)`); `SwaggerMenu` traegt `@ConditionalOnProperty`.
+
+### Changed
+- Anleitung Menuesteuerung: kein eigener Menuepunkt mehr (`MenuesteuerungAnleitungMenu`
+  entfernt). Sie oeffnet sich ueber einen Info-Knopf auf `mandatemenu`, `mandatemenudetail`
+  und `menudiagnose`; im `PageAccessGuardService` steht sie auf der Framework-Allowlist,
+  ROOT-only erzwingt weiterhin `PlaintextSecurityConfig`.
+- Mailtexte (`mailtemplates.html`) haengen jetzt im Untermenue **Admin** und sind fuer ADMIN und
+  ROOT bedienbar (vorher Root-only). Die Overrides sind mandantenbezogen; `ADMIN_PAGES` statt
+  `ROOT_ONLY_PAGES` in `PlaintextSecurityConfig`.
+
 ### Added
 - Konfigurierbare Modul-Rollen: `plaintext.menu.module-roles.<modulKey>=<rolle>` schaltet ein
   ganzes Modul pro App ein bzw. aus — Menuepunkt, Dashboard-Kachel und der Direktaufruf der

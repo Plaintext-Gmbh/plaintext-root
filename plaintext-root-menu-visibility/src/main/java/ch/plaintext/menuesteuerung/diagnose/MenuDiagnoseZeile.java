@@ -39,12 +39,19 @@ public record MenuDiagnoseZeile(
         String mandantGrund,
         boolean sichtbar) {
 
+    // Auftrag Daniel, 29.08.2026: Die beiden abgeleiteten Werte heissen bewusst NICHT getXxx().
+    // Diese Klasse ist ein Record, und der RecordELResolver (Jakarta EL 6) loest #{z.modulKeysText}
+    // ausschliesslich ueber eine parameterlose Methode NAMENS modulKeysText() auf — Bean-Getter
+    // kennt er nicht. Mit getModulKeysText() flog die Diagnose-Seite beim Rendern mit
+    // PropertyNotFoundException auseinander und blieb leer (guild PROD, 29.08.2026).
+    // MenuDiagnoseZeileElTest haelt diese Zusage fest.
+
     /**
      * Die Modul-Keys als Text fuer die Tabelle.
      *
      * @return kommaseparierte Modul-Keys, oder {@code "—"} wenn keine bekannt sind
      */
-    public String getModulKeysText() {
+    public String modulKeysText() {
         return modulKeys == null || modulKeys.isEmpty() ? "—" : String.join(", ", modulKeys);
     }
 
@@ -53,7 +60,7 @@ public record MenuDiagnoseZeile(
      *
      * @return Klartext-Grund, oder {@code ""} wenn der Menuepunkt sichtbar ist
      */
-    public String getErsterGrund() {
+    public String ersterGrund() {
         if (!rolleOk) {
             return rolleGrund;
         }

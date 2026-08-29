@@ -90,7 +90,7 @@ class MenuLinkInvariantTest {
      */
     private static final Set<String> SYSTEM_UND_ALLOWLIST = Set.of(
             "home", "index", "access-denied", "error", "login",
-            "login-totp", "myuser", "useradmin"
+            "login-totp", "myuser", "useradmin", "menuesteuerung-anleitung"
     );
     private static final Set<String> ALLOW_PREFIXES = Set.of("nosec/");
     private static final Map<String, String> ALIASE = Map.of(

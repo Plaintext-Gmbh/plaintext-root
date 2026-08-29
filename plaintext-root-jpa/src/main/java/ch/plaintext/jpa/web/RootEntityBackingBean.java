@@ -133,9 +133,23 @@ public class RootEntityBackingBean implements Serializable {
         loadEntities();
     }
 
+    /**
+     * Ajax-Listener der Typ-Auswahl (Auftrag Daniel, 29.08.2026). Der neue Wert steht beim Aufruf
+     * bereits in {@code selectedEntityType} (UPDATE_MODEL_VALUES laeuft vor dem Listener); hier
+     * wird nur die Auswahl des alten Typs verworfen und die Liste nachgeladen.
+     */
+    public void entityTypeChanged() {
+        log.info("Entity type selected: {}", selectedEntityType != null ? selectedEntityType.getEntityName() : "null");
+        selectedEntity = null;
+        editMode = false;
+        fieldValues.clear();
+        loadEntities();
+    }
+
     public void loadEntities() {
         if (selectedEntityType == null) {
-            entities.clear();
+            // Neue Liste statt clear(): findAll() kann eine unveraenderliche Liste liefern.
+            entities = new ArrayList<>();
             return;
         }
 
@@ -147,7 +161,7 @@ public class RootEntityBackingBean implements Serializable {
         } catch (Exception e) {
             log.error("Error loading entities", e);
             addErrorMessage("Fehler beim Laden der Daten", e.getMessage());
-            entities.clear();
+            entities = new ArrayList<>();
         }
     }
 

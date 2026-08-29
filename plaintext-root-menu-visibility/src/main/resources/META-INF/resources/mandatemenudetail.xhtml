@@ -16,6 +16,14 @@
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
             <p:messages id="messages" showDetail="true" closable="true"/>
 
+            <!-- Auftrag Daniel, 29.08.2026: Info-Knopf zur Anleitung (kein eigener Menuepunkt mehr). -->
+            <div style="margin-bottom: 12px; display:flex; justify-content:flex-end;">
+                <p:button id="anleitung" icon="pi pi-info-circle" value="#{i18n.t('Anleitung')}"
+                          outcome="menuesteuerung-anleitung"
+                          styleClass="ui-button-outlined ui-button-secondary"
+                          title="#{i18n.t('Anleitung zur Menüsteuerung öffnen')}"/>
+            </div>
+
         <p:fieldset legend="#{i18n.t('Mandat-spezifische Menükonfiguration')}">
 
                 <p:panelGrid columns="2" layout="grid" styleClass="ui-fluid" style="margin-bottom: 20px;">

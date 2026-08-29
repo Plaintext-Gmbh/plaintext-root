@@ -67,7 +67,8 @@ public class MenuRegistryPostProcessor implements BeanDefinitionRegistryPostProc
 
         // Pass the BeanFactory to scanner so menu items can lazy-load MenuVisibilityProvider
         MenuAnnotationScanner scanner =
-                new MenuAnnotationScanner(securityProvider, menuVisibilityProvider, beanFactory, accessPolicy);
+                new MenuAnnotationScanner(securityProvider, menuVisibilityProvider, beanFactory, accessPolicy)
+                        .mitUmgebung(environment);
 
         int count = 0;
         for (String scanPackage : scanPackages) {

@@ -306,5 +306,5 @@ Zwei Fallen beim Suchen nach Mandantendaten:
 
 | Seite | Fuer | Inhalt |
 |-------|------|--------|
-| `Root → Anleitung Menuesteuerung` | ROOT | White-/Blacklist, wann welcher Modus, Modul- vs. Titel-Eintrag, Diagnose lesen, Impersonate, Mandanten anlegen/entfernen |
+| `Root → Menuesteuerung → ⓘ Anleitung` (Info-Knopf, kein eigener Menuepunkt seit 1.634.0) | ROOT | White-/Blacklist, wann welcher Modus, Modul- vs. Titel-Eintrag, Diagnose lesen, Impersonate, Mandanten anlegen/entfernen |
 | `Admin → Anleitung Modul-Rollen` | ADMIN, ROOT | Modul-Rollen vergeben, was sie bewirken, Zusammenspiel mit den Mandanten-Listen, wann man root braucht |

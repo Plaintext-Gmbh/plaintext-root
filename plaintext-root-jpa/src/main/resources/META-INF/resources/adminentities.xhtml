@@ -82,11 +82,16 @@
                 <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
                 <p:panel header="#{i18n.t('Entitätstyp auswählen')}">
                     <div class="p-fluid">
-                        <p:selectOneMenu value="#{adminEntityBackingBean.selectedEntityType}"
-                                         converter="entityDescriptorConverter"
-                                         valueChangeListener="#{adminEntityBackingBean.onEntityTypeSelected}"
-                                         onchange="submit()">
+                        <!-- Auftrag Daniel, 29.08.2026: Die Auswahl lief ueber onchange="submit()" +
+                             valueChangeListener. Im Betrieb (PrimeFaces 15) loeste das keinen Request
+                             aus — die Auswahl blieb wirkungslos, keine Tabelle erschien. Jetzt ein
+                             regulaeres Ajax-Ereignis: Wert setzen, Listener rufen, Liste und
+                             Meldungen nachladen. -->
+                        <p:selectOneMenu id="entityType" value="#{adminEntityBackingBean.selectedEntityType}"
+                                         converter="entityDescriptorConverter">
                             <f:attribute name="backingBean" value="#{adminEntityBackingBean}"/>
+                            <p:ajax listener="#{adminEntityBackingBean.entityTypeChanged}"
+                                    update=":listForm :messages" process="@this"/>
                             <f:selectItem itemLabel="-- Bitte wählen --" itemValue="#{null}" noSelectionOption="true"/>
                             <f:selectItems value="#{adminEntityBackingBean.availableEntities}"
                                            var="entity"

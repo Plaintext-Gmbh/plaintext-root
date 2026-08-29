@@ -78,9 +78,12 @@ class PageAccessGuardServiceTest {
     }
 
     @Test
-    @DisplayName("Framework-Allowlist: login-totp, myuser und useradmin bleiben ohne Menue erreichbar")
+    @DisplayName("Framework-Allowlist: login-totp, myuser, useradmin und die Menuesteuerungs-Anleitung bleiben ohne Menue erreichbar")
     void frameworkAllowlistIstErreichbar() {
         PageAccessGuardService service = strictMitMenues();
+        // Anleitung der Menuesteuerung: seit 29.08.2026 ohne Menuepunkt, per Info-Knopf erreichbar;
+        // ROOT-only erzwingt PlaintextSecurityConfig.
+        assertTrue(service.hasAccessToView("/menuesteuerung-anleitung.xhtml"));
         // Zweiter TOTP-Schritt: der User ist hier noch nicht voll authentifiziert.
         assertTrue(service.hasAccessToView("/login-totp.xhtml"));
         // Eigenes Profil: in der Topbar fuer jeden User verlinkt.
