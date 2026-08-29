@@ -254,6 +254,19 @@ public class RateLimitFilter implements Filter {
         // gibt. Er faellt damit unter anyRequest().authenticated() und ist fuer Anonyme gar nicht
         // mehr erreichbar -- ein Rate-Limit darauf haette nichts mehr zu bremsen.
 
+        // Zustandsbericht 29.08.2026 (H3): Der zweite Faktor war die einzige Anmeldestufe ohne
+        // Bremse. Der Lockout-Schluessel "totp:<user>" im TotpVerificationController zaehlt
+        // Fehlversuche pro Konto; dieser Zweig bremst zusaetzlich pro Adresse, damit ein Angreifer
+        // mit dem Passwort die sechs Ziffern nicht im Sekundentakt durchprobieren kann. Kein
+        // Refund: ein legitimer Nutzer braucht genau einen Versuch.
+        if (path.equals("/login/totp") && "POST".equalsIgnoreCase(request.getMethod())) {
+            String clientIp = getClientIp(request);
+            if (!loginLimiter.tryConsume(clientIp)) {
+                rejectLogin(response, path, clientIp);
+                return;
+            }
+        }
+
         if (path.equals("/ott/generate") && "POST".equalsIgnoreCase(request.getMethod())) {
             String clientIp = getClientIp(request);
             if (!loginLimiter.tryConsume(clientIp)) {

@@ -31,6 +31,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Build Tools -->
+        <jacoco.version>0.8.15</jacoco.version>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
 
         <!-- Test Tools -->
@@ -603,7 +604,21 @@
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>0.8.14</version>
+                    <!-- Zustandsbericht 29.08.2026: als Property, damit root und Consumer dieselbe
+                         Version fahren (root pinnte 0.8.14, alle Apps 0.8.15). -->
+                    <version>${jacoco.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <configuration>
+                        <!-- Zustandsbericht 29.08.2026 (M4): Ein root-Release wurde modulweise
+                             hochgeladen; zwischen erstem und letztem Artefakt sahen Consumer eine
+                             halbe Version (PR-Build von guild scheiterte am 29.08. genau daran).
+                             deployAtEnd laedt erst nach dem letzten erfolgreichen Modul hoch. Gilt
+                             fuer beide Ausfuehrungen (GitHub Packages + Reposilite-Profil). -->
+                        <deployAtEnd>true</deployAtEnd>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>

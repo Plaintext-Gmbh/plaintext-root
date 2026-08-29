@@ -86,6 +86,25 @@ class RateLimitFilterTest {
     }
 
     @Test
+    @DisplayName("Zustandsbericht 29.08.2026 (H3): der zweite Faktor wird wie /login gebremst")
+    void shouldRateLimitTotpAttempts() throws Exception {
+        when(request.getRequestURI()).thenReturn("/login/totp");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("10.0.0.7");
+        StringWriter sw = new StringWriter();
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        for (int i = 0; i < 3; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+        verify(filterChain, times(3)).doFilter(request, response);
+
+        filter.doFilter(request, response, filterChain);
+        verify(response).setStatus(429);
+        verify(filterChain, times(3)).doFilter(request, response);
+    }
+
+    @Test
     @DisplayName("Karte 560: /token-login wird NICHT mehr gedrosselt — der Pfad ist unbesetzt und "
             + "faellt unter authenticated(); ein Limit darauf haette nichts zu bremsen")
     void shouldNotRateLimitRemovedTokenLogin() throws Exception {

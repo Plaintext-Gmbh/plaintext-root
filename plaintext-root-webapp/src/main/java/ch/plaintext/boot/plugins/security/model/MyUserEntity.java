@@ -5,6 +5,7 @@ package ch.plaintext.boot.plugins.security.model;
 
 import ch.plaintext.boot.plugins.security.helpers.MyUserSetConverter;
 import ch.plaintext.boot.plugins.security.helpers.RecoveryCodesConverter;
+import ch.plaintext.boot.plugins.security.helpers.TotpSecretConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -43,7 +44,8 @@ public class MyUserEntity {
      * Authenticator-App; es wird ausschliesslich lokal geprueft und nie ueber die
      * Login-Grenze hinweg weitergegeben.
      */
-    @Column(name = "TOTP_SECRET", length = 64)
+    @Column(name = "TOTP_SECRET", length = 255)
+    @Convert(converter = TotpSecretConverter.class)
     private String totpSecret;
 
     /**

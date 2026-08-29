@@ -11,7 +11,10 @@ import ch.plaintext.boot.menu.MenuAnnotation;
     order = 10,
     parent = "Admin",
     icon = "pi pi-calendar-times",
-    roles = {"ADMIN"},
+    // Zustandsbericht 29.08.2026 (H4): ADMIN_PAGES in PlaintextSecurityConfig erlaubt ADMIN|ROOT,
+    // der Menuepunkt nur ADMIN — ein reiner ROOT kam durch Spring und wurde vom Menue-Guard
+    // abgewiesen. Beide Orte sagen jetzt dasselbe.
+    roles = {"ADMIN", "ROOT"},
     moduleId = "cron"
 )
 public class CronMenu {

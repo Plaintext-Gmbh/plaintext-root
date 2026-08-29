@@ -16,7 +16,14 @@ on:
   pull_request:
     branches: [master]
   push:
-    branches: ['**']
+    # Nur master. Ein Zweig mit offenem PR hat vorher ZWEIMAL gefeuert, einmal ueber push
+    # und einmal ueber pull_request, mit identischem Ergebnis. Gemessen am 29.08.2026:
+    # vier Laeufe auf denselben Commit (Build And Deploy und Playwright je doppelt). Bei
+    # vier Runnern ging damit die Haelfte der Kapazitaet fuer Doppelarbeit drauf, und ein
+    # Release-Lauf wartete ueber eine Stunde. Die Concurrency-Gruppe half nicht: push und
+    # pull_request haben verschiedene refs und damit verschiedene Gruppen.
+    # PR-Zweige deckt pull_request ab, master dieser Eintrag.
+    branches: [master]
 
 permissions:
   contents: read

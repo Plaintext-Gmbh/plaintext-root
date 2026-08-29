@@ -39,6 +39,17 @@ public class PlaintextSecurityProperties {
     private String rememberMeKey = "";
 
     /**
+     * Schluesselmaterial fuer die Verschluesselung der TOTP-Secrets in {@code MY_USER_ENTITY}
+     * (Zustandsbericht 29.08.2026, H3-Nebenbefund: das Secret lag im Klartext, die Recovery-Codes
+     * daneben gehasht). Leer = es gilt {@link #rememberMeKey} (in PROD Pflicht, also ist die
+     * Verschluesselung dort immer aktiv). Ein eigener Schluessel ist die bessere Wahl: dann
+     * kann der Remember-Me-Schluessel rotiert werden, ohne dass jeder 2FA-Nutzer neu einrichten
+     * muss. Rotation dieses Schluessels bedeutet Neu-Einrichtung fuer alle 2FA-Nutzer
+     * (Recovery-Codes bleiben gueltig).
+     */
+    private String totpEncryptionKey = "";
+
+    /**
      * Issue a persistent remember-me cookie on OAuth2/OIDC login (default {@code true}).
      *
      * <p>Spring's {@code AbstractAuthenticationProcessingFilter} calls

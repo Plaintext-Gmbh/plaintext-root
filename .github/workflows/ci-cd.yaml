@@ -33,7 +33,14 @@ on:
     # gegenseitig (gemessen 86-155 Min statt 23-56 Min allein) und Deploys warteten Stunden.
     - cron: '0 4 * * 2'    # Di 04:00 UTC, Voll-Analyse mit Sonar
   push:
-    branches: ['**']
+    # Nur master. Ein Zweig mit offenem PR hat vorher ZWEIMAL gefeuert, einmal ueber push
+    # und einmal ueber pull_request, mit identischem Ergebnis. Gemessen am 29.08.2026:
+    # vier Laeufe auf denselben Commit (Build And Deploy und Playwright je doppelt). Bei
+    # vier Runnern ging damit die Haelfte der Kapazitaet fuer Doppelarbeit drauf, und ein
+    # Release-Lauf wartete ueber eine Stunde. Die Concurrency-Gruppe half nicht: push und
+    # pull_request haben verschiedene refs und damit verschiedene Gruppen.
+    # PR-Zweige deckt pull_request ab, master dieser Eintrag.
+    branches: [master]
   pull_request:
     branches: [master]
 
@@ -64,7 +71,9 @@ jobs:
   # GitHub Actions kann Strings nicht zerlegen (kein split, keine Regex, kein Feld nur fuer die
   # Betreffzeile) — deshalb dieser Shell-Schritt, dessen Ergebnis die Bedingung unten liest.
   skip-pruefung:
-    runs-on: ['self-hosted', 'nas']
+    # Zustandsbericht 29.08.2026 (N1): zwei grep + ein gh-api-Aufruf brauchen weder LAN noch
+    # Maven — vorher belegte dieser Job bei jedem Lauf einen der vier NAS-Runner.
+    runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.pruefung.outputs.skip }}
     steps:
@@ -81,8 +90,10 @@ jobs:
           PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
         run: |
           BETREFF="$(printf '%s' "$MSG" | head -1)"
-          if printf '%s' "$BETREFF" | grep -qF '[skip-ci]'; then
-            echo "Betreffzeile traegt [skip-ci] — Lauf wird uebersprungen: $BETREFF"
+          # [skip-ci] (Hausform) und die nativen GitHub-Formen [skip ci]/[ci skip]. Fuer die nativen
+          # erzeugt GitHub gar keinen Lauf mehr; die Pruefung hier bleibt fuer die Hausform.
+          if printf '%s' "$BETREFF" | grep -qiE '\[(skip[ -]ci|ci[ -]skip|no ci|skip actions)\]'; then
+            echo "Betreffzeile traegt skip-Marker — Lauf wird uebersprungen: $BETREFF"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
