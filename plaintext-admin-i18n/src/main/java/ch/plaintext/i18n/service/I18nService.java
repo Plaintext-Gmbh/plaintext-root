@@ -4,6 +4,7 @@
 package ch.plaintext.i18n.service;
 
 import ch.plaintext.I18nProvider;
+import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import ch.plaintext.i18n.entity.I18nTranslation;
 import ch.plaintext.i18n.repository.I18nTranslationRepository;
 import ch.plaintext.settings.ISettingsService;
@@ -231,17 +232,40 @@ public class I18nService implements I18nProvider {
         log.info("Auto-created i18n placeholder: label='{}', lang='{}', text='{}'", defaultLabel, languageCode, placeholder);
     }
 
+    /** Schluessel, den das Setup („Sprachwechsel (Topbar)") pro Mandant schreibt — siehe BrandingService. */
+    static final String KEY_BRANDING_I18N_ENABLED = "branding.i18n.enabled";
+    /** Aelterer, globaler Schluessel — bleibt als Rueckfallebene gueltig. */
+    static final String KEY_I18N_ENABLED = "i18n.enabled";
+
+    /**
+     * Ob i18n (Sprachwechsel in der Topbar, uebersetzte Menuetitel, {@code i18n.t()}) fuer den
+     * Mandanten der Session an ist.
+     *
+     * <p>Auftrag Daniel, 29.08.2026: Das Setup speichert den Schalter als
+     * {@code branding.i18n.enabled} je Mandant (BrandingService), diese Methode las aber nur den
+     * alten Schluessel {@code i18n.enabled} — zwei Schluessel, die sich nie sahen. Ergebnis: Der
+     * Sprachwechsel blieb in der Topbar, obwohl er im Setup ausgeschaltet war. Reihenfolge jetzt:
+     * Mandanten-Schalter aus dem Setup, dann der alte Schluessel, sonst an.</p>
+     */
     @Override
     public boolean isI18nEnabled() {
-        if (settingsService != null) {
-            try {
-                Boolean enabled = settingsService.getBoolean("i18n.enabled");
-                if (enabled != null) {
-                    return enabled;
+        if (settingsService == null) {
+            return true;
+        }
+        try {
+            String mandat = PlaintextSecurityHolder.getMandat();
+            if (mandat != null && !mandat.isBlank()) {
+                Boolean setup = settingsService.getBoolean(KEY_BRANDING_I18N_ENABLED, mandat);
+                if (setup != null) {
+                    return setup;
                 }
-            } catch (Exception e) {
-                log.debug("Could not read i18n.enabled setting, defaulting to true");
             }
+            Boolean enabled = settingsService.getBoolean(KEY_I18N_ENABLED);
+            if (enabled != null) {
+                return enabled;
+            }
+        } catch (Exception e) {
+            log.debug("Could not read i18n setting, defaulting to true: {}", e.toString());
         }
         return true;
     }

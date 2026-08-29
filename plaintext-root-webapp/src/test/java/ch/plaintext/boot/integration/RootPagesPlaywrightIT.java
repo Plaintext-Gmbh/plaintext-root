@@ -21,6 +21,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import ch.plaintext.settings.ISettingsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -67,6 +68,7 @@ class RootPagesPlaywrightIT {
     @LocalServerPort int port;
     @Autowired MyUserRepository userRepository;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired ISettingsService settingsService;
 
     private Playwright playwright;
     private Browser browser;
@@ -208,6 +210,40 @@ class RootPagesPlaywrightIT {
         page.waitForLoadState();
         assertTrue(page.url().contains("menuesteuerung-anleitung"), "Info-Knopf fuehrt nicht zur Anleitung: " + page.url());
         assertTrue(page.content().contains("Anleitung"));
+    }
+
+    // ------------------------------------------------------------------ 6. Sprachwechsel + Setup
+
+    @Test
+    @DisplayName("Setup-Schalter Sprachwechsel blendet das Topbar-Symbol aus und wieder ein")
+    void sprachwechselFolgtDemSetupSchalter() {
+        anmelden(ROOT_USER);
+        try {
+            settingsService.setSetting("branding.i18n.enabled", "default", "false", "BOOLEAN", "IT");
+            page.navigate(url("/index.html"));
+            page.waitForLoadState();
+            assertEquals(0, page.locator("#i18n-lang-button").count(),
+                    "Sprachwechsel-Symbol trotz branding.i18n.enabled=false sichtbar");
+
+            settingsService.setSetting("branding.i18n.enabled", "default", "true", "BOOLEAN", "IT");
+            page.navigate(url("/index.html"));
+            page.waitForLoadState();
+            assertEquals(1, page.locator("#i18n-lang-button").count(),
+                    "Sprachwechsel-Symbol fehlt trotz branding.i18n.enabled=true");
+        } finally {
+            settingsService.setSetting("branding.i18n.enabled", "default", "true", "BOOLEAN", "IT");
+        }
+    }
+
+    @Test
+    @DisplayName("Setup-Seite rendert mit den responsiven Zeilen")
+    void setupSeiteRendert() {
+        anmelden(ROOT_USER);
+        page.navigate(url("/setup.html"));
+        page.waitForLoadState();
+        assertTrue(page.url().contains("setup"), "umgeleitet nach " + page.url());
+        assertTrue(page.locator(".setup-grid").count() >= 6, "responsive Setup-Zeilen fehlen");
+        assertTrue(page.locator("#fm\\:i18nEnabled").count() > 0, "Sprachwechsel-Schalter fehlt");
     }
 
     // ------------------------------------------------------------------ 5. Mailtexte

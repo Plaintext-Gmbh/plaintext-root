@@ -4,6 +4,21 @@
                 xmlns:f="http://xmlns.jcp.org/jsf/core"
                 template="/includes/template.xhtml">
 
+    <ui:define name="head">
+        <!-- Auftrag Daniel, 29.08.2026: Setup war mobil nicht sauber ausgerichtet — die starren
+             2-Spalten-Tabellen (h:panelGrid) quetschten Label und Schalter nebeneinander. Jetzt
+             ein Flex-Grid: ab md nebeneinander, darunter Label ueber dem Feld. -->
+        <style>
+            .setup-grid.ui-panelgrid-blank .ui-panelgrid-cell { padding: 6px 8px; }
+            .setup-grid .setup-label { display: flex; align-items: center; }
+            .setup-grid .setup-field { display: flex; align-items: center; }
+            @media screen and (max-width: 767px) {
+                .setup-grid .setup-label { padding-bottom: 0; }
+                .setup-grid .setup-field { padding-top: 2px; padding-bottom: 12px; }
+            }
+        </style>
+    </ui:define>
+
     <ui:define name="content">
         <h:form id="fm" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
@@ -17,7 +32,8 @@
             <p:fieldset legend="#{i18n.t('Login')}" toggleable="true" style="margin-bottom: 1rem;">
                 <div class="grid">
                     <div class="col-12 md:col-8">
-                        <h:panelGrid columns="2" cellpadding="5" style="width:100%;">
+                        <p:panelGrid columns="2" layout="flex" styleClass="ui-panelgrid-blank setup-grid"
+                                     columnClasses="col-12 md:col-6 setup-label, col-12 md:col-6 setup-field">
                             <h:outputText value="#{i18n.t('Root-Benutzer aktivieren')}:" style="font-weight:bold;"/>
                             <p:toggleSwitch id="rootUserEnabled" value="#{setupBackingBean.rootUserEnabled}"/>
 
@@ -29,16 +45,18 @@
 
                             <h:outputText value="#{i18n.t('Automatischer OIDC-Redirect')}:" style="font-weight:bold;"/>
                             <p:toggleSwitch id="oidcAutoRedirectEnabled" value="#{setupBackingBean.oidcAutoRedirectEnabled}">
-                                <p:ajax update="oidcConfigPanel"/>
+                                <p:ajax update="oidcConfigLabel oidcConfigPanel"/>
                             </p:toggleSwitch>
 
-                            <h:outputText value="#{i18n.t('OIDC-Provider')}:" style="font-weight:bold;"
-                                          rendered="#{setupBackingBean.oidcAutoRedirectEnabled}"/>
+                            <h:panelGroup id="oidcConfigLabel">
+                                <h:outputText value="#{i18n.t('OIDC-Provider')}:" style="font-weight:bold;"
+                                              rendered="#{setupBackingBean.oidcAutoRedirectEnabled}"/>
+                            </h:panelGroup>
                             <h:panelGroup id="oidcConfigPanel">
                                 <p:selectOneMenu id="oidcAutoRedirectConfigId"
                                                  value="#{setupBackingBean.oidcAutoRedirectConfigId}"
                                                  rendered="#{setupBackingBean.oidcAutoRedirectEnabled}"
-                                                 style="width:280px;">
+                                                 style="width:100%; max-width:280px;">
                                     <f:selectItem itemLabel="-- #{i18n.t('Auswählen')} --" itemValue="#{null}"/>
                                     <f:selectItems value="#{oidcConfigService.findAll()}" var="oidc"
                                                    itemLabel="#{oidc.name}" itemValue="#{oidc.id}"/>
@@ -56,10 +74,10 @@
 
                             <h:outputText value="#{i18n.t('System-Mailkonto (Auth-Mails)')}:" style="font-weight:bold;"/>
                             <p:selectOneMenu id="systemMailAccountId" value="#{setupBackingBean.systemMailAccountId}"
-                                             style="width:280px;">
+                                             style="width:100%; max-width:280px;">
                                 <f:selectItems value="#{setupBackingBean.systemMailAccounts}"/>
                             </p:selectOneMenu>
-                        </h:panelGrid>
+                        </p:panelGrid>
 
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveLoginSettings()}"
@@ -118,10 +136,11 @@
             <p:fieldset legend="#{i18n.t('Sitzungen')}" toggleable="true" style="margin-bottom: 1rem;">
                 <div class="grid">
                     <div class="col-12 md:col-8">
-                        <h:panelGrid columns="2" cellpadding="5" style="width:100%;">
+                        <p:panelGrid columns="2" layout="flex" styleClass="ui-panelgrid-blank setup-grid"
+                                     columnClasses="col-12 md:col-6 setup-label, col-12 md:col-6 setup-field">
                             <h:outputText value="#{i18n.t('Sitzungs-Informationen aufzeichnen')}:" style="font-weight:bold;"/>
                             <p:toggleSwitch id="sessionTrackingEnabled" value="#{setupBackingBean.sessionTrackingEnabled}"/>
-                        </h:panelGrid>
+                        </p:panelGrid>
 
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveSessionSettings()}"
@@ -148,7 +167,8 @@
             <p:fieldset legend="#{i18n.t('Logo (Light Mode)')}" toggleable="true" style="margin-bottom: 1rem;">
                 <div class="grid">
                     <div class="col-12 md:col-6">
-                        <h:panelGrid columns="2" cellpadding="5" style="width:100%;">
+                        <p:panelGrid columns="2" layout="flex" styleClass="ui-panelgrid-blank setup-grid"
+                                     columnClasses="col-12 md:col-6 setup-label, col-12 md:col-6 setup-field">
                             <h:outputText value="#{i18n.t('Breite')} (px):" style="font-weight:bold;"/>
                             <p:inputNumber id="lightWidth" value="#{setupBackingBean.lightLogoWidth}"
                                            minValue="20" maxValue="500" decimalPlaces="0" style="width:120px;"/>
@@ -156,7 +176,7 @@
                             <h:outputText value="#{i18n.t('Höhe')} (px):" style="font-weight:bold;"/>
                             <p:inputNumber id="lightHeight" value="#{setupBackingBean.lightLogoHeight}"
                                            minValue="10" maxValue="200" decimalPlaces="0" style="width:120px;"/>
-                        </h:panelGrid>
+                        </p:panelGrid>
 
                         <div style="margin-top:10px;">
                             <p:fileUpload listener="#{setupBackingBean.handleLightLogoUpload}"
@@ -210,7 +230,8 @@
             <p:fieldset legend="#{i18n.t('Logo (Dark Mode)')}" toggleable="true" style="margin-bottom: 1rem;">
                 <div class="grid">
                     <div class="col-12 md:col-6">
-                        <h:panelGrid columns="2" cellpadding="5" style="width:100%;">
+                        <p:panelGrid columns="2" layout="flex" styleClass="ui-panelgrid-blank setup-grid"
+                                     columnClasses="col-12 md:col-6 setup-label, col-12 md:col-6 setup-field">
                             <h:outputText value="#{i18n.t('Breite')} (px):" style="font-weight:bold;"/>
                             <p:inputNumber id="darkWidth" value="#{setupBackingBean.darkLogoWidth}"
                                            minValue="20" maxValue="500" decimalPlaces="0" style="width:120px;"/>
@@ -218,7 +239,7 @@
                             <h:outputText value="#{i18n.t('Höhe')} (px):" style="font-weight:bold;"/>
                             <p:inputNumber id="darkHeight" value="#{setupBackingBean.darkLogoHeight}"
                                            minValue="10" maxValue="200" decimalPlaces="0" style="width:120px;"/>
-                        </h:panelGrid>
+                        </p:panelGrid>
 
                         <div style="margin-top:10px;">
                             <p:fileUpload listener="#{setupBackingBean.handleDarkLogoUpload}"
@@ -272,13 +293,14 @@
             <p:fieldset legend="#{i18n.t('Sprachwechsel (Topbar)')}" toggleable="true" style="margin-bottom: 1rem;">
                 <div class="grid">
                     <div class="col-12 md:col-8">
-                        <h:panelGrid columns="2" cellpadding="5" style="width:100%;">
+                        <p:panelGrid columns="2" layout="flex" styleClass="ui-panelgrid-blank setup-grid"
+                                     columnClasses="col-12 md:col-6 setup-label, col-12 md:col-6 setup-field">
                             <h:outputText value="#{i18n.t('Sprachwechsel anzeigen')}:" style="font-weight:bold;"/>
                             <p:toggleSwitch id="i18nEnabled" value="#{setupBackingBean.i18nEnabled}"/>
 
                             <h:outputText value="#{i18n.t('Icon')}:" style="font-weight:bold;"/>
                             <h:panelGroup>
-                                <p:selectOneMenu id="i18nIcon" value="#{setupBackingBean.i18nIcon}" style="width:280px;">
+                                <p:selectOneMenu id="i18nIcon" value="#{setupBackingBean.i18nIcon}" style="width:100%; max-width:280px;">
                                     <f:selectItem itemLabel="Globe (pi-globe)" itemValue="pi pi-globe"/>
                                     <f:selectItem itemLabel="Language (pi-language)" itemValue="pi pi-language"/>
                                     <f:selectItem itemLabel="Flag (pi-flag)" itemValue="pi pi-flag"/>
@@ -287,7 +309,7 @@
                                     <p:ajax update="i18nIconPreview"/>
                                 </p:selectOneMenu>
                             </h:panelGroup>
-                        </h:panelGrid>
+                        </p:panelGrid>
 
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveI18nSettings()}"
@@ -312,7 +334,8 @@
             <p:fieldset legend="#{i18n.t('Footer')}" toggleable="true" style="margin-bottom: 1rem;">
                 <div class="grid">
                     <div class="col-12 md:col-8">
-                        <h:panelGrid columns="2" cellpadding="5" style="width:100%;">
+                        <p:panelGrid columns="2" layout="flex" styleClass="ui-panelgrid-blank setup-grid"
+                                     columnClasses="col-12 md:col-6 setup-label, col-12 md:col-6 setup-field">
                             <h:outputText value="#{i18n.t('Footer-Text')}:" style="font-weight:bold;"/>
                             <p:inputText id="footerText" value="#{setupBackingBean.footerText}"
                                          placeholder="z.B. Copyright &#169; Meine Firma"
@@ -326,7 +349,7 @@
 
                             <h:outputText value="#{i18n.t('Build-Zeitpunkt anzeigen')}:" style="font-weight:bold;"/>
                             <p:toggleSwitch id="showBuildTimestamp" value="#{setupBackingBean.showBuildTimestamp}"/>
-                        </h:panelGrid>
+                        </p:panelGrid>
 
                         <p:commandButton value="#{i18n.t('Footer speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveFooterSettings()}"
