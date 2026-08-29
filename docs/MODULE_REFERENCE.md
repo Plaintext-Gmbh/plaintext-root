@@ -1,6 +1,6 @@
 # Module Reference
 
-Plaintext Root is a multi-module Maven project. This page describes each module, its purpose, and key classes.
+Plaintext Root is a multi-module Maven project with **24 modules** (the `<modules>` section of the root `pom.xml` is authoritative). This page describes each module, its purpose, and key classes.
 
 ## Infrastructure Modules
 
@@ -15,12 +15,9 @@ Shared interfaces that define the framework's public API and extension points. N
 | `MenuRegistry` | Access registered menu items and their metadata |
 | `MenuVisibilityProvider` | Control menu visibility per mandate |
 | `PlaintextCron` | Implement scheduled cron jobs |
-| `PlaintextEmailSender` | Send emails via configured SMTP accounts |
-| `PlaintextEmailReceiver` | Read emails from IMAP mailboxes |
-| `PlaintextIncomingEmailListener` | React to incoming emails |
-| `ChatService` | Chat rooms, messages, and invitations |
 | `IApiTokenService` | JWT-based API token management |
-| `IWertelistenService` | Value lists (lookup tables) per mandate |
+| `SearchProvider` | Contribute hits to the global search (Cmd+K) |
+| `ModuleRoleProperties` | `plaintext.menu.module-roles.*` — role required per module |
 | `IKontaktService` | Contact management |
 | `IRechnungService` | Invoice management with PDF generation |
 | `IMermaidService` | Mermaid diagram generation |
@@ -76,6 +73,38 @@ Mandate-based menu visibility control. Allows hiding menus for specific tenants.
 
 User role assignment and management UI (ROLE_USER, ROLE_ADMIN, ROLE_ROOT).
 
+### plaintext-root-pageguard
+
+Page Access Guard — per-view authorization derived from menu visibility (roles and
+mandate), enforced in a servlet filter before the `FacesServlet`. Own module so an
+application consuming single modules gets page-level authorization without the whole web
+stack. Registered via `PageGuardAutoConfiguration` (`AutoConfiguration.imports`), publishes
+a `test-jar` with `PageAccessGuardTestFactory`.
+
+| Class | Purpose |
+|-------|---------|
+| `PageAccessGuardService` | Decision "may this view be opened?" — menu lookup, allowlist, aliases, mode |
+| `PageAccessGuardFilter` | Enforcement in the Spring Security chain |
+| `PageGuardMode` / `PageGuardProperties` | `REPORT` (framework default) vs `STRICT` (fail-closed, root app), prefix `plaintext.security.page-guard` |
+| `PageAccessGuardStartupReport` | Lists views without an access rule at boot |
+
+See [security/PAGE_ACCESS_GUARD.md](security/PAGE_ACCESS_GUARD.md) and ADR 0004.
+
+### plaintext-root-web
+
+Reusable JSF/web infrastructure carved out of `plaintext-root-webapp` so that an
+application can take URL rewriting and the security provider without the application
+module. Registered via `WebAutoConfiguration` (ordered before `MenuAutoConfiguration`
+so the real `SecurityProvider` beats the menu module's permissive default).
+
+| Class | Purpose |
+|-------|---------|
+| `UrlRewriteConfig` | `.html`/`.htm` -> `.xhtml` rewrite filter |
+| `SpringSecurityProvider` | `SecurityProvider` backed by the Spring `SecurityContext` |
+| `MenuBean` | View-scoped menu model for the template |
+| `SessionTrackingConfig` | Cookie-only session tracking for every consuming app |
+| `MenuDebugController` / `XhtmlDebugController` | Debug endpoints |
+
 ## Admin Modules
 
 ### plaintext-admin-settings
@@ -90,13 +119,53 @@ Active session monitoring with user agent parsing, login timestamps, and session
 
 Cron job monitoring and management. Shows all registered `PlaintextCron` implementations with execution history.
 
-### plaintext-admin-value-lists
-
-Management UI for value lists (Wertelisten) — lookup tables with key-value pairs per mandate.
-
 ### plaintext-admin-requirements
 
 Requirements management with AI integration (Claude automation). Includes REST API with full OpenAPI documentation.
+
+### plaintext-admin-i18n
+
+Translatable resource bundles with an admin UI (`I18nService`, `I18nTranslationsMenu`,
+`I18nExportController`). The topbar language switch is enabled per mandate via
+`branding.i18n.enabled` (falls back to the legacy global `i18n.enabled`).
+
+### plaintext-admin-oidc
+
+OIDC/OAuth2 client registrations stored in the database (`OidcConfig`,
+`OidcConfigService`, `JdbcClientRegistrationRepository`) instead of `application.yml`.
+ROOT-only page.
+
+### plaintext-admin-apitoken
+
+JWT API tokens for REST/MCP access (`JwtTokenService`, `ApiTokenValidatorServiceImpl`,
+`McpBearerTokenFilterConfig`). Separate ROOT and ADMIN pages (`RootApiTokenMenu`,
+`AdminApiTokenMenu`).
+
+### plaintext-admin-secrets
+
+Secret store with pluggable backends (`SecretService`, `SecretBackendConfig`), ROOT-only.
+Values are encrypted at rest with `ConfigEncryptionService` (see [CRYPTO.md](CRYPTO.md)).
+
+### plaintext-admin-modules
+
+Module registry and activation per application (`ModuleService`, `ModuleConfig`,
+`ModuleDataService`, `ModuleDangerZoneService`). The `moduleId` shown here is the key for
+`plaintext.menu.module-roles.<moduleId>`.
+
+### plaintext-admin-mailtemplate
+
+Editable mail templates with per-mandate overrides (`MailTemplateService`,
+`MailTemplateConfig`). ADMIN and ROOT (menu **Admin**).
+
+### plaintext-admin-webhooks
+
+Outgoing webhook configuration and dispatch (`WebhookConfig`, `WebhookEndpointService`,
+`WebhookDispatchService`). ROOT-only.
+
+### plaintext-admin-notifications
+
+In-app notifications behind the topbar bell (`NotificationServiceImpl`,
+`NotificationMenu`); `notifications.html` is reachable for every user.
 
 ## Template & Application
 
@@ -110,15 +179,26 @@ Main web application module. Bundles all other modules and provides:
 
 | Class | Purpose |
 |-------|---------|
-| `PlaintextSecurityConfig` | Spring Security configuration |
+| `PlaintextSecurityConfig` | Spring Security configuration incl. the hard-wired `ROOT_ONLY_PAGES` / `ADMIN_PAGES` |
 | `UserPreferencesRestController` | REST API for saving UI preferences |
 | `VersionController` | Public version endpoint |
+
+### plaintext-root-archtests
+
+Shared ArchUnit rules published as a **main** jar so the consuming applications run the
+same checks: `PlaintextArchitectureTest`, `PlaintextViewScopedBanTest`,
+`PlaintextPrivateKeyBanTest`, `PlaintextAjaxAntwortLesbarTest`, `PlaintextMcpScopeVertragTest`,
+`PlaintextOwaspSuppressionsTest`, `PlaintextMobileFormLinterTest`.
 
 ## Module Dependencies
 
 ```
 plaintext-root-webapp
 ├── plaintext-root-template
+├── plaintext-root-web
+│   └── plaintext-root-menu
+├── plaintext-root-pageguard
+│   └── plaintext-root-menu
 ├── plaintext-root-interfaces
 ├── plaintext-root-jpa
 │   └── plaintext-root-common
@@ -132,7 +212,18 @@ plaintext-root-webapp
 ├── plaintext-admin-settings
 ├── plaintext-admin-sessions
 ├── plaintext-admin-cron
-├── plaintext-admin-value-lists
+├── plaintext-admin-requirements
+├── plaintext-admin-i18n
+├── plaintext-admin-oidc
+├── plaintext-admin-apitoken
+├── plaintext-admin-secrets
+├── plaintext-admin-modules
+├── plaintext-admin-mailtemplate
+├── plaintext-admin-webhooks
+└── plaintext-admin-notifications
 
-└── plaintext-admin-requirements
+plaintext-root-archtests   (test rules, consumed by the applications; not on the webapp's path)
 ```
+
+The exact dependency edges are in the module `pom.xml` files; the tree above is the
+consumer's view.

@@ -26,9 +26,22 @@ reporting process in [SECURITY.md](SECURITY.md).
 2. Create a feature branch from `master`: `git checkout -b feature/my-feature`
 3. Make your changes
 4. Ensure the project builds and the tests pass: `mvn clean install`
-5. Commit with a descriptive message ([Conventional Commits](https://www.conventionalcommits.org/),
-   e.g. `feat(menu): add badge support` — the release notes are generated from them)
+5. Commit with a descriptive message — see [Commit messages](#commit-messages) below
 6. Push to your fork and open a Pull Request against `master`
+
+### Commit messages
+
+There is no Conventional-Commits tooling in this repository and nothing is
+generated from commit messages. What matters is the content:
+
+- **Subject line:** one line, what changed. The maintainers write it in German;
+  English is fine for external contributions.
+- **Body:** the *why* — the observation, the wrong assumption, the alternative you
+  rejected. The code shows the *what*; the message is the only place the *why*
+  survives.
+- Release notes are written by hand into [CHANGELOG.md](CHANGELOG.md) per release.
+  The `Release version X.Y.Z` and `Prepare next development iteration` commits are
+  produced by the release tooling — do not write those by hand.
 
 ### Branch Protection
 
@@ -52,8 +65,10 @@ reporting process in [SECURITY.md](SECURITY.md).
 
 - Java 25+ (e.g. via [SDKMAN](https://sdkman.io/): `sdk install java 25-open`)
 - Maven 3.9+
-- Docker or Podman — only needed for PostgreSQL and for the integration tests
-  (Testcontainers). A plain build and the unit tests run without it.
+- Docker or Podman — only needed to run the application against the local
+  PostgreSQL from `compose.yaml`. The build, the unit tests **and** the
+  integration tests run without it: the integration tests boot an embedded
+  PostgreSQL (`io.zonky.test:embedded-postgres`, see `plaintext-root-webapp/pom.xml`).
 
 ### Quick Start
 
@@ -65,30 +80,61 @@ cd plaintext-root
 # Build the project (no database needed)
 mvn clean install -DskipTests
 
-# Run the application against the in-memory H2 database
+# Start the local PostgreSQL (port 5434, db/user/password: plaintext_root/plaintext/plaintext)
+docker compose up -d
+
+# Run the application
 mvn spring-boot:run -pl plaintext-root-webapp
 ```
 
-The app is then available at <http://localhost:8080>. For a persistent
-PostgreSQL setup run `docker compose up -d` and start with
-`-Dspring-boot.run.profiles=postgres`. See the [README](README.md) for details.
+The app is then available at <http://localhost:8080>. There is no embedded
+fallback database — the compose defaults match `application.yml`, so nothing else
+needs configuring. See the [README](README.md) for the environment variables that
+point the app at another PostgreSQL.
 
 ### Running Tests
 
 ```bash
 mvn clean test                  # unit tests + JaCoCo coverage
-mvn clean verify                # additionally the integration tests (needs Docker)
+mvn clean verify                # additionally the integration tests (embedded PostgreSQL, no Docker)
 mvn clean verify -DskipITs      # skip the integration tests
 ```
+
+### Playwright UI tests
+
+`SelfServicePlaywrightIT` and `RootPagesPlaywrightIT` in `plaintext-root-webapp`
+drive the real application in a headless Chromium. They run in CI
+(`.github/workflows/playwright.yaml`, informational only). To run them locally you
+need the Chromium build that Playwright downloads into `~/.cache/ms-playwright`
+— once per machine:
+
+```bash
+# 1. Install the internal SNAPSHOT modules so the classpath below resolves
+mvn -B -q -DskipTests install
+
+# 2. Let Playwright fetch its Chromium (same commands as the CI workflow)
+mvn -B -q dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt \
+    -pl plaintext-root-webapp -am
+java -cp "$(cat /tmp/cp.txt):plaintext-root-webapp/target/classes" \
+    com.microsoft.playwright.CLI install --with-deps chromium
+
+# 3. Run the UI tests (Failsafe boots the app on a random port itself)
+mvn -pl plaintext-root-webapp failsafe:integration-test failsafe:verify \
+    -Dit.test='SelfServicePlaywrightIT,RootPagesPlaywrightIT'
+```
+
+No separately started application is needed — the IT classes start Spring Boot
+against the embedded PostgreSQL themselves.
 
 ## Reading the Code
 
 A few conventions that are not obvious from the outside:
 
-- Comments referring to **"Karte NNN"** point at the maintainers' internal
-  issue tracker. They are historical breadcrumbs explaining *why* a decision was
-  made; you never need access to that tracker to understand the code, and new
-  code should not add such references.
+- Comments referring to **"Karte NNN"** name a card on the maintainers' internal
+  Kanban board. That board has no public URL and is not linked to GitHub issues;
+  the number is a breadcrumb for the maintainers, the sentence next to it is what
+  matters. You never need access to the board to understand the code. External
+  contributions should reference GitHub issues (`#123`) instead.
 - Domain terms in class and column names are German (`Mandat`, `Anforderung`,
   `Rollenzuteilung`, …). [docs/GERMAN_TERMS.md](docs/GERMAN_TERMS.md) is the glossary.
 - Architecture decisions are recorded in [docs/adr/](docs/adr/).
@@ -101,7 +147,10 @@ A few conventions that are not obvious from the outside:
   files and documentation are English (see [docs/GERMAN_TERMS.md](docs/GERMAN_TERMS.md))
 - Architecture rules are enforced by ArchUnit tests in `plaintext-root-archtests`
   — if one of those fails, it is telling you about a convention, not a flake
-- Add the MPL 2.0 license header to new Java files:
+- Add the MPL 2.0 license header to new Java files. Almost every Java file in the
+  repository carries it (a handful of recent test files do not); the license
+  itself applies through [LICENSE](LICENSE) and the `<licenses>` block of the
+  parent `pom.xml` regardless, so a missing header is a nit, not a blocker:
 
 ```java
 /* This Source Code Form is subject to the terms of the Mozilla Public

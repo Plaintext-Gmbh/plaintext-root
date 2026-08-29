@@ -23,6 +23,7 @@ Plaintext Root provides a complete foundation for building enterprise web applic
 git clone https://github.com/Plaintext-Gmbh/plaintext-root.git
 cd plaintext-root
 mvn clean install -DskipTests
+docker compose up -d            # PostgreSQL on port 5434
 mvn spring-boot:run -pl plaintext-root-webapp
 ```
 
@@ -36,9 +37,11 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 |----------|-------------|
 | [Getting Started](GETTING_STARTED.md) | Setup, build, and run the application |
 | [Architecture Overview](ARCHITECTURE.md) | System design, module dependencies, and data flow |
-| [Module Reference](MODULE_REFERENCE.md) | Detailed reference for all 17 modules |
+| [Module Reference](MODULE_REFERENCE.md) | Detailed reference for all 24 modules |
 | [Flyway Migrations](FLYWAY_MIGRATIONS.md) | Database migration conventions and tooling |
 | [Role Registry](ROLE_REGISTRY.md) | How modules declare their roles for the user admin selection |
+| [Page Access Guard](security/PAGE_ACCESS_GUARD.md) | Per-view authorization derived from menu visibility |
+| [Architecture Decisions](adr/) | ADRs 0001–0006 |
 
 ### Reference
 

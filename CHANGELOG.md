@@ -1,14 +1,18 @@
 # Changelog
 
 All notable changes to this project will be documented here. The format
-follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
-project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The version
+number is **not** SemVer: the minor number counts releases (every merge to
+`master` is one), and whether a release breaks a consumer is stated in the
+entry text, not in the number.
 
-Going forward, entries are written from the same Conventional Commits stream
-that drives the GitHub release tags. Earlier minor versions are summarised
-from `git log` and may not be exhaustive.
+Entries are written by hand per release; nothing is generated from commit
+messages. Earlier minor versions are summarised from `git log` and may not be
+exhaustive.
 
 ## [Unreleased]
+
+## [1.635.0] — 2026-08-29
 
 ### Fixed
 - Sprachwechsel (Topbar) laesst sich im Setup wieder abschalten: `I18nService.isI18nEnabled()`
