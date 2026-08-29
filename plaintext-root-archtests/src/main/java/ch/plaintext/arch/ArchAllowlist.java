@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
  * header-hygiene  plaintext-foo/src/test/java/**                          # Fixtures, Karte 123
  * jsf-view        plaintext-foo/src/main/resources/META-INF/resources/x.xhtml  # eigener Metadaten-Insert
  * facelets-el     plaintext-foo/src/main/resources/META-INF/resources/y.xhtml  # ...
+ * i18n-seed       plaintext-foo/src/main/resources/META-INF/resources/z.xhtml  # Altbestand, Uebersetzung folgt
  * session-bean    FooBackingBean.barService                                # Designfrage, Karte 915
  * </pre>
  * Spalte 1 ist die Regel-Kennung, Spalte 2 das Ziel (Pfad relativ zur Reactor-Wurzel mit
