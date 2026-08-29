@@ -6,6 +6,7 @@ package ch.plaintext.i18n.service;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import ch.plaintext.i18n.repository.I18nTranslationRepository;
 import ch.plaintext.settings.ISettingsService;
+import ch.plaintext.settings.SettingsKeys;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,17 +51,17 @@ class I18nServiceI18nEnabledTest {
     @Test
     @DisplayName("Im Setup ausgeschaltet: aus — der alte globale Schluessel wird gar nicht gefragt")
     void setupAusGewinnt() {
-        when(settings.getBoolean("branding.i18n.enabled", "guild42")).thenReturn(false);
+        when(settings.getBoolean(SettingsKeys.I18N_ENABLED, "guild42")).thenReturn(false);
 
         assertFalse(service.isI18nEnabled());
-        verify(settings, never()).getBoolean("i18n.enabled");
+        verify(settings, never()).getBoolean(SettingsKeys.I18N_ENABLED_LEGACY);
     }
 
     @Test
     @DisplayName("Im Setup eingeschaltet: an, auch wenn der alte Schluessel aus sagt")
     void setupAnGewinnt() {
-        when(settings.getBoolean("branding.i18n.enabled", "guild42")).thenReturn(true);
-        when(settings.getBoolean("i18n.enabled")).thenReturn(false);
+        when(settings.getBoolean(SettingsKeys.I18N_ENABLED, "guild42")).thenReturn(true);
+        when(settings.getBoolean(SettingsKeys.I18N_ENABLED_LEGACY)).thenReturn(false);
 
         assertTrue(service.isI18nEnabled());
     }
@@ -68,8 +69,8 @@ class I18nServiceI18nEnabledTest {
     @Test
     @DisplayName("Ohne Setup-Wert zaehlt der alte Schluessel")
     void ohneSetupWertAlterSchluessel() {
-        when(settings.getBoolean("branding.i18n.enabled", "guild42")).thenReturn(null);
-        when(settings.getBoolean("i18n.enabled")).thenReturn(false);
+        when(settings.getBoolean(SettingsKeys.I18N_ENABLED, "guild42")).thenReturn(null);
+        when(settings.getBoolean(SettingsKeys.I18N_ENABLED_LEGACY)).thenReturn(false);
 
         assertFalse(service.isI18nEnabled());
     }
@@ -78,8 +79,8 @@ class I18nServiceI18nEnabledTest {
     @DisplayName("Ohne jeden Wert: an (Standard)")
     void ohneWerteAn() {
         // Ausdruecklich null: ein Mockito-Mock liefert fuer Boolean sonst false, nicht "kein Wert".
-        when(settings.getBoolean("branding.i18n.enabled", "guild42")).thenReturn(null);
-        when(settings.getBoolean("i18n.enabled")).thenReturn(null);
+        when(settings.getBoolean(SettingsKeys.I18N_ENABLED, "guild42")).thenReturn(null);
+        when(settings.getBoolean(SettingsKeys.I18N_ENABLED_LEGACY)).thenReturn(null);
 
         assertTrue(service.isI18nEnabled());
     }
@@ -88,10 +89,10 @@ class I18nServiceI18nEnabledTest {
     @DisplayName("Ohne Mandant (z.B. Login-Seite): nur der alte Schluessel, sonst an")
     void ohneMandant() {
         holder.when(PlaintextSecurityHolder::getMandat).thenReturn(null);
-        when(settings.getBoolean("i18n.enabled")).thenReturn(false);
+        when(settings.getBoolean(SettingsKeys.I18N_ENABLED_LEGACY)).thenReturn(false);
 
         assertFalse(service.isI18nEnabled());
-        verify(settings, never()).getBoolean("branding.i18n.enabled", null);
+        verify(settings, never()).getBoolean(SettingsKeys.I18N_ENABLED, null);
     }
 
     @Test

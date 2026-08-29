@@ -4,6 +4,10 @@
                 xmlns:f="http://xmlns.jcp.org/jsf/core"
                 template="/includes/template.xhtml">
 
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{setupBackingBean.onLoad()}"/>
+    </f:metadata>
+
     <ui:define name="head">
         <!-- Auftrag Daniel, 29.08.2026: Setup war mobil nicht sauber ausgerichtet — die starren
              2-Spalten-Tabellen (h:panelGrid) quetschten Label und Schalter nebeneinander. Jetzt
@@ -22,9 +26,6 @@
     <ui:define name="content">
         <h:form id="fm" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
-            <f:metadata>
-                <f:event type="preRenderView" listener="#{setupBackingBean.onLoad()}"/>
-            </f:metadata>
 
             <p:growl id="messages" showDetail="true" life="3000"/>
 

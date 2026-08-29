@@ -5,12 +5,13 @@
                 xmlns="http://www.w3.org/1999/xhtml"
                 template="/includes/template.xhtml">
 
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{sessionInspectorBackingBean.init()}"/>
+    </f:metadata>
+
     <ui:define name="title">Session Insights (Root)</ui:define>
 
     <ui:define name="page">
-        <f:metadata>
-            <f:event type="preRenderView" listener="#{sessionInspectorBackingBean.init()}"/>
-        </f:metadata>
 
         <style>
             .action-buttons {

@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Karte 596: Was gilt als zustellbare Adresse?
  *
- * @author worker01
+ * @author info@plaintext.ch
  * @since 07.08.2026
  */
 class PlaintextEmailAddressTest {

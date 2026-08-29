@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * {@code plafferma}, und maschinelle Schreiber hinterlassen {@code anonymousUser}. Wer den
  * Benutzernamen ungeprüft als Empfänger verwendet, erzeugt genau dort einen stillen Fehlschlag.
  *
- * @author worker01
+ * @author info@plaintext.ch
  * @since 07.08.2026
  */
 public final class PlaintextEmailAddress {

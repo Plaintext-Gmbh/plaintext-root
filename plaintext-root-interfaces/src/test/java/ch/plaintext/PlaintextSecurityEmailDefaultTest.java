@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
  * über den Sicherheitskontext — im Cron-Lauf liefert {@code getId()} dort {@code -1} (Karte 588),
  * und genau dieser Fehler soll hier auffallen.
  *
- * @author worker01
+ * @author info@plaintext.ch
  * @since 07.08.2026
  */
 class PlaintextSecurityEmailDefaultTest {

@@ -5,14 +5,15 @@
                 xmlns:f="http://xmlns.jcp.org/jsf/core"
                 xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
 
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{apiTokenBean.onLoad()}"/>
+    </f:metadata>
+
     <ui:define name="title">API Tokens</ui:define>
 
     <ui:define name="content">
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
-            <f:metadata>
-                <f:event type="preRenderView" listener="#{apiTokenBean.onLoad()}"/>
-            </f:metadata>
 
             <p:growl id="messages" showDetail="true" life="5000"/>
 
