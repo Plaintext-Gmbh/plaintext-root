@@ -51,6 +51,25 @@ public final class FacesMessages {
         add(FacesMessage.SEVERITY_ERROR, text, detail);
     }
 
+    /**
+     * Beliebige Schwere als Parameter — fuer die {@code addMessage(severity, text)}-Wrapper, die
+     * in vielen Backing Beans stehen (Massnahme 9, 29.08.2026).
+     */
+    public static void meldung(FacesMessage.Severity severity, String text, String detail) {
+        add(severity, text, detail);
+    }
+
+    /**
+     * Meldung an einer Komponente ({@code clientId}, z. B. {@code "fm:betrag"}) — erscheint in
+     * {@code <p:message for=…>} statt im Growl. {@code clientId == null} = globale Meldung.
+     */
+    public static void feld(String clientId, FacesMessage.Severity severity, String text, String detail) {
+        FacesContext ctx = FacesContext.getCurrentInstance();
+        if (ctx != null) {
+            ctx.addMessage(clientId, new FacesMessage(severity, text, detail));
+        }
+    }
+
     private static void add(FacesMessage.Severity severity, String text, String detail) {
         FacesContext ctx = FacesContext.getCurrentInstance();
         if (ctx != null) {
