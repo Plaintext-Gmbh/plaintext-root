@@ -11,6 +11,12 @@ from `git log` and may not be exhaustive.
 ## [Unreleased]
 
 ### Fixed
+- Sprachwechsel (Topbar) laesst sich im Setup wieder abschalten: `I18nService.isI18nEnabled()`
+  las nur den alten globalen Schluessel `i18n.enabled`, das Setup schreibt aber
+  `branding.i18n.enabled` je Mandant — jetzt gilt der Mandanten-Schalter zuerst, dann der alte
+  Schluessel, sonst an. Wirkt auf Topbar-Symbol, uebersetzte Menuetitel und `i18n.t()`.
+- Setup-Seite ist auf dem Handy sauber ausgerichtet: die sechs starren Zweispalten-Tabellen
+  sind Flex-Grids (ab `md` nebeneinander, mobil Label ueber dem Feld), feste Breiten sind fluid.
 - Menü-Diagnose (`menudiagnose.html`) rendert wieder: `MenuDiagnoseZeile` ist ein Record, und
   der RecordELResolver loest `#{z.modulKeysText}` nur ueber eine Methode `modulKeysText()`
   auf — die bisherigen Bean-Getter `getModulKeysText()`/`getErsterGrund()` liessen die Seite
