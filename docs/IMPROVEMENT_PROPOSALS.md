@@ -9,10 +9,15 @@ Legend:
 - 🔴 high — security or correctness, ship soon
 - 🟠 medium — meaningful UX or developer-experience win
 - 🟢 low — nice to have, low risk
+- ✅ done — shipped; the evidence (PR, CHANGELOG entry, file) is named in the item
 
 ## Security
 
-### 🔴 Replace the hard-coded remember-me signing key
+### ✅ Replace the hard-coded remember-me signing key
+
+**Done** (#120, CHANGELOG 1.635.0): `plaintext.security.remember-me-key` makes the key
+configurable; when unset an ephemeral random key is generated with a startup WARN.
+Original proposal kept for the record:
 
 `PlaintextSecurityConfig#rememberMeServices` passes the literal string
 `"mySecretKey"` to `PersistentTokenBasedRememberMeServices`. The same string
@@ -45,7 +50,11 @@ support). What's missing: magic-link token entity, issuer service, Spring
 Security `OneTimeTokenAuthenticationFilter` glue, login UI affordance.
 See the comment on issue #26 for a concrete plan.
 
-### 🟠 2FA/MFA (TOTP) for ROOT/ADMIN
+### ✅ 2FA/MFA (TOTP) for ROOT/ADMIN
+
+**Done**: opt-in authenticator-app 2FA with recovery codes for local password users,
+`plaintext.security.totp.enabled` (default off) — see
+[security/TOTP_2FA.md](security/TOTP_2FA.md). Original proposal:
 
 [Spring Security 6.4+ TOTP support](https://docs.spring.io/spring-security/reference/servlet/authentication/otp.html)
 ships out of the box. Add an opt-in toggle on the user profile, mandatory
@@ -82,7 +91,12 @@ Spring Data auditing already records `created_by`, `created_date`,
 2. An admin page that queries it with filters by mandate/actor/range and
    exports to CSV.
 
-### 🟠 `/actuator/prometheus` and a starter Grafana dashboard
+### ✅ `/actuator/prometheus` and a starter Grafana dashboard
+
+**Done**: `micrometer-registry-prometheus` is a dependency of `plaintext-root-webapp`,
+`management.endpoints.web.exposure.include` lists `prometheus`, the Grafana dashboard is
+committed as [dashboards/plaintext-root.json](dashboards/plaintext-root.json) and the
+operator guide is [operator/PROMETHEUS.md](operator/PROMETHEUS.md). Original proposal:
 
 Spring Boot Actuator already provides metrics; the missing piece is the
 `micrometer-registry-prometheus` dependency, a curated set of metrics
@@ -97,23 +111,26 @@ interleave in the log file.
 
 ## Developer experience
 
-### 🟠 CHANGELOG.md
+### ✅ CHANGELOG.md
 
-There is none. Hand-write one going back two minor versions and then
-generate from Conventional Commits going forward. Keeps release notes from
-having to be written from scratch.
+**Done**: [CHANGELOG.md](../CHANGELOG.md) exists and is maintained by hand per release
+(Keep-a-Changelog layout). The "generate from Conventional Commits" half was dropped —
+the repository does not use Conventional Commits and nothing is generated from commit
+messages.
 
-### 🟠 Architecture Decision Records (`docs/adr/`)
+### ✅ Architecture Decision Records (`docs/adr/`)
 
-Capture the *why* behind big choices: JoinFaces over plain Spring MVC,
-Mandate (per-row tenant tag) over schema-per-tenant, Flyway with HSQLDB
-syntax. Three to five ADRs are enough to start.
+**Done**: [adr/](adr/) holds 0001 (JoinFaces over Spring MVC), 0002 (mandate per row),
+0003 (Maven multi-module over Spring Modulith), 0004 (page guard `STRICT` for the root
+app), 0005 (`root-web` and `root-pageguard` carved out of the webapp) and 0006 (releases
+and consumer pins). Note the original wording said "Flyway with HSQLDB syntax" — the
+migrations are PostgreSQL syntax; there is no HSQLDB.
 
 ### 🟠 Run the JaCoCo coverage gate
 
 JaCoCo runs but no minimum threshold is enforced. Pick a starting line
 (e.g. 60 % overall, 80 % for new code) and fail the build below it. The
-[Test Strategy memory](../docs/MODULE_REFERENCE.md) already lists the
+[Module Reference](MODULE_REFERENCE.md) is the starting point for finding the
 modules where coverage is thinnest.
 
 ### 🟢 Pre-commit hook running the formatter
@@ -136,7 +153,11 @@ configurable maintenance page. Add a banner that shows up an hour before
 the planned start. Smallest piece of issue #66 to ship and one of the most
 visible ones in operations.
 
-### 🟠 Global search (Cmd+K)
+### ✅ Global search (Cmd+K)
+
+**Done**: `SearchProvider` in `plaintext-root-interfaces`, `SearchService`,
+`GET /api/search`, topbar UI — documented in the [README](../README.md#global-search-cmdk).
+Original proposal:
 
 Define a `SearchProvider` SPI (`Stream<SearchHit> search(String query, int
 limit)`); each module that wants to participate registers one. Topbar
@@ -156,7 +177,10 @@ config-driven step list so each consumer of the framework can extend it.
 
 ## Architecture
 
-### 🟠 Drop the legacy `email_config` table (the V2 migration is done)
+### ✅ Drop the legacy `email_config` table (the V2 migration is done)
+
+**Done** (#121, CHANGELOG 1.635.0): table and `EmailConfigMigration` removed. Original
+proposal:
 
 `EmailConfigMigration#migrateToEmailConfigV2_December2024` is marked
 `@Deprecated(forRemoval = true, since = "1.94.0")` with a TODO to remove

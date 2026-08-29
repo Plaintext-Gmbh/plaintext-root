@@ -1,6 +1,6 @@
 # Plaintext Root
 
-[![Build & Test](https://github.com/Plaintext-Gmbh/plaintext-root/actions/workflows/build-deploy.yaml/badge.svg)](https://github.com/Plaintext-Gmbh/plaintext-root/actions/workflows/build-deploy.yaml)
+[![Build And Deploy](https://github.com/Plaintext-Gmbh/plaintext-root/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/Plaintext-Gmbh/plaintext-root/actions/workflows/ci-cd.yaml)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 [![Java](https://img.shields.io/badge/Java-25-blue.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.x-green.svg)](https://spring.io/projects/spring-boot)
@@ -29,6 +29,8 @@
 graph TB
     subgraph "Web Layer"
         WEBAPP[plaintext-root-webapp<br/>Security, Login, Controllers]
+        WEB[plaintext-root-web<br/>URL rewrite, SecurityProvider, MenuBean]
+        PAGEGUARD[plaintext-root-pageguard<br/>Page Access Guard]
         TEMPLATE[plaintext-root-template<br/>UI Template, CSS, JS]
     end
 
@@ -46,12 +48,13 @@ graph TB
         ADMIN_SET[plaintext-admin-settings]
         ADMIN_SES[plaintext-admin-sessions]
         ADMIN_CRON[plaintext-admin-cron]
-        ADMIN_WL[plaintext-admin-value-lists]
-
         ADMIN_ANF[plaintext-admin-requirements]
+        ADMIN_MORE[plaintext-admin-*<br/>apitoken, i18n, oidc, secrets, modules,<br/>mailtemplate, webhooks, notifications]
     end
 
     WEBAPP --> TEMPLATE
+    WEBAPP --> WEB
+    WEBAPP --> PAGEGUARD
     WEBAPP --> IFACE
     WEBAPP --> JPA
     WEBAPP --> MENU
@@ -60,8 +63,11 @@ graph TB
     WEBAPP --> ADMIN_SET
     WEBAPP --> ADMIN_SES
     WEBAPP --> ADMIN_CRON
-    WEBAPP --> ADMIN_WL
+    WEBAPP --> ADMIN_ANF
+    WEBAPP --> ADMIN_MORE
 
+    WEB --> MENU
+    PAGEGUARD --> MENU
     MENU --> IFACE
     SECURITY --> IFACE
     ROLES --> IFACE
@@ -79,6 +85,8 @@ graph TB
 | `plaintext-root-menu-visibility` | Mandate-based menu visibility control |
 | `plaintext-root-role-assignment` | User role assignment and management |
 | `plaintext-root-flyway` | Database migration management |
+| `plaintext-root-pageguard` | Page Access Guard: per-view authorization derived from menu visibility (`REPORT`/`STRICT`) |
+| `plaintext-root-web` | Reusable web infrastructure: `.html` -> `.xhtml` URL rewrite, `SpringSecurityProvider`, `MenuBean`, debug controllers |
 | `plaintext-root-webapp` | Main web application with security, login, and controllers |
 | `plaintext-root-template` | UI Template |
 | `plaintext-admin-settings` | Application settings management UI |
@@ -95,7 +103,7 @@ graph TB
 | `plaintext-admin-requirements` | Requirements management with AI integration |
 | `plaintext-root-archtests` | Shared ArchUnit architecture/lint tests |
 
-The authoritative list is the `<modules>` section of the root `pom.xml`.
+That is 24 modules. The authoritative list is the `<modules>` section of the root `pom.xml`.
 
 ## Tech Stack
 
@@ -119,7 +127,8 @@ The authoritative list is the `<modules>` section of the root `pom.xml`.
 
 - **Java 25+** (e.g., via [SDKMAN](https://sdkman.io/): `sdk install java 25-open`)
 - **Maven 3.9+**
-- **Docker** or **Podman** (optional, only for PostgreSQL)
+- **Docker** or **Podman** — runs the local PostgreSQL from `compose.yaml`. There is no
+  embedded fallback database: the application needs a PostgreSQL to start.
 
 ### 1. Clone and Build
 
@@ -127,43 +136,57 @@ The authoritative list is the `<modules>` section of the root `pom.xml`.
 git clone https://github.com/Plaintext-Gmbh/plaintext-root.git
 cd plaintext-root
 
-# Build all modules (no database needed!)
+# Build all modules (the build itself needs no database)
 mvn clean install -DskipTests
 ```
 
-### 2. Run the Application
+### 2. Start PostgreSQL
+
+```bash
+docker compose up -d
+```
+
+`compose.yaml` starts PostgreSQL on **port 5434** with database `plaintext_root`, user
+`plaintext`, password `plaintext` (data lives in `~/plaintext-root-db`). These are exactly the
+defaults in `plaintext-root-webapp/src/main/resources/application.yml`, so no profile and no
+extra configuration is needed.
+
+### 3. Run the Application
 
 ```bash
 mvn spring-boot:run -pl plaintext-root-webapp
 ```
 
-The application starts at **http://localhost:8080** with an **in-memory H2 database** (PostgreSQL compatibility mode). No external database setup needed!
+The application starts at **http://localhost:8080**. The root user and its initial
+password are created by `PlaintextInitLoader` on first start — see the log.
 
-> **Note:** Data is lost on restart with H2. For persistent storage, switch to PostgreSQL (see below).
+Maintainers can use `./build 0` instead, which brings the compose stack up and runs
+`spring-boot:run` in one go (see [Maintainer-only tooling](#maintainer-only-tooling)).
 
-### 3. Switch to PostgreSQL (Optional)
+### 4. Use a Different PostgreSQL
 
-For production or persistent data, switch to PostgreSQL:
+The datasource is assembled from environment variables with the compose defaults
+as fallback:
 
 ```bash
-# Start PostgreSQL
-docker compose up -d
-
-# Run with PostgreSQL profile
-mvn spring-boot:run -pl plaintext-root-webapp -Dspring-boot.run.profiles=postgres
+DB_HOST=myhost DB_PORT=5432 DB_NAME=mydb DB_USER=me DB_PASSWORD=secret \
+  mvn spring-boot:run -pl plaintext-root-webapp
 ```
 
-Or set the environment variable:
+The Docker-Compose integration of Spring Boot (`spring.docker.compose.enabled`) is
+**off** by default; set `DOCKER_COMPOSE_ENABLED=true` if you want the app to start
+`../compose.yaml` itself.
+
+### 5. Tests
+
 ```bash
-SPRING_PROFILES_ACTIVE=postgres mvn spring-boot:run -pl plaintext-root-webapp
+mvn clean test                  # unit tests + JaCoCo coverage
+mvn clean verify                # + integration tests (embedded PostgreSQL, no Docker needed)
+mvn clean verify -DskipITs      # skip the integration tests
 ```
 
-### 4. H2 Console
-
-In dev mode, the H2 database console is available at **http://localhost:8080/h2-console** with:
-- JDBC URL: `jdbc:h2:mem:plaintext_root`
-- Username: `sa`
-- Password: *(empty)*
+The Playwright UI tests need a Chromium that Playwright itself downloads once — the
+exact commands are in [CONTRIBUTING.md](CONTRIBUTING.md#playwright-ui-tests).
 
 ## Multi-Tenancy
 
@@ -283,7 +306,7 @@ The template provides: layout CSS (light/dark), navigation JavaScript, XHTML tem
 
 ## Database Migrations
 
-Flyway migrations use H2 (PostgreSQL mode) compatible SQL syntax and are located in each module's `src/main/resources/db/migration/` directory. Migration file names follow the pattern:
+Flyway migrations are written in **PostgreSQL syntax** (the only database the framework runs on) and are located in each module's `src/main/resources/db/migration/` directory. Migration file names follow the pattern:
 
 ```
 V{timestamp}__description.sql
@@ -317,6 +340,8 @@ plaintext-root/
 ├── plaintext-root-menu-visibility/      # Menu visibility
 ├── plaintext-root-role-assignment/     # Role management
 ├── plaintext-root-flyway/              # DB migrations
+├── plaintext-root-pageguard/           # Page Access Guard
+├── plaintext-root-web/                 # Reusable web infrastructure
 ├── plaintext-root-template/            # UI template
 ├── plaintext-root-webapp/              # Main web application
 ├── plaintext-admin-settings/           # Settings admin
@@ -371,7 +396,8 @@ Coverage reports are also uploaded as artifacts in the [CI pipeline](https://git
 
 This project is licensed under the [Mozilla Public License 2.0](LICENSE).
 
-Every Java source file carries the MPL 2.0 header. Third-party files that are
+The Java source files carry the MPL 2.0 header (a handful of recent test files do
+not yet — the license applies to them all the same). Third-party files that are
 checked into this repository (PrimeFlex, PrimeIcons, marked.js — all MIT) and
 the notable licenses among the Maven dependencies are listed in
 [NOTICE](NOTICE).

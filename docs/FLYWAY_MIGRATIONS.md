@@ -48,7 +48,7 @@ The script generates a Unix timestamp, checks all existing migrations for confli
 
 ### SQL Syntax
 
-Write migrations in **HSQLDB-compatible syntax (H2 in PostgreSQL mode)**:
+Write migrations in **PostgreSQL syntax** — PostgreSQL is the only database the framework runs on (there is no H2/HSQLDB fallback; `BIGSERIAL` and friends are fine):
 
 ```sql
 -- Use IF NOT EXISTS for idempotent table creation
