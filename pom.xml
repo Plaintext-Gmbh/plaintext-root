@@ -608,18 +608,13 @@
                          Version fahren (root pinnte 0.8.14, alle Apps 0.8.15). -->
                     <version>${jacoco.version}</version>
                 </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-deploy-plugin</artifactId>
-                    <configuration>
-                        <!-- Zustandsbericht 29.08.2026 (M4): Ein root-Release wurde modulweise
-                             hochgeladen; zwischen erstem und letztem Artefakt sahen Consumer eine
-                             halbe Version (PR-Build von guild scheiterte am 29.08. genau daran).
-                             deployAtEnd laedt erst nach dem letzten erfolgreichen Modul hoch. Gilt
-                             fuer beide Ausfuehrungen (GitHub Packages + Reposilite-Profil). -->
-                        <deployAtEnd>true</deployAtEnd>
-                    </configuration>
-                </plugin>
+                <!-- KEIN deployAtEnd (Versuch 29.08.2026, Release 1.636.0): das Deploy-Plugin fuehrt hier
+                     zwei Ausfuehrungen (default -> GitHub Packages, deploy-nas -> Reposilite). Mit deployAtEnd
+                     merkt sich das Plugin je Modul nur EINE Ziel-Konfiguration und schiebt am Ende alle Module
+                     zweimal ins selbe Repository; Reposilite lehnt das zweite Mal mit 409 ab, GitHub Packages
+                     ging leer aus, der Release-Lauf brach nach Tag und Upload ab (SNAPSHOT-Commit fehlte).
+                     Halbe Releases (Zustandsbericht M4) bleiben damit ein offener Punkt — Loesung waere ein
+                     einzelnes Deploy-Ziel oder ein Staging-Verzeichnis, nicht diese Option. -->
             </plugins>
         </pluginManagement>
         <plugins>
