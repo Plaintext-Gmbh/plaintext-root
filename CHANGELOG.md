@@ -32,6 +32,47 @@ exhaustive.
 - `I18nService.importSeedTranslations()` und `I18nExportController` lesen CSV-Zeilen ueber
   `I18nSeedLinter` statt ueber je eine private Kopie des Parsers.
 
+### Fixed
+- Session-Beans in `plaintext-admin-requirements` sind wieder serialisierbar:
+  `AnforderungSettingsBackingBean.apiSettingsRepository`/`.claudeAutomationService` und
+  `HowtoBackingBean.howtoRepository` sind `transient` (Regel `PlaintextSessionBeanSerialisierbarTest`,
+  Karte 915). root hatte die Verstoesse nicht gesehen, weil die geteilten ArchUnit-Regeln nur in
+  `plaintext-root-webapp` laufen und die nicht an `plaintext-admin-requirements` haengt — das
+  Basispaket war schon `ch.plaintext`, der Classpath nicht. Jetzt faehrt das Modul die
+  klassenbasierten Regeln (`PlaintextSessionBeanSerialisierbarTest`, `PlaintextMcpScopeVertragTest`)
+  selbst per Surefire `dependenciesToScan`, und der neue `SessionBeanRegelDeckungTest` in der webapp
+  meldet jede session-scoped Bean im Reactor, die weder die webapp sieht noch ihr Modul selbst prueft.
+- Doppelte Flyway-Migration `V1774038471__create_branding_logo_table.sql` (identisch in
+  `plaintext-root-flyway` und `plaintext-admin-settings`): die Kopie im Flyway-Modul ist entfernt,
+  die Tabelle gehoert zu `BrandingLogo` in settings. Flyway hatte das nur deshalb nicht gemeldet,
+  weil der Classpath-Scanner gleichnamige Ressourcen zusammenfaellt; eine abweichende Zeile in einer
+  Kopie haette einen Checksum-Konflikt beim Start ergeben. Fuer Consumer aendert sich nichts
+  (gleicher Ressourcenname, gleiche Checksumme, kein Eintrag in `flyway_schema_history` betroffen).
+
+### Changed
+- **JaCoCo-Gate scharf (Zustandsbericht 29.08.2026, Massnahme 13).** Die `coverage-check`-Ausfuehrung
+  im Reactor-Parent bricht den Build ab, wenn ein Modul unter 40 % Zeilenabdeckung faellt
+  (`jacoco.halt-on-failure=true`, `jacoco.coverage.minimum=0.40`, beides Properties). Alle root-Module
+  halten die Schwelle ohne Staffelung; `plaintext-root-archtests` misst nicht (seine Hauptquellen sind
+  die Testregeln), `plaintext-root-template` hat kein Java. **Consumer-Hinweis:** app, guild, iot und
+  schuetu erben die Ausfuehrung und muessen beim Bump auf diese Version
+  `<jacoco.halt-on-failure>false</jacoco.halt-on-failure>` in ihre pom setzen, bis sie selbst
+  sauber sind — sonst bricht `mvn verify` dort ab.
+- Abdeckung angehoben (Zeilen, vorher → nachher): `plaintext-root-web` 3,5 % → 59,3 % (die Tests zu
+  `UrlRewriteConfig`, `PathParameterConfig`, `SessionTrackingConfig`, `MenuBean`, `MenuDebugController`,
+  `XhtmlDebugController`, `SpringSecurityProvider`, `DashboardController` lagen in der webapp und
+  zaehlten dort nicht — jetzt im Modul), `plaintext-admin-oidc` 15,4 % → 91,1 %
+  (`OidcConfigServiceTest`, `OidcConfigBackingBeanFlowTest`), `plaintext-admin-secrets` 19,3 % → 48,5 %
+  (`PasswordGeneratorTest`, `SecretServiceVerwaltungTest`), `plaintext-admin-i18n` 28,1 % → 57,7 %
+  (`I18nServiceTest` inkl. CSV-Seed-Import), `plaintext-admin-notifications` 38,0 % → 82,3 %
+  (`NotificationCleanupCronTest`, `NotificationBeansTest`), `plaintext-admin-mailtemplate`
+  39,6 % → 91,2 % (`MailTemplateBackingBeanTest`), `plaintext-root-flyway` ohne Test → 98,3 %
+  (`FlywayServiceTest`, `FlywayMigrationenTest`: Dateiname, reactorweit eindeutige Version,
+  PostgreSQL-Syntax aller Migrationen).
+- `plaintext-root-webapp` misst ehrlich: ausgeschlossen sind nur `RootBootApplication`, die leeren
+  `@MenuAnnotation`-Deklarationen und fuenf reine `@Bean`-Verdrahtungen ohne Verzweigung (je Gruppe
+  mit Grund in der pom); `PlaintextSecurityConfig` & Co. bleiben drin.
+
 ## [1.635.0] — 2026-08-29
 
 ### Fixed

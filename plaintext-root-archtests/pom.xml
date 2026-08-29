@@ -19,6 +19,13 @@
         gegen ihre eigenen Klassen/Ressourcen laufen — statt sie zu kopieren.
     </description>
 
+    <properties>
+        <!-- Kein Coverage-Gate: src/main/java dieses Moduls IST Testcode (die geteilten Regeln),
+             ausgefuehrt in plaintext-root-webapp und in den Consumern. Seine Abdeckung zu messen
+             hiesse, Tests mit Tests zu testen; der Wert lag bei 1,7 % und sagte nichts. -->
+        <jacoco.skip>true</jacoco.skip>
+    </properties>
+
     <dependencies>
         <!-- ArchUnit (JUnit-5-Engine + Core). Compile-scope, weil die Tests in src/main liegen.
              Kommt so bei Consumern transitiv auf den Test-Classpath (api + engine). -->

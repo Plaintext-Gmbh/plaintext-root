@@ -67,6 +67,51 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Geteilte Architektur-Regeln (siehe <build>): dieses Modul haengt NICHT an
+             plaintext-root-webapp, deshalb sieht der dortige ArchUnit-Lauf seine Klassen nicht. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-archtests</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Zustandsbericht 29.08.2026, Etappe 2: Die klassenbasierten Arch-Regeln aus
+                 plaintext-root-archtests (ArchUnit, Basispaket ch.plaintext) laufen in root nur in
+                 plaintext-root-webapp — und die haengt nicht an diesem Modul. Drei Session-Beans
+                 hier hielten deshalb unbemerkt nicht-transiente Repositories/Dienste; aufgefallen
+                 ist es erst in plaintext-app, wo alle root-Jars auf dem Classpath liegen.
+                 Darum faehrt dieses Modul die klassenbasierten Regeln selbst (wie ein Consumer);
+                 die dateibasierten Linter (Header, JSF-View, Facelets-EL, Mobile, ...) scannen
+                 den ganzen Reactor ohnehin aus der webapp heraus und laufen hier nicht doppelt.
+                 PlaintextArchitectureTest bleibt draussen: seine Regeln betreffen @Scheduled und
+                 PlaintextCron, beides gibt es hier nicht, und ArchUnit wertet eine Regel ohne
+                 passende Klassen als Fehler (failOnEmptyShould).
+                 Die Deckung bewacht SessionBeanRegelDeckungTest in plaintext-root-webapp. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>geteilte-arch-regeln</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <dependenciesToScan>
+                                <dependency>ch.plaintext:plaintext-root-archtests</dependency>
+                            </dependenciesToScan>
+                            <test>PlaintextSessionBeanSerialisierbarTest,PlaintextMcpScopeVertragTest</test>
+                            <failIfNoSpecifiedTests>true</failIfNoSpecifiedTests>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

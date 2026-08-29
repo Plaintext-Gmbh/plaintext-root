@@ -37,7 +37,7 @@ public class HowtoBackingBean implements Serializable {
     private PlaintextSecurity plaintextSecurity;
 
     @Autowired
-    private HowtoRepository howtoRepository;
+    private transient HowtoRepository howtoRepository;
 
     private List<Howto> howtos = new ArrayList<>();
     private Howto selected;

@@ -126,12 +126,15 @@ app), 0005 (`root-web` and `root-pageguard` carved out of the webapp) and 0006 (
 and consumer pins). Note the original wording said "Flyway with HSQLDB syntax" — the
 migrations are PostgreSQL syntax; there is no HSQLDB.
 
-### 🟠 Run the JaCoCo coverage gate
+### ✅ Run the JaCoCo coverage gate
 
-JaCoCo runs but no minimum threshold is enforced. Pick a starting line
-(e.g. 60 % overall, 80 % for new code) and fail the build below it. The
-[Module Reference](MODULE_REFERENCE.md) is the starting point for finding the
-modules where coverage is thinnest.
+**Done (29.08.2026, Zustandsbericht Massnahme 13)**: the `coverage-check` execution in the
+reactor `pom.xml` fails the build (`jacoco.halt-on-failure=true`) when a module's line
+coverage drops below `jacoco.coverage.minimum` (0.40). Modules below the line carry a dated,
+justified `<jacoco.coverage.minimum>` in their own pom until they catch up (never 0);
+`plaintext-root-archtests` skips JaCoCo because its main sources *are* test code. Consumers
+inherit the execution and set `<jacoco.halt-on-failure>false</jacoco.halt-on-failure>` until
+they are clean. Raising the floor (60 % overall, 80 % for new code) stays open.
 
 ### 🟢 Pre-commit hook running the formatter
 

@@ -31,10 +31,10 @@ import java.util.Optional;
 public class AnforderungSettingsBackingBean implements Serializable {
 
     @Autowired
-    private AnforderungApiSettingsRepository apiSettingsRepository;
+    private transient AnforderungApiSettingsRepository apiSettingsRepository;
 
     @Autowired
-    private ClaudeAutomationService claudeAutomationService;
+    private transient ClaudeAutomationService claudeAutomationService;
 
     @Autowired
     private PlaintextSecurity security;
