@@ -167,6 +167,10 @@ execute_command() {
             do_release "deploy-healthcheck"
             deploy_to_prod "true" || exit 1
             ;;
+        8)
+            # Lokal-Release: Release + Tag + Blue-Green PROD direkt, ohne CI (do_local_release)
+            exec "$0" local-release
+            ;;
         *)
             echo -e "${RED}Invalid option: ${CMD}${NC}"
             exit 1
@@ -241,6 +245,10 @@ if [ -n "$COMMAND" ]; then
             do_release "deploy-healthcheck"
             deploy_to_prod "true" || exit 1
             ;;
+        8)
+            # Lokal-Release: Release + Tag + Blue-Green PROD direkt, ohne CI (do_local_release)
+            exec "$0" local-release
+            ;;
 
         help|-h|--help)
             show_usage
@@ -276,6 +284,11 @@ if [ -n "$COMMAND" ]; then
             deploy_to_prod "true" || exit 1
             ;;
 
+        local-release)
+            # $2 = 1|2|3 (Increment), $3 = prod|dev-prod (Ziel) — Details in tui-build-logic.sh
+            do_local_release "$2" "$3" || exit 1
+            ;;
+
         s|sonar)
             do_sonar || exit 1
             ;;
@@ -308,6 +321,7 @@ MENU_LABELS+=("Release (patch)")
 MENU_LABELS+=("Release + Deploy DEV")
 MENU_LABELS+=("Deploy Release to PROD")
 MENU_LABELS+=("Release + Deploy DEV + PROD")
+MENU_LABELS+=("Lokal-Release -> PROD (Tag + Blue-Green, ohne CI)")
 MENU_TOTAL=${#MENU_LABELS[@]}
 MENU_MAX_IDX=$((MENU_TOTAL - 1))
 
@@ -366,7 +380,7 @@ draw() {
 }
 
 show_help() {
-    local total_height=18
+    local total_height=19
 
     tput clear
     tui_center $total_height
@@ -379,13 +393,14 @@ show_help() {
     tui_nr; tui_row "  Tastatur:" "${FG_CYAN}${BOLD}"
     tui_nr; tui_row "    ↑ ↓       Navigieren" "${FG_CYAN}"
     tui_nr; tui_row "    ENTER     Auswahl ausfuehren" "${FG_CYAN}"
-    tui_nr; tui_row "    0-7       Direkte Auswahl" "${FG_CYAN}"
+    tui_nr; tui_row "    0-8       Direkte Auswahl" "${FG_CYAN}"
     tui_nr; tui_row "    Q         Beenden" "${FG_CYAN}"
     tui_nr; tui_row "" ""
     tui_nr; tui_row "  CLI:" "${FG_CYAN}${BOLD}"
     tui_nr; tui_row "    ./build run       Bauen + Starten" "${FG_CYAN}"
     tui_nr; tui_row "    ./build 1         Snapshot Build" "${FG_CYAN}"
     tui_nr; tui_row "    ./build 56        Multi-Command" "${FG_CYAN}"
+    tui_nr; tui_row "    ./build 8         Lokal-Release -> PROD (ohne CI)" "${FG_CYAN}"
     tui_nr; tui_row "" ""
     tui_nr; tui_hline "├" "─" "┤"
     tui_nr; tui_row "  Beliebige Taste zum Schliessen..." "${FG_DIM}"
@@ -419,7 +434,7 @@ while true; do
             execute_command "$CURSOR"
             exit 0
             ;;
-        [0-7])
+        [0-8])
             # Number shortcut
             tui_cleanup
             echo ""
