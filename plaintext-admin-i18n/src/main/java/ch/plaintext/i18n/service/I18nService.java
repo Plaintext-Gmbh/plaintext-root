@@ -5,6 +5,7 @@ package ch.plaintext.i18n.service;
 
 import ch.plaintext.I18nProvider;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
+import ch.plaintext.boot.utils.I18nSeedLinter;
 import ch.plaintext.i18n.entity.I18nTranslation;
 import ch.plaintext.i18n.repository.I18nTranslationRepository;
 import ch.plaintext.settings.ISettingsService;
@@ -49,8 +50,6 @@ public class I18nService implements I18nProvider {
         this.repository = repository;
     }
 
-    private static final String CSV_SEPARATOR = ";";
-
     @PostConstruct
     public void init() {
         importSeedTranslations();
@@ -66,16 +65,32 @@ public class I18nService implements I18nProvider {
         log.info("I18n cache loaded with {} translations", all.size());
     }
 
+    /** Suchmuster des Seed-Importers — dieselben Dateien prueft {@code PlaintextI18nSeedTest} (plaintext-root-archtests). */
+    public static final String SEED_PATTERN = "classpath*:i18n/*.csv";
+
     /**
-     * Imports seed translations from CSV files found on the classpath under "i18n/*.csv".
-     * Only inserts if no translation exists yet or if the existing translation is a placeholder (X_ prefix).
-     * This allows projects to check in pre-translated CSV files under src/main/resources/i18n/.
+     * Vorbelegung aus den Seed-Dateien ({@value #SEED_PATTERN}) — beim Start, vor dem Laden des
+     * Caches. Format und Lese-Regeln: {@link I18nSeedLinter}.
+     *
+     * <p><b>Idempotent und nie destruktiv.</b> Eine Zeile wird nur geschrieben, wenn zu
+     * (Label, Sprache) noch kein Eintrag existiert oder der vorhandene ein automatisch erzeugter
+     * {@code X_}-Platzhalter ist ({@link #isPlaceholder}). Ein Text, den jemand unter
+     * Root → Uebersetzungen oder per {@code /api/i18n/import} gepflegt hat, bleibt bei jedem
+     * Deploy stehen — die Seed-Datei ist eine Vorbelegung fuer fehlende Schluessel, keine Quelle
+     * der Wahrheit. Wer einen gepflegten Text zuruecksetzen will, loescht den Eintrag oder setzt
+     * ihn auf einen {@code X_}-Platzhalter; der naechste Start fuellt ihn aus der Seed neu.
+     *
+     * <p>Zustandsbericht 29.08.2026, Welle 2: Bis dahin lief der Importer bei jedem Start leer,
+     * weil familienweit keine Seed-Datei existierte; seither liegt {@code i18n/plaintext-root.csv}
+     * in diesem Modul, und jeder Consumer kann eigene Dateien unter {@code src/main/resources/i18n/}
+     * beilegen. Das Zeilen-Parsing teilt sich der Importer mit dem Test — vorher stand es hier als
+     * private Kopie.
      */
     @Transactional
     public void importSeedTranslations() {
         try {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            Resource[] resources = resolver.getResources("classpath*:i18n/*.csv");
+            Resource[] resources = resolver.getResources(SEED_PATTERN);
 
             if (resources.length == 0) {
                 log.debug("No i18n seed CSV files found on classpath");
@@ -93,54 +108,20 @@ public class I18nService implements I18nProvider {
                 String filename = resource.getFilename();
                 log.info("Importing i18n seed file: {}", filename);
 
-                int imported = 0;
-                int skipped = 0;
-
+                I18nSeedLinter.Seed seed;
                 try (BufferedReader reader = new BufferedReader(
                         new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+                    seed = I18nSeedLinter.parse(reader);
+                }
+                seed.problems().forEach(p -> log.warn("Seed CSV {}: {}", filename, p));
 
-                    String line;
-                    int lineNumber = 0;
-
-                    while ((line = reader.readLine()) != null) {
-                        lineNumber++;
-
-                        if (line.isBlank() || line.startsWith("#")) {
-                            continue;
-                        }
-                        if (lineNumber == 1 && line.startsWith("defaultLabel")) {
-                            continue;
-                        }
-
-                        String[] parts = line.split(CSV_SEPARATOR, 3);
-                        if (parts.length < 3) {
-                            log.warn("Seed CSV {}: line {} has {} columns, expected 3", filename, lineNumber, parts.length);
-                            skipped++;
-                            continue;
-                        }
-
-                        String defaultLabel = unescapeCsv(parts[0].trim());
-                        String languageCode = unescapeCsv(parts[1].trim());
-                        String translatedText = unescapeCsv(parts[2].trim());
-
-                        if (defaultLabel.isEmpty() || languageCode.isEmpty() || translatedText.isEmpty()) {
-                            skipped++;
-                            continue;
-                        }
-
-                        Optional<I18nTranslation> existing = repository.findByDefaultLabelAndLanguageCode(defaultLabel, languageCode);
-                        if (existing.isPresent() && !isPlaceholder(existing.get().getTranslatedText())) {
-                            // Already has a real translation - don't overwrite
-                            skipped++;
-                            continue;
-                        }
-
-                        I18nTranslation translation = existing.orElse(new I18nTranslation());
-                        translation.setDefaultLabel(defaultLabel);
-                        translation.setLanguageCode(languageCode);
-                        translation.setTranslatedText(translatedText);
-                        repository.save(translation);
+                int imported = 0;
+                int skipped = seed.problems().size();
+                for (I18nSeedLinter.SeedRow row : seed.rows()) {
+                    if (importSeedRow(row)) {
                         imported++;
+                    } else {
+                        skipped++;
                     }
                 }
 
@@ -160,16 +141,22 @@ public class I18nService implements I18nProvider {
     }
 
     /**
-     * Unescape a CSV value (remove surrounding quotes, unescape doubled quotes).
+     * Schreibt eine Seed-Zeile, wenn zu (Label, Sprache) nichts oder nur ein {@code X_}-Platzhalter
+     * vorliegt.
+     *
+     * @return true = angelegt/ersetzt, false = gepflegter Eintrag vorhanden, nicht angefasst
      */
-    private String unescapeCsv(String value) {
-        if (value == null) {
-            return "";
+    private boolean importSeedRow(I18nSeedLinter.SeedRow row) {
+        Optional<I18nTranslation> existing = repository.findByDefaultLabelAndLanguageCode(row.defaultLabel(), row.languageCode());
+        if (existing.isPresent() && !isPlaceholder(existing.get().getTranslatedText())) {
+            return false;
         }
-        if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
-            return value.substring(1, value.length() - 1).replace("\"\"", "\"");
-        }
-        return value;
+        I18nTranslation translation = existing.orElse(new I18nTranslation());
+        translation.setDefaultLabel(row.defaultLabel());
+        translation.setLanguageCode(row.languageCode());
+        translation.setTranslatedText(row.translatedText());
+        repository.save(translation);
+        return true;
     }
 
     /** Prefix used for auto-generated placeholder translations. */

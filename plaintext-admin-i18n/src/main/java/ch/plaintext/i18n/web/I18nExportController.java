@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.i18n.web;
 
+import ch.plaintext.boot.utils.I18nSeedLinter;
 import ch.plaintext.i18n.entity.I18nTranslation;
 import ch.plaintext.i18n.service.I18nService;
 import lombok.extern.slf4j.Slf4j;
@@ -269,18 +270,9 @@ public class I18nExportController {
      * wiederherstellt und nicht bei jedem Durchlauf ein weiteres Apostroph anwaechst.
      */
     private String unescapeCsv(String value) {
-        if (value == null) {
-            return "";
-        }
-        String result = value;
-        if (result.startsWith("\"") && result.endsWith("\"") && result.length() >= 2) {
-            result = result.substring(1, result.length() - 1).replace("\"\"", "\"");
-        }
-        if (result.length() >= 2 && result.charAt(0) == '\''
-                && CSV_FORMULA_TRIGGERS.indexOf(result.charAt(1)) >= 0) {
-            result = result.substring(1);
-        }
-        return result;
+        // Dieselbe Regel liest auch der Seed-Importer (Welle 2, 29.08.2026): ein Export laesst sich
+        // unveraendert als src/main/resources/i18n/*.csv einchecken.
+        return I18nSeedLinter.unescape(value);
     }
 
     /**

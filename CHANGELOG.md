@@ -12,6 +12,26 @@ exhaustive.
 
 ## [Unreleased]
 
+### Added
+- i18n-Seed `plaintext-admin-i18n/src/main/resources/i18n/plaintext-root.csv`: 287 englische
+  Vorbelegungen fuer jedes `i18n.t('…')` der root-Facelets (Zustandsbericht 29.08.2026, §4 — der
+  Seed-Importer lief bisher bei jedem Start leer, familienweit gab es keine Seed-CSV; alle Texte
+  sind aus dem deutschen Vorgabetext abgeleitet, PROD hatte nur `X_`-Platzhalter). Der Importer
+  legt nur fehlende Eintraege bzw. `X_`-Platzhalter an; in der Datenbank gepflegte Texte bleiben
+  bei jedem Deploy erhalten (`I18nServiceSeedImportTest` belegt das).
+- Geteilter Test `PlaintextI18nSeedTest` (plaintext-root-archtests): jedes `i18n.t('…')` in einem
+  Facelet des Reactors braucht eine Seed-Zeile der Leitsprache `en`; Seed-Zeilen ohne Verwendung
+  werden als Warnung gemeldet. Laeuft in root und via `dependenciesToScan` in jedem Consumer —
+  Seeds aus Jars (root) zaehlen dort als geliefert. Ausnahmen: `<!-- i18n-seed-ok -->` oder
+  Allowlist-Regel `i18n-seed`.
+- `I18nSeedLinter` (plaintext-root-common): gemeinsamer CSV-Parser und Facelet-Scanner fuer
+  Importer und Test; loest das Schutz-Apostroph des Exports auf, damit ein Export unveraendert als
+  Seed eingecheckt werden kann.
+
+### Changed
+- `I18nService.importSeedTranslations()` und `I18nExportController` lesen CSV-Zeilen ueber
+  `I18nSeedLinter` statt ueber je eine private Kopie des Parsers.
+
 ## [1.635.0] — 2026-08-29
 
 ### Fixed

@@ -1,0 +1,351 @@
+defaultLabel;languageCode;translatedText
+# Seed-Uebersetzungen von plaintext-root (Zustandsbericht 29.08.2026, Welle 2, Paket i18n).
+#
+# Format: defaultLabel;languageCode;translatedText — Trennzeichen ist das Semikolon, Zeilen mit
+# # sind Kommentare. defaultLabel ist der deutsche Text, wie er in den XHTML als i18n.t('…') steht
+# (der Schluessel IST der deutsche Text; "de" wird nie uebersetzt und hat hier keine Zeilen).
+#
+# Import: I18nService.importSeedTranslations() liest beim Start jede classpath*:i18n/*.csv und legt
+# NUR fehlende Eintraege bzw. X_-Platzhalter an. Ein in der Datenbank gepflegter Text (Root ->
+# Uebersetzungen) wird durch ein Deploy NIE ueberschrieben — diese Datei ist eine Vorbelegung.
+#
+# Herkunft: Am 29.08.2026 gab es familienweit keine gepflegte Uebersetzung (guild PROD: 26 fr-
+# Platzhalter, schuetu/app/iot: leer). Alle en-Texte hier sind abgeleitet (Uebersetzung aus dem
+# deutschen Vorgabetext), nicht aus einem Export. Vorlage zum Pflegen: Export unter
+# /api/i18n/export?lang=en, pruefen, hier einchecken.
+#
+# Vollstaendigkeit sichert PlaintextI18nSeedTest (plaintext-root-archtests): jedes i18n.t('…') im
+# Reactor braucht hier eine en-Zeile; Zeilen ohne Verwendung werden als Warnung gemeldet.
+#
+# --- sessioninsights.xhtml
+Benutzer-Session;en;User Session
+Bitte wählen;en;Please select
+Aktualisieren;en;Refresh
+Session Übersicht;en;Session Overview
+Anzahl Objekte;en;Number of Objects
+Gesamtgrösse;en;Total Size
+Zeige;en;Showing
+bis;en;to
+von;en;of
+Objekten;en;objects
+Keine Session-Objekte gefunden;en;No session objects found
+Grösse;en;Size
+#
+# --- sessions.xhtml
+Ja;en;Yes
+Nein;en;No
+Aktive Sitzungen;en;Active Sessions
+Details anzeigen;en;Show Details
+Abmelden;en;Log out
+Bestätigung;en;Confirmation
+Benutzer wirklich abmelden?;en;Really log out this user?
+Keine aktiven Sitzungen;en;No active sessions
+Benutzername;en;Username
+Aktiv;en;Active
+Anmeldung;en;Login
+Letzte Aktivität;en;Last Activity
+Sitzung Details;en;Session Details
+Schließen;en;Close
+#
+# --- mandatemenudetail.xhtml
+Menüsteuerung;en;Menu Control
+Mandat anpassen;en;Edit Tenant
+Anleitung;en;Guide
+Anleitung zur Menüsteuerung öffnen;en;Open the menu control guide
+Mandat-spezifische Menükonfiguration;en;Tenant-specific menu configuration
+Mandatsname;en;Tenant Name
+Menüpunkte einblenden;en;Show menu items
+Menüpunkte ausblenden;en;Hide menu items
+Alle an;en;All on
+Alle aus;en;All off
+Invertieren;en;Invert
+Speichern;en;Save
+Löschen;en;Delete
+#
+# --- menudiagnose.xhtml
+Menü-Diagnose;en;Menu Diagnostics
+Sicht von;en;View as
+Mandant;en;Tenant
+Sichtbar;en;Visible
+Nur ausgeblendete Menüpunkte;en;Hidden menu items only
+Neu auswerten;en;Re-evaluate
+Keine Menüpunkte gefunden.;en;No menu items found.
+Menüpunkt;en;Menu Item
+Modul-Keys;en;Module Keys
+Rolle;en;Role
+Modul-Rolle;en;Module Role
+Modul aktiv;en;Module active
+Zur Menüsteuerung;en;Go to Menu Control
+#
+# --- mandatemenu.xhtml
+Übersicht;en;Overview
+Neues Mandat;en;New Tenant
+Keine Konfigurationen vorhanden.;en;No configurations available.
+Modus;en;Mode
+Anzahl Menüs;en;Number of Menus
+Konfigurierte Menüs;en;Configured Menus
+Aktionen;en;Actions
+Bearbeiten;en;Edit
+#
+# --- oidcconfig.xhtml
+OIDC / OpenID Connect Konfiguration;en;OIDC / OpenID Connect Configuration
+Neue Konfiguration;en;New Configuration
+Keine OIDC-Konfiguration vorhanden;en;No OIDC configuration available
+Name;en;Name
+Letzte Änderung;en;Last Modified
+OIDC Konfiguration;en;OIDC Configuration
+Benutzer automatisch anlegen;en;Create users automatically
+Standard-Rollen;en;Default Roles
+Standard-Mandat;en;Default Tenant
+Verbindung testen;en;Test Connection
+OIDC-Konfiguration wirklich löschen?;en;Really delete this OIDC configuration?
+#
+# --- anforderungen.xhtml
+Anforderungen;en;Requirements
+Neue Anforderung;en;New Requirement
+Offen;en;Open
+In Bearbeitung;en;In Progress
+Erledigt;en;Done
+Anforderung Details;en;Requirement Details
+#
+# --- rollenzuteilung.xhtml
+Rollenzuteilung;en;Role Assignment
+Neue Rollenzuteilung;en;New Role Assignment
+Rollenzuteilung wirklich löschen?;en;Really delete this role assignment?
+Gültig;en;Valid
+Gültig von;en;Valid from
+Gültig bis;en;Valid until
+Rollenzuteilung Details;en;Role Assignment Details
+Beschreibung;en;Description
+#
+# --- login-totp.xhtml
+Zwei-Faktor-Authentifizierung;en;Two-Factor Authentication
+Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein;en;Enter the 6-digit code from your authenticator app
+Zu viele Fehlversuche. Bitte später erneut anmelden.;en;Too many failed attempts. Please log in again later.
+Ungültiger Code. Bitte versuchen Sie es erneut.;en;Invalid code. Please try again.
+Code;en;Code
+Bestätigen;en;Confirm
+Kein Zugriff auf die App? Geben Sie stattdessen einen Ihrer Recovery-Codes ein.;en;No access to the app? Enter one of your recovery codes instead.
+Abbrechen und zurück zur Anmeldung;en;Cancel and return to login
+#
+# --- access-denied.xhtml
+Zugriff verweigert;en;Access Denied
+Sie haben keinen Zugriff auf diese Seite.;en;You do not have access to this page.
+Mögliche Gründe;en;Possible reasons
+Diese Funktion erfordert spezielle Berechtigungen (Rollen);en;This function requires special permissions (roles)
+Die Funktion ist für Ihren Mandanten nicht aktiviert;en;This function is not enabled for your tenant
+Sie wurden von einer abgelaufenen Seite hierher weitergeleitet;en;You were redirected here from an expired page
+Zur Startseite;en;Go to Home Page
+Zurück;en;Back
+Bei Fragen wenden Sie sich bitte an Ihren Administrator.;en;If you have questions, please contact your administrator.
+#
+# --- useradmin.xhtml
+Benutzer Liste;en;User List
+Neuer Benutzer;en;New User
+Spalten;en;Columns
+Vorname;en;First Name
+Nachname;en;Last Name
+Startseite;en;Home Page
+Als dieser Benutzer anmelden;en;Log in as this user
+Wollen Sie sich wirklich als dieser Benutzer anmelden?;en;Do you really want to log in as this user?
+Benutzer Details;en;User Details
+Benutzername ist erforderlich;en;Username is required
+Ohne Passwort (nur OIDC);en;Without password (OIDC only)
+Login nur über OIDC möglich;en;Login only possible via OIDC
+Passwort;en;Password
+Passwort ist bei einem neuen Benutzer erforderlich;en;Password is required for a new user
+Passwort gesetzt;en;Password set
+Kein Passwort (OIDC-User);en;No password (OIDC user)
+Rollen;en;Roles
+Rollen wählen;en;Select roles
+Von den Modulen deklarierte Rollen. Bereits zugewiesene Rollen ohne Deklaration bleiben in der Auswahl erhalten.;en;Roles declared by the modules. Roles already assigned without a declaration remain in the selection.
+Magic-Link senden;en;Send Magic Link
+Verknüpft mit;en;Linked to
+Nicht verknüpft;en;Not linked
+Benutzer löschen;en;Delete User
+Wollen Sie den Benutzer wirklich löschen?;en;Do you really want to delete this user?
+Rollen-Entzug bestätigen;en;Confirm role removal
+Fortfahren;en;Continue
+Abbrechen;en;Cancel
+#
+# --- login.xhtml
+Theme wechseln;en;Switch theme
+Willkommen;en;Welcome
+Melden Sie sich an, um fortzufahren;en;Log in to continue
+OIDC-Anmeldung fehlgeschlagen;en;OIDC login failed
+Anmelde-Link ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.;en;Login link invalid or expired. Please request a new one.
+Ungültiger Benutzername oder Passwort;en;Invalid username or password
+Sie wurden erfolgreich abgemeldet;en;You have been logged out successfully
+Benutzername eingeben;en;Enter username
+Passwort eingeben;en;Enter password
+Angemeldet bleiben;en;Stay logged in
+Anmelden;en;Log in
+Passwort vergessen?;en;Forgot password?
+Konto anlegen;en;Create account
+oder;en;or
+Falls ein Konto mit dieser Adresse existiert, erhalten Sie gleich einen Anmelde-Link per E-Mail.;en;If an account with this address exists, you will shortly receive a login link by e-mail.
+Anmelde-Link per E-Mail anfordern;en;Request login link by e-mail
+E-Mail-Adresse / Benutzername;en;E-mail address / username
+Link senden;en;Send link
+#
+# --- deeplinks.xhtml
+Deep-Links;en;Deep Links
+Registrierte Deep-Link-Ziele;en;Registered deep link targets
+Ein Deep-Link führt aus einer Mail direkt auf einen Datensatz und schaltet dabei auf dessen Mandant um. Er verleiht keine Berechtigung: beim Öffnen wird geprüft, ob der angemeldete Benutzer Zugriff auf Mandant und Datensatz hat.;en;A deep link leads from an e-mail directly to a record and switches to its tenant. It grants no permission: on opening, the system checks whether the logged-in user has access to the tenant and the record.
+Kein Modul hat bisher ein Deep-Link-Ziel registriert.;en;No module has registered a deep link target yet.
+Typ;en;Type
+Bezeichnung;en;Label
+Ziel-Seite;en;Target Page
+Parameter;en;Parameter
+Link-Muster;en;Link Pattern
+Link erzeugen;en;Generate link
+Zum Nachvollziehen und Testen. Der erzeugte Link ist kein Token — wer ihn öffnet, braucht weiterhin ein Konto mit Zugriff auf diesen Mandanten und diesen Datensatz.;en;For tracing and testing. The generated link is not a token — whoever opens it still needs an account with access to this tenant and this record.
+-- bitte wählen --;en;-- please select --
+Datensatz-Id;en;Record ID
+#
+# --- mandate.xhtml
+Neues Mandat...;en;New tenant...
+Erstellen;en;Create
+Keine Mandate vorhanden;en;No tenants available
+aktiv;en;active
+Aus Verwaltung entfernen;en;Remove from administration
+Der Mandant wird aus der Auswahlliste entfernt und seine Menükonfiguration gelöscht. Die Fachdaten der Anwendung (Zeiterfassung, Rechnungen, ...) bleiben bestehen und müssen separat bereinigt werden. Fortfahren?;en;The tenant is removed from the selection list and its menu configuration is deleted. The application data (time tracking, invoices, ...) remains and must be cleaned up separately. Continue?
+Benutzer und Mandate-Zuordnung;en;Users and Tenant Assignment
+Keine Benutzer vorhanden;en;No users available
+Filter zurücksetzen;en;Reset filter
+Sie;en;You
+Kein Mandat;en;No tenant
+Hinweis;en;Note
+Ändern Sie das Mandat eines Benutzers, indem Sie es in der Dropdown-Liste auswählen. Die Änderung wird automatisch gespeichert.;en;Change a user's tenant by selecting it in the dropdown list. The change is saved automatically.
+Benutzer ohne zugewiesenes Mandat erhalten automatisch das default Mandat.;en;Users without an assigned tenant automatically receive the default tenant.
+#
+# --- performance.xhtml
+Neu laden;en;Reload
+Methode;en;Method
+Durchschnitt;en;Average
+Letzter Aufruf;en;Last Call
+#
+# --- myuser.xhtml
+Benutzerinformationen;en;User Information
+Basis Informationen;en;Basic Information
+Passwort ändern;en;Change Password
+Aktuelles Passwort;en;Current Password
+Neues Passwort;en;New Password
+Passwort bestätigen;en;Confirm Password
+Aktiviert;en;Enabled
+Nicht aktiviert;en;Not enabled
+Schützen Sie Ihr Konto mit einem zweiten Faktor (Authenticator-App wie Google Authenticator, Aegis, 1Password).;en;Protect your account with a second factor (authenticator app such as Google Authenticator, Aegis, 1Password).
+Einrichten;en;Set up
+QR-Code scannen;en;Scan QR code
+Oder Schlüssel manuell eingeben;en;Or enter the key manually
+Bestätigungscode;en;Confirmation Code
+Aktivieren;en;Enable
+Bewahren Sie diese Recovery-Codes sicher auf. Jeder Code funktioniert genau einmal, falls Sie keinen Zugriff auf Ihre App haben. Sie werden nur JETZT angezeigt.;en;Keep these recovery codes in a safe place. Each code works exactly once in case you have no access to your app. They are shown only NOW.
+Passwort zur Bestätigung;en;Password for confirmation
+Zwei-Faktor deaktivieren;en;Disable two-factor
+Account Status;en;Account Status
+Authentifiziert;en;Authenticated
+Account aktiv;en;Account active
+Account nicht abgelaufen;en;Account not expired
+Account nicht gesperrt;en;Account not locked
+Passwort nicht abgelaufen;en;Password not expired
+Zugewiesene Rollen;en;Assigned Roles
+Keine Rollen zugewiesen;en;No roles assigned
+Weitere Eigenschaften;en;Additional Properties
+Keine weiteren Eigenschaften;en;No additional properties
+Magic-Link;en;Magic Link
+Magic-Link an meine Adresse senden;en;Send magic link to my address
+Wir senden dir einen einmaligen Anmelde-Link an deine E-Mail-Adresse.;en;We will send a one-time login link to your e-mail address.
+#
+# --- topbar.xhtml
+Suchen… (⌘K);en;Search… (⌘K)
+Keine Treffer;en;No results
+Tippen zum Suchen;en;Type to search
+Suchergebnisse;en;Search Results
+#
+# --- settings.xhtml
+Settings;en;Settings
+Suchen...;en;Search...
+Neue Einstellung;en;New Setting
+Einstellung wirklich löschen?;en;Really delete this setting?
+Schlüssel;en;Key
+Wert;en;Value
+Ebene;en;Level
+Einstellung Details;en;Setting Details
+Ganze Zahl eingeben;en;Enter an integer
+#
+# --- setup.xhtml
+Login;en;Login
+Root-Benutzer aktivieren;en;Enable root user
+Passwort-Verwaltung aktivieren;en;Enable password management
+Zwei-Faktor (TOTP) aktivieren;en;Enable two-factor (TOTP)
+Automatischer OIDC-Redirect;en;Automatic OIDC redirect
+OIDC-Provider;en;OIDC Provider
+Auswählen;en;Select
+Selbst-Registrierung erlauben;en;Allow self-registration
+Passwort-Reset per Link;en;Password reset via link
+Login-Link (Magic-Link);en;Login link (magic link)
+System-Mailkonto (Auth-Mails);en;System mail account (auth e-mails)
+Root-Benutzer: Wenn deaktiviert, wird der Benutzer root@root.root sofort gelöscht. Beim Aktivieren wird er neu erstellt (Passwort: root).;en;Root user: if disabled, the user root@root.root is deleted immediately. When enabled, it is recreated (password: root).
+Auto-Login Link: Wenn deaktiviert, funktionieren bestehende Login-Links nicht mehr und die Option verschwindet aus den Benutzereinstellungen.;en;Auto-login link: if disabled, existing login links no longer work and the option disappears from the user settings.
+OIDC-Redirect: Wenn aktiviert, werden Benutzer beim Login automatisch zum ausgewählten OIDC-Provider weitergeleitet.;en;OIDC redirect: if enabled, users are automatically redirected to the selected OIDC provider at login.
+Zwei-Faktor (TOTP): Betrifft NUR lokale Passwort-Benutzer. OIDC-only-Benutzer (passwordless) sind nie betroffen. Nach dem Aktivieren richtet jeder Benutzer den zweiten Faktor selbst im Profil („Mein Konto“) ein.;en;Two-factor (TOTP): affects ONLY local password users. OIDC-only users (passwordless) are never affected. After enabling, each user sets up the second factor in their own profile („My Account“).
+Selbst-Registrierung: Erlaubt Anonymen das Anlegen eines Kontos via E-Mail-Verifikation auf /register.;en;Self-registration: allows anonymous visitors to create an account via e-mail verification on /register.
+Passwort-Reset per Link: Erlaubt Benutzern, ihr Passwort über einen einmaligen E-Mail-Link auf /password-reset zurückzusetzen.;en;Password reset via link: allows users to reset their password via a one-time e-mail link on /password-reset.
+System-Mailkonto: Über dieses GLOBAL-Konto (Sichtbarkeit „Global – System“ in der Mailbox) werden Auth-Mails (Passwort-Reset, Login-Link, Registrierung) versendet. Ohne Konto werden keine Auth-Mails verschickt.;en;System mail account: auth e-mails (password reset, login link, registration) are sent via this GLOBAL account (visibility „Global – System“ in the mailbox). Without an account, no auth e-mails are sent.
+Achtung: Es ist kein GLOBAL-Systemmailkonto vorhanden. Lege in der Mailbox ein Konto mit Sichtbarkeit „Global – System“ an, damit hier eine Auswahl möglich ist und Auth-Mails versendet werden können.;en;Attention: there is no GLOBAL system mail account. Create an account with visibility „Global – System“ in the mailbox so that a selection is possible here and auth e-mails can be sent.
+Sitzungen;en;Sessions
+Sitzungs-Informationen aufzeichnen;en;Record session information
+Aufgezeichnet werden je Sitzung: Benutzer, Mandant, Sitzungs-Id, Browserkennung (User-Agent), Anmeldezeit und letzte Aktivität — keine Inhalte und keine Klickpfade.;en;Recorded per session: user, tenant, session ID, browser identification (user agent), login time and last activity — no contents and no click paths.
+Wenn deaktiviert, bleibt die Sitzungsübersicht (Root → Sitzungen) leer, weil keine neuen Einträge mehr entstehen. Bereits aufgezeichnete Sitzungen bleiben erhalten und werden nicht gelöscht. Das Beenden einer laufenden Sitzung funktioniert weiterhin. Die Umstellung wirkt sofort, ohne Neustart.;en;If disabled, the session overview (Root → Sessions) stays empty because no new entries are created. Sessions already recorded are kept and not deleted. Ending a running session still works. The change takes effect immediately, without restart.
+Logo (Light Mode);en;Logo (light mode)
+Breite;en;Width
+Höhe;en;Height
+Dimensionen speichern;en;Save dimensions
+Logo entfernen;en;Remove logo
+Vorschau;en;Preview
+Kein Light-Logo hochgeladen;en;No light logo uploaded
+Logo (Dark Mode);en;Logo (dark mode)
+Kein Dark-Logo hochgeladen;en;No dark logo uploaded
+Sprachwechsel (Topbar);en;Language switch (top bar)
+Sprachwechsel anzeigen;en;Show language switch
+Icon;en;Icon
+Sprache wechseln;en;Switch language
+Footer;en;Footer
+Footer-Text;en;Footer text
+Version anzeigen;en;Show version
+Root-Version anzeigen;en;Show root version
+Build-Zeitpunkt anzeigen;en;Show build time
+Footer speichern;en;Save footer
+#
+# --- cron.xhtml
+Bitte warten...;en;Please wait...
+Cron Jobs Liste;en;Cron Job List
+Ausführung;en;Execution
+Letzter Lauf;en;Last Run
+Zähler;en;Counter
+Letzte Dauer;en;Last Duration
+Nächster Lauf;en;Next Run
+Ausführungszeit anpassen;en;Adjust execution time
+Cron Ausdruck;en;Cron Expression
+Hilfe;en;Help
+Schliessen;en;Close
+#
+# --- i18n-translations.xhtml
+Übersetzungen;en;Translations
+Neue Übersetzung;en;New Translation
+Übersetzung wirklich löschen?;en;Really delete this translation?
+Cache leeren;en;Clear cache
+Sprache;en;Language
+Übersetzung;en;Translation
+#
+# --- rootentities.xhtml
+Datenverwaltung;en;Data Management
+#
+# --- entityverwaltung.xhtml
+Entitätstyp auswählen;en;Select entity type
+Keine Daten gefunden;en;No data found
+Daten importieren;en;Import data
+Warnung;en;Warning
+Beim Import werden bestehende Daten überschrieben, wenn dieselbe ID vorhanden ist.;en;On import, existing data is overwritten if the same ID exists.
+Importieren;en;Import
