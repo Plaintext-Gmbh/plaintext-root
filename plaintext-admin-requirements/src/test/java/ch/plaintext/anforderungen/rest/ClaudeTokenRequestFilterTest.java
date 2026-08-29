@@ -85,14 +85,27 @@ class ClaudeTokenRequestFilterTest {
     }
 
     @Test
-    void legacyUrlTokenStillWorksWithoutHeader() throws Exception {
-        // Übergangsphase: bestehende Clients (?token=...) dürfen NICHT brechen.
+    void legacyUrlTokenNurMitFallbackSchalter() throws Exception {
+        // Zustandsbericht 29.08.2026: Uebergangsphase beendet — nur mit ausdruecklichem Schalter.
+        filter = new ClaudeTokenRequestFilter(true);
         request.setParameter("token", "legacy-url-token");
 
         ServletRequest downstream = filteredRequest();
 
         assertThat(downstream).isSameAs(request);
         assertThat(downstream.getParameter("token")).isEqualTo("legacy-url-token");
+    }
+
+    @Test
+    void urlTokenOhneSchalterWirdAbgelehnt() throws Exception {
+        request.setParameter("token", "legacy-url-token");
+        jakarta.servlet.FilterChain chainOhneAufruf = (req, res) -> {
+            throw new AssertionError("Kette darf bei abgelehntem URL-Token nicht laufen");
+        };
+
+        filter.doFilter(request, response, chainOhneAufruf);
+
+        assertThat(response.getStatus()).isEqualTo(401);
     }
 
     @Test
@@ -116,6 +129,8 @@ class ClaudeTokenRequestFilterTest {
 
     @Test
     void emptyBearerHeaderIsIgnored() throws Exception {
+        // Leerer Bearer zaehlt nicht als Header-Token; der URL-Token greift nur mit Fallback-Schalter.
+        filter = new ClaudeTokenRequestFilter(true);
         request.addHeader("Authorization", "Bearer ");
         request.setParameter("token", "legacy-url-token");
 

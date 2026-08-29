@@ -10,6 +10,7 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -48,6 +49,24 @@ public class ClaudeTokenRequestFilter implements Filter {
     static final String BEARER_PREFIX = "Bearer ";
     static final String CLAUDE_TOKEN_HEADER = "X-Claude-Token";
 
+    /**
+     * Zustandsbericht 29.08.2026 (H2): Die Uebergangsphase ist beendet. Ein Token im
+     * Query-String landet im nginx-Access-Log, via fluent-bit in Graylog, im Browserverlauf und
+     * im Referer — jeder mit Log-Lesezugriff kennt ihn danach. Standard ist deshalb
+     * <b>ablehnen</b> (401). Wer einen alten Client uebergangsweise weiterlaufen lassen muss,
+     * setzt {@code plaintext.claude.url-token-fallback=true} — und bekommt weiterhin die
+     * DEPRECATED-Warnung im Log.
+     */
+    private final boolean urlTokenFallback;
+
+    public ClaudeTokenRequestFilter() {
+        this(false);
+    }
+
+    public ClaudeTokenRequestFilter(boolean urlTokenFallback) {
+        this.urlTokenFallback = urlTokenFallback;
+    }
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
@@ -64,7 +83,19 @@ public class ClaudeTokenRequestFilter implements Filter {
 
         String urlToken = httpRequest.getParameter(TOKEN_PARAM);
         if (urlToken != null && !urlToken.isBlank()) {
-            // Übergangsphase: akzeptieren, aber laut deprecaten. Token NIE mitloggen.
+            // Token NIE mitloggen.
+            if (!urlTokenFallback) {
+                log.warn("ABGELEHNT: Klartext-Token als URL-Parameter an {} — nur noch "
+                                + "'Authorization: Bearer <token>' oder '{}'-Header "
+                                + "(URL-Tokens landen in Access-Logs/Proxies/Browser-History; "
+                                + "Uebergang: plaintext.claude.url-token-fallback=true)",
+                        httpRequest.getRequestURI(), CLAUDE_TOKEN_HEADER);
+                if (response instanceof HttpServletResponse httpResponse) {
+                    httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                            "Token nur im Authorization-Header (Bearer) oder " + CLAUDE_TOKEN_HEADER);
+                }
+                return;
+            }
             log.warn("DEPRECATED: Klartext-Token als URL-Parameter an {} — bitte auf "
                             + "'Authorization: Bearer <token>' oder '{}'-Header umstellen "
                             + "(URL-Tokens landen in Access-Logs/Proxies/Browser-History)",

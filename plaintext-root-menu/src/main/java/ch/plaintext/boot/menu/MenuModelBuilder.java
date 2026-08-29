@@ -160,7 +160,9 @@ public class MenuModelBuilder {
             }
         }
 
-        log.info("Built menu model with {} top-level elements", menuModel.getElements().size());
+        // Laeuft bei jedem Seitenaufruf jedes Benutzers (MenuBean ist view-scoped) — debug wie die
+        // Einzelschritte darueber, sonst verdeckt es echte INFO-Meldungen im Betriebslog.
+        log.debug("Built menu model with {} top-level elements", menuModel.getElements().size());
         return menuModel;
     }
 

@@ -9,7 +9,9 @@ package ch.plaintext.boot.menu;
     parent = "Admin",
     order = 50,
     icon = "pi pi-wrench",
-    roles = {"ADMIN"}
+    // Zustandsbericht 29.08.2026 (H4), gefunden von SeitenrechteInvariantTest: ADMIN_PAGES erlaubt
+    // ADMIN|ROOT, der Menuepunkt zeigte nur ADMIN — ein reiner ROOT sah die Seite nicht.
+    roles = {"ADMIN", "ROOT"}
 )
 public class DebugMenu {
 

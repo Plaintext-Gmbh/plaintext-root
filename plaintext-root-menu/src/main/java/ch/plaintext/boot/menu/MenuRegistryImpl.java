@@ -39,7 +39,7 @@ public class MenuRegistryImpl implements MenuRegistry {
             .distinct()
             .collect(Collectors.toList());
 
-        log.info("Returning {} menu titles: {}", titles.size(), titles);
+        log.debug("Returning {} menu titles", titles.size());
         return titles;
     }
 
