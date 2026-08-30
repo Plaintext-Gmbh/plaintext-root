@@ -12,11 +12,15 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -154,7 +158,8 @@ class PlaintextLayeringTest {
     @DisplayName("Positivkontrolle: der Layering-Scan sieht Klassen des Reactors")
     void derTestSiehtEtwas() {
         assertFalse(KLASSEN.isEmpty(),
-                () -> "Keine kompilierte ch.plaintext-Klasse unter '" + KLASSEN_SUFFIX + "' im Reactor "
+                () -> "Keine kompilierte ch.plaintext-Klasse gefunden — weder unter '" + KLASSEN_SUFFIX
+                        + "' noch in einem Jar unter target/ — im Reactor "
                         + ReactorLayout.repoRoot() + " gefunden — der Import greift ins Leere und ein "
                         + "gruener Layering-Test wuerde nichts bedeuten. Zuerst 'mvn install' ueber den "
                         + "Reactor laufen lassen.");
@@ -274,8 +279,54 @@ class PlaintextLayeringTest {
      * fremde Namensraeume. Fehlt {@code target/classes} ueberall, bleibt die Menge leer und
      * {@link #derTestSiehtEtwas()} schlaegt an.
      */
+    /**
+     * Ergaenzt fuer jedes Modul, dessen {@code target/classes} fehlt, das gebaute Jar aus
+     * {@code target/}.
+     *
+     * <p><b>Warum es das braucht (30.08.2026, schuetu PR #213).</b> Die Consumer-Builds laufen mit
+     * der {@code maven-build-cache-extension}. Bei einem Cache-Treffer meldet sie
+     * „Found cached build, restoring …" und ueberspringt die Plugin-Ausfuehrungen — das Modul-Jar
+     * wird aus dem Cache in {@code target/} zurueckgelegt, ein {@code target/classes} entsteht
+     * dabei aber nicht. Der Import lief dann ins Leere und die Positivkontrolle
+     * {@link #derTestSiehtEtwas()} schlug fehl, obwohl am Code nichts falsch war: ein PR, der nur
+     * CSV-Dateien anfasst, trifft den Cache in mehr Modulen als einer, der Java aendert — deshalb
+     * war derselbe Zweig mal rot und mal gruen.
+     *
+     * <p>Die Positivkontrolle bleibt damit scharf: Wenn <em>weder</em> Klassenverzeichnis
+     * <em>noch</em> Jar da sind, ist wirklich etwas kaputt und der Test meldet es.
+     */
+    private static List<Path> jarsOhneKlassenverzeichnis(List<Path> klassenverzeichnisse) {
+        List<Path> jars = new ArrayList<>();
+        Path repoRoot = ReactorLayout.repoRoot();
+        if (repoRoot == null) {
+            return jars;
+        }
+        try (Stream<Path> module = Files.list(repoRoot)) {
+            for (Path modul : module.filter(Files::isDirectory).sorted().toList()) {
+                Path klassen = modul.resolve(KLASSEN_SUFFIX);
+                if (klassenverzeichnisse.contains(klassen) || !Files.isDirectory(modul.resolve("target"))) {
+                    continue;
+                }
+                try (Stream<Path> inhalt = Files.list(modul.resolve("target"))) {
+                    inhalt.filter(pfad -> {
+                        String name = pfad.getFileName().toString();
+                        return name.endsWith(".jar")
+                                && !name.endsWith("-sources.jar")
+                                && !name.endsWith("-javadoc.jar")
+                                && !name.endsWith("-exec.jar")
+                                && !name.endsWith(".jar.original");
+                    }).findFirst().ifPresent(jars::add);
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Module unter " + repoRoot + " nicht lesbar", e);
+        }
+        return jars;
+    }
+
     private static JavaClasses importiereReactorKlassen() {
-        List<Path> roots = ReactorLayout.sourceRoots(KLASSEN_SUFFIX);
+        List<Path> roots = new ArrayList<>(ReactorLayout.sourceRoots(KLASSEN_SUFFIX));
+        roots.addAll(jarsOhneKlassenverzeichnis(roots));
         JavaClasses alle = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPaths(roots);
