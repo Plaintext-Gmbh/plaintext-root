@@ -52,13 +52,11 @@
                     <a href="#" class="theme-color-item#{userPreferencesBackingBean.componentTheme == componentTheme.file ? ' theme-color-selected' : ''}"
                        data-theme-file="#{componentTheme.file}"
                        data-color-type="predefined"
-                       style="display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:16px; border:2px solid #{userPreferencesBackingBean.componentTheme == componentTheme.file ? 'var(--pt-primary-color)' : 'var(--pt-surface-border)'}; background:var(--pt-surface-50); text-decoration:none; color:var(--pt-text-color); cursor:pointer; transition:border-color 0.2s; position:relative;"
-                       onclick="changeThemeColor('#{componentTheme.file}'); return false;">
+                       style="display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:16px; border:2px solid #{userPreferencesBackingBean.componentTheme == componentTheme.file ? 'var(--pt-primary-color)' : 'var(--pt-surface-border)'}; background:var(--pt-surface-50); text-decoration:none; color:var(--pt-text-color); cursor:pointer; transition:border-color 0.2s; position:relative;">
                         <span style="width:22px; height:22px; min-width:22px; border-radius:50%; background:#{componentTheme.color}; border:1px solid rgba(0,0,0,0.1);"></span>
                         <span style="font-size:0.85rem; flex:1;">#{componentTheme.name}</span>
-                        <span class="color-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); deleteColor('#{componentTheme.file}');"
+                        <span class="color-delete-btn" data-pt-delete-color="#{componentTheme.file}"
                               style="font-size:0.7rem; color:var(--pt-text-color-secondary); cursor:pointer; padding:2px 4px; opacity:0.5; transition:opacity 0.2s;"
-                              onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"
                               title="Hide color">&#x2715;</span>
                     </a>
                 </ui:repeat>
@@ -70,13 +68,11 @@
                        data-custom-hex="#{namedColor.hex}"
                        data-color-type="custom"
                        data-color-name="#{namedColor.name}"
-                       style="display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:16px; border:2px solid #{userPreferencesBackingBean.componentTheme == 'custom' and userPreferencesBackingBean.customColor == namedColor.hex ? 'var(--pt-primary-color)' : 'var(--pt-surface-border)'}; background:var(--pt-surface-50); text-decoration:none; color:var(--pt-text-color); cursor:pointer; transition:border-color 0.2s; position:relative;"
-                       onclick="selectCustomNamedColor('#{namedColor.hex}'); return false;">
+                       style="display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:16px; border:2px solid #{userPreferencesBackingBean.componentTheme == 'custom' and userPreferencesBackingBean.customColor == namedColor.hex ? 'var(--pt-primary-color)' : 'var(--pt-surface-border)'}; background:var(--pt-surface-50); text-decoration:none; color:var(--pt-text-color); cursor:pointer; transition:border-color 0.2s; position:relative;">
                         <span style="width:22px; height:22px; min-width:22px; border-radius:50%; background:#{namedColor.hex}; border:1px solid rgba(0,0,0,0.1);"></span>
                         <span style="font-size:0.85rem; flex:1;">#{namedColor.name}</span>
-                        <span class="color-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); deleteColor('#{namedColor.name}');"
+                        <span class="color-delete-btn" data-pt-delete-color="#{namedColor.name}"
                               style="font-size:0.7rem; color:var(--pt-text-color-secondary); cursor:pointer; padding:2px 4px; opacity:0.5; transition:opacity 0.2s;"
-                              onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'"
                               title="Delete color">&#x2715;</span>
                     </a>
                 </ui:repeat>
@@ -84,7 +80,7 @@
                 <!-- Add new color button -->
                 <a href="#" id="addColorBtn"
                    style="display:flex; align-items:center; justify-content:center; gap:8px; padding:6px 10px; border-radius:16px; border:2px dashed var(--pt-surface-border); background:var(--pt-surface-50); text-decoration:none; color:var(--pt-text-color-secondary); cursor:pointer; transition:border-color 0.2s;"
-                   onclick="showAddColorForm(); return false;">
+                   data-pt-config-aktion="farbe-hinzufuegen-oeffnen">
                     <span style="font-size:1.1rem; font-weight:bold;">+</span>
                     <span style="font-size:0.85rem;">New Color</span>
                 </a>
@@ -97,16 +93,16 @@
                            style="width:44px; height:44px; min-width:44px; border:none; padding:0; cursor:pointer; border-radius:50%; overflow:hidden; background:transparent; -webkit-appearance:none;" />
                     <input type="text" id="newColorName" placeholder="Name..."
                            style="flex:1; padding:6px 10px; border-radius:6px; border:1px solid var(--pt-surface-border); background:var(--pt-surface-0); color:var(--pt-text-color); font-size:0.85rem; outline:none;" />
-                    <a href="#" onclick="confirmAddColor(); return false;"
+                    <a href="#" data-pt-config-aktion="farbe-hinzufuegen-bestaetigen"
                        style="padding:4px 12px; border-radius:6px; background:var(--pt-primary-color); color:var(--pt-primary-color-text); text-decoration:none; font-size:0.85rem; font-weight:500;">OK</a>
-                    <a href="#" onclick="hideAddColorForm(); return false;"
+                    <a href="#" data-pt-config-aktion="farbe-hinzufuegen-abbrechen"
                        style="font-size:0.8rem; color:var(--pt-text-color-secondary); text-decoration:none; padding:4px;">&#x2715;</a>
                 </div>
             </div>
 
             <!-- Restore hidden colors link -->
             <div id="restoreColorsLink" style="margin-top:6px; display:#{userPreferencesBackingBean.hasHiddenColors ? 'block' : 'none'};">
-                <a href="#" onclick="restoreAllColors(); return false;"
+                <a href="#" data-pt-config-aktion="farben-wiederherstellen"
                    style="font-size:0.8rem; color:var(--pt-text-color-secondary); text-decoration:underline;">
                     Show all colors
                 </a>

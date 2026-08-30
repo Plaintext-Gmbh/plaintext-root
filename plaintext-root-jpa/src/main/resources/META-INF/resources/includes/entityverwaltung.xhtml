@@ -68,9 +68,11 @@
         }
     </style>
 
-    <h:outputScript>
-        history.pushState(null, null, '#{pageUrl}');
-    </h:outputScript>
+    <!-- Sprechende Adresse in der Adresszeile. Die URL kommt als data-Attribut, nicht als EL im
+         Skriptkoerper: <h:outputScript> MIT Rumpf rendert einen Inline-Block und zwingt die
+         Content-Security-Policy zu script-src 'unsafe-inline' (Welle 4). -->
+    <div data-pt-pushstate="#{pageUrl}" hidden="hidden"></div>
+    <h:outputScript library="plaintext-layout" name="js/pushstate.js"/>
 
     <p:growl id="messages" showDetail="true" life="3000"/>
 

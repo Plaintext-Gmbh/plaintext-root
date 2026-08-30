@@ -242,7 +242,6 @@ function addColorToGrid(name, hex) {
     a.setAttribute('data-color-type', 'custom');
     a.setAttribute('data-color-name', name);
     a.style.cssText = 'display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:8px; border:2px solid var(--pt-surface-border); background:var(--pt-surface-50); text-decoration:none; color:var(--pt-text-color); cursor:pointer; transition:border-color 0.2s; position:relative;';
-    a.onclick = function() { selectCustomNamedColor(hex); return false; };
 
     var circle = document.createElement('span');
     circle.style.cssText = 'width:22px; height:22px; min-width:22px; border-radius:50%; background:' + hex + '; border:1px solid rgba(0,0,0,0.1);';
@@ -256,9 +255,7 @@ function addColorToGrid(name, hex) {
     del.style.cssText = 'font-size:0.7rem; color:var(--pt-text-color-secondary); cursor:pointer; padding:2px 4px; opacity:0.5; transition:opacity 0.2s;';
     del.innerHTML = '&#x2715;';
     del.title = 'Farbe loeschen';
-    del.onmouseover = function() { this.style.opacity = '1'; };
-    del.onmouseout = function() { this.style.opacity = '0.5'; };
-    del.onclick = function(e) { e.preventDefault(); e.stopPropagation(); deleteColor(name); };
+    del.setAttribute('data-pt-delete-color', name);
 
     a.appendChild(circle);
     a.appendChild(label);
@@ -423,3 +420,82 @@ function saveAllPendingChanges() {
         }).catch(function(e) { console.error('Save error:', e); });
     } catch (e) { console.error('Save exception:', e); }
 }
+
+// ===== Verdrahtung der Bedienelemente (Welle 4: CSP ohne 'unsafe-inline') =====
+//
+// Bis 30.08.2026 trug jedes Element in includes/config.xhtml sein Verhalten als HTML-Attribut:
+// onclick an den Farbkacheln und den vier Aktions-Links, onmouseover/onmouseout an den
+// Loesch-Kreuzchen — zwoelf Stueck, der groesste Posten echter Inline-Handler in root. Ein
+// solches Attribut ist fuer den Browser nichts anderes als ein Inline-<script>: solange auch
+// nur eines existiert, muss die Content-Security-Policy script-src 'unsafe-inline' fuehren,
+// und dann laeuft auch jedes eingeschleuste <script>.
+//
+// Gebunden wird per Delegation am document, nicht Element fuer Element: die Farbkacheln
+// entstehen teils serverseitig (ui:repeat), teils spaeter im Browser (addColorToGrid) — ein
+// Zuhoerer am document fasst beide, ohne dass die erzeugende Stelle etwas davon wissen muss.
+document.addEventListener('click', function (e) {
+    var ziel = e.target instanceof Element ? e.target : null;
+    if (!ziel) {
+        return;
+    }
+
+    // Das Loesch-Kreuzchen liegt IM Farb-Anker. Es muss zuerst drankommen und die Weitergabe
+    // stoppen, sonst waehlt derselbe Klick die Farbe auch noch aus.
+    var loeschen = ziel.closest('[data-pt-delete-color]');
+    if (loeschen) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteColor(loeschen.getAttribute('data-pt-delete-color'));
+        return;
+    }
+
+    var kachel = ziel.closest('.theme-color-item');
+    if (kachel) {
+        e.preventDefault();
+        if (kachel.getAttribute('data-color-type') === 'custom') {
+            selectCustomNamedColor(kachel.getAttribute('data-custom-hex'));
+        } else {
+            changeThemeColor(kachel.getAttribute('data-theme-file'));
+        }
+        return;
+    }
+
+    var aktion = ziel.closest('[data-pt-config-aktion]');
+    if (!aktion) {
+        return;
+    }
+    e.preventDefault();
+    switch (aktion.getAttribute('data-pt-config-aktion')) {
+        case 'farbe-hinzufuegen-oeffnen':
+            showAddColorForm();
+            break;
+        case 'farbe-hinzufuegen-bestaetigen':
+            confirmAddColor();
+            break;
+        case 'farbe-hinzufuegen-abbrechen':
+            hideAddColorForm();
+            break;
+        case 'farben-wiederherstellen':
+            restoreAllColors();
+            break;
+        default:
+            break;
+    }
+});
+
+// Hervorheben des Loesch-Kreuzchens beim Ueberfahren (frueher onmouseover/onmouseout am Element).
+// mouseover/mouseout steigen auf, mouseenter/mouseleave nicht — Delegation braucht die ersten.
+document.addEventListener('mouseover', function (e) {
+    var ziel = e.target instanceof Element ? e.target : null;
+    var kreuz = ziel ? ziel.closest('[data-pt-delete-color]') : null;
+    if (kreuz) {
+        kreuz.style.opacity = '1';
+    }
+});
+document.addEventListener('mouseout', function (e) {
+    var ziel = e.target instanceof Element ? e.target : null;
+    var kreuz = ziel ? ziel.closest('[data-pt-delete-color]') : null;
+    if (kreuz) {
+        kreuz.style.opacity = '0.5';
+    }
+});

@@ -173,8 +173,7 @@
                             </ui:repeat>
 
                             <h:panelGroup rendered="#{tile.dropdown != null and not empty tile.dropdown.options}">
-                                <select class="dashboard-dropdown"
-                                        onchange="if(this.value){window.location.href=this.value;}">
+                                <select class="dashboard-dropdown">
                                     <option value="">#{empty tile.dropdown.label ? 'Auswählen…' : tile.dropdown.label}</option>
                                     <ui:repeat value="#{tile.dropdown.options}" var="opt">
                                         <option value="#{empty opt.safeLink ? '' : opt.safeLink}">#{opt.label}</option>
@@ -187,5 +186,7 @@
                 </ui:repeat>
             </div>
         </h:form>
+
+        <h:outputScript library="plaintext-root" name="js/dashboard.js"/>
     </ui:define>
 </ui:composition>

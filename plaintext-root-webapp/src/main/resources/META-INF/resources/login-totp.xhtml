@@ -61,18 +61,7 @@
         [data-theme="dark"] .error-message { background-color: #5a1a1a; color: #f8d7da; border-color: #721c24; }
         .hint { color: var(--text-secondary); font-size: 0.85rem; margin-top: 1rem; text-align: center; }
     </style>
-    <script type="text/javascript">
-        //<![CDATA[
-        function initTheme() {
-            var m = document.cookie.match(/plaintext-theme=(\w+)/);
-            var theme = m ? m[1] : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.setAttribute('data-theme', theme);
-        }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initTheme);
-        } else { initTheme(); }
-        //]]>
-    </script>
+    <h:outputScript library="plaintext-root" name="js/login-totp.js"/>
 </h:head>
 
 <h:body styleClass="login-body">
@@ -117,8 +106,8 @@
             #{i18n.t('Kein Zugriff auf die App? Geben Sie stattdessen einen Ihrer Recovery-Codes ein.')}
         </div>
         <div class="hint" style="margin-top: 1.5rem;">
-            <a href="#{request.contextPath}/logout-link" style="color: var(--primary-color); text-decoration: none;"
-               onclick="event.preventDefault(); document.getElementById('abbrechen-form').submit();">
+            <a href="#{request.contextPath}/logout-link" id="abbrechen-link"
+               style="color: var(--primary-color); text-decoration: none;">
                 #{i18n.t('Abbrechen und zurück zur Anmeldung')}
             </a>
         </div>

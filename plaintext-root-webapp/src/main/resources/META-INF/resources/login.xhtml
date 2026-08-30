@@ -261,93 +261,13 @@
         }
     </style>
 
-    <script type="text/javascript">
-        //<![CDATA[
-        // Theme Management
-        function initTheme() {
-            const savedTheme = getCookie('plaintext-theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-            applyTheme(theme);
-        }
-
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            applyTheme(newTheme);
-            setCookie('plaintext-theme', newTheme, 365);
-        }
-
-        function applyTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            const icon = document.getElementById('theme-icon');
-            if (icon) {
-                icon.className = theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon';
-            }
-        }
-
-        function setCookie(name, value, days) {
-            const expires = new Date();
-            expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
-            document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
-        }
-
-        function getCookie(name) {
-            const nameEQ = name + '=';
-            const ca = document.cookie.split(';');
-            for (let i = 0; i < ca.length; i++) {
-                let c = ca[i];
-                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-            }
-            return null;
-        }
-
-        // Clean up URL parameters (remove ?logout=true)
-        function cleanUrl() {
-            if (window.history.replaceState && window.location.search.indexOf('logout') !== -1) {
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }
-
-        // Apply saved color from cookie to login page
-        function initColor() {
-            var savedColor = getCookie('plaintext-color');
-            if (savedColor) {
-                // Color palette (matching ThemeColorProvider)
-                var palettes = {
-                    'blue': '#2196F3', 'green': '#4CAF50', 'orange': '#FF9800', 'turquoise': '#00BCD4',
-                    'avocado': '#AEC523', 'purple': '#7B1FA2', 'red': '#F44336', 'yellow': '#FFC107',
-                    'lime': '#8BC34A', 'crimson': '#B71C1C'
-                };
-                var hex = palettes[savedColor];
-                if (savedColor === 'custom') {
-                    hex = getCookie('plaintext-custom-color');
-                }
-                if (hex) {
-                    document.documentElement.style.setProperty('--primary-color', hex);
-                    // Derive darker shade for dark mode
-                    document.documentElement.style.setProperty('--primary-dark', hex);
-                }
-            }
-        }
-
-        // Initialize theme and color on page load
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() { initTheme(); initColor(); cleanUrl(); });
-        } else {
-            initTheme();
-            initColor();
-            cleanUrl();
-        }
-        //]]>
-    </script>
+    <h:outputScript library="plaintext-root" name="js/login.js"/>
 </h:head>
 
 <h:body styleClass="login-body">
     <!-- Theme Toggle Button -->
     <div class="theme-toggle">
-        <button class="theme-toggle-btn" onclick="toggleTheme()" type="button" title="#{i18n.t('Theme wechseln')}">
+        <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" title="#{i18n.t('Theme wechseln')}">
             <i id="theme-icon" class="pi pi-moon"></i>
         </button>
     </div>
@@ -438,11 +358,11 @@
 
         <!-- OIDC Auto-Redirect (only when no error/logout parameter) -->
         <h:panelGroup rendered="#{loginSetupBean.oidcAutoRedirectActive and empty param.error and empty param.logout}">
-            <script type="text/javascript">
-                //<![CDATA[
-                window.location.href = '#{request.contextPath}/oauth2/authorization/#{loginSetupBean.oidcAutoRedirectRegistrationId}';
-                //]]>
-            </script>
+            <!-- Die Ziel-URL kommt als data-Attribut, nicht als EL in einem Skriptkoerper: ein
+                 Inline-<script> zwingt die Content-Security-Policy zu script-src 'unsafe-inline'
+                 (Welle 4). js/login.js liest das Attribut und leitet weiter. -->
+            <div id="oidc-auto-redirect" hidden="hidden"
+                 data-pt-redirect="#{request.contextPath}/oauth2/authorization/#{loginSetupBean.oidcAutoRedirectRegistrationId}"></div>
         </h:panelGroup>
 
         <!-- Magic Link Section -->

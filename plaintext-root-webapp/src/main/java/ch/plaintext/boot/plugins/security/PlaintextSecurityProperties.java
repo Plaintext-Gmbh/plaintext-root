@@ -96,6 +96,12 @@ public class PlaintextSecurityProperties {
      */
     private TotpProperties totp = new TotpProperties();
 
+    /**
+     * Content-Security-Policy. Additive Sub-Konfiguration; die Voreinstellung ist das bisherige
+     * Verhalten (siehe {@link CspProperties}).
+     */
+    private CspProperties csp = new CspProperties();
+
 
     // Karte 560 (05.08.2026): plaintext.security.token-login.* ist ersatzlos entfallen, zusammen mit
     // dem Endpunkt /token-login selbst (TokenLoginController). Er war eine zweite Tuer neben der
@@ -153,5 +159,42 @@ public class PlaintextSecurityProperties {
          * einem separaten PR vorbehalten. Dokumentiert in docs/security/TOTP_2FA.md.
          */
         private List<String> enforceForRoles = new ArrayList<>();
+    }
+
+    /**
+     * Steuerung einzelner Direktiven der Content-Security-Policy (gesetzt in
+     * {@link PlaintextSecurityConfig}).
+     *
+     * <p>Es gibt hier genau einen Schalter, und der ist mit Absicht so klein: alles andere an der
+     * Policy ist fuer alle Apps gleich und hat keinen Grund, konfigurierbar zu sein. Was eine App
+     * zusaetzlich laden darf (Kartenkacheln, CDN), steht als Liste in der Policy selbst.
+     */
+    @Data
+    public static class CspProperties {
+
+        /**
+         * Fuehrt {@code script-src} weiterhin {@code 'unsafe-inline'}? Vorgabe {@code true} —
+         * das ist das Verhalten von vor Welle 4, und es bleibt es, bis eine App ausdruecklich
+         * umschaltet.
+         *
+         * <p><b>Was der Schalter bedeutet.</b> Mit {@code 'unsafe-inline'} fuehrt der Browser
+         * jedes {@code <script>} aus, das im Dokument steht — auch eines, das ein Angreifer
+         * hineingeschrieben hat. Die CSP schuetzt an dieser Stelle also nicht; sie sieht nur so
+         * aus. Auf {@code false} gesetzt, laeuft ausschliesslich JavaScript aus Dateien gleicher
+         * Herkunft, und eine XSS-Luecke ohne Datei-Schreibrecht wird wirkungslos.
+         *
+         * <p><b>Wann eine App umschalten darf.</b> Erst wenn zweierlei gilt:
+         * <ol>
+         *   <li>{@code joinfaces.primefaces.csp=true} ist gesetzt — dann zieht PrimeFaces seine
+         *       eigenen Handler aus dem Markup und versieht seine Bloecke mit einem Nonce;</li>
+         *   <li>im eigenen Markup steht kein Inline-JavaScript mehr. Genau das prueft
+         *       {@code PlaintextInlineJsVertragTest} (plaintext-root-archtests): scharf ueber
+         *       {@code -Dplaintext.arch.inline-js=enforce} bzw. die Surefire-Zeilen im
+         *       webapp-pom. Fuer root ist beides seit Welle 4 erfuellt.</li>
+         * </ol>
+         * Umgeschaltet wird app-weise ({@code plaintext.security.csp.script-unsafe-inline=false}),
+         * damit ein Fehlschlag eine App betrifft und nicht die ganze Familie.
+         */
+        private boolean scriptUnsafeInline = true;
     }
 }
