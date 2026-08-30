@@ -113,7 +113,7 @@ steps:
       SSH_PRIVATE_KEY:
         from_secret: ssh_private_key
       # DERSELBE WERT WIE MVN_DEPLOY_TOKEN, wortgleich zur GitHub-Pipeline
-      # ("GITHUB_TOKEN: ${{ secrets.MVN_DEPLOY_TOKEN }}" am Schritt Build & Deploy).
+      # ("GITHUB_TOKEN: $${{ secrets.MVN_DEPLOY_TOKEN }}" am Schritt Build & Deploy).
       # Zwei Dinge in root haengen daran, und beide sind still, wenn er fehlt:
       #   * mirror_to_plaintext_mvn (./build) — ohne Token: "kein GITHUB_TOKEN -
       #     Spiegelung uebersprungen", return 0. Der git-basierte Bezugsweg aus dem
