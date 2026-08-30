@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.secret;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertySource;
@@ -24,6 +25,7 @@ import org.springframework.core.env.PropertySource;
  * diese Source laeuft) in eine Endlosrekursion kippt: waehrend eine Aufloesung
  * laeuft, liefert diese Source fuer verschachtelte Zugriffe sofort {@code null}.</p>
  */
+@Slf4j
 class VaultwardenPropertySource extends PropertySource<Object> {
 
     /** Name dieser Source im Environment. */
@@ -36,7 +38,8 @@ class VaultwardenPropertySource extends PropertySource<Object> {
     private final VaultwardenValueResolver resolver;
 
     VaultwardenPropertySource(ConfigurableEnvironment environment) {
-        this(environment, new VaultwardenValueResolver(() -> buildService(environment)));
+        this(environment, new VaultwardenValueResolver(() -> buildService(environment),
+                () -> buildBaoClient(environment), Thread::sleep));
     }
 
     /** Test-Konstruktor mit injizierbarem Resolver (gemockter Service). */
@@ -103,5 +106,50 @@ class VaultwardenPropertySource extends PropertySource<Object> {
         String appName = environment.getProperty("spring.application.name", "plaintext");
         VaultwardenClient client = new VaultwardenClient(props, appName);
         return new VaultwardenSecretService(props, client);
+    }
+
+    /**
+     * Baut den OpenBao-Client fuer die {@code bao:}-Referenzen (Karte 995), oder gibt {@code null}
+     * zurueck, wenn er nicht konfiguriert ist. {@code null} ist hier kein Versehen: Der Resolver
+     * macht daraus eine sprechende Ausnahme, sobald eine {@code bao:}-Referenz auftaucht — und
+     * solange keine auftaucht, soll eine unkonfigurierte Instanz nicht scheitern.
+     *
+     * <p>Der Token kommt aus einer Datei ({@code token-file}). Steht er ausnahmsweise direkt in
+     * der Konfiguration, wird gewarnt: Eine Umgebungsvariable liest jeder, der {@code printenv}
+     * im Container darf, und sie steht in {@code docker inspect} (Karte 942).</p>
+     */
+    static OpenBaoClient buildBaoClient(ConfigurableEnvironment environment) {
+        OpenBaoProperties props = Binder.get(environment)
+                .bind("plaintext.bao", OpenBaoProperties.class)
+                .orElseGet(OpenBaoProperties::new);
+        if (!props.isEnabled()) {
+            return null;
+        }
+        String token = props.getToken();
+        if (token != null && !token.isBlank()) {
+            log.warn("plaintext.bao.token ist direkt gesetzt — im Betrieb token-file verwenden, "
+                    + "sonst steht das Geheimnis in printenv und docker inspect (Karte 942).");
+        } else {
+            token = leseTokenDatei(props.getTokenFile());
+        }
+        if (token == null || token.isBlank()) {
+            log.warn("plaintext.bao.enabled=true, aber kein Token — bao:-Referenzen werden scheitern.");
+            return null;
+        }
+        return new OpenBaoClient(props.getUrl(), token, props.getMount(), props.getHttpTimeoutSeconds());
+    }
+
+    /** Liest die Token-Datei; Fehler werden zu {@code null} (die Meldung kommt aus dem Aufrufer). */
+    private static String leseTokenDatei(String pfad) {
+        if (pfad == null || pfad.isBlank()) {
+            return null;
+        }
+        try {
+            return java.nio.file.Files.readString(java.nio.file.Path.of(pfad),
+                    java.nio.charset.StandardCharsets.UTF_8).trim();
+        } catch (java.io.IOException e) {
+            log.warn("OpenBao-Token-Datei '{}' nicht lesbar: {}", pfad, e.getMessage());
+            return null;
+        }
     }
 }
