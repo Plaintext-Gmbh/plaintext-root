@@ -11,7 +11,25 @@ import java.util.Map;
 /**
  * Interface for services that accept file uploads via the generic /nosec/root/upload endpoint.
  * Implementations are auto-discovered by Spring and listed in the upload services API.
+ *
+ * <h2>Dieser Vertrag zieht nach plaintext-app um</h2>
+ * <p>Der Pfadname legt eine Root-Zustaendigkeit nahe, die es nicht gibt. Der treibende
+ * Controller ({@code ch.plaintext.boot.web.nosec.RootUploadController}) liegt in
+ * {@code plaintext-app-webapp}, beide Implementierungen ({@code PostkontoUploadTarget},
+ * {@code RunningUploadTarget}) liegen in app-Modulen. Kein Modul in plaintext-root nutzt
+ * den Typ, und guild, iot und schuetu kennen ihn nicht. Er ist damit App-Fachlichkeit im
+ * Framework-Vertragsmodul.</p>
+ *
+ * <p>Der Nachfolger liegt unter demselben voll qualifizierten Namen in
+ * {@code plaintext-app-interfaces} — Konsumenten muessen ihre Importe also nicht anfassen.
+ * Diese Kopie faellt weg, sobald plaintext-app auf eine root-Version gepinnt ist, die sie
+ * nicht mehr enthaelt; bis dahin bleibt sie stehen, damit der Umzug ohne Bruch in zwei
+ * Schritten laufen kann.</p>
+ *
+ * @deprecated Umgezogen nach {@code plaintext-app-interfaces} (gleiches Paket, gleicher
+ *             Name). Wird nach dem app-Release entfernt, das den eigenen Vertrag mitbringt.
  */
+@Deprecated(since = "1.643.0", forRemoval = true)
 public interface IUploadTarget {
 
     /**

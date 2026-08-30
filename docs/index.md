@@ -42,7 +42,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 | [Flyway Migrations](FLYWAY_MIGRATIONS.md) | Database migration conventions and tooling |
 | [Role Registry](ROLE_REGISTRY.md) | How modules declare their roles for the user admin selection |
 | [Page Access Guard](security/PAGE_ACCESS_GUARD.md) | Per-view authorization derived from menu visibility |
-| [Architecture Decisions](adr/) | ADRs 0001–0007 |
+| [Architecture Decisions](adr/) | ADRs 0001–0008 |
 
 ### Reference
 
