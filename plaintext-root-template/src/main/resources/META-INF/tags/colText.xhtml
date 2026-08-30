@@ -1,0 +1,43 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:h="jakarta.faces.html"
+                xmlns:c="jakarta.tags.core"
+                xmlns:p="http://primefaces.org/ui">
+    <!--
+      pt:colText — die einfachste und haeufigste Spalte: Kopfzeile plus ein Wert.
+      Im Bestand sind das vier bis fuenf Zeilen fuer eine Information; hier ist es eine.
+
+      PFLICHT: header, value
+      OPTIONAL: width, style, colClass, colRendered, bold
+
+      ================================================================================
+      ZWEI FALLEN, BEIDE AM 30.08.2026 AN GERENDERTEM HTML GEMESSEN — NICHT VERMUTET:
+      ================================================================================
+      1. ATTRIBUTNAMEN LECKEN VON AUSSEN HEREIN. Ein Tag-File sieht die Attribute des
+         umgebenden Tag-Files, wenn es sie nicht selbst gesetzt bekommt. Hiess das Attribut hier
+         "styleClass", erbte JEDE Zelle die styleClass der pt:table — im Pilot stand danach
+         class="token-table" an jedem einzelnen td. Deshalb heissen die optionalen Attribute
+         colClass und colRendered und kollidieren mit keinem Attribut von pt:table.
+         "value" und "header" sind Pflicht und werden immer gesetzt; sie koennen nicht erben.
+
+      2. EIN NICHT GESETZTES ATTRIBUT IST NICHT DASSELBE WIE EIN FEHLENDES. Stand hier
+         sortBy="#{sortBy}" und rief jemand das Tag ohne sortBy auf, legte Facelets trotzdem eine
+         (leere) ValueExpression an — PrimeFaces sah ein gesetztes sortBy und machte die Spalte
+         sortierbar UND filterbar, samt Filter-Eingabefeld im Kopf. Sortierung gehoert deshalb
+         nicht in dieses Tag: Wer sie braucht, schreibt die p:column aus. Ein Tag, das ungefragt
+         Bedienelemente einbaut, waere schlimmer als vier gesparte Zeilen gut sind.
+    -->
+    <p:column headerText="#{header}"
+              rendered="#{empty colRendered ? true : colRendered}"
+              styleClass="#{colClass}"
+              style="#{empty width ? style : 'width:'.concat(width).concat(';').concat(empty style ? '' : style)}">
+        <c:choose>
+            <c:when test="#{bold}">
+                <h:outputText value="#{value}" style="font-weight:600;"/>
+            </c:when>
+            <c:otherwise>
+                <h:outputText value="#{value}"/>
+            </c:otherwise>
+        </c:choose>
+    </p:column>
+</ui:composition>

@@ -1,0 +1,36 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:p="http://primefaces.org/ui">
+    <!--
+      pt:deleteButton — Loeschen mit Rueckfrage.
+
+      Im Bestand 67 nahezu identische Bloecke: pi pi-trash, eingebettetes p:confirm, update auf den
+      Growl. Der eingebettete p:confirm braucht einen globalen p:confirmDialog — den liefert seit
+      dem 28.08.2026 bereits /includes/template.xhtml (globalMessagesForm), eine seitenlokale Kopie
+      ist dafuer nicht mehr noetig.
+
+      process="@this" ist gesetzt und nicht optional: Ohne das durchlaeuft beim Klick das ganze
+      Formular die Validierung, und ein unausgefuelltes Pflichtfeld an ganz anderer Stelle
+      verhindert das Loeschen, ohne dass ein Grund sichtbar wuerde.
+
+      PFLICHT: action, update
+      OPTIONAL: message, header, title, icon, btnClass, btnRendered, btnDisabled, value
+
+      Die optionalen Attribute tragen bewusst ein btn-Praefix: Ein Tag-File erbt sonst
+      gleichnamige Attribute des umgebenden Tags (z.B. rendered/styleClass einer pt:table).
+      Am gerenderten HTML gemessen, 30.08.2026 — siehe pt:colText.
+    -->
+    <p:commandButton value="#{value}"
+                     icon="#{empty icon ? 'pi pi-trash' : icon}"
+                     title="#{empty title ? 'Löschen' : title}"
+                     actionListener="#{action}"
+                     update="#{update}"
+                     process="@this"
+                     rendered="#{empty btnRendered ? true : btnRendered}"
+                     disabled="#{empty btnDisabled ? false : btnDisabled}"
+                     styleClass="ui-button-flat ui-button-danger #{btnClass}">
+        <p:confirm header="#{empty header ? 'Löschen' : header}"
+                   message="#{empty message ? 'Wirklich löschen?' : message}"
+                   icon="pi pi-exclamation-triangle"/>
+    </p:commandButton>
+</ui:composition>

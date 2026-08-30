@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Karte 984 — die pt:-Taglib.
+
+  WARUM SIE HIER LIEGT: plaintext-root-template ist ein reines Ressourcen-JAR und schon heute der
+  Weg, auf dem /includes/template.xhtml in jede App kommt. Facelets findet eine Taglib in einem JAR
+  automatisch, sobald sie META-INF/*.taglib.xml heisst — es braucht also kein neues Artefakt und
+  keine Zeile Konfiguration in den Apps. Jede App bekommt die Tags mit dem naechsten root-Release,
+  genau wie damals den zentralen datePicker-Fix im Template.
+
+  WARUM TAG-FILES UND KEINE COMPOSITE COMPONENTS: p:column muss direktes Kind der p:dataTable sein.
+  Eine Composite Component kapselt ihren Inhalt in einen NamingContainer (UIComponent-Ebene) und
+  bricht damit genau diese Beziehung — die Spalten wuerden nicht mehr gefunden. Ein Facelet-Tag-File
+  wird beim Baumaufbau inline expandiert; im Komponentenbaum bleibt nur das, was drinsteht.
+  Deshalb funktioniert der eine Weg und der andere nicht.
+
+  <source> ist relativ zum Verzeichnis DIESER Datei, die Tag-Files liegen also in META-INF/tags/.
+
+  PlaintextTaglibVertragTest (plaintext-root-archtests) haelt Deklaration und Dateien zusammen und
+  laeuft in jeder App mit, die die Archtests einbindet.
+-->
+<facelet-taglib xmlns="https://jakarta.ee/xml/ns/jakartaee"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                                    https://jakarta.ee/xml/ns/jakartaee/web-facelettaglibrary_4_0.xsd"
+                version="4.0">
+
+    <namespace>http://plaintext.ch/ui</namespace>
+    <short-name>pt</short-name>
+
+    <!-- Tabelle mit den Hausvorgaben (Paginator, Zeilenzahlen, Leermeldung, mobile-safe). -->
+    <tag>
+        <tag-name>table</tag-name>
+        <source>tags/table.xhtml</source>
+    </tag>
+
+    <!-- Spalten: Header + Konverter + Ausrichtung in einer Zeile statt in vier bis sechs. -->
+    <tag>
+        <tag-name>colText</tag-name>
+        <source>tags/colText.xhtml</source>
+    </tag>
+    <tag>
+        <tag-name>colDate</tag-name>
+        <source>tags/colDate.xhtml</source>
+    </tag>
+    <tag>
+        <tag-name>colAmount</tag-name>
+        <source>tags/colAmount.xhtml</source>
+    </tag>
+
+    <!-- Loeschen-Button samt Rueckfrage — 67x nahezu identisch im Bestand. -->
+    <tag>
+        <tag-name>deleteButton</tag-name>
+        <source>tags/deleteButton.xhtml</source>
+    </tag>
+
+</facelet-taglib>
