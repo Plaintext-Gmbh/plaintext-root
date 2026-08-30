@@ -201,9 +201,17 @@ steps:
       # wirklich existiert. Faende failsafe die genannten Klassen nicht, waere der
       # Lauf trotzdem nicht still gruen — `failIfNoSpecifiedTests` steht per
       # Vorgabe auf true und laesst `-Dit.test=<name>` ins Leere rot werden.
+      # Wortgleich zum GitHub-Job: NUR die Failsafe-Ziele, KEIN test-compile davor. Mit
+      # test-compile lief im PR-Lauf #14 (30.08.2026) die Lifecycle bis compile nochmals
+      # ("Recompiling the module because of changed source code") — danach fehlte
+      # target/classes/META-INF/resources/includes/template.xhtml (aus plaintext-root-template
+      # bei prepare-package entpackt), und jede Seite mit relativem template="includes/…"
+      # (index.xhtml u. a.) lief in "Facelet … not found": Root-Menue weg, drei Tests rot.
+      # Das `install` davor hat die Testklassen schon kompiliert (-DskipTests ueberspringt nur
+      # das Ausfuehren), test-compile ist hier ueberfluessig.
       - >-
         mvn -B -pl plaintext-root-webapp
-        test-compile failsafe:integration-test failsafe:verify
+        failsafe:integration-test failsafe:verify
         -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT
 
   berichte-bei-fehlschlag:
