@@ -13,6 +13,29 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- `docs/MODULE_ABWAEHLEN.md` und [ADR 0007](docs/adr/0007-admin-module-abwaehlbar-per-exclusions.md):
+  Eine App kann Admin-Module aus `plaintext-root-webapp` per Maven-`<exclusions>` herauswerfen
+  (Zustandsbericht 29.08.2026, §3 „Aggregator ohne Opt-out"). Abwaehlbar sind
+  `plaintext-admin-webhooks`, `-notifications`, `-secrets` und `-modules`; welches Modul warum
+  nicht geht, steht je einzeln in der Tabelle. **Fuer die bestehenden Apps aendert sich nichts** —
+  die Dependencies bleiben nicht-`optional`, die Vorgabe bleibt „alles an". `<optional>true</optional>`
+  haette allen vier Apps beim naechsten Bump still Module weggenommen; eine eigene BOM waere eine
+  zweite Kopie der Liste, die `plaintext-root-parent` schon fuehrt; und `@ConditionalOnProperty` an
+  den Modul-AutoConfigurations waere wirkungslos, weil die Beans in root wie in allen vier Apps am
+  `@ComponentScan("ch.plaintext")` haengen und nicht an ihrer AutoConfiguration.
+- `SchlankerKontextTest` (plaintext-root-webapp) mit der zweiten Surefire-Ausfuehrung
+  `kontext-ohne-abwaehlbare-module`: Sie nimmt den vier Modul-Jars per
+  `classpathDependencyExcludes` den Platz auf dem Test-Classpath weg — die Abwesenheit ist echt,
+  nicht simuliert — und startet den Spring-Kontext gegen ein eingebettetes PostgreSQL. Damit ist
+  die Abwaehlbarkeit belegt und zugleich gesperrt: Wer im Kern eine Klasse aus einem dieser Pakete
+  importiert oder eine ihrer Beans hart injiziert, laesst diesen Lauf umfallen statt erst den
+  PROD-Start einer schlanken App.
+- `AbwaehlbareModuleXhtmlTest` (plaintext-root-webapp): Der Kontext-Start rendert keine Seite, eine
+  Kern-XHTML mit `#{webhookBean.x}` faellt ihm deshalb nicht auf. Der Test sammelt die Bean-Namen
+  der abwaehlbaren Module und verlangt fuer jede Erwaehnung in einer XHTML aus
+  `plaintext-root-webapp` oder `plaintext-root-template` einen Null-Schutz im selben Dokument (das
+  Benachrichtigungs-Gloeckchen in `includes/topbar.xhtml` hat einen; genau deshalb ist
+  `plaintext-admin-notifications` abwaehlbar).
 - i18n-Seed `plaintext-admin-i18n/src/main/resources/i18n/plaintext-root.csv`: 287 englische
   Vorbelegungen fuer jedes `i18n.t('…')` der root-Facelets (Zustandsbericht 29.08.2026, §4 — der
   Seed-Importer lief bisher bei jedem Start leer, familienweit gab es keine Seed-CSV; alle Texte
@@ -52,6 +75,13 @@ exhaustive.
   Entflechtung ist eine eigene Etappe.
 
 ### Changed
+- `RepoMaster.repos` ist `@Autowired(required = false)`: Ein Kontext ohne eine einzige
+  `PlaintextRepository`-Bean startet jetzt. Vorher hielt die Standard-Injektion einer leeren Liste
+  den Start an — und die einzigen Implementierungen im Framework liegen in
+  `plaintext-admin-modules` und `plaintext-admin-secrets`; wer beide abwaehlte, bekam einen
+  Startfehler an einer Stelle, die mit keinem der beiden Module zu tun hat. Am Verhalten der Apps
+  aendert das nichts: sobald eine Bean da ist, spritzt Spring die Liste wie bisher, ohne sie bleibt
+  das bereits initialisierte `new ArrayList<>()` stehen.
 - `I18nService.importSeedTranslations()` und `I18nExportController` lesen CSV-Zeilen ueber
   `I18nSeedLinter` statt ueber je eine private Kopie des Parsers.
 - `plaintext-root-jpa` haengt nicht mehr an `plaintext-admin-sessions` (Zustandsbericht 29.08.2026,
