@@ -52,13 +52,18 @@ class I18nServiceSeedImportTest {
     }
 
     @Test
-    @DisplayName("Leere Datenbank: jede Seed-Zeile wird angelegt (Speichern -> Save)")
+    @DisplayName("Leere Datenbank: jede Seed-Zeile wird angelegt (Speichern -> Save/Enregistrer/Salva)")
     void leereDatenbankWirdVorbelegt() {
         service.importSeedTranslations();
 
         assertTrue(db.size() >= 280, "Seed plaintext-root.csv erwartet, angelegt: " + db.size());
         assertEquals("Save", db.get("Speichern::en").getTranslatedText());
-        assertTrue(db.keySet().stream().allMatch(k -> k.endsWith("::en")), "nur en-Zeilen erwartet: " + db.keySet());
+        assertEquals("Enregistrer", db.get("Speichern::fr").getTranslatedText());
+        assertEquals("Salva", db.get("Speichern::it").getTranslatedText());
+        // Zielsprachen der Seed = getAvailableLanguages() ohne de; de waere wirkungslos, weil
+        // translate() den deutschen Vorgabetext unveraendert zurueckgibt.
+        assertTrue(db.keySet().stream().allMatch(k -> k.endsWith("::en") || k.endsWith("::fr") || k.endsWith("::it")),
+                "nur en/fr/it-Zeilen erwartet: " + db.keySet());
     }
 
     @Test
@@ -72,8 +77,13 @@ class I18nServiceSeedImportTest {
         assertEquals("Store", db.get("Speichern::en").getTranslatedText());
         ArgumentCaptor<I18nTranslation> saved = ArgumentCaptor.forClass(I18nTranslation.class);
         verify(repository, org.mockito.Mockito.atLeastOnce()).save(saved.capture());
-        assertFalse(saved.getAllValues().stream().anyMatch(t -> "Speichern".equals(t.getDefaultLabel())),
+        // Nur das gepflegte Paar (Label, Sprache) ist tabu — die fr-/it-Zeilen desselben Labels
+        // fehlen noch und werden sehr wohl angelegt.
+        assertFalse(saved.getAllValues().stream()
+                        .anyMatch(t -> "Speichern".equals(t.getDefaultLabel()) && "en".equals(t.getLanguageCode())),
                 "save() fuer den gepflegten Eintrag aufgerufen");
+        assertEquals("Enregistrer", db.get("Speichern::fr").getTranslatedText(),
+                "fehlende Sprache desselben Labels wird trotzdem vorbelegt");
     }
 
     @Test

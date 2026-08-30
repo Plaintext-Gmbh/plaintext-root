@@ -14,338 +14,1001 @@ defaultLabel;languageCode;translatedText
 # deutschen Vorgabetext), nicht aus einem Export. Vorlage zum Pflegen: Export unter
 # /api/i18n/export?lang=en, pruefen, hier einchecken.
 #
+# Zielsprachen: en, fr, it — dieselben drei, die I18nService.getAvailableLanguages() neben de
+# ausliefert (Topbar-Sprachwechsel). Je Schluessel stehen die drei Zeilen direkt untereinander;
+# fr und it sind fuer eine Schweizer Vereins- und Geschaeftsanwendung uebersetzt, nicht woertlich.
+# „Mandant/Mandat" ist der Tenant-Begriff der Anwendung und heisst fr „mandant", it „mandante"
+# (nicht „mandat" im Sinne von Auftrag). Anfuehrungszeichen im Franzoesischen und Italienischen
+# als « », im Franzoesischen kein Leerzeichen vor ? ! : (Schweizer Web-Praxis).
+#
 # Vollstaendigkeit sichert PlaintextI18nSeedTest (plaintext-root-archtests): jedes i18n.t('…') im
 # Reactor braucht hier eine en-Zeile; Zeilen ohne Verwendung werden als Warnung gemeldet.
+# Dass zu jedem Schluessel alle drei Zielsprachen da sind, prueft I18nSeedSprachabdeckungTest
+# (plaintext-admin-i18n).
 #
 # --- sessioninsights.xhtml
 Benutzer-Session;en;User Session
+Benutzer-Session;fr;Session utilisateur
+Benutzer-Session;it;Sessione utente
 Bitte wählen;en;Please select
+Bitte wählen;fr;Veuillez choisir
+Bitte wählen;it;Selezionare
 Aktualisieren;en;Refresh
+Aktualisieren;fr;Actualiser
+Aktualisieren;it;Aggiorna
 Session Übersicht;en;Session Overview
+Session Übersicht;fr;Aperçu des sessions
+Session Übersicht;it;Panoramica delle sessioni
 Anzahl Objekte;en;Number of Objects
+Anzahl Objekte;fr;Nombre d'objets
+Anzahl Objekte;it;Numero di oggetti
 Gesamtgrösse;en;Total Size
+Gesamtgrösse;fr;Taille totale
+Gesamtgrösse;it;Dimensione totale
 Zeige;en;Showing
+Zeige;fr;Affichage
+Zeige;it;Visualizzati
 bis;en;to
+bis;fr;à
+bis;it;a
 von;en;of
+von;fr;sur
+von;it;di
 Objekten;en;objects
+Objekten;fr;objets
+Objekten;it;oggetti
 Keine Session-Objekte gefunden;en;No session objects found
+Keine Session-Objekte gefunden;fr;Aucun objet de session trouvé
+Keine Session-Objekte gefunden;it;Nessun oggetto di sessione trovato
 Grösse;en;Size
+Grösse;fr;Taille
+Grösse;it;Dimensione
 #
 # --- sessions.xhtml
 Ja;en;Yes
+Ja;fr;Oui
+Ja;it;Sì
 Nein;en;No
+Nein;fr;Non
+Nein;it;No
 Aktive Sitzungen;en;Active Sessions
+Aktive Sitzungen;fr;Sessions actives
+Aktive Sitzungen;it;Sessioni attive
 Details anzeigen;en;Show Details
+Details anzeigen;fr;Afficher les détails
+Details anzeigen;it;Mostra i dettagli
 Abmelden;en;Log out
+Abmelden;fr;Déconnecter
+Abmelden;it;Disconnetti
 Bestätigung;en;Confirmation
+Bestätigung;fr;Confirmation
+Bestätigung;it;Conferma
 Benutzer wirklich abmelden?;en;Really log out this user?
+Benutzer wirklich abmelden?;fr;Voulez-vous vraiment déconnecter cet utilisateur?
+Benutzer wirklich abmelden?;it;Disconnettere davvero questo utente?
 Keine aktiven Sitzungen;en;No active sessions
+Keine aktiven Sitzungen;fr;Aucune session active
+Keine aktiven Sitzungen;it;Nessuna sessione attiva
 Benutzername;en;Username
+Benutzername;fr;Nom d'utilisateur
+Benutzername;it;Nome utente
 Aktiv;en;Active
+Aktiv;fr;Actif
+Aktiv;it;Attivo
 Anmeldung;en;Login
+Anmeldung;fr;Connexion
+Anmeldung;it;Accesso
 Letzte Aktivität;en;Last Activity
+Letzte Aktivität;fr;Dernière activité
+Letzte Aktivität;it;Ultima attività
 Sitzung Details;en;Session Details
+Sitzung Details;fr;Détails de la session
+Sitzung Details;it;Dettagli della sessione
 Schließen;en;Close
+Schließen;fr;Fermer
+Schließen;it;Chiudi
 #
 # --- mandatemenudetail.xhtml
 Menüsteuerung;en;Menu Control
+Menüsteuerung;fr;Gestion des menus
+Menüsteuerung;it;Gestione dei menu
 Mandat anpassen;en;Edit Tenant
+Mandat anpassen;fr;Modifier le mandant
+Mandat anpassen;it;Modifica il mandante
 Anleitung;en;Guide
+Anleitung;fr;Guide
+Anleitung;it;Guida
 Anleitung zur Menüsteuerung öffnen;en;Open the menu control guide
+Anleitung zur Menüsteuerung öffnen;fr;Ouvrir le guide de la gestion des menus
+Anleitung zur Menüsteuerung öffnen;it;Apri la guida alla gestione dei menu
 Mandat-spezifische Menükonfiguration;en;Tenant-specific menu configuration
+Mandat-spezifische Menükonfiguration;fr;Configuration des menus propre au mandant
+Mandat-spezifische Menükonfiguration;it;Configurazione dei menu specifica per mandante
 Mandatsname;en;Tenant Name
+Mandatsname;fr;Nom du mandant
+Mandatsname;it;Nome del mandante
 Menüpunkte einblenden;en;Show menu items
+Menüpunkte einblenden;fr;Afficher des entrées de menu
+Menüpunkte einblenden;it;Mostra voci di menu
 Menüpunkte ausblenden;en;Hide menu items
+Menüpunkte ausblenden;fr;Masquer des entrées de menu
+Menüpunkte ausblenden;it;Nascondi voci di menu
 Alle an;en;All on
+Alle an;fr;Tout activer
+Alle an;it;Attiva tutto
 Alle aus;en;All off
+Alle aus;fr;Tout désactiver
+Alle aus;it;Disattiva tutto
 Invertieren;en;Invert
+Invertieren;fr;Inverser
+Invertieren;it;Inverti
 Speichern;en;Save
+Speichern;fr;Enregistrer
+Speichern;it;Salva
 Löschen;en;Delete
+Löschen;fr;Supprimer
+Löschen;it;Elimina
 #
 # --- menudiagnose.xhtml
 Menü-Diagnose;en;Menu Diagnostics
+Menü-Diagnose;fr;Diagnostic des menus
+Menü-Diagnose;it;Diagnostica dei menu
 Sicht von;en;View as
+Sicht von;fr;Vue de
+Sicht von;it;Vista di
 Mandant;en;Tenant
+Mandant;fr;Mandant
+Mandant;it;Mandante
 Sichtbar;en;Visible
+Sichtbar;fr;Visible
+Sichtbar;it;Visibile
 Nur ausgeblendete Menüpunkte;en;Hidden menu items only
+Nur ausgeblendete Menüpunkte;fr;Uniquement les entrées de menu masquées
+Nur ausgeblendete Menüpunkte;it;Solo le voci di menu nascoste
 Neu auswerten;en;Re-evaluate
+Neu auswerten;fr;Réévaluer
+Neu auswerten;it;Rivaluta
 Keine Menüpunkte gefunden.;en;No menu items found.
+Keine Menüpunkte gefunden.;fr;Aucune entrée de menu trouvée.
+Keine Menüpunkte gefunden.;it;Nessuna voce di menu trovata.
 Menüpunkt;en;Menu Item
+Menüpunkt;fr;Entrée de menu
+Menüpunkt;it;Voce di menu
 Modul-Keys;en;Module Keys
+Modul-Keys;fr;Clés de module
+Modul-Keys;it;Chiavi del modulo
 Rolle;en;Role
+Rolle;fr;Rôle
+Rolle;it;Ruolo
 Modul-Rolle;en;Module Role
+Modul-Rolle;fr;Rôle du module
+Modul-Rolle;it;Ruolo del modulo
 Modul aktiv;en;Module active
+Modul aktiv;fr;Module actif
+Modul aktiv;it;Modulo attivo
 Zur Menüsteuerung;en;Go to Menu Control
+Zur Menüsteuerung;fr;Vers la gestion des menus
+Zur Menüsteuerung;it;Vai alla gestione dei menu
 #
 # --- mandatemenu.xhtml
 Übersicht;en;Overview
+Übersicht;fr;Aperçu
+Übersicht;it;Panoramica
 Neues Mandat;en;New Tenant
+Neues Mandat;fr;Nouveau mandant
+Neues Mandat;it;Nuovo mandante
 Keine Konfigurationen vorhanden.;en;No configurations available.
+Keine Konfigurationen vorhanden.;fr;Aucune configuration disponible.
+Keine Konfigurationen vorhanden.;it;Nessuna configurazione disponibile.
 Modus;en;Mode
+Modus;fr;Mode
+Modus;it;Modalità
 Anzahl Menüs;en;Number of Menus
+Anzahl Menüs;fr;Nombre de menus
+Anzahl Menüs;it;Numero di menu
 Konfigurierte Menüs;en;Configured Menus
+Konfigurierte Menüs;fr;Menus configurés
+Konfigurierte Menüs;it;Menu configurati
 Aktionen;en;Actions
+Aktionen;fr;Actions
+Aktionen;it;Azioni
 Bearbeiten;en;Edit
+Bearbeiten;fr;Modifier
+Bearbeiten;it;Modifica
 #
 # --- oidcconfig.xhtml
 OIDC / OpenID Connect Konfiguration;en;OIDC / OpenID Connect Configuration
+OIDC / OpenID Connect Konfiguration;fr;Configuration OIDC / OpenID Connect
+OIDC / OpenID Connect Konfiguration;it;Configurazione OIDC / OpenID Connect
 Neue Konfiguration;en;New Configuration
+Neue Konfiguration;fr;Nouvelle configuration
+Neue Konfiguration;it;Nuova configurazione
 Keine OIDC-Konfiguration vorhanden;en;No OIDC configuration available
+Keine OIDC-Konfiguration vorhanden;fr;Aucune configuration OIDC disponible
+Keine OIDC-Konfiguration vorhanden;it;Nessuna configurazione OIDC disponibile
 Name;en;Name
+Name;fr;Nom
+Name;it;Nome
 Letzte Änderung;en;Last Modified
+Letzte Änderung;fr;Dernière modification
+Letzte Änderung;it;Ultima modifica
 OIDC Konfiguration;en;OIDC Configuration
+OIDC Konfiguration;fr;Configuration OIDC
+OIDC Konfiguration;it;Configurazione OIDC
 Benutzer automatisch anlegen;en;Create users automatically
+Benutzer automatisch anlegen;fr;Créer les utilisateurs automatiquement
+Benutzer automatisch anlegen;it;Crea automaticamente gli utenti
 Standard-Rollen;en;Default Roles
+Standard-Rollen;fr;Rôles par défaut
+Standard-Rollen;it;Ruoli predefiniti
 Standard-Mandat;en;Default Tenant
+Standard-Mandat;fr;Mandant par défaut
+Standard-Mandat;it;Mandante predefinito
 Verbindung testen;en;Test Connection
+Verbindung testen;fr;Tester la connexion
+Verbindung testen;it;Prova la connessione
 OIDC-Konfiguration wirklich löschen?;en;Really delete this OIDC configuration?
+OIDC-Konfiguration wirklich löschen?;fr;Supprimer vraiment cette configuration OIDC?
+OIDC-Konfiguration wirklich löschen?;it;Eliminare davvero questa configurazione OIDC?
 #
 # --- anforderungen.xhtml
 Anforderungen;en;Requirements
+Anforderungen;fr;Exigences
+Anforderungen;it;Requisiti
 Neue Anforderung;en;New Requirement
+Neue Anforderung;fr;Nouvelle exigence
+Neue Anforderung;it;Nuovo requisito
 Offen;en;Open
+Offen;fr;Ouvert
+Offen;it;Aperto
 In Bearbeitung;en;In Progress
+In Bearbeitung;fr;En cours
+In Bearbeitung;it;In lavorazione
 Erledigt;en;Done
+Erledigt;fr;Terminé
+Erledigt;it;Completato
 Anforderung Details;en;Requirement Details
+Anforderung Details;fr;Détails de l'exigence
+Anforderung Details;it;Dettagli del requisito
 #
 # --- rollenzuteilung.xhtml
 Rollenzuteilung;en;Role Assignment
+Rollenzuteilung;fr;Attribution des rôles
+Rollenzuteilung;it;Assegnazione dei ruoli
 Neue Rollenzuteilung;en;New Role Assignment
+Neue Rollenzuteilung;fr;Nouvelle attribution de rôle
+Neue Rollenzuteilung;it;Nuova assegnazione di ruolo
 Rollenzuteilung wirklich löschen?;en;Really delete this role assignment?
+Rollenzuteilung wirklich löschen?;fr;Supprimer vraiment cette attribution de rôle?
+Rollenzuteilung wirklich löschen?;it;Eliminare davvero questa assegnazione di ruolo?
 Gültig;en;Valid
+Gültig;fr;Valable
+Gültig;it;Valido
 Gültig von;en;Valid from
+Gültig von;fr;Valable dès le
+Gültig von;it;Valido dal
 Gültig bis;en;Valid until
+Gültig bis;fr;Valable jusqu'au
+Gültig bis;it;Valido fino al
 Rollenzuteilung Details;en;Role Assignment Details
+Rollenzuteilung Details;fr;Détails de l'attribution de rôle
+Rollenzuteilung Details;it;Dettagli dell'assegnazione di ruolo
 Beschreibung;en;Description
+Beschreibung;fr;Description
+Beschreibung;it;Descrizione
 #
 # --- login-totp.xhtml
 Zwei-Faktor-Authentifizierung;en;Two-Factor Authentication
+Zwei-Faktor-Authentifizierung;fr;Authentification à deux facteurs
+Zwei-Faktor-Authentifizierung;it;Autenticazione a due fattori
 Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein;en;Enter the 6-digit code from your authenticator app
+Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein;fr;Saisissez le code à six chiffres de votre application d'authentification
+Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein;it;Inserisca il codice a sei cifre della sua app di autenticazione
 Zu viele Fehlversuche. Bitte später erneut anmelden.;en;Too many failed attempts. Please log in again later.
+Zu viele Fehlversuche. Bitte später erneut anmelden.;fr;Trop de tentatives échouées. Veuillez vous reconnecter plus tard.
+Zu viele Fehlversuche. Bitte später erneut anmelden.;it;Troppi tentativi non riusciti. Riprovi ad accedere più tardi.
 Ungültiger Code. Bitte versuchen Sie es erneut.;en;Invalid code. Please try again.
+Ungültiger Code. Bitte versuchen Sie es erneut.;fr;Code invalide. Veuillez réessayer.
+Ungültiger Code. Bitte versuchen Sie es erneut.;it;Codice non valido. Riprovi.
 Code;en;Code
+Code;fr;Code
+Code;it;Codice
 Bestätigen;en;Confirm
+Bestätigen;fr;Confirmer
+Bestätigen;it;Conferma
 Kein Zugriff auf die App? Geben Sie stattdessen einen Ihrer Recovery-Codes ein.;en;No access to the app? Enter one of your recovery codes instead.
+Kein Zugriff auf die App? Geben Sie stattdessen einen Ihrer Recovery-Codes ein.;fr;Pas d'accès à l'application? Saisissez à la place l'un de vos codes de récupération.
+Kein Zugriff auf die App? Geben Sie stattdessen einen Ihrer Recovery-Codes ein.;it;Nessun accesso all'app? Inserisca invece uno dei suoi codici di recupero.
 Abbrechen und zurück zur Anmeldung;en;Cancel and return to login
+Abbrechen und zurück zur Anmeldung;fr;Annuler et revenir à la connexion
+Abbrechen und zurück zur Anmeldung;it;Annulla e torna all'accesso
 #
 # --- access-denied.xhtml
 Zugriff verweigert;en;Access Denied
+Zugriff verweigert;fr;Accès refusé
+Zugriff verweigert;it;Accesso negato
 Sie haben keinen Zugriff auf diese Seite.;en;You do not have access to this page.
+Sie haben keinen Zugriff auf diese Seite.;fr;Vous n'avez pas accès à cette page.
+Sie haben keinen Zugriff auf diese Seite.;it;Non ha accesso a questa pagina.
 Mögliche Gründe;en;Possible reasons
+Mögliche Gründe;fr;Raisons possibles
+Mögliche Gründe;it;Possibili motivi
 Diese Funktion erfordert spezielle Berechtigungen (Rollen);en;This function requires special permissions (roles)
+Diese Funktion erfordert spezielle Berechtigungen (Rollen);fr;Cette fonction requiert des autorisations particulières (rôles)
+Diese Funktion erfordert spezielle Berechtigungen (Rollen);it;Questa funzione richiede autorizzazioni particolari (ruoli)
 Die Funktion ist für Ihren Mandanten nicht aktiviert;en;This function is not enabled for your tenant
+Die Funktion ist für Ihren Mandanten nicht aktiviert;fr;La fonction n'est pas activée pour votre mandant
+Die Funktion ist für Ihren Mandanten nicht aktiviert;it;La funzione non è attivata per il suo mandante
 Sie wurden von einer abgelaufenen Seite hierher weitergeleitet;en;You were redirected here from an expired page
+Sie wurden von einer abgelaufenen Seite hierher weitergeleitet;fr;Vous avez été redirigé ici depuis une page expirée
+Sie wurden von einer abgelaufenen Seite hierher weitergeleitet;it;È stato reindirizzato qui da una pagina scaduta
 Zur Startseite;en;Go to Home Page
+Zur Startseite;fr;Vers la page d'accueil
+Zur Startseite;it;Vai alla pagina iniziale
 Zurück;en;Back
+Zurück;fr;Retour
+Zurück;it;Indietro
 Bei Fragen wenden Sie sich bitte an Ihren Administrator.;en;If you have questions, please contact your administrator.
+Bei Fragen wenden Sie sich bitte an Ihren Administrator.;fr;Pour toute question, veuillez vous adresser à votre administrateur.
+Bei Fragen wenden Sie sich bitte an Ihren Administrator.;it;Per domande si rivolga al suo amministratore.
 #
 # --- useradmin.xhtml
 Benutzer Liste;en;User List
+Benutzer Liste;fr;Liste des utilisateurs
+Benutzer Liste;it;Elenco degli utenti
 Neuer Benutzer;en;New User
+Neuer Benutzer;fr;Nouvel utilisateur
+Neuer Benutzer;it;Nuovo utente
 Spalten;en;Columns
+Spalten;fr;Colonnes
+Spalten;it;Colonne
 Vorname;en;First Name
+Vorname;fr;Prénom
+Vorname;it;Nome
 Nachname;en;Last Name
+Nachname;fr;Nom de famille
+Nachname;it;Cognome
 Startseite;en;Home Page
+Startseite;fr;Page d'accueil
+Startseite;it;Pagina iniziale
 Als dieser Benutzer anmelden;en;Log in as this user
+Als dieser Benutzer anmelden;fr;Se connecter en tant que cet utilisateur
+Als dieser Benutzer anmelden;it;Accedi come questo utente
 Wollen Sie sich wirklich als dieser Benutzer anmelden?;en;Do you really want to log in as this user?
+Wollen Sie sich wirklich als dieser Benutzer anmelden?;fr;Voulez-vous vraiment vous connecter en tant que cet utilisateur?
+Wollen Sie sich wirklich als dieser Benutzer anmelden?;it;Vuole davvero accedere come questo utente?
 Benutzer Details;en;User Details
+Benutzer Details;fr;Détails de l'utilisateur
+Benutzer Details;it;Dettagli dell'utente
 Benutzername ist erforderlich;en;Username is required
+Benutzername ist erforderlich;fr;Le nom d'utilisateur est obligatoire
+Benutzername ist erforderlich;it;Il nome utente è obbligatorio
 Ohne Passwort (nur OIDC);en;Without password (OIDC only)
+Ohne Passwort (nur OIDC);fr;Sans mot de passe (OIDC uniquement)
+Ohne Passwort (nur OIDC);it;Senza password (solo OIDC)
 Login nur über OIDC möglich;en;Login only possible via OIDC
+Login nur über OIDC möglich;fr;Connexion possible uniquement via OIDC
+Login nur über OIDC möglich;it;Accesso possibile solo tramite OIDC
 Passwort;en;Password
+Passwort;fr;Mot de passe
+Passwort;it;Password
 Passwort ist bei einem neuen Benutzer erforderlich;en;Password is required for a new user
+Passwort ist bei einem neuen Benutzer erforderlich;fr;Le mot de passe est obligatoire pour un nouvel utilisateur
+Passwort ist bei einem neuen Benutzer erforderlich;it;La password è obbligatoria per un nuovo utente
 Passwort gesetzt;en;Password set
+Passwort gesetzt;fr;Mot de passe défini
+Passwort gesetzt;it;Password impostata
 Kein Passwort (OIDC-User);en;No password (OIDC user)
+Kein Passwort (OIDC-User);fr;Pas de mot de passe (utilisateur OIDC)
+Kein Passwort (OIDC-User);it;Nessuna password (utente OIDC)
 Rollen;en;Roles
+Rollen;fr;Rôles
+Rollen;it;Ruoli
 Rollen wählen;en;Select roles
+Rollen wählen;fr;Choisir les rôles
+Rollen wählen;it;Seleziona i ruoli
 Von den Modulen deklarierte Rollen. Bereits zugewiesene Rollen ohne Deklaration bleiben in der Auswahl erhalten.;en;Roles declared by the modules. Roles already assigned without a declaration remain in the selection.
+Von den Modulen deklarierte Rollen. Bereits zugewiesene Rollen ohne Deklaration bleiben in der Auswahl erhalten.;fr;Rôles déclarés par les modules. Les rôles déjà attribués sans déclaration restent dans la sélection.
+Von den Modulen deklarierte Rollen. Bereits zugewiesene Rollen ohne Deklaration bleiben in der Auswahl erhalten.;it;Ruoli dichiarati dai moduli. I ruoli già assegnati senza dichiarazione restano nella selezione.
 Magic-Link senden;en;Send Magic Link
+Magic-Link senden;fr;Envoyer le Magic-Link
+Magic-Link senden;it;Invia il Magic-Link
 Verknüpft mit;en;Linked to
+Verknüpft mit;fr;Lié à
+Verknüpft mit;it;Collegato a
 Nicht verknüpft;en;Not linked
+Nicht verknüpft;fr;Non lié
+Nicht verknüpft;it;Non collegato
 Benutzer löschen;en;Delete User
+Benutzer löschen;fr;Supprimer l'utilisateur
+Benutzer löschen;it;Elimina l'utente
 Wollen Sie den Benutzer wirklich löschen?;en;Do you really want to delete this user?
+Wollen Sie den Benutzer wirklich löschen?;fr;Voulez-vous vraiment supprimer cet utilisateur?
+Wollen Sie den Benutzer wirklich löschen?;it;Vuole davvero eliminare questo utente?
 Rollen-Entzug bestätigen;en;Confirm role removal
+Rollen-Entzug bestätigen;fr;Confirmer le retrait des rôles
+Rollen-Entzug bestätigen;it;Conferma la revoca dei ruoli
 Fortfahren;en;Continue
+Fortfahren;fr;Continuer
+Fortfahren;it;Continua
 Abbrechen;en;Cancel
+Abbrechen;fr;Annuler
+Abbrechen;it;Annulla
 #
 # --- login.xhtml
 Theme wechseln;en;Switch theme
+Theme wechseln;fr;Changer de thème
+Theme wechseln;it;Cambia tema
 Willkommen;en;Welcome
+Willkommen;fr;Bienvenue
+Willkommen;it;Benvenuto
 Melden Sie sich an, um fortzufahren;en;Log in to continue
+Melden Sie sich an, um fortzufahren;fr;Connectez-vous pour continuer
+Melden Sie sich an, um fortzufahren;it;Acceda per continuare
 OIDC-Anmeldung fehlgeschlagen;en;OIDC login failed
+OIDC-Anmeldung fehlgeschlagen;fr;Échec de la connexion OIDC
+OIDC-Anmeldung fehlgeschlagen;it;Accesso OIDC non riuscito
 Anmelde-Link ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.;en;Login link invalid or expired. Please request a new one.
+Anmelde-Link ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.;fr;Lien de connexion invalide ou expiré. Veuillez en demander un nouveau.
+Anmelde-Link ungültig oder abgelaufen. Bitte fordern Sie einen neuen an.;it;Link di accesso non valido o scaduto. Ne richieda uno nuovo.
 Ungültiger Benutzername oder Passwort;en;Invalid username or password
+Ungültiger Benutzername oder Passwort;fr;Nom d'utilisateur ou mot de passe invalide
+Ungültiger Benutzername oder Passwort;it;Nome utente o password non validi
 Sie wurden erfolgreich abgemeldet;en;You have been logged out successfully
+Sie wurden erfolgreich abgemeldet;fr;Vous avez été déconnecté avec succès
+Sie wurden erfolgreich abgemeldet;it;Disconnessione avvenuta con successo
 Benutzername eingeben;en;Enter username
+Benutzername eingeben;fr;Saisir le nom d'utilisateur
+Benutzername eingeben;it;Inserisca il nome utente
 Passwort eingeben;en;Enter password
+Passwort eingeben;fr;Saisir le mot de passe
+Passwort eingeben;it;Inserisca la password
 Angemeldet bleiben;en;Stay logged in
+Angemeldet bleiben;fr;Rester connecté
+Angemeldet bleiben;it;Resta connesso
 Anmelden;en;Log in
+Anmelden;fr;Se connecter
+Anmelden;it;Accedi
 Passwort vergessen?;en;Forgot password?
+Passwort vergessen?;fr;Mot de passe oublié?
+Passwort vergessen?;it;Password dimenticata?
 Konto anlegen;en;Create account
+Konto anlegen;fr;Créer un compte
+Konto anlegen;it;Crea un account
 oder;en;or
+oder;fr;ou
+oder;it;oppure
 Falls ein Konto mit dieser Adresse existiert, erhalten Sie gleich einen Anmelde-Link per E-Mail.;en;If an account with this address exists, you will shortly receive a login link by e-mail.
+Falls ein Konto mit dieser Adresse existiert, erhalten Sie gleich einen Anmelde-Link per E-Mail.;fr;Si un compte existe avec cette adresse, vous recevrez sous peu un lien de connexion par e-mail.
+Falls ein Konto mit dieser Adresse existiert, erhalten Sie gleich einen Anmelde-Link per E-Mail.;it;Se esiste un account con questo indirizzo, riceverà a breve un link di accesso per e-mail.
 Anmelde-Link per E-Mail anfordern;en;Request login link by e-mail
+Anmelde-Link per E-Mail anfordern;fr;Demander un lien de connexion par e-mail
+Anmelde-Link per E-Mail anfordern;it;Richiedi un link di accesso per e-mail
 E-Mail-Adresse / Benutzername;en;E-mail address / username
+E-Mail-Adresse / Benutzername;fr;Adresse e-mail / nom d'utilisateur
+E-Mail-Adresse / Benutzername;it;Indirizzo e-mail / nome utente
 Link senden;en;Send link
+Link senden;fr;Envoyer le lien
+Link senden;it;Invia il link
 #
 # --- deeplinks.xhtml
 Deep-Links;en;Deep Links
+Deep-Links;fr;Deep-Links
+Deep-Links;it;Deep-Link
 Registrierte Deep-Link-Ziele;en;Registered deep link targets
+Registrierte Deep-Link-Ziele;fr;Cibles de Deep-Link enregistrées
+Registrierte Deep-Link-Ziele;it;Destinazioni Deep-Link registrate
 Ein Deep-Link führt aus einer Mail direkt auf einen Datensatz und schaltet dabei auf dessen Mandant um. Er verleiht keine Berechtigung: beim Öffnen wird geprüft, ob der angemeldete Benutzer Zugriff auf Mandant und Datensatz hat.;en;A deep link leads from an e-mail directly to a record and switches to its tenant. It grants no permission: on opening, the system checks whether the logged-in user has access to the tenant and the record.
+Ein Deep-Link führt aus einer Mail direkt auf einen Datensatz und schaltet dabei auf dessen Mandant um. Er verleiht keine Berechtigung: beim Öffnen wird geprüft, ob der angemeldete Benutzer Zugriff auf Mandant und Datensatz hat.;fr;Un Deep-Link mène d'un e-mail directement à un enregistrement et bascule sur son mandant. Il n'accorde aucune autorisation: à l'ouverture, le système vérifie si l'utilisateur connecté a accès au mandant et à l'enregistrement.
+Ein Deep-Link führt aus einer Mail direkt auf einen Datensatz und schaltet dabei auf dessen Mandant um. Er verleiht keine Berechtigung: beim Öffnen wird geprüft, ob der angemeldete Benutzer Zugriff auf Mandant und Datensatz hat.;it;Un Deep-Link porta da un'e-mail direttamente a un record e passa al relativo mandante. Non conferisce alcuna autorizzazione: all'apertura viene verificato se l'utente connesso ha accesso al mandante e al record.
 Kein Modul hat bisher ein Deep-Link-Ziel registriert.;en;No module has registered a deep link target yet.
+Kein Modul hat bisher ein Deep-Link-Ziel registriert.;fr;Aucun module n'a encore enregistré de cible de Deep-Link.
+Kein Modul hat bisher ein Deep-Link-Ziel registriert.;it;Nessun modulo ha ancora registrato una destinazione Deep-Link.
 Typ;en;Type
+Typ;fr;Type
+Typ;it;Tipo
 Bezeichnung;en;Label
+Bezeichnung;fr;Désignation
+Bezeichnung;it;Denominazione
 Ziel-Seite;en;Target Page
+Ziel-Seite;fr;Page cible
+Ziel-Seite;it;Pagina di destinazione
 Parameter;en;Parameter
+Parameter;fr;Paramètre
+Parameter;it;Parametro
 Link-Muster;en;Link Pattern
+Link-Muster;fr;Modèle de lien
+Link-Muster;it;Modello di link
 Link erzeugen;en;Generate link
+Link erzeugen;fr;Générer le lien
+Link erzeugen;it;Genera il link
 Zum Nachvollziehen und Testen. Der erzeugte Link ist kein Token — wer ihn öffnet, braucht weiterhin ein Konto mit Zugriff auf diesen Mandanten und diesen Datensatz.;en;For tracing and testing. The generated link is not a token — whoever opens it still needs an account with access to this tenant and this record.
+Zum Nachvollziehen und Testen. Der erzeugte Link ist kein Token — wer ihn öffnet, braucht weiterhin ein Konto mit Zugriff auf diesen Mandanten und diesen Datensatz.;fr;Pour comprendre et tester. Le lien généré n'est pas un jeton — qui l'ouvre a toujours besoin d'un compte ayant accès à ce mandant et à cet enregistrement.
+Zum Nachvollziehen und Testen. Der erzeugte Link ist kein Token — wer ihn öffnet, braucht weiterhin ein Konto mit Zugriff auf diesen Mandanten und diesen Datensatz.;it;Per verificare e testare. Il link generato non è un token — chi lo apre ha comunque bisogno di un account con accesso a questo mandante e a questo record.
 -- bitte wählen --;en;-- please select --
+-- bitte wählen --;fr;-- veuillez choisir --
+-- bitte wählen --;it;-- selezionare --
 Datensatz-Id;en;Record ID
+Datensatz-Id;fr;Id de l'enregistrement
+Datensatz-Id;it;Id del record
 #
 # --- mandate.xhtml
 Neues Mandat...;en;New tenant...
+Neues Mandat...;fr;Nouveau mandant...
+Neues Mandat...;it;Nuovo mandante...
 Erstellen;en;Create
+Erstellen;fr;Créer
+Erstellen;it;Crea
 Keine Mandate vorhanden;en;No tenants available
+Keine Mandate vorhanden;fr;Aucun mandant disponible
+Keine Mandate vorhanden;it;Nessun mandante disponibile
 aktiv;en;active
+aktiv;fr;actif
+aktiv;it;attivo
 Aus Verwaltung entfernen;en;Remove from administration
+Aus Verwaltung entfernen;fr;Retirer de l'administration
+Aus Verwaltung entfernen;it;Rimuovi dall'amministrazione
 Der Mandant wird aus der Auswahlliste entfernt und seine Menükonfiguration gelöscht. Die Fachdaten der Anwendung (Zeiterfassung, Rechnungen, ...) bleiben bestehen und müssen separat bereinigt werden. Fortfahren?;en;The tenant is removed from the selection list and its menu configuration is deleted. The application data (time tracking, invoices, ...) remains and must be cleaned up separately. Continue?
+Der Mandant wird aus der Auswahlliste entfernt und seine Menükonfiguration gelöscht. Die Fachdaten der Anwendung (Zeiterfassung, Rechnungen, ...) bleiben bestehen und müssen separat bereinigt werden. Fortfahren?;fr;Le mandant est retiré de la liste de sélection et sa configuration de menus est supprimée. Les données métier de l'application (saisie des heures, factures, ...) subsistent et doivent être nettoyées séparément. Continuer?
+Der Mandant wird aus der Auswahlliste entfernt und seine Menükonfiguration gelöscht. Die Fachdaten der Anwendung (Zeiterfassung, Rechnungen, ...) bleiben bestehen und müssen separat bereinigt werden. Fortfahren?;it;Il mandante viene rimosso dall'elenco di selezione e la sua configurazione dei menu viene eliminata. I dati applicativi (registrazione delle ore, fatture, ...) restano e devono essere ripuliti separatamente. Continuare?
 Benutzer und Mandate-Zuordnung;en;Users and Tenant Assignment
+Benutzer und Mandate-Zuordnung;fr;Utilisateurs et attribution des mandants
+Benutzer und Mandate-Zuordnung;it;Utenti e assegnazione dei mandanti
 Keine Benutzer vorhanden;en;No users available
+Keine Benutzer vorhanden;fr;Aucun utilisateur disponible
+Keine Benutzer vorhanden;it;Nessun utente disponibile
 Filter zurücksetzen;en;Reset filter
+Filter zurücksetzen;fr;Réinitialiser le filtre
+Filter zurücksetzen;it;Reimposta il filtro
 Sie;en;You
+Sie;fr;Vous
+Sie;it;Lei
 Kein Mandat;en;No tenant
+Kein Mandat;fr;Aucun mandant
+Kein Mandat;it;Nessun mandante
 Hinweis;en;Note
+Hinweis;fr;Remarque
+Hinweis;it;Nota
 Ändern Sie das Mandat eines Benutzers, indem Sie es in der Dropdown-Liste auswählen. Die Änderung wird automatisch gespeichert.;en;Change a user's tenant by selecting it in the dropdown list. The change is saved automatically.
+Ändern Sie das Mandat eines Benutzers, indem Sie es in der Dropdown-Liste auswählen. Die Änderung wird automatisch gespeichert.;fr;Modifiez le mandant d'un utilisateur en le sélectionnant dans la liste déroulante. La modification est enregistrée automatiquement.
+Ändern Sie das Mandat eines Benutzers, indem Sie es in der Dropdown-Liste auswählen. Die Änderung wird automatisch gespeichert.;it;Modifichi il mandante di un utente selezionandolo nell'elenco a discesa. La modifica viene salvata automaticamente.
 Benutzer ohne zugewiesenes Mandat erhalten automatisch das default Mandat.;en;Users without an assigned tenant automatically receive the default tenant.
+Benutzer ohne zugewiesenes Mandat erhalten automatisch das default Mandat.;fr;Les utilisateurs sans mandant attribué reçoivent automatiquement le mandant par défaut.
+Benutzer ohne zugewiesenes Mandat erhalten automatisch das default Mandat.;it;Gli utenti senza mandante assegnato ricevono automaticamente il mandante predefinito.
 #
 # --- performance.xhtml
 Neu laden;en;Reload
+Neu laden;fr;Recharger
+Neu laden;it;Ricarica
 Methode;en;Method
+Methode;fr;Méthode
+Methode;it;Metodo
 Durchschnitt;en;Average
+Durchschnitt;fr;Moyenne
+Durchschnitt;it;Media
 Letzter Aufruf;en;Last Call
+Letzter Aufruf;fr;Dernier appel
+Letzter Aufruf;it;Ultima chiamata
 #
 # --- myuser.xhtml
 Benutzerinformationen;en;User Information
+Benutzerinformationen;fr;Informations sur l'utilisateur
+Benutzerinformationen;it;Informazioni sull'utente
 Basis Informationen;en;Basic Information
+Basis Informationen;fr;Informations de base
+Basis Informationen;it;Informazioni di base
 Passwort ändern;en;Change Password
+Passwort ändern;fr;Changer le mot de passe
+Passwort ändern;it;Cambia la password
 Aktuelles Passwort;en;Current Password
+Aktuelles Passwort;fr;Mot de passe actuel
+Aktuelles Passwort;it;Password attuale
 Neues Passwort;en;New Password
+Neues Passwort;fr;Nouveau mot de passe
+Neues Passwort;it;Nuova password
 Passwort bestätigen;en;Confirm Password
+Passwort bestätigen;fr;Confirmer le mot de passe
+Passwort bestätigen;it;Conferma la password
 Aktiviert;en;Enabled
+Aktiviert;fr;Activé
+Aktiviert;it;Attivato
 Nicht aktiviert;en;Not enabled
+Nicht aktiviert;fr;Non activé
+Nicht aktiviert;it;Non attivato
 Schützen Sie Ihr Konto mit einem zweiten Faktor (Authenticator-App wie Google Authenticator, Aegis, 1Password).;en;Protect your account with a second factor (authenticator app such as Google Authenticator, Aegis, 1Password).
+Schützen Sie Ihr Konto mit einem zweiten Faktor (Authenticator-App wie Google Authenticator, Aegis, 1Password).;fr;Protégez votre compte avec un deuxième facteur (application d'authentification telle que Google Authenticator, Aegis, 1Password).
+Schützen Sie Ihr Konto mit einem zweiten Faktor (Authenticator-App wie Google Authenticator, Aegis, 1Password).;it;Protegga il suo account con un secondo fattore (app di autenticazione come Google Authenticator, Aegis, 1Password).
 Einrichten;en;Set up
+Einrichten;fr;Configurer
+Einrichten;it;Configura
 QR-Code scannen;en;Scan QR code
+QR-Code scannen;fr;Scanner le code QR
+QR-Code scannen;it;Scansiona il codice QR
 Oder Schlüssel manuell eingeben;en;Or enter the key manually
+Oder Schlüssel manuell eingeben;fr;Ou saisir la clé manuellement
+Oder Schlüssel manuell eingeben;it;Oppure inserisca la chiave manualmente
 Bestätigungscode;en;Confirmation Code
+Bestätigungscode;fr;Code de confirmation
+Bestätigungscode;it;Codice di conferma
 Aktivieren;en;Enable
+Aktivieren;fr;Activer
+Aktivieren;it;Attiva
 Bewahren Sie diese Recovery-Codes sicher auf. Jeder Code funktioniert genau einmal, falls Sie keinen Zugriff auf Ihre App haben. Sie werden nur JETZT angezeigt.;en;Keep these recovery codes in a safe place. Each code works exactly once in case you have no access to your app. They are shown only NOW.
+Bewahren Sie diese Recovery-Codes sicher auf. Jeder Code funktioniert genau einmal, falls Sie keinen Zugriff auf Ihre App haben. Sie werden nur JETZT angezeigt.;fr;Conservez ces codes de récupération en lieu sûr. Chaque code fonctionne exactement une fois, si vous n'avez pas accès à votre application. Ils ne sont affichés que MAINTENANT.
+Bewahren Sie diese Recovery-Codes sicher auf. Jeder Code funktioniert genau einmal, falls Sie keinen Zugriff auf Ihre App haben. Sie werden nur JETZT angezeigt.;it;Conservi questi codici di recupero in un luogo sicuro. Ogni codice funziona esattamente una volta, nel caso non abbia accesso alla sua app. Vengono mostrati solo ADESSO.
 Passwort zur Bestätigung;en;Password for confirmation
+Passwort zur Bestätigung;fr;Mot de passe pour confirmation
+Passwort zur Bestätigung;it;Password di conferma
 Zwei-Faktor deaktivieren;en;Disable two-factor
+Zwei-Faktor deaktivieren;fr;Désactiver l'authentification à deux facteurs
+Zwei-Faktor deaktivieren;it;Disattiva l'autenticazione a due fattori
 Account Status;en;Account Status
+Account Status;fr;État du compte
+Account Status;it;Stato dell'account
 Authentifiziert;en;Authenticated
+Authentifiziert;fr;Authentifié
+Authentifiziert;it;Autenticato
 Account aktiv;en;Account active
+Account aktiv;fr;Compte actif
+Account aktiv;it;Account attivo
 Account nicht abgelaufen;en;Account not expired
+Account nicht abgelaufen;fr;Compte non expiré
+Account nicht abgelaufen;it;Account non scaduto
 Account nicht gesperrt;en;Account not locked
+Account nicht gesperrt;fr;Compte non verrouillé
+Account nicht gesperrt;it;Account non bloccato
 Passwort nicht abgelaufen;en;Password not expired
+Passwort nicht abgelaufen;fr;Mot de passe non expiré
+Passwort nicht abgelaufen;it;Password non scaduta
 Zugewiesene Rollen;en;Assigned Roles
+Zugewiesene Rollen;fr;Rôles attribués
+Zugewiesene Rollen;it;Ruoli assegnati
 Keine Rollen zugewiesen;en;No roles assigned
+Keine Rollen zugewiesen;fr;Aucun rôle attribué
+Keine Rollen zugewiesen;it;Nessun ruolo assegnato
 Weitere Eigenschaften;en;Additional Properties
+Weitere Eigenschaften;fr;Autres propriétés
+Weitere Eigenschaften;it;Altre proprietà
 Keine weiteren Eigenschaften;en;No additional properties
+Keine weiteren Eigenschaften;fr;Aucune autre propriété
+Keine weiteren Eigenschaften;it;Nessuna altra proprietà
 Magic-Link;en;Magic Link
+Magic-Link;fr;Magic-Link
+Magic-Link;it;Magic-Link
 Magic-Link an meine Adresse senden;en;Send magic link to my address
+Magic-Link an meine Adresse senden;fr;Envoyer le Magic-Link à mon adresse
+Magic-Link an meine Adresse senden;it;Invia il Magic-Link al mio indirizzo
 Wir senden dir einen einmaligen Anmelde-Link an deine E-Mail-Adresse.;en;We will send a one-time login link to your e-mail address.
+Wir senden dir einen einmaligen Anmelde-Link an deine E-Mail-Adresse.;fr;Nous vous envoyons un lien de connexion à usage unique à votre adresse e-mail.
+Wir senden dir einen einmaligen Anmelde-Link an deine E-Mail-Adresse.;it;Le inviamo un link di accesso monouso al suo indirizzo e-mail.
 #
 # --- topbar.xhtml
 Suchen… (⌘K);en;Search… (⌘K)
+Suchen… (⌘K);fr;Rechercher… (⌘K)
+Suchen… (⌘K);it;Cerca… (⌘K)
 Keine Treffer;en;No results
+Keine Treffer;fr;Aucun résultat
+Keine Treffer;it;Nessun risultato
 Tippen zum Suchen;en;Type to search
+Tippen zum Suchen;fr;Taper pour rechercher
+Tippen zum Suchen;it;Digiti per cercare
 Suchergebnisse;en;Search Results
+Suchergebnisse;fr;Résultats de la recherche
+Suchergebnisse;it;Risultati della ricerca
 #
 # --- settings.xhtml
 Settings;en;Settings
+Settings;fr;Paramètres
+Settings;it;Impostazioni
 Suchen...;en;Search...
+Suchen...;fr;Rechercher...
+Suchen...;it;Cerca...
 Neue Einstellung;en;New Setting
+Neue Einstellung;fr;Nouveau paramètre
+Neue Einstellung;it;Nuova impostazione
 Einstellung wirklich löschen?;en;Really delete this setting?
+Einstellung wirklich löschen?;fr;Supprimer vraiment ce paramètre?
+Einstellung wirklich löschen?;it;Eliminare davvero questa impostazione?
 Schlüssel;en;Key
+Schlüssel;fr;Clé
+Schlüssel;it;Chiave
 Wert;en;Value
+Wert;fr;Valeur
+Wert;it;Valore
 Ebene;en;Level
+Ebene;fr;Niveau
+Ebene;it;Livello
 Einstellung Details;en;Setting Details
+Einstellung Details;fr;Détails du paramètre
+Einstellung Details;it;Dettagli dell'impostazione
 Ganze Zahl eingeben;en;Enter an integer
+Ganze Zahl eingeben;fr;Saisir un nombre entier
+Ganze Zahl eingeben;it;Inserisca un numero intero
 #
 # --- setup.xhtml
 Login;en;Login
+Login;fr;Connexion
+Login;it;Accesso
 Root-Benutzer aktivieren;en;Enable root user
+Root-Benutzer aktivieren;fr;Activer l'utilisateur root
+Root-Benutzer aktivieren;it;Attiva l'utente root
 Passwort-Verwaltung aktivieren;en;Enable password management
+Passwort-Verwaltung aktivieren;fr;Activer la gestion des mots de passe
+Passwort-Verwaltung aktivieren;it;Attiva la gestione delle password
 Zwei-Faktor (TOTP) aktivieren;en;Enable two-factor (TOTP)
+Zwei-Faktor (TOTP) aktivieren;fr;Activer l'authentification à deux facteurs (TOTP)
+Zwei-Faktor (TOTP) aktivieren;it;Attiva l'autenticazione a due fattori (TOTP)
 Automatischer OIDC-Redirect;en;Automatic OIDC redirect
+Automatischer OIDC-Redirect;fr;Redirection OIDC automatique
+Automatischer OIDC-Redirect;it;Reindirizzamento OIDC automatico
 OIDC-Provider;en;OIDC Provider
+OIDC-Provider;fr;Fournisseur OIDC
+OIDC-Provider;it;Provider OIDC
 Auswählen;en;Select
+Auswählen;fr;Sélectionner
+Auswählen;it;Seleziona
 Selbst-Registrierung erlauben;en;Allow self-registration
+Selbst-Registrierung erlauben;fr;Autoriser l'auto-inscription
+Selbst-Registrierung erlauben;it;Consenti l'autoregistrazione
 Passwort-Reset per Link;en;Password reset via link
+Passwort-Reset per Link;fr;Réinitialisation du mot de passe par lien
+Passwort-Reset per Link;it;Reimpostazione della password tramite link
 Login-Link (Magic-Link);en;Login link (magic link)
+Login-Link (Magic-Link);fr;Lien de connexion (Magic-Link)
+Login-Link (Magic-Link);it;Link di accesso (Magic-Link)
 System-Mailkonto (Auth-Mails);en;System mail account (auth e-mails)
+System-Mailkonto (Auth-Mails);fr;Compte e-mail système (e-mails d'authentification)
+System-Mailkonto (Auth-Mails);it;Account e-mail di sistema (e-mail di autenticazione)
 Root-Benutzer: Wenn deaktiviert, wird der Benutzer root@root.root sofort gelöscht. Beim Aktivieren wird er neu erstellt (Passwort: root).;en;Root user: if disabled, the user root@root.root is deleted immediately. When enabled, it is recreated (password: root).
+Root-Benutzer: Wenn deaktiviert, wird der Benutzer root@root.root sofort gelöscht. Beim Aktivieren wird er neu erstellt (Passwort: root).;fr;Utilisateur root: s'il est désactivé, l'utilisateur root@root.root est supprimé immédiatement. À l'activation, il est recréé (mot de passe: root).
+Root-Benutzer: Wenn deaktiviert, wird der Benutzer root@root.root sofort gelöscht. Beim Aktivieren wird er neu erstellt (Passwort: root).;it;Utente root: se disattivato, l'utente root@root.root viene eliminato immediatamente. All'attivazione viene ricreato (password: root).
 Auto-Login Link: Wenn deaktiviert, funktionieren bestehende Login-Links nicht mehr und die Option verschwindet aus den Benutzereinstellungen.;en;Auto-login link: if disabled, existing login links no longer work and the option disappears from the user settings.
+Auto-Login Link: Wenn deaktiviert, funktionieren bestehende Login-Links nicht mehr und die Option verschwindet aus den Benutzereinstellungen.;fr;Lien de connexion automatique: s'il est désactivé, les liens de connexion existants ne fonctionnent plus et l'option disparaît des paramètres utilisateur.
+Auto-Login Link: Wenn deaktiviert, funktionieren bestehende Login-Links nicht mehr und die Option verschwindet aus den Benutzereinstellungen.;it;Link di accesso automatico: se disattivato, i link di accesso esistenti non funzionano più e l'opzione scompare dalle impostazioni utente.
 OIDC-Redirect: Wenn aktiviert, werden Benutzer beim Login automatisch zum ausgewählten OIDC-Provider weitergeleitet.;en;OIDC redirect: if enabled, users are automatically redirected to the selected OIDC provider at login.
+OIDC-Redirect: Wenn aktiviert, werden Benutzer beim Login automatisch zum ausgewählten OIDC-Provider weitergeleitet.;fr;Redirection OIDC: si elle est activée, les utilisateurs sont automatiquement redirigés vers le fournisseur OIDC sélectionné lors de la connexion.
+OIDC-Redirect: Wenn aktiviert, werden Benutzer beim Login automatisch zum ausgewählten OIDC-Provider weitergeleitet.;it;Reindirizzamento OIDC: se attivato, all'accesso gli utenti vengono reindirizzati automaticamente al provider OIDC selezionato.
 Zwei-Faktor (TOTP): Betrifft NUR lokale Passwort-Benutzer. OIDC-only-Benutzer (passwordless) sind nie betroffen. Nach dem Aktivieren richtet jeder Benutzer den zweiten Faktor selbst im Profil („Mein Konto“) ein.;en;Two-factor (TOTP): affects ONLY local password users. OIDC-only users (passwordless) are never affected. After enabling, each user sets up the second factor in their own profile („My Account“).
+Zwei-Faktor (TOTP): Betrifft NUR lokale Passwort-Benutzer. OIDC-only-Benutzer (passwordless) sind nie betroffen. Nach dem Aktivieren richtet jeder Benutzer den zweiten Faktor selbst im Profil („Mein Konto“) ein.;fr;Authentification à deux facteurs (TOTP): ne concerne QUE les utilisateurs avec mot de passe local. Les utilisateurs OIDC uniquement (sans mot de passe) ne sont jamais concernés. Après l'activation, chaque utilisateur configure lui-même le deuxième facteur dans son profil («Mon compte»).
+Zwei-Faktor (TOTP): Betrifft NUR lokale Passwort-Benutzer. OIDC-only-Benutzer (passwordless) sind nie betroffen. Nach dem Aktivieren richtet jeder Benutzer den zweiten Faktor selbst im Profil („Mein Konto“) ein.;it;Autenticazione a due fattori (TOTP): riguarda SOLO gli utenti con password locale. Gli utenti solo OIDC (senza password) non sono mai interessati. Dopo l'attivazione ogni utente configura autonomamente il secondo fattore nel proprio profilo («Il mio account»).
 Selbst-Registrierung: Erlaubt Anonymen das Anlegen eines Kontos via E-Mail-Verifikation auf /register.;en;Self-registration: allows anonymous visitors to create an account via e-mail verification on /register.
+Selbst-Registrierung: Erlaubt Anonymen das Anlegen eines Kontos via E-Mail-Verifikation auf /register.;fr;Auto-inscription: permet aux visiteurs anonymes de créer un compte par vérification d'e-mail sur /register.
+Selbst-Registrierung: Erlaubt Anonymen das Anlegen eines Kontos via E-Mail-Verifikation auf /register.;it;Autoregistrazione: consente agli utenti anonimi di creare un account tramite verifica dell'e-mail su /register.
 Passwort-Reset per Link: Erlaubt Benutzern, ihr Passwort über einen einmaligen E-Mail-Link auf /password-reset zurückzusetzen.;en;Password reset via link: allows users to reset their password via a one-time e-mail link on /password-reset.
+Passwort-Reset per Link: Erlaubt Benutzern, ihr Passwort über einen einmaligen E-Mail-Link auf /password-reset zurückzusetzen.;fr;Réinitialisation du mot de passe par lien: permet aux utilisateurs de réinitialiser leur mot de passe via un lien e-mail à usage unique sur /password-reset.
+Passwort-Reset per Link: Erlaubt Benutzern, ihr Passwort über einen einmaligen E-Mail-Link auf /password-reset zurückzusetzen.;it;Reimpostazione della password tramite link: consente agli utenti di reimpostare la propria password tramite un link e-mail monouso su /password-reset.
 System-Mailkonto: Über dieses GLOBAL-Konto (Sichtbarkeit „Global – System“ in der Mailbox) werden Auth-Mails (Passwort-Reset, Login-Link, Registrierung) versendet. Ohne Konto werden keine Auth-Mails verschickt.;en;System mail account: auth e-mails (password reset, login link, registration) are sent via this GLOBAL account (visibility „Global – System“ in the mailbox). Without an account, no auth e-mails are sent.
+System-Mailkonto: Über dieses GLOBAL-Konto (Sichtbarkeit „Global – System“ in der Mailbox) werden Auth-Mails (Passwort-Reset, Login-Link, Registrierung) versendet. Ohne Konto werden keine Auth-Mails verschickt.;fr;Compte e-mail système: les e-mails d'authentification (réinitialisation du mot de passe, lien de connexion, inscription) sont envoyés via ce compte GLOBAL (visibilité «Global – Système» dans la boîte aux lettres). Sans compte, aucun e-mail d'authentification n'est envoyé.
+System-Mailkonto: Über dieses GLOBAL-Konto (Sichtbarkeit „Global – System“ in der Mailbox) werden Auth-Mails (Passwort-Reset, Login-Link, Registrierung) versendet. Ohne Konto werden keine Auth-Mails verschickt.;it;Account e-mail di sistema: le e-mail di autenticazione (reimpostazione della password, link di accesso, registrazione) vengono inviate tramite questo account GLOBAL (visibilità «Global – Sistema» nella casella di posta). Senza account non viene inviata alcuna e-mail di autenticazione.
 Achtung: Es ist kein GLOBAL-Systemmailkonto vorhanden. Lege in der Mailbox ein Konto mit Sichtbarkeit „Global – System“ an, damit hier eine Auswahl möglich ist und Auth-Mails versendet werden können.;en;Attention: there is no GLOBAL system mail account. Create an account with visibility „Global – System“ in the mailbox so that a selection is possible here and auth e-mails can be sent.
+Achtung: Es ist kein GLOBAL-Systemmailkonto vorhanden. Lege in der Mailbox ein Konto mit Sichtbarkeit „Global – System“ an, damit hier eine Auswahl möglich ist und Auth-Mails versendet werden können.;fr;Attention: aucun compte e-mail système GLOBAL n'est disponible. Créez dans la boîte aux lettres un compte avec la visibilité «Global – Système», afin qu'une sélection soit possible ici et que les e-mails d'authentification puissent être envoyés.
+Achtung: Es ist kein GLOBAL-Systemmailkonto vorhanden. Lege in der Mailbox ein Konto mit Sichtbarkeit „Global – System“ an, damit hier eine Auswahl möglich ist und Auth-Mails versendet werden können.;it;Attenzione: non è disponibile alcun account e-mail di sistema GLOBAL. Crei nella casella di posta un account con visibilità «Global – Sistema», affinché qui sia possibile una selezione e le e-mail di autenticazione possano essere inviate.
 Sitzungen;en;Sessions
+Sitzungen;fr;Sessions
+Sitzungen;it;Sessioni
 Sitzungs-Informationen aufzeichnen;en;Record session information
+Sitzungs-Informationen aufzeichnen;fr;Enregistrer les informations de session
+Sitzungs-Informationen aufzeichnen;it;Registra le informazioni di sessione
 Aufgezeichnet werden je Sitzung: Benutzer, Mandant, Sitzungs-Id, Browserkennung (User-Agent), Anmeldezeit und letzte Aktivität — keine Inhalte und keine Klickpfade.;en;Recorded per session: user, tenant, session ID, browser identification (user agent), login time and last activity — no contents and no click paths.
+Aufgezeichnet werden je Sitzung: Benutzer, Mandant, Sitzungs-Id, Browserkennung (User-Agent), Anmeldezeit und letzte Aktivität — keine Inhalte und keine Klickpfade.;fr;Sont enregistrés par session: utilisateur, mandant, id de session, identification du navigateur (user agent), heure de connexion et dernière activité — aucun contenu et aucun parcours de clics.
+Aufgezeichnet werden je Sitzung: Benutzer, Mandant, Sitzungs-Id, Browserkennung (User-Agent), Anmeldezeit und letzte Aktivität — keine Inhalte und keine Klickpfade.;it;Per ogni sessione vengono registrati: utente, mandante, id di sessione, identificazione del browser (user agent), ora di accesso e ultima attività — nessun contenuto e nessun percorso di clic.
 Wenn deaktiviert, bleibt die Sitzungsübersicht (Root → Sitzungen) leer, weil keine neuen Einträge mehr entstehen. Bereits aufgezeichnete Sitzungen bleiben erhalten und werden nicht gelöscht. Das Beenden einer laufenden Sitzung funktioniert weiterhin. Die Umstellung wirkt sofort, ohne Neustart.;en;If disabled, the session overview (Root → Sessions) stays empty because no new entries are created. Sessions already recorded are kept and not deleted. Ending a running session still works. The change takes effect immediately, without restart.
+Wenn deaktiviert, bleibt die Sitzungsübersicht (Root → Sitzungen) leer, weil keine neuen Einträge mehr entstehen. Bereits aufgezeichnete Sitzungen bleiben erhalten und werden nicht gelöscht. Das Beenden einer laufenden Sitzung funktioniert weiterhin. Die Umstellung wirkt sofort, ohne Neustart.;fr;S'il est désactivé, l'aperçu des sessions (Root → Sessions) reste vide, car plus aucune nouvelle entrée n'est créée. Les sessions déjà enregistrées sont conservées et ne sont pas supprimées. La fermeture d'une session en cours continue de fonctionner. Le changement prend effet immédiatement, sans redémarrage.
+Wenn deaktiviert, bleibt die Sitzungsübersicht (Root → Sitzungen) leer, weil keine neuen Einträge mehr entstehen. Bereits aufgezeichnete Sitzungen bleiben erhalten und werden nicht gelöscht. Das Beenden einer laufenden Sitzung funktioniert weiterhin. Die Umstellung wirkt sofort, ohne Neustart.;it;Se disattivato, la panoramica delle sessioni (Root → Sessioni) resta vuota, perché non vengono più create nuove voci. Le sessioni già registrate vengono conservate e non eliminate. La chiusura di una sessione in corso continua a funzionare. La modifica ha effetto immediato, senza riavvio.
 Logo (Light Mode);en;Logo (light mode)
+Logo (Light Mode);fr;Logo (mode clair)
+Logo (Light Mode);it;Logo (modalità chiara)
 Breite;en;Width
+Breite;fr;Largeur
+Breite;it;Larghezza
 Höhe;en;Height
+Höhe;fr;Hauteur
+Höhe;it;Altezza
 Dimensionen speichern;en;Save dimensions
+Dimensionen speichern;fr;Enregistrer les dimensions
+Dimensionen speichern;it;Salva le dimensioni
 Logo entfernen;en;Remove logo
+Logo entfernen;fr;Supprimer le logo
+Logo entfernen;it;Rimuovi il logo
 Vorschau;en;Preview
+Vorschau;fr;Aperçu
+Vorschau;it;Anteprima
 Kein Light-Logo hochgeladen;en;No light logo uploaded
+Kein Light-Logo hochgeladen;fr;Aucun logo clair téléversé
+Kein Light-Logo hochgeladen;it;Nessun logo chiaro caricato
 Logo (Dark Mode);en;Logo (dark mode)
+Logo (Dark Mode);fr;Logo (mode sombre)
+Logo (Dark Mode);it;Logo (modalità scura)
 Kein Dark-Logo hochgeladen;en;No dark logo uploaded
+Kein Dark-Logo hochgeladen;fr;Aucun logo sombre téléversé
+Kein Dark-Logo hochgeladen;it;Nessun logo scuro caricato
 Sprachwechsel (Topbar);en;Language switch (top bar)
+Sprachwechsel (Topbar);fr;Changement de langue (barre supérieure)
+Sprachwechsel (Topbar);it;Cambio lingua (barra superiore)
 Sprachwechsel anzeigen;en;Show language switch
+Sprachwechsel anzeigen;fr;Afficher le changement de langue
+Sprachwechsel anzeigen;it;Mostra il cambio lingua
 Icon;en;Icon
+Icon;fr;Icône
+Icon;it;Icona
 Sprache wechseln;en;Switch language
+Sprache wechseln;fr;Changer de langue
+Sprache wechseln;it;Cambia lingua
 Footer;en;Footer
+Footer;fr;Pied de page
+Footer;it;Piè di pagina
 Footer-Text;en;Footer text
+Footer-Text;fr;Texte du pied de page
+Footer-Text;it;Testo del piè di pagina
 Version anzeigen;en;Show version
+Version anzeigen;fr;Afficher la version
+Version anzeigen;it;Mostra la versione
 Root-Version anzeigen;en;Show root version
+Root-Version anzeigen;fr;Afficher la version root
+Root-Version anzeigen;it;Mostra la versione root
 Build-Zeitpunkt anzeigen;en;Show build time
+Build-Zeitpunkt anzeigen;fr;Afficher la date de compilation
+Build-Zeitpunkt anzeigen;it;Mostra la data di compilazione
 Footer speichern;en;Save footer
+Footer speichern;fr;Enregistrer le pied de page
+Footer speichern;it;Salva il piè di pagina
 #
 # --- cron.xhtml
 Bitte warten...;en;Please wait...
+Bitte warten...;fr;Veuillez patienter...
+Bitte warten...;it;Attenda...
 Cron Jobs Liste;en;Cron Job List
+Cron Jobs Liste;fr;Liste des tâches cron
+Cron Jobs Liste;it;Elenco dei cron job
 Ausführung;en;Execution
+Ausführung;fr;Exécution
+Ausführung;it;Esecuzione
 Letzter Lauf;en;Last Run
+Letzter Lauf;fr;Dernière exécution
+Letzter Lauf;it;Ultima esecuzione
 Zähler;en;Counter
+Zähler;fr;Compteur
+Zähler;it;Contatore
 Letzte Dauer;en;Last Duration
+Letzte Dauer;fr;Dernière durée
+Letzte Dauer;it;Ultima durata
 Nächster Lauf;en;Next Run
+Nächster Lauf;fr;Prochaine exécution
+Nächster Lauf;it;Prossima esecuzione
 Ausführungszeit anpassen;en;Adjust execution time
+Ausführungszeit anpassen;fr;Modifier l'heure d'exécution
+Ausführungszeit anpassen;it;Modifica l'orario di esecuzione
 Cron Ausdruck;en;Cron Expression
+Cron Ausdruck;fr;Expression cron
+Cron Ausdruck;it;Espressione cron
 Hilfe;en;Help
+Hilfe;fr;Aide
+Hilfe;it;Aiuto
 Schliessen;en;Close
+Schliessen;fr;Fermer
+Schliessen;it;Chiudi
 #
 # --- i18n-translations.xhtml
 Übersetzungen;en;Translations
+Übersetzungen;fr;Traductions
+Übersetzungen;it;Traduzioni
 Neue Übersetzung;en;New Translation
+Neue Übersetzung;fr;Nouvelle traduction
+Neue Übersetzung;it;Nuova traduzione
 Übersetzung wirklich löschen?;en;Really delete this translation?
+Übersetzung wirklich löschen?;fr;Supprimer vraiment cette traduction?
+Übersetzung wirklich löschen?;it;Eliminare davvero questa traduzione?
 Cache leeren;en;Clear cache
+Cache leeren;fr;Vider le cache
+Cache leeren;it;Svuota la cache
 Sprache;en;Language
+Sprache;fr;Langue
+Sprache;it;Lingua
 Übersetzung;en;Translation
+Übersetzung;fr;Traduction
+Übersetzung;it;Traduzione
 #
 # --- rootentities.xhtml
 Datenverwaltung;en;Data Management
+Datenverwaltung;fr;Gestion des données
+Datenverwaltung;it;Gestione dei dati
 #
 # --- entityverwaltung.xhtml
 Entitätstyp auswählen;en;Select entity type
+Entitätstyp auswählen;fr;Sélectionner le type d'entité
+Entitätstyp auswählen;it;Seleziona il tipo di entità
 Keine Daten gefunden;en;No data found
+Keine Daten gefunden;fr;Aucune donnée trouvée
+Keine Daten gefunden;it;Nessun dato trovato
 Daten importieren;en;Import data
+Daten importieren;fr;Importer des données
+Daten importieren;it;Importa i dati
 Warnung;en;Warning
+Warnung;fr;Avertissement
+Warnung;it;Avviso
 Beim Import werden bestehende Daten überschrieben, wenn dieselbe ID vorhanden ist.;en;On import, existing data is overwritten if the same ID exists.
+Beim Import werden bestehende Daten überschrieben, wenn dieselbe ID vorhanden ist.;fr;Lors de l'import, les données existantes sont écrasées si le même ID est présent.
+Beim Import werden bestehende Daten überschrieben, wenn dieselbe ID vorhanden ist.;it;All'importazione i dati esistenti vengono sovrascritti se è presente lo stesso ID.
 Importieren;en;Import
+Importieren;fr;Importer
+Importieren;it;Importa
+#
+# --- Menuetitel aus den @MenuAnnotation-Klassen (PrimefacesMenuItem/PrimefacesSubmenu uebersetzen
+# den title ueber I18nProvider.translate; ohne Zeile hier stuende im Menue ein X_-Platzhalter).
+# Diese Titel stehen in keinem XHTML, PlaintextI18nSeedTest meldet sie deshalb als "ohne
+# Verwendung" — das ist erwartet und kein Fehler.
+Home;en;Home
+Home;fr;Accueil
+Home;it;Home
+Admin;en;Admin
+Admin;fr;Admin
+Admin;it;Admin
+Root;en;Root
+Root;fr;Root
+Root;it;Root
+Anleitung Modul-Rollen;en;Module Roles Guide
+Anleitung Modul-Rollen;fr;Guide des rôles de module
+Anleitung Modul-Rollen;it;Guida ai ruoli dei moduli
+API Token;en;API Token
+API Token;fr;Jeton API
+API Token;it;Token API
+API Tokens;en;API Tokens
+API Tokens;fr;Jetons API
+API Tokens;it;Token API
+API Tokens (Root);en;API Tokens (Root)
+API Tokens (Root);fr;Jetons API (Root)
+API Tokens (Root);it;Token API (Root)
+Benachrichtigungen;en;Notifications
+Benachrichtigungen;fr;Notifications
+Benachrichtigungen;it;Notifiche
+Cron;en;Cron
+Cron;fr;Cron
+Cron;it;Cron
+Debug;en;Debug
+Debug;fr;Débogage
+Debug;it;Debug
+Einstellungen;en;Settings
+Einstellungen;fr;Paramètres
+Einstellungen;it;Impostazioni
+Flyway;en;Flyway
+Flyway;fr;Flyway
+Flyway;it;Flyway
+Howtos;en;Howtos
+Howtos;fr;Howtos
+Howtos;it;Howtos
+Liste;en;List
+Liste;fr;Liste
+Liste;it;Elenco
+Mailtexte;en;Mail Texts
+Mailtexte;fr;Textes d'e-mail
+Mailtexte;it;Testi e-mail
+Mandate;en;Tenants
+Mandate;fr;Mandants
+Mandate;it;Mandanti
+Module;en;Modules
+Module;fr;Modules
+Module;it;Moduli
+OIDC Login;en;OIDC Login
+OIDC Login;fr;Connexion OIDC
+OIDC Login;it;Accesso OIDC
+Performance;en;Performance
+Performance;fr;Performance
+Performance;it;Prestazioni
+Secrets;en;Secrets
+Secrets;fr;Secrets
+Secrets;it;Secrets
+Session Insights;en;Session Insights
+Session Insights;fr;Analyse des sessions
+Session Insights;it;Analisi delle sessioni
+Sessions;en;Sessions
+Sessions;fr;Sessions
+Sessions;it;Sessioni
+Setup;en;Setup
+Setup;fr;Configuration
+Setup;it;Configurazione
+Swagger;en;Swagger
+Swagger;fr;Swagger
+Swagger;it;Swagger
+Webhooks;en;Webhooks
+Webhooks;fr;Webhooks
+Webhooks;it;Webhook

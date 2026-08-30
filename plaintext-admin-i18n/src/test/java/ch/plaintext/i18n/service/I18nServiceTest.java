@@ -235,20 +235,23 @@ class I18nServiceTest {
 
             ArgumentCaptor<I18nTranslation> captor = ArgumentCaptor.forClass(I18nTranslation.class);
             verify(repository, atLeastOnce()).save(captor.capture());
+            // Schluessel Label+Sprache, nicht nur Label: auf dem Test-Classpath liegt neben der
+            // Fixture auch die echte Seed plaintext-root.csv, und die fuehrt jedes Label in drei
+            // Sprachen ("Speichern" -> Save/Enregistrer/Salva).
             Map<String, String> gespeichert = captor.getAllValues().stream()
-                    .collect(Collectors.toMap(I18nTranslation::getDefaultLabel, I18nTranslation::getTranslatedText,
-                            (a, b) -> b));
+                    .collect(Collectors.toMap(t -> t.getDefaultLabel() + "::" + t.getLanguageCode(),
+                            I18nTranslation::getTranslatedText, (a, b) -> b));
 
-            assertEquals("Save", gespeichert.get("Speichern"));
-            assertEquals("Cancel", gespeichert.get("Abbrechen"));
-            assertEquals("With \"quotes\"", gespeichert.get("Zitat"), "Anfuehrungszeichen werden entschaerft");
-            assertEquals("Real", gespeichert.get("Platzhalter"), "X_-Platzhalter wird ueberschrieben");
+            assertEquals("Save", gespeichert.get("Speichern::en"));
+            assertEquals("Cancel", gespeichert.get("Abbrechen::en"));
+            assertEquals("With \"quotes\"", gespeichert.get("Zitat::en"), "Anfuehrungszeichen werden entschaerft");
+            assertEquals("Real", gespeichert.get("Platzhalter::en"), "X_-Platzhalter wird ueberschrieben");
             assertSame(platzhalter, captor.getAllValues().stream()
                     .filter(t -> "Platzhalter".equals(t.getDefaultLabel())).findFirst().orElseThrow(),
                     "bestehender Datensatz wird aktualisiert, nicht dupliziert");
-            assertFalse(gespeichert.containsKey("Vorhanden"), "echte Uebersetzung bleibt unangetastet");
-            assertFalse(gespeichert.containsKey("Kaputt"), "Zeile mit zwei Spalten wird uebersprungen");
-            assertFalse(gespeichert.containsKey(""), "Zeile ohne Label wird uebersprungen");
+            assertFalse(gespeichert.containsKey("Vorhanden::en"), "echte Uebersetzung bleibt unangetastet");
+            assertFalse(gespeichert.containsKey("Kaputt::en"), "Zeile mit zwei Spalten wird uebersprungen");
+            assertFalse(gespeichert.containsKey("::en"), "Zeile ohne Label wird uebersprungen");
         }
 
         @Test
