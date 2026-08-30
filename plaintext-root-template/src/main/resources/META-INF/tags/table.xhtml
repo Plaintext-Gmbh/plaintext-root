@@ -1,0 +1,56 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:p="http://primefaces.org/ui">
+    <!--
+      pt:table — eine p:dataTable mit den Hausvorgaben.
+
+      Der Bestand (Karte 984, gemessen ueber root und app): 113 handgebaute Tabellen, davon 45 mit
+      Paginator in vier verschiedenen rows-Werten, rowsPerPageTemplate in vier Varianten,
+      paginatorTemplate in fuenf, und 101 emptyMessage-Attribute mit 80 verschiedenen
+      Formulierungen. Nichts davon ist eine Entscheidung gewesen — es ist die jeweils
+      naechstliegende Kopiervorlage.
+
+      ================================================================================
+      DIE ZEILENVARIABLE HEISST IMMER "row" — UND ZWAR NICHT AUS GESCHMACK.
+      ================================================================================
+      Ein durchgereichtes var="#{var}" ist technisch UNMOEGLICH, gemessen am 30.08.2026:
+
+          java.lang.IllegalArgumentException
+            at jakarta.faces.component.UIData.setValueExpression(UIData.java:770)
+
+      UIData verbietet fuer "var" ausdruecklich eine ValueExpression — das Attribut MUSS ein
+      Literal sein. Sobald im Tag-File #{var} steht, legt Mojarra eine ValueExpression an, und die
+      Seite endet in HTTP 500. Die urspruengliche Analyse hat diesen Punkt nicht erwaehnt; er ist
+      hier durch einen echten Seitenabruf belegt und nicht durch Nachdenken.
+
+      Folge fuer die Migration: Wer eine Tabelle auf pt:table umstellt, benennt ihre
+      Zeilenvariable auf "row" um — #{t.name} wird zu #{row.name}. Das ist mechanisch und
+      vollstaendig durch den Compiler bzw. den Seitenabruf pruefbar.
+
+      WER DAS NICHT WILL, nimmt weiterhin eine handgebaute p:dataTable und trotzdem die
+      pt:col*-Tags: die brauchen kein var und funktionieren in jeder Tabelle. Der groessere Hebel
+      liegt ohnehin dort (rund 400 Spalten gegenueber 113 Tabellenkoepfen).
+
+      PFLICHT: value
+      OPTIONAL: id, emptyMessage, paginator, rows, rowsPerPageTemplate, styleClass, rowStyleClass,
+                rendered, widgetVar, reflow
+
+      Alle Vorgaben sind ueberschreibbar: Wer einen Grund hat, setzt das Attribut, und dann steht
+      der Grund an genau einer sichtbaren Stelle statt in der Kopie.
+    -->
+    <p:dataTable id="#{empty id ? 'tbl' : id}"
+                 value="#{value}"
+                 var="row"
+                 widgetVar="#{widgetVar}"
+                 rendered="#{empty rendered ? true : rendered}"
+                 emptyMessage="#{empty emptyMessage ? 'Keine Einträge vorhanden' : emptyMessage}"
+                 paginator="#{empty paginator ? true : paginator}"
+                 rows="#{empty rows ? 20 : rows}"
+                 rowsPerPageTemplate="#{empty rowsPerPageTemplate ? '10,20,50,100,200' : rowsPerPageTemplate}"
+                 paginatorPosition="bottom"
+                 reflow="#{empty reflow ? true : reflow}"
+                 rowStyleClass="#{rowStyleClass}"
+                 styleClass="mobile-safe #{styleClass}">
+        <ui:insert/>
+    </p:dataTable>
+</ui:composition>

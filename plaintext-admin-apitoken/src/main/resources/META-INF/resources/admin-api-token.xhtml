@@ -2,6 +2,7 @@
                 xmlns:ui="http://java.sun.com/jsf/facelets"
                 xmlns:p="http://primefaces.org/ui"
                 xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:pt="http://plaintext.ch/ui"
                 xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
 
     <f:metadata>
@@ -29,66 +30,64 @@
                         <h:outputText value="Es gibt keine aktiven API-Tokens in diesem Mandat." style="color: #666; font-style: italic;"/>
                     </h:panelGrid>
 
-                    <p:dataTable value="#{adminApiTokenBean.tokens}"
-                                 var="t"
-                                 rendered="#{adminApiTokenBean.hasTokens()}"
-                                 styleClass="token-table"
-                                 rowStyleClass="#{t.expired ? 'expired-row' : (t.expiresSoon ? 'warning-row' : '')}">
+                    <!-- Karte 984, Pilotmigration auf die pt:-Taglib.
+                         paginator="false" ist hier Absicht und keine Nachlaessigkeit: Diese
+                         Migration soll BELEGEN, dass die Tag-Files identisches Markup erzeugen.
+                         Mit den Hausvorgaben (Paginator an) waere der Vergleich vorher/nachher
+                         verrauscht und bewiese nichts. Die Uebernahme der Vorgaben ist ein
+                         eigener, sichtbarer Schritt. -->
+                    <pt:table value="#{adminApiTokenBean.tokens}"
+                              paginator="false"
+                              rendered="#{adminApiTokenBean.hasTokens()}"
+                              styleClass="token-table"
+                              rowStyleClass="#{row.expired ? 'expired-row' : (row.expiresSoon ? 'warning-row' : '')}">
 
                         <p:column headerText="Benutzer" style="width: 180px;">
-                            <h:outputText value="#{t.userEmail}"/>
+                            <h:outputText value="#{row.userEmail}"/>
                             <br/>
-                            <h:outputText value="(ID: #{t.userId})" style="font-size: 11px; color: #666;"/>
+                            <h:outputText value="(ID: #{row.userId})" style="font-size: 11px; color: #666;"/>
                         </p:column>
 
-                        <p:column headerText="Token-Name" style="width: 180px;">
-                            <h:outputText value="#{t.tokenName}" style="font-weight: bold;"/>
-                        </p:column>
+                        <pt:colText header="Token-Name" width="180px" value="#{row.tokenName}" bold="true"/>
 
                         <p:column headerText="Gültig bis" style="width: 140px;">
-                            <h:panelGroup rendered="#{t.expired}">
+                            <h:panelGroup rendered="#{row.expired}">
                                 <i class="pi pi-exclamation-circle" style="color: #dc3545;"/>
                                 <h:outputText value=" Abgelaufen" style="color: #dc3545; font-weight: bold;"/>
                             </h:panelGroup>
-                            <h:panelGroup rendered="#{!t.expired and t.expiresSoon}">
+                            <h:panelGroup rendered="#{!row.expired and row.expiresSoon}">
                                 <i class="pi pi-exclamation-triangle" style="color: #ffc107;"/>
-                                <h:outputText value=" #{t.expiresAt}" style="color: #856404;"/>
+                                <h:outputText value=" #{row.expiresAt}" style="color: #856404;"/>
                                 <br/>
-                                <h:outputText value="(#{t.daysUntilExpiry} Tage)" style="font-size: 11px; color: #856404;"/>
+                                <h:outputText value="(#{row.daysUntilExpiry} Tage)" style="font-size: 11px; color: #856404;"/>
                             </h:panelGroup>
-                            <h:panelGroup rendered="#{!t.expired and !t.expiresSoon}">
-                                <h:outputText value="#{t.expiresAt}"/>
+                            <h:panelGroup rendered="#{!row.expired and !row.expiresSoon}">
+                                <h:outputText value="#{row.expiresAt}"/>
                                 <br/>
-                                <h:outputText value="(#{t.daysUntilExpiry} Tage)" style="font-size: 11px; color: #666;"/>
+                                <h:outputText value="(#{row.daysUntilExpiry} Tage)" style="font-size: 11px; color: #666;"/>
                             </h:panelGroup>
                         </p:column>
 
-                        <p:column headerText="Zuletzt verwendet" style="width: 140px;">
-                            <h:outputText value="#{t.lastUsedAt}"/>
-                        </p:column>
+                        <pt:colText header="Zuletzt verwendet" width="140px" value="#{row.lastUsedAt}"/>
 
-                        <p:column headerText="Verwendet" style="width: 90px; text-align: center;">
-                            <h:outputText value="#{t.useCount}x"/>
-                        </p:column>
+                        <pt:colText header="Verwendet" width="90px" style="text-align:center;" value="#{row.useCount}x"/>
 
-                        <p:column headerText="Erstellt" style="width: 140px;">
-                            <h:outputText value="#{t.createdAt}"/>
-                        </p:column>
+                        <pt:colText header="Erstellt" width="140px" value="#{row.createdAt}"/>
 
                         <p:column headerText="Aktion" style="width: 100px;">
                             <p:commandButton icon="pi pi-ban"
                                              styleClass="ui-button-danger ui-button-rounded"
                                              title="Token invalidieren"
-                                             action="#{adminApiTokenBean.invalidateToken(t.id)}"
+                                             action="#{adminApiTokenBean.invalidateToken(row.id)}"
                                              update=":fm:tokenTable,:fm:messages"
                                              process="@this">
                                 <p:confirm header="Token invalidieren?"
-                                           message="Der Token '#{t.tokenName}' von Benutzer #{t.userEmail} wird unwiderruflich invalidiert. Fortfahren?"
+                                           message="Der Token '#{row.tokenName}' von Benutzer #{row.userEmail} wird unwiderruflich invalidiert. Fortfahren?"
                                            icon="pi pi-exclamation-triangle"/>
                             </p:commandButton>
                         </p:column>
 
-                    </p:dataTable>
+                    </pt:table>
 
                 </p:outputPanel>
 

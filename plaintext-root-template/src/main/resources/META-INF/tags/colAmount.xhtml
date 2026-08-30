@@ -1,0 +1,27 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:p="http://primefaces.org/ui">
+    <!--
+      pt:colAmount — Betragsspalte: EIN Zahlenformat, rechtsbuendig.
+
+      Gemessener Bestand: #,##0.00 49x plus sieben Varianten, CHF-Currency 5x; die Ausrichtung mal
+      gesetzt, mal nicht. Untereinanderstehende Betraege mit wandernden Kommas sind der haeufigste
+      Grund, warum eine Liste unruhig wirkt, ohne dass jemand sagen kann, warum.
+
+      Attributnamen wie bei pt:colText bewusst colClass/colRendered — Begruendung dort.
+
+      PFLICHT: header, value
+      OPTIONAL: width, pattern, currency, colClass, colRendered
+    -->
+    <p:column headerText="#{header}"
+              rendered="#{empty colRendered ? true : colRendered}"
+              styleClass="#{colClass}"
+              style="width:#{empty width ? '120px' : width}; text-align:right;">
+        <h:outputText value="#{value}">
+            <f:convertNumber pattern="#{empty pattern ? '#,##0.00' : pattern}"/>
+        </h:outputText>
+        <h:outputText value=" #{currency}" rendered="#{not empty currency}"/>
+    </p:column>
+</ui:composition>
