@@ -184,8 +184,9 @@ einen GitHub-Lauf, der genau diesen einen Job ausführt.
 Zwei weitere Workflows dieses Repos hängen **nicht** an der geteilten Pipeline und laufen
 unabhängig vom Umschalter weiter:
 
-* `.github/workflows/playwright.yaml` — die UI-Tests. Sie blockieren keinen Merge und haben
-  in Woodpecker bewusst keine Entsprechung (sie brauchen einen Chromium-Download je Lauf).
+* `.github/workflows/playwright.yaml` — die UI-Tests. Sie haben seit dem 30.08.2026 eine
+  Woodpecker-Entsprechung (`.woodpecker/playwright.yml`, eigener Abschnitt weiter unten);
+  der Chromium-Download je Lauf entfällt dort, weil das Image den Browser mitbringt.
 * `.github/workflows/housekeeping.yml` — nur `workflow_dispatch`, Log-Aufräumen.
 
 ### Woodpecker-Seite
@@ -287,6 +288,7 @@ Reihenfolge nur über `depends_on`.
 | `build.yml`       | `ci`                  | `pull_request`, `manual`, Cron `nightly`      | **kein** `push:master` — dort baut `deploy.yml` (M1 „build once") |
 | `sonar.yml`       | `sonar` (Teil)        | Cron `wochenanalyse`, `manual`                | Voll-Analyse **nicht** portiert, s. u. |
 | `deploy.yml`      | `deploy`              | `push:master`, `manual`                        | ein einziger Step; `release-only` |
+| `playwright.yml` | `playwright` (eigener GitHub-Workflow) | `pull_request`, `manual`, `depends_on: [build]` | Browser-Smoke; eigenes Image **mit** Chromium, **kein** `push:master` |
 | `waechter.sh`     | —                     | —                                              | kein Workflow (Woodpecker liest nur `*.yml`/`*.yaml`) |
 | ~~`verify-dev.yml`~~ | `verify-dev`       | —                                              | **bewusst nicht angelegt**, siehe 2.3 |
 | ~~`verify-prod.yml`~~| `verify-prod`      | —                                              | **bewusst nicht angelegt**, siehe 2.3 |
@@ -371,7 +373,7 @@ sudo docker build -t plaintext-ci:jdk25 .
 
 ---
 
-## 7. Was **nicht** portiert ist
+## 7. Was portiert ist — und was **nicht**
 
 Ehrlich benannt, statt überspielt.
 
@@ -445,14 +447,86 @@ Step-Image, (3) `nvd_api_key` als Secret.
 | GitHub | Woodpecker | Bewertung |
 |---|---|---|
 | `$GITHUB_STEP_SUMMARY` (Coverage-Tabelle, Deploy-Summary) | — | Ersatz: Ausgabe ins Step-Log. Funktional gleichwertig, optisch nicht. |
-| `actions/upload-artifact` (Testberichte, Screenshots bei Fehlschlag) | — | Woodpecker hat keinen eingebauten Artefakt-Speicher. Für root heute folgenlos (Uploads nur `if: failure()`, niemand konsumiert sie). |
+| `actions/upload-artifact` (Testberichte, Screenshots bei Fehlschlag) | — | Woodpecker hat keinen eingebauten Artefakt-Speicher. Ersatz in `playwright.yml`: Failsafe-/Surefire-Berichte gehen bei Fehlschlag ins Step-Log. |
 | `timeout-minutes` je Job/Step | Repo-Einstellung | Grobkörniger; der 180-min-Wert des Sonar-Jobs lässt sich nicht getrennt setzen. |
 | `concurrency: cancel-in-progress` für PR-Zweige | Repo-Einstellung „cancel previous pipelines" | Vorhanden, aber nicht pro Zweig unterscheidbar — siehe 7.1. |
 | `workflow_dispatch` mit Auswahlfeld | Variable im „Run pipeline"-Dialog + Allowlist in `deploy.yml` | Die Allowlist ersetzt die gelöschte `release-all`-Option, siehe Abschnitt 6. |
 | `namespace-lint` | — | bleibt bewusst auf GitHub. |
-| `playwright.yaml` | — | bleibt bewusst auf GitHub; blockiert ohnehin keinen Merge. |
+| `playwright.yaml` | `.woodpecker/playwright.yml` | Seit 30.08.2026 portiert — siehe den eigenen Abschnitt. |
 | `schedule`-Läufe | noch nicht vom `ci-motor` gesperrt | **Offen**, wird von anderer Seite portiert — siehe Abschnitt 3. |
 | Twingate | entfällt | Agent steht im LAN. |
+
+---
+
+### 7.4 Die Browser-Tests (`playwright.yml`) — **portiert**
+
+Portiert am 30.08.2026. Vorher war dies der letzte Workflow dieses Repos, der noch über
+GitHub Actions lief: `.github/workflows/playwright.yaml` hängt nicht an der geteilten
+Pipeline und wurde deshalb vom `ci-motor`-Wächter nie gesperrt.
+
+**Was er testet.** Keinen Browser gegen eine deployte Adresse — es ist ein *Java*-Test.
+Maven führt `SelfServicePlaywrightIT` und `RootPagesPlaywrightIT` in
+`plaintext-root-webapp` aus; beide Klassen fahren die komplette Spring-Anwendung auf
+einem zufälligen Port hoch und bedienen sie mit Chromium. Die
+Browser-Bindung ist `com.microsoft.playwright` (Java) in Version 1.60.0. Node und die
+Playwright-NPM-Welt kommen nicht vor.
+
+**Das Image ist die eigentliche Entscheidung.** `maven:3.9-eclipse-temurin-25` hat weder
+Browser noch die ~40 Systembibliotheken, die Chromium braucht. Gewählt ist
+**`mcr.microsoft.com/playwright/java:v1.60.0-noble`**: Microsoft veröffentlicht die
+Playwright-Images sprachspezifisch, und die Java-Variante bringt (am 30.08.2026 aus der
+Image-Config über die Registry-API nachgelesen, nicht geraten) **JDK 25**
+(`openjdk-25-jdk`), **Maven 3.9.12** und Chromium fertig entpackt unter `/ms-playwright`
+mit. Damit entfällt der `--with-deps`-Download, den die GitHub-Fassung bei *jedem* Lauf
+zahlt (dort auf `ubuntu-latest`, also auf fremdem Strom) — bei
+`WOODPECKER_MAX_WORKFLOWS=2` ist das keine Kosmetik, sondern die halbe
+CI-Kapazität für ein bis drei Minuten. Das offizielle `mcr.microsoft.com/playwright`
+(ohne `/java`) schied aus: es hat nur Node, kein JDK und kein Maven. Ein *eigenes* Image
+schied aus, weil es ein Artefakt schafft, das jemand pflegen muss — die Java-Variante ist
+genau dieses Image, nur von Microsoft gepflegt.
+
+> **Kopplung, die daraus entsteht:** der Image-Tag *muss* die Playwright-Version aus
+> `plaintext-root-webapp/pom.xml` sein. Die Java-Bibliothek verlangt exakt den
+> Chromium-Build ihrer eigenen Version. Wer die Dependency hebt, hebt den Tag mit.
+
+**Auslöser: `pull_request` und `manual`, kein `push:master`.** Die GitHub-Fassung feuert
+zusätzlich auf `push:master`. Auf einem Agenten mit zwei Slots nimmt ein zehn- bis
+zwanzigminütiger Browser-Lauf neben dem Deploy die halbe Kapazität für eine Aussage, die
+der PR-Lauf über denselben Code schon getroffen hat. `depends_on: [build]` reiht ihn
+zudem *hinter* `build.yml` ein, statt beide gleichzeitig zu starten.
+
+**Eine Zeile mehr als bei guild/iot: die Testdatenbank.** Die GitHub-Fassung gibt für root
+*keine* Datenbank vor — der Job läuft dort auf `ubuntu-latest`, also als normaler Benutzer,
+und `EmbeddedPg` startet sich den eingebetteten Server selbst. Der Woodpecker-Step läuft als
+**root**, und `initdb` verweigert das (gemessen 02.08.2026, PR #22). `playwright.yml` bringt
+deshalb denselben `postgres`-Service und dieselben drei `SPRING_DATASOURCE_*`-Variablen mit
+wie `build.yml`. Ohne sie fällt der Lauf mit einer initdb-Meldung um, die wie ein
+Umgebungsproblem des Agenten aussieht und keines ist.
+
+**Kein Secret.** Der Lauf braucht keines — er baut aus dem Reposilite (anonym lesbar) und
+testet gegen sich selbst.
+
+**Was schwächer ist als auf GitHub:**
+
+* **master wird nicht mehr im Browser geprüft.** Nach einem Squash-Merge läuft kein
+  Browser-Test mehr. Wer das zurückhaben will, legt in Woodpecker einen Cron an und
+  ergänzt `- event: cron` mit dessen Namen — nicht `push:master`.
+* **Ein roter Build verhindert die UI-Aussage.** Auf GitHub waren es zwei unabhängige
+  Workflows; hier hängt der Browser-Lauf über `depends_on` am Build.
+* **Kein Artefakt-Download.** `actions/upload-artifact` hat keine Entsprechung; die
+  Failsafe-/Surefire-Berichte gehen bei Fehlschlag ins Step-Log statt in einen Download.
+* **Ein zweiter `mvn install`.** Die beiden Workflows teilen `/root/.m2` samt
+  Build-Cache, aber nicht das Workspace-Volume. Der Build-Cache fängt den größten Teil
+  ab, umsonst ist es trotzdem nicht. Die Alternative wäre ein weiterer *Step* in
+  `build.yml` (Steps teilen das Workspace) — dann färbte aber ein UI-Fehler den
+  Build-Workflow rot, und genau das will die GitHub-Fassung ausdrücklich nicht.
+
+**Neu und besser als auf GitHub: der Browser-Wächter.** Die IT-Klassen fangen einen
+Fehlschlag von `Playwright.create()` ab und rufen `Assumptions.assumeTrue(false, …)` — die
+ganze Klasse überspringt sich dann *still* und der Lauf wird **grün**. Ein Bild ohne
+Browser sähe also aus wie ein bestandener Test. Der erste Schritt des Steps prüft deshalb
+`PLAYWRIGHT_BROWSERS_PATH` und das Vorhandensein eines `chromium-*`-Verzeichnisses und
+bricht ab, wenn etwas fehlt.
 
 ---
 
