@@ -38,7 +38,18 @@ import java.util.Map;
 @Slf4j
 public class RepoMaster extends SuperModel {
 
-    @Autowired
+    /**
+     * {@code required = false}, damit ein Kontext ohne eine einzige {@link PlaintextRepository}-Bean
+     * startet (Zustandsbericht 29.08.2026, §3 „Aggregator ohne Opt-out"). Vorher hielt die
+     * Standard-Injektion einer leeren Liste den Start an — und die einzigen Implementierungen im
+     * Framework liegen in {@code plaintext-admin-modules} und {@code plaintext-admin-secrets}. Wer
+     * beide abwaehlte, bekam einen Startfehler an einer Stelle, die mit keinem der beiden Module
+     * etwas zu tun hat. Am Verhalten der bestehenden Apps aendert das nichts: sobald mindestens
+     * eine Bean da ist, spritzt Spring die Liste wie bisher; ohne sie bleibt das bereits
+     * initialisierte {@code new ArrayList<>()} stehen, {@link #init()} baut eine leere Map und
+     * {@link #getRepo(String)} liefert {@code null} — genau wie heute schon fuer jeden unbekannten Typ.
+     */
+    @Autowired(required = false)
     private List<PlaintextRepository> repos = new ArrayList<>();
 
     private Map<String, PlaintextRepository> map = new HashMap<>();

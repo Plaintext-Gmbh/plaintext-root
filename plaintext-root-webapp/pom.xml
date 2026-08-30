@@ -73,7 +73,16 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- === Admin Framework Modules === -->
+        <!-- === Admin Framework Modules ===
+             Alle NICHT optional: die vier Apps haengen an genau diesem einen Artefakt und wuerden
+             mit <optional>true</optional> beim naechsten root-Bump still Module verlieren. Wer ein
+             Modul nicht braucht, nimmt <exclusions> an seiner plaintext-root-webapp-Dependency.
+
+             Abwaehlbar (nachgewiesen durch den Surefire-Lauf 'kontext-ohne-abwaehlbare-module',
+             siehe unten, und AbwaehlbareModuleXhtmlTest):
+                 plaintext-admin-webhooks, -notifications, -secrets, -modules
+             Nicht abwaehlbar und warum je einzeln: docs/MODULE_ABWAEHLEN.md,
+             Begruendung des Wegs: docs/adr/0007-admin-module-abwaehlbar-per-exclusions.md. -->
         <dependency>
             <groupId>ch.plaintext</groupId>
             <artifactId>plaintext-admin-sessions</artifactId>
@@ -392,7 +401,59 @@
                     <dependenciesToScan>
                         <dependency>ch.plaintext:plaintext-root-archtests</dependency>
                     </dependenciesToScan>
+                    <!-- SchlankerKontextTest gehoert in die zweite Ausfuehrung (siehe unten); mit
+                         den Modul-Jars auf dem Classpath beweist er nichts und schlaegt bewusst fehl. -->
+                    <excludes>
+                        <exclude>**/SchlankerKontextTest.java</exclude>
+                        <exclude>**/*$*</exclude>
+                    </excludes>
                 </configuration>
+                <executions>
+                    <!--
+                      Zweiter Testlauf OHNE die abwaehlbaren Admin-Module (Zustandsbericht
+                      29.08.2026, §3 "Aggregator ohne Opt-out"). classpathDependencyExcludes nimmt
+                      den vier Jars den Platz auf dem Test-Classpath weg — damit ist ihre
+                      Abwesenheit echt: keine Klassen, keine AutoConfiguration.imports, keine
+                      Flyway-Migrationen, kein Component-Scan-Treffer. Genau das erlebt eine App,
+                      die sie per <exclusions> aus plaintext-root-webapp herauswirft.
+
+                      Der Lauf ist zugleich die Sperre: Wer im Kern eine Klasse aus einem dieser
+                      Pakete importiert oder eine ihrer Beans hart injiziert, laesst hier den
+                      Kontext-Start scheitern statt erst den PROD-Start einer schlanken App.
+
+                      Die Liste steht doppelt (hier und in SchlankerKontextTest) — Maven kann
+                      Plugin-Konfiguration nicht aus Java lesen. Deshalb wird sie als
+                      Systemproperty hereingereicht und dort gegengeprueft.
+                      Aendern? Dann auch docs/MODULE_ABWAEHLEN.md nachziehen.
+                    -->
+                    <execution>
+                        <id>kontext-ohne-abwaehlbare-module</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <!-- <test> statt <includes>: die Auswahl steht damit fest und laesst sich
+                                 NICHT per -Dtest=... von der Kommandozeile umbiegen. Sonst zoege ein
+                                 `mvn test -Dtest=Irgendwas` diesen Lauf mit — und Irgendwas fiele ohne
+                                 die vier Jars um, ohne dass daran etwas kaputt waere. -->
+                            <test>SchlankerKontextTest</test>
+                            <excludes>
+                                <exclude>**/*$*</exclude>
+                            </excludes>
+                            <classpathDependencyExcludes>
+                                <classpathDependencyExclude>ch.plaintext:plaintext-admin-webhooks</classpathDependencyExclude>
+                                <classpathDependencyExclude>ch.plaintext:plaintext-admin-notifications</classpathDependencyExclude>
+                                <classpathDependencyExclude>ch.plaintext:plaintext-admin-secrets</classpathDependencyExclude>
+                                <classpathDependencyExclude>ch.plaintext:plaintext-admin-modules</classpathDependencyExclude>
+                            </classpathDependencyExcludes>
+                            <systemPropertyVariables>
+                                <plaintext.abgewaehlte.module>ch.plaintext:plaintext-admin-webhooks,ch.plaintext:plaintext-admin-notifications,ch.plaintext:plaintext-admin-secrets,ch.plaintext:plaintext-admin-modules</plaintext.abgewaehlte.module>
+                            </systemPropertyVariables>
+                            <reportsDirectory>${project.build.directory}/surefire-reports-schlank</reportsDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

@@ -38,10 +38,11 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 | [Getting Started](GETTING_STARTED.md) | Setup, build, and run the application |
 | [Architecture Overview](ARCHITECTURE.md) | System design, module dependencies, and data flow |
 | [Module Reference](MODULE_REFERENCE.md) | Detailed reference for all 24 modules |
+| [Module abwählen](MODULE_ABWAEHLEN.md) | Welche Admin-Module eine App per `<exclusions>` streichen kann — und welche nicht |
 | [Flyway Migrations](FLYWAY_MIGRATIONS.md) | Database migration conventions and tooling |
 | [Role Registry](ROLE_REGISTRY.md) | How modules declare their roles for the user admin selection |
 | [Page Access Guard](security/PAGE_ACCESS_GUARD.md) | Per-view authorization derived from menu visibility |
-| [Architecture Decisions](adr/) | ADRs 0001–0006 |
+| [Architecture Decisions](adr/) | ADRs 0001–0007 |
 
 ### Reference
 
