@@ -1,5 +1,20 @@
 name: Build And Deploy
 
+# ACHTUNG, HANDARBEIT (Karte 313, 30.08.2026): Der Aufruf der geteilten Pipeline weiter unten ist
+# auf einen COMMIT-SHA gepinnt, nicht auf @master. Grund: plaintext-scripts ist ein OEFFENTLICHES
+# Repo, und `secrets: inherit` reicht saemtliche Org-Secrets durch (SSH_PRIVATE_KEY,
+# MVN_DEPLOY_TOKEN, MAVEN_NAS_TOKEN, TWINGATE_SERVICE_KEY, SONAR_TOKEN, PUSHOVER_*). Ein einziger
+# Commit dort haette sonst in jedem dieser Repos beliebigen Code mit allen Secrets ausgefuehrt.
+#
+# Das gilt auch im Woodpecker-Betrieb: Der `ci-motor`-Job, der `.ci-engine` liest und ueber alles
+# Weitere entscheidet, ist selbst Teil dieser geteilten Pipeline.
+#
+# PREIS, bekannt und akzeptiert (Entscheid Daniel, 30.08.2026): Eine Aenderung an
+# plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml wird hier NICHT mehr automatisch
+# wirksam. Der neue SHA muss in JEDEM der sechs Repos nachgezogen werden — root, app, guild,
+# schuetu, iot, fwtool, je eine Zeile. Wer das vergisst, baut weiter mit der alten Pipeline,
+# und zwar ohne jede Fehlermeldung.
+
 on:
   workflow_dispatch:
     inputs:
@@ -207,7 +222,7 @@ jobs:
   pipeline:
     needs: skip-pruefung
     if: needs.skip-pruefung.outputs.skip != 'true'
-    uses: Plaintext-Gmbh/plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml@master
+    uses: Plaintext-Gmbh/plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml@e243befd142cd06c7019001d9de25568e37ee284   # war @master, Karte 313
     with:
       # STILLGELEGT am 12.08.2026 auf Anweisung Daniels (Karte 776): der CONTAINER von
       # plaintext-root laeuft nicht mehr, das MAVEN-ARTEFAKT lebt weiter.
