@@ -34,10 +34,12 @@
             <artifactId>plaintext-root-menu</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>ch.plaintext</groupId>
-            <artifactId>plaintext-admin-sessions</artifactId>
-        </dependency>
+        <!-- KEINE Abhaengigkeit auf plaintext-admin-sessions (Zustandsbericht 29.08.2026,
+             Massnahme 12): sie war eine Schichtungsinversion — ein Basismodul (generische
+             JPA-Entitaetsverwaltung) haengte an einem Admin-Modul, das umgekehrt auf dem Unterbau
+             aufsetzt. Der Nachweis, dass sie entbehrlich war, ist einfach: keine einzige Quelle in
+             diesem Modul nennt ch.plaintext.sessions. Die Abhaengigkeit war tot und ist ersatzlos
+             entfernt; plaintext-root-webapp deklariert plaintext-admin-sessions selbst. -->
 
         <!-- Spring Boot -->
         <dependency>
