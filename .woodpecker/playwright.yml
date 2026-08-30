@@ -191,7 +191,13 @@ steps:
       # haengen (Steps teilen das Workspace) — dann faerbt aber ein UI-Fehler den
       # Build-Workflow rot, und genau das will die GitHub-Fassung ausdruecklich
       # nicht ("does NOT block merges").
-      - mvn -B -q -DskipTests install
+      # Build-Cache AUS fuer diesen Step: mit Cache-Treffer wird das Webapp-Modul aus
+      # ~/.m2/build-cache "wiederhergestellt" — es gibt dann kein target/test-classes
+      # (PR-Lauf #16: "No tests matching pattern ... were executed") und die bei
+      # prepare-package entpackten Template-Facelets fehlen in target/classes (Lauf #14:
+      # "Facelet includes/template.xhtml not found", Root-Menue weg). Der Cache liegt im
+      # geteilten Volume woodpecker-m2 und ueberlebt Laeufe; der GitHub-Job kennt ihn nicht.
+      - mvn -B -q -DskipTests -Dmaven.build.cache.enabled=false install
 
       # Wortgleich zum GitHub-Schritt "Run Playwright integration tests".
       # Wie der GitHub-Schritt, um `test-compile` ergaenzt: dort laeuft der
@@ -210,7 +216,7 @@ steps:
       # Das `install` davor hat die Testklassen schon kompiliert (-DskipTests ueberspringt nur
       # das Ausfuehren), test-compile ist hier ueberfluessig.
       - >-
-        mvn -B -pl plaintext-root-webapp
+        mvn -B -pl plaintext-root-webapp -Dmaven.build.cache.enabled=false
         failsafe:integration-test failsafe:verify
         -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT
 
