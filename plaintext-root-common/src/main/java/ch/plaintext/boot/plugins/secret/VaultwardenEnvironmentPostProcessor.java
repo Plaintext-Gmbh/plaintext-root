@@ -71,6 +71,10 @@ public class VaultwardenEnvironmentPostProcessor implements EnvironmentPostProce
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+        // Karte 942: Bootstrap-Geheimnisse aus Dateien lesen, BEVOR irgendetwas den Vault-Client
+        // baut — sonst greift die *_FILE-Angabe zu spaet und der Login scheitert ohne Grund.
+        VaultwardenSecretFiles.anwenden(environment);
+
         MutablePropertySources sources = environment.getPropertySources();
         if (sources.contains(VaultwardenPropertySource.SOURCE_NAME)) {
             return; // idempotent

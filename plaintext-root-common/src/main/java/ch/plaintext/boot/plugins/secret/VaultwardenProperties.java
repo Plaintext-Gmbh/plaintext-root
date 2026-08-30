@@ -40,6 +40,26 @@ public class VaultwardenProperties {
     private String masterPassword;
 
     /**
+     * Alternative zu {@link #masterPassword}: Pfad zu einer Datei, die den Wert enthaelt
+     * ({@code *_FILE}-Konvention, Karte 942).
+     *
+     * <p>Damit steht das Geheimnis nicht mehr in der Container-Umgebung und taucht folglich nicht
+     * in {@code printenv}, {@code docker inspect}, Crash-Dumps oder Prozesslisten auf. Gelesen
+     * wird die Datei in {@code VaultwardenSecretFiles}, bevor der Client gebaut wird; ein
+     * abschliessender Zeilenumbruch wird entfernt. Fehlt die Datei oder ist sie leer, bricht der
+     * Start ab — ein stiller Weiterlauf ohne Bootstrap-Geheimnis waere schlimmer.</p>
+     *
+     * <p>Sind Datei UND Variable gesetzt, gewinnt die Variable (mit WARN im Log).</p>
+     */
+    private String masterPasswordFile;
+
+    /** Wie {@link #masterPasswordFile}, fuer {@link #clientId}. */
+    private String clientIdFile;
+
+    /** Wie {@link #masterPasswordFile}, fuer {@link #clientSecret}. */
+    private String clientSecretFile;
+
+    /**
      * Optionaler Personal-API-Key {@code client_id} fuer den
      * {@code client_credentials}-Grant. Ist er (samt {@link #clientSecret}) gesetzt,
      * wird dieser Grant statt {@code password} verwendet.
