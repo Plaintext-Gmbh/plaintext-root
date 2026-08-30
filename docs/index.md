@@ -60,6 +60,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 | [Security Policy](../SECURITY.md) | Vulnerability reporting process |
 | [Improvement Proposals](IMPROVEMENT_PROPOSALS.md) | Tracked improvements grouped by theme and priority |
 | [Docs Overhaul Plan](DOCS_OVERHAUL_PLAN.md) | Plan for the upcoming user-facing documentation site |
+| [CI umschalten](CI-UMSCHALTEN.md) | GitHub Actions ↔ Woodpecker: der `.ci-engine`-Umschalter, was root als `release-only`-Repo anders macht, und was beim Motorwechsel schwächer wird |
 
 ## Tech Stack
 

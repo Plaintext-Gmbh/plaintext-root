@@ -1,0 +1,163 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Woodpecker-Workflow 3 von 3: SONARQUBE-ANALYSE
+#
+#  Entspricht dem Job `sonar` aus der geteilten GitHub-Pipeline — ABER NUR ZUM TEIL.
+#
+#  ┌───────────────────────────────────────────────────────────────────────────┐
+#  │ NICHT PORTIERT: die woechentliche VOLL-Analyse (`quality-analysis`), also  │
+#  │ OWASP-CVE, SpotBugs, die Quality-Gate-Bewertung und der Rueckcommit von    │
+#  │ quality/quality-gate.properties.                                          │
+#  └───────────────────────────────────────────────────────────────────────────┘
+#
+#  Das ist eine bewusste Auslassung, keine Vergesslichkeit. Der CVE-Scan braucht einen
+#  PERSISTENTEN NVD-Datenbestand. Auf den GitHub-Runnern liegt der in einem benannten
+#  Volume (odc-cache, seit Karte 914) unter $HOME/.cache/owasp-dc-data. Der Woodpecker-
+#  Agent haengt in Step-Container NUR `woodpecker-m2:/root/.m2`; alles andere ist mit dem
+#  Container weg, und ein untrusted Repo darf sich selbst kein Volume mounten.
+#
+#  Ohne den Bestand laedt dependency-check bei JEDEM Lauf die komplette NVD neu. Gemessen
+#  (Karte 896/897, ohne NVD_API_KEY): rund 96 Minuten, die regelmaessig ins Timeout laufen —
+#  und dann entsteht KEIN Report, und quality-gate.py wertet einen fehlenden Report
+#  ausdruecklich als "kein Breach". Ergebnis waere ein gruenes Gate, weil NICHTS GEMESSEN
+#  wurde. Genau diesen Zustand hat die GitHub-Pipeline ueber Monate teuer gelernt
+#  (Karte 365, 420, 896, 925) — plaintext-root war eines der Repos, deren Gate deshalb
+#  wochenlang faelschlich auf OK stand. Ihn hier nachzubauen waere schlimmer als die Luecke.
+#
+#  Dazu kaeme der Kapazitaetspreis: der Agent faehrt WOODPECKER_MAX_WORKFLOWS=2. Ein
+#  zweistuendiger OWASP-Schritt belegt die HAELFTE der gesamten CI-Kapazitaet des NAS.
+#
+#  BESONDERS BEI ROOT WIEGT DAS: root ist der Parent-POM von app, guild, iot und schuetu,
+#  und die meisten CVEs der Familie kommen ueber sein <dependencyManagement>. Ein CVE-Scan,
+#  der hier ausfaellt, faellt fuer alle vier Konsumenten aus. Solange `.ci-engine` auf
+#  `woodpecker` steht, muss die Abhaengigkeitspruefung dieser Familie also anders abgedeckt
+#  werden (Renovate laeuft weiter; er meldet neue Versionen, nicht CVEs).
+#
+#  VORAUSSETZUNGEN, um die Luecke zu schliessen (in docs/CI-UMSCHALTEN.md wiederholt):
+#    1. Am Agenten ein zweites globales Volume:
+#         WOODPECKER_BACKEND_DOCKER_VOLUMES=woodpecker-m2:/root/.m2,woodpecker-odc:/root/.cache/owasp-dc-data
+#    2. python3 und jq im Step-Image (fuer quality/quality-gate.py).
+#    3. Idealerweise NVD_API_KEY als Secret — dann faellt die Scandauer von ~96 auf wenige
+#       Minuten und der Kapazitaetseinwand entfaellt mit.
+#
+#  Der ci-motor-Waechter sperrt die Voll-Analyse auf der GitHub-Seite mit — mit Absicht,
+#  denn eine Ausnahme davon hiesse, dass zwei Systeme gleichzeitig
+#  quality/quality-gate.properties zurueckcommitten.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+when:
+  # Woechentliche Voll-Analyse. Der Cron wird in der Woodpecker-Oberflaeche angelegt
+  # (Repo -> Settings -> Crons); `cron:` filtert auf seinen NAMEN. Es muss also ein Cron
+  # namens `wochenanalyse` existieren, sonst laeuft dieser Zweig nie. Auf der GitHub-Seite
+  # ist es fuer root der Dienstag ('0 4 * * 2') — die Staffelung ueber die Repos stammt aus
+  # Karte 889 und sollte beim Anlegen des Crons erhalten bleiben.
+  - event: cron
+    cron: wochenanalyse
+  # Wie `workflow_dispatch` auf der GitHub-Seite: ein manueller Lauf ist dort EBENFALLS ein
+  # Voll-Lauf (sonar-enabled haengt am Ereignis, nicht am deploy-target). Der Kommentar dort
+  # warnt ausdruecklich vor den Kosten — hier gilt er doppelt, siehe Kapazitaet oben.
+  - event: manual
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git
+    settings:
+      # fetch-depth: 0 wie auf der GitHub-Seite — der Scanner wertet mit
+      # -Dsonar.scm.provider=git die Git-Historie aus (Blame fuer "new code").
+      partial: false
+      depth: 0
+      tags: true
+
+services:
+  # Pflicht, nicht Komfort: EmbeddedPg startet nur ohne SPRING_DATASOURCE_URL einen eigenen
+  # Server, und `initdb` verweigert den Dienst als root (Karte 451 / PR #22).
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: plaintext_root
+      POSTGRES_USER: plaintext
+      POSTGRES_PASSWORD: plaintext
+
+steps:
+  sonarqube:
+    image: maven:3.9-eclipse-temurin-25
+    # Ein Lauf ohne Build-Cache dauert rund 25 Minuten (an allen vier Projekten gemessen);
+    # root ist mit 24 Modulen das groesste davon. Woodpecker kennt kein Step-Timeout in der
+    # YAML; das Zeitlimit ist eine REPO-Einstellung in der Oberflaeche (Settings -> Timeout,
+    # Vorgabe 60 Minuten). Ohne Anhebung bricht ein kalter Lauf dort ab. Das ist die
+    # Entsprechung von `timeout-minutes` — sie steht nur nicht hier.
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plaintext_root
+      SPRING_DATASOURCE_USERNAME: plaintext
+      SPRING_DATASOURCE_PASSWORD: plaintext
+      MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
+      SONAR_HOST_URL: https://sonar.plaintext.ch
+      SONAR_TOKEN:
+        from_secret: sonar_token
+    commands:
+      - . .woodpecker/waechter.sh
+      - >-
+        bash -c 'for i in $(seq 1 60); do
+          (echo > /dev/tcp/postgres/5432) 2>/dev/null && { echo "postgres bereit nach $i Versuchen"; exit 0; };
+          sleep 2;
+        done;
+        echo "FEHLER: Service-Container postgres nicht erreichbar." >&2;
+        exit 1'
+      # Ab hier zeichengleich mit dem Schritt "SonarQube Analysis" der GitHub-Pipeline.
+      # -Dmaven.build.cache.enabled=false ist ZWINGEND: mit aktivem Build-Cache restauriert
+      # Maven die Module aus dem Cache statt sie zu uebersetzen, dann liegen keine
+      # target/classes auf der Platte und der Scanner bricht ab mit "Your project contains
+      # .java files, please provide compiled classes with sonar.java.binaries property"
+      # (Karte 365). Der Lauf wird dadurch deutlich laenger — das ist der Preis dafuer,
+      # dass er ueberhaupt etwas misst.
+      # -Pcoverage,fast ist historisch (beide Profile gibt es in keinem Projekt mehr, Maven
+      # quittiert das mit einer WARNING) und bleibt stehen, weil '-P' ohne die Namen ein
+      # activeByDefault-Profil abschalten koennte. In root waere das nicht nur theoretisch:
+      # dual-publish-nas haengt an einer Property, nicht an activeByDefault, aber die naechste
+      # Person, die hier '-P' aufraeumt, sollte das nachgesehen haben.
+      - >-
+        GROUP_ID=$(mvn help:evaluate -Dexpression=project.groupId -q -DforceStdout);
+        ARTIFACT_ID=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout);
+        PROJECT_KEY="$GROUP_ID:$ARTIFACT_ID";
+        VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout);
+        mvn clean verify sonar:sonar -B -DskipITs -DexcludedGroups=quality-gate -Pcoverage,fast
+        -Dmaven.build.cache.enabled=false
+        -Dsonar.projectKey="$PROJECT_KEY"
+        -Dsonar.projectName="plaintext-root"
+        -Dsonar.projectVersion="$VERSION"
+        -Dsonar.host.url="$SONAR_HOST_URL"
+        -Dsonar.token="$SONAR_TOKEN"
+        -Dsonar.java.source=25
+        -Dsonar.java.target=25
+        -Dsonar.scm.provider=git;
+        echo "Dashboard: $SONAR_HOST_URL/dashboard?id=$PROJECT_KEY"
+
+  meldung-bei-analyse-ausfall:
+    image: maven:3.9-eclipse-temurin-25
+    when:
+      - status: [failure]
+    environment:
+      PUSHOVER_APP_TOKEN:
+        from_secret: pushover_app_token
+      PUSHOVER_USER_KEY:
+        from_secret: pushover_user_key
+    commands:
+      - . .woodpecker/waechter.sh
+      # Ohne diese Meldung bleibt ein Analyse-Ausfall unsichtbar: das Quality-Gate behaelt
+      # seinen letzten Stand, und ein altes "OK" ist von einem aktuellen nicht zu
+      # unterscheiden. Genau so standen die Gates von root/schuetu/iot wochenlang auf OK,
+      # obwohl seit dem 20.07.2026 keine Analyse mehr durchlief (Karte 365).
+      - >-
+        if [ -z "$PUSHOVER_APP_TOKEN" ] || [ -z "$PUSHOVER_USER_KEY" ]; then
+          echo "Keine Pushover-Zugangsdaten — Meldung nur hier im Log.";
+          exit 0;
+        fi;
+        curl -s -o /dev/null --max-time 20 -X POST https://api.pushover.net/1/messages.json
+        --form-string "token=$PUSHOVER_APP_TOKEN"
+        --form-string "user=$PUSHOVER_USER_KEY"
+        --form-string "title=Sonar-Analyse fehlgeschlagen: plaintext-root (Woodpecker)"
+        --form-string "message=Die Analyse lief NICHT durch — das Quality-Gate zeigt weiterhin seinen alten Stand. Ein dort sichtbares OK ist damit nicht aussagekraeftig. root ist der Parent-POM von app, guild, iot und schuetu."
+        --form-string "priority=1"
+        --form-string "url=$CI_PIPELINE_URL"
+        --form-string "url_title=Lauf ansehen"
+        || echo "Pushover-Meldung konnte nicht gesendet werden."

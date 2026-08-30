@@ -133,6 +133,24 @@ exhaustive.
   `ch.plaintext.boot`, z. B. `boot -> settings -> modules -> jpa -> boot`). Eine Regel mit dreissig
   Ausnahmen prueft nichts; der Befund steht als Javadoc-Abschnitt in `PlaintextLayeringTest` und die
   Entflechtung ist eine eigene Etappe.
+- **Woodpecker-Pipeline und CI-Umschalter** (`.ci-engine`, `.woodpecker/`,
+  [docs/CI-UMSCHALTEN.md](docs/CI-UMSCHALTEN.md)). root ist das letzte Repo der Familie, das die
+  Umstellung bekommt; app, guild, iot und schuetu fahren bereits ueber `.ci-engine=woodpecker`.
+  **`.ci-engine` steht auf `github` — nichts ist scharfgeschaltet**, die Woodpecker-Dateien steigen
+  bei jedem Lauf sofort wieder aus. Drei Workflows statt der vier der Apps: `verify-dev.yml` und
+  `verify-prod.yml` fehlen bewusst, weil die geteilte GitHub-Pipeline beide Jobs fuer
+  `deploy-target: release-only` ohnehin ueberspringt (`!= 'release-only'` bzw. `== 'release-all'`)
+  und der root-Container seit dem 12.08.2026 stillgelegt ist. Der Release-Aufruf ist zeichengleich
+  aus dem GitHub-Deploy-Job uebernommen (`./build release`), inklusive `MVN_TEST_FLAG` und der
+  `[fast]`-Sonderbehandlung; an der Reihenfolge der drei Veroeffentlichungsziele (GitHub Packages,
+  Reposilite, git-Spiegel `plaintext-mvn`) ist nichts geaendert — `deployAtEnd` bleibt aus dem Spiel
+  (409 vom Reposilite, 29.08.2026). Bewusst ergaenzt gegenueber der iot-Vorlage: `gh` wird
+  nachinstalliert, sonst entfiele das GitHub-Release mit Notes lautlos, und ein manueller Lauf
+  akzeptiert nur `ci-only`/`release-only` — der Ersatz fuer die im GitHub-UI geloeschte
+  `release-all`-Option. **Schwaecher als heute:** Woodpecker kennt keine Concurrency-Gruppen; zwei
+  gleichzeitige Release-Laeufe koennen dieselbe Version rechnen und fallen erst am abgelehnten
+  `git push` bzw. an der Reposilite-Kollisionspruefung auseinander (Details in Abschnitt 7.1 der
+  Doku).
 
 ### Changed
 - `RepoMaster.repos` ist `@Autowired(required = false)`: Ein Kontext ohne eine einzige
