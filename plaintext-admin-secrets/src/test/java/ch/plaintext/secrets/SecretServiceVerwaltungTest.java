@@ -172,10 +172,33 @@ class SecretServiceVerwaltungTest {
         }
 
         @Test
-        void hashicorpIstNochNichtImplementiert() {
-            when(entryRepo.findByMandatAndName("plaintext", "x")).thenReturn(Optional.empty());
-            assertThrows(UnsupportedOperationException.class,
-                    () -> service.set("x", SecretBackendType.HASHICORP, "v", null));
+        void hashicorpSchreibtInDenTresorUndNichtInDieDatenbank() {
+            when(entryRepo.findByMandatAndName("plaintext", "openbao-probe")).thenReturn(Optional.empty());
+            when(entryRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            SecretEntry e = service.set("openbao-probe", SecretBackendType.HASHICORP, "geheim", "Karte 855");
+
+            verify(hashicorp).set("openbao-probe", "geheim", "Karte 855");
+            verify(vaultwarden, never()).set(anyString(), anyString(), any());
+            verify(crypto, never()).encrypt(anyString());
+            // Der Wert darf NICHT zusaetzlich in der Datenbank landen — sonst haette das Umhaengen
+            // eine zweite Kopie erzeugt, die niemand mitrotiert.
+            assertNull(e.getWertEncrypted());
+            assertEquals(SecretBackendType.HASHICORP, e.getBackendType());
+        }
+
+        @Test
+        void hashicorpOhneWertAendertNurMetadaten() {
+            SecretEntry vorhanden = eintrag("openbao-probe", SecretBackendType.VAULTWARDEN, null);
+            when(entryRepo.findByMandatAndName("plaintext", "openbao-probe")).thenReturn(Optional.of(vorhanden));
+            when(entryRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            SecretEntry e = service.set("openbao-probe", SecretBackendType.HASHICORP, "", "umgehaengt");
+
+            // Der Wert liegt schon im Ziel-Tresor; ein Schreibaufruf mit leerem Wert wuerde ihn
+            // ueberschreiben. Nur die Zuordnung wechselt.
+            verify(hashicorp, never()).set(anyString(), anyString(), any());
+            assertEquals(SecretBackendType.HASHICORP, e.getBackendType());
         }
     }
 
