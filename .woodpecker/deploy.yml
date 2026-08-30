@@ -113,7 +113,7 @@ steps:
       SSH_PRIVATE_KEY:
         from_secret: ssh_private_key
       # DERSELBE WERT WIE MVN_DEPLOY_TOKEN, wortgleich zur GitHub-Pipeline
-      # ("GITHUB_TOKEN: $${{ secrets.MVN_DEPLOY_TOKEN }}" am Schritt Build & Deploy).
+      # (GITHUB_TOKEN aus secrets.MVN_DEPLOY_TOKEN am Schritt Build & Deploy).
       # Zwei Dinge in root haengen daran, und beide sind still, wenn er fehlt:
       #   * mirror_to_plaintext_mvn (./build) — ohne Token: "kein GITHUB_TOKEN -
       #     Spiegelung uebersprungen", return 0. Der git-basierte Bezugsweg aus dem
@@ -297,7 +297,7 @@ steps:
       # in die Irre fuehrt: plaintext-root traegt `.m3-jar-volume`, also setzt
       # tui-build-logic.sh JAR_VOLUME_DEPLOY=true, und do_release ruft nach dem
       # `mvn deploy` unbedingt stage_jar_to_nas() auf — SSH nach mad@192.168.1.224,
-      # Deploy-Lock, Jar nach ${DEPLOY_PATH}/jars/staging. Erst deploy_to_dev/deploy_to_prod
+      # Deploy-Lock, Jar nach DEPLOY_PATH/jars/staging. Erst deploy_to_dev/deploy_to_prod
       # bleiben bei release-only aus, das Staging nicht. Ohne Schluessel bricht der Lauf
       # NACH der Veroeffentlichung ab: Artefakte draussen, Lauf rot.
       - mkdir -p ~/.ssh && chmod 700 ~/.ssh
