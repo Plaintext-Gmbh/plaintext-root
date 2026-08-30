@@ -39,8 +39,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): Formular-Logik der Mailtexte —
- * Pflichtfelder, Speichern mit Formular-Reset, Laden zum Aendern, Entfernen, Fehlermeldungen.
+ * Status report 29.08.2026, measure 13 (JaCoCo gate): form logic of the mail texts —
+ * mandatory fields, saving with a form reset, loading for editing, removal, error messages.
  *
  * @author info@plaintext.ch
  * @since 2026

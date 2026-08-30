@@ -9,17 +9,17 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /**
- * Hashing + konstantzeitiger Vergleich für die Claude-Automation-API-Tokens
+ * Hashing + constant-time comparison for the Claude automation API tokens
  * ({@code /nosec/api/claude}).
  *
- * <p>Serverseitig wird nur noch der SHA-256-Hash des Tokens verglichen (und perspektivisch
- * gespeichert) statt des Klartexts. Alle Vergleiche laufen über
- * {@link MessageDigest#isEqual(byte[], byte[])} und sind damit konstantzeitig — ein Angreifer
- * kann aus Antwortzeiten keine Byte-für-Byte-Information über den Token ableiten.</p>
+ * <p>On the server side only the SHA-256 hash of the token is compared (and, going forward,
+ * stored) instead of the cleartext. All comparisons go through
+ * {@link MessageDigest#isEqual(byte[], byte[])} and are therefore constant-time — an attacker
+ * cannot derive any byte-by-byte information about the token from response times.</p>
  *
- * <p>Bewusst KEIN Salt/BCrypt: die Tokens sind zufällige UUIDs (~122 Bit Entropie), kein
- * schwaches Nutzerpasswort — ein schneller Hash reicht, und der Hash muss für den
- * Lookup deterministisch sein.</p>
+ * <p>Deliberately NO salt/BCrypt: the tokens are random UUIDs (~122 bits of entropy), not a
+ * weak user password — a fast hash is sufficient, and the hash has to be deterministic for
+ * the lookup.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -31,10 +31,10 @@ public final class ApiTokenHasher {
     }
 
     /**
-     * SHA-256-Hash des Tokens als lowercase-Hex-String (64 Zeichen).
+     * SHA-256 hash of the token as a lowercase hex string (64 characters).
      *
-     * @param token roher Token (Klartext)
-     * @return Hex-Hash, oder {@code null} für {@code null}-Input
+     * @param token raw token (cleartext)
+     * @return hex hash, or {@code null} for {@code null} input
      */
     public static String sha256Hex(String token) {
         if (token == null) {
@@ -44,14 +44,14 @@ public final class ApiTokenHasher {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
-            // SHA-256 ist in jeder JVM Pflicht — hier landen wir nie.
+            // SHA-256 is mandatory in every JVM — we never end up here.
             throw new IllegalStateException("SHA-256 nicht verfügbar", e);
         }
     }
 
     /**
-     * Konstantzeitiger String-Vergleich via {@link MessageDigest#isEqual(byte[], byte[])}.
-     * {@code null}/{@code null} ist NICHT gleich (Token-Kontext: kein Token = kein Match).
+     * Constant-time string comparison via {@link MessageDigest#isEqual(byte[], byte[])}.
+     * {@code null}/{@code null} is NOT equal (token context: no token = no match).
      */
     public static boolean constantTimeEquals(String a, String b) {
         if (a == null || b == null) {

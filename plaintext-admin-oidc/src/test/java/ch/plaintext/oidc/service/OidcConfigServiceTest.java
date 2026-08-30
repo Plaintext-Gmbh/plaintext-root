@@ -25,8 +25,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): der Dienst hinter der OIDC-Konfiguration
- * war ungetestet. Login-Knopf (Label/Icon) und {@code isOidcEnabled()} steuern die Login-Seite.
+ * Status report 29.08.2026, measure 13 (JaCoCo gate): the service behind the OIDC configuration was
+ * untested. The login button (label/icon) and {@code isOidcEnabled()} drive the login page.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -111,7 +111,7 @@ class OidcConfigServiceTest {
     @Test
     void testConnectionMeldetNichtErreichbarenIssuerAlsFehlerStattAuszunehmen() {
         OidcConfig c = new OidcConfig();
-        // Port 9 (discard) ist auf einem Entwicklerrechner nicht offen: Verbindung wird abgewiesen.
+        // Port 9 (discard) is not open on a developer machine: the connection is refused.
         c.setIssuerUrl("http://127.0.0.1:9/realms/test///");
 
         String ergebnis = service.testConnection(c);

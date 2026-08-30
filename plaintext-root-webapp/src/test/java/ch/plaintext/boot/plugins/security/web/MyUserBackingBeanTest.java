@@ -64,7 +64,7 @@ class MyUserBackingBeanTest {
     @Mock
     private MagicLinkService magicLinkService;
 
-    /** Forensik 23.08.2026: Audit-Log fuer Rollenaenderungen und Loeschungen. */
+    /** Forensics 23.08.2026: audit log for role changes and deletions. */
     @Mock
     private ch.plaintext.audit.DestructiveActionAuditService auditService;
 
@@ -110,9 +110,9 @@ class MyUserBackingBeanTest {
     }
 
     /**
-     * Forensik 23.08.2026, Punkt 4: „Neuer Benutzer" legt KEINE Zeile mehr an. Die frueher sofort
-     * persistierte Leer-Entity hinterliess bei jedem abgebrochenen Dialog eine Waisenzeile mit
-     * leerem {@code username}.
+     * Forensics 23.08.2026, item 4: "New user" no longer creates a row. The empty entity that used to
+     * be persisted immediately left an orphan row with an empty {@code username} behind on every
+     * cancelled dialog.
      */
     @Test
     void testNewUser_ShouldNotPersistEmptyEntity() {
@@ -281,19 +281,20 @@ class MyUserBackingBeanTest {
     }
 
     /**
-     * Karte 318: Beim Speichern der Zusatz-Mandate muss der Delete VOR den Inserts in die DB (flush
-     * dazwischen). Sonst flusht Hibernate die Inserts zuerst und ein re-inserter (username, mandat), der
-     * noch als alte Zeile existiert, verletzt den Unique-Index uq_user_mandate (DataIntegrityViolation,
-     * z. B. simon+guild42). Sichert zusätzlich ab, dass Heimat-Mandat und Duplikate gefiltert werden.
+     * Card 318: when saving the additional tenants the delete has to go into the DB BEFORE the inserts
+     * (with a flush in between). Otherwise Hibernate flushes the inserts first and a re-inserted
+     * (username, mandat) that still exists as an old row violates the unique index uq_user_mandate
+     * (DataIntegrityViolation, e.g. simon+guild42). Additionally guarantees that the home tenant and
+     * duplicates are filtered out.
      */
     @Test
     void saveZusatzMandate_flushtDeleteVorInserts_undFiltertHeimatUndDuplikate() {
         when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
         testUser.setUsername("user@example.com");
-        testUser.setMandat("lauftage2026"); // Heimat-Mandat
+        testUser.setMandat("lauftage2026"); // home tenant
         backingBean.setSelected(testUser);
-        // Formular-Liste: guild42 (existiert bereits in der DB), Heimat lauftage2026 (skip),
-        // guild42 erneut (Duplikat, skip), plaintext (neu).
+        // Form list: guild42 (already exists in the DB), home lauftage2026 (skip),
+        // guild42 again (duplicate, skip), plaintext (new).
         backingBean.setSelectedZusatzMandate(new ArrayList<>(
                 Arrays.asList("guild42", "lauftage2026", "guild42", "plaintext")));
 
@@ -301,16 +302,16 @@ class MyUserBackingBeanTest {
 
         org.mockito.InOrder ordered = inOrder(userMandateRepo);
         ordered.verify(userMandateRepo).deleteByUsername("user@example.com");
-        ordered.verify(userMandateRepo).flush(); // <-- der Fix: erzwingt Delete vor Insert
-        ordered.verify(userMandateRepo, times(2)).save(any()); // nur guild42 + plaintext (home/Dup gefiltert)
+        ordered.verify(userMandateRepo).flush(); // <-- the fix: forces the delete before the insert
+        ordered.verify(userMandateRepo, times(2)).save(any()); // only guild42 + plaintext (home/duplicate filtered out)
         verifyNoMoreInteractions(userMandateRepo);
     }
 
-    // ---- Karte 307, K1: serverseitige Rollen-Allowlist (ADMIN darf sich/andere nicht zu ROOT machen) ----
+    // ---- Card 307, K1: server-side role allowlist (an ADMIN must not make themselves/others ROOT) ----
 
     @Test
     void save_lehntRootRolleAb_wennAkteurNichtRootIst() {
-        // Akteur = ADMIN (setUp: ROLE_root=false, ROLE_admin=true). Angriff: "root" ins Rollenfeld.
+        // Actor = ADMIN (setUp: ROLE_root=false, ROLE_admin=true). Attack: "root" into the role field.
         testUser.setMandat("test_mandat");
         backingBean.setSelected(testUser);
         backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("admin", "root")));
@@ -326,14 +327,14 @@ class MyUserBackingBeanTest {
             backingBean.save();
         }
 
-        // Der ROOT-Grant darf NICHT persistiert werden.
+        // The ROOT grant must NOT be persisted.
         verify(repo, never()).save(any(MyUserEntity.class));
         verify(facesContext).validationFailed();
     }
 
     @Test
     void save_erlaubtRootRolle_wennAkteurRootIst() {
-        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true); // Akteur = ROOT
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true); // Actor = ROOT
         testUser.setMandat("test_mandat");
         backingBean.setSelected(testUser);
         backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("admin", "root")));
@@ -356,11 +357,11 @@ class MyUserBackingBeanTest {
         verify(facesContext, never()).validationFailed();
     }
 
-    // ---- Zustaendigkeitstrennung: admin vergibt Modul-Rollen, root vergibt Verwaltungsrechte ----
+    // ---- Separation of responsibilities: admin grants module roles, root grants administration rights ----
 
     @Test
     void save_erlaubtModulRolle_wennAkteurAdminIst() {
-        // Modul-Rollen sind KEINE privilegierten Rollen — sie zu vergeben ist admins Aufgabe.
+        // Module roles are NOT privileged roles — granting them is the admin's job.
         testUser.setMandat("test_mandat");
         backingBean.setSelected(testUser);
         backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user", "wiki", "finanzen")));
@@ -385,8 +386,8 @@ class MyUserBackingBeanTest {
 
     @Test
     void save_lehntAdminRolleAb_wennAkteurNichtRootIst() {
-        // Vorher war nur "root" privilegiert — ein admin konnte also weitere admins ernennen und
-        // seine eigene Beschraenkung damit aushebeln.
+        // Previously only "root" was privileged — so an admin could appoint further admins and
+        // thereby circumvent their own restriction.
         testUser.setMandat("test_mandat");
         backingBean.setSelected(testUser);
         backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user", "admin")));
@@ -408,7 +409,7 @@ class MyUserBackingBeanTest {
 
     @Test
     void save_erlaubtBestehendeAdminRolle_auchFuerNichtRoot() {
-        // Bestand bleibt editierbar: die Einschraenkung gilt nur fuer das NEU-Vergeben.
+        // Existing data stays editable: the restriction only applies to granting anew.
         testUser.setMandat("test_mandat");
         backingBean.setSelected(testUser);
         backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("admin", "wiki")));
@@ -431,16 +432,16 @@ class MyUserBackingBeanTest {
         verify(facesContext, never()).validationFailed();
     }
 
-    // ---- Forensik 23.08.2026, K1: die ENTZUGSSEITE. Die Allowlist prueft nur, was uebermittelt WURDE —
-    // ---- was fehlt, sah bisher niemand. Genau daran verlor ein Administratorkonto still root/admin.
+    // ---- Forensics 23.08.2026, K1: the REVOCATION side. The allowlist only checks what WAS submitted —
+    // ---- what is missing went unseen so far. Exactly that is how an administrator account silently lost root/admin.
 
     /**
-     * Ein Nicht-root darf privilegierte Rollen ueberhaupt nicht entziehen: harte Ablehnung,
-     * nichts wird gespeichert.
+     * A non-root must not be able to revoke privileged roles at all: hard rejection,
+     * nothing is saved.
      */
     @Test
     void save_lehntEntzugPrivilegierterRolleAb_wennAkteurNichtRootIst() {
-        // Akteur = ADMIN (setUp). Der Benutzer hat persistiert 'admin' — die Uebermittlung laesst sie weg.
+        // Actor = ADMIN (setUp). The user has 'admin' persisted — the submission omits it.
         testUser.setMandat("test_mandat");
         backingBean.setSelected(testUser);
         backingBean.setSelectedRolesList(new ArrayList<>(List.of("user")));
@@ -466,15 +467,15 @@ class MyUserBackingBeanTest {
     }
 
     /**
-     * Der Vorfall vom Abend: ein <b>root</b>-Akteur entzieht root/admin. Nicht blockieren, aber
-     * nicht kommentarlos speichern — es wird eine ausdrueckliche Bestaetigung verlangt.
+     * The incident of that evening: a <b>root</b> actor revokes root/admin. Do not block, but
+     * do not save without comment either — an explicit confirmation is required.
      */
     @Test
     void save_verlangtBestaetigung_wennRootPrivilegierteRollenEntzieht() {
         when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
         testUser.setMandat("test_mandat");
         backingBean.setSelected(testUser);
-        backingBean.setSelectedRolesList(new ArrayList<>()); // leere Auswahl vom Telefon
+        backingBean.setSelectedRolesList(new ArrayList<>()); // empty selection from the phone
 
         MyUserEntity persisted = new MyUserEntity();
         persisted.setId(1L);
@@ -495,7 +496,7 @@ class MyUserBackingBeanTest {
         assertTrue(backingBean.getRollenEntzugFrage().contains("root"));
     }
 
-    /** Nach der Bestaetigung durch root wird gespeichert — und die Aenderung landet im Audit. */
+    /** After the confirmation by root it is saved — and the change lands in the audit log. */
     @Test
     void bestaetigterEntzug_speichertUndSchreibtAudit() {
         when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
@@ -515,9 +516,9 @@ class MyUserBackingBeanTest {
 
         try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
             facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
-            backingBean.save();                                   // 1. Anlauf: Rueckfrage
+            backingBean.save();                                   // 1st attempt: query back
             assertTrue(backingBean.isRollenEntzugAusstehend());
-            backingBean.bestaetigeRollenEntzugUndSpeichere();      // 2. Anlauf: bestaetigt
+            backingBean.bestaetigeRollenEntzugUndSpeichere();      // 2nd attempt: confirmed
         }
 
         verify(repo).save(any(MyUserEntity.class));
@@ -529,7 +530,7 @@ class MyUserBackingBeanTest {
         assertFalse(backingBean.isRollenEntzugAusstehend(), "Bestaetigung darf nicht weitergelten");
     }
 
-    /** „Abbrechen" speichert nichts und raeumt den Bestaetigungszustand ab. */
+    /** "Cancel" saves nothing and clears the confirmation state. */
     @Test
     void brichRollenEntzugAb_speichertNichtsUndSetztZustandZurueck() {
         when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
@@ -556,9 +557,9 @@ class MyUserBackingBeanTest {
     }
 
     /**
-     * Ein Mandatswechsel entzieht formal die privilegierte Rolle {@code PROPERTY_MANDAT_*} — dafuer
-     * gibt es aber ein eigenes, sichtbares Feld. Eine Rueckfrage bei jedem Mandatswechsel wuerde
-     * die Warnung entwerten, deshalb bleibt er aussen vor.
+     * A tenant switch formally revokes the privileged role {@code PROPERTY_MANDAT_*} — but there
+     * is a separate, visible field for that. A query back on every tenant switch would
+     * devalue the warning, so it stays out of scope.
      */
     @Test
     void save_fragtNichtNach_beiReinemMandatswechsel() {
@@ -585,11 +586,11 @@ class MyUserBackingBeanTest {
         assertFalse(backingBean.isRollenEntzugAusstehend());
     }
 
-    // ---- Forensik 23.08.2026, K2: eine unvollstaendige Uebermittlung darf keinen Totalverlust bedeuten ----
+    // ---- Forensics 23.08.2026, K2: an incomplete submission must not mean a total loss ----
 
     /**
-     * Die im Dialog ausgeblendeten Rollen ({@code PROPERTY_*}, Mandat) kommen aus dem Formular nie
-     * zurueck. Vorher loeschte sie jedes Speichern still mit.
+     * The roles hidden in the dialog ({@code PROPERTY_*}, tenant) never come back from the form.
+     * Previously every save silently deleted them along the way.
      */
     @Test
     void setSelectedRolesList_bewahrtImDialogAusgeblendeteRollen() {
@@ -607,7 +608,7 @@ class MyUserBackingBeanTest {
                 "Sichtbare, abgewaehlte Rollen bleiben abgewaehlt — darueber entscheidet der Entzugs-Schutz");
     }
 
-    // ---- Forensik 23.08.2026, K3: Loeschung ist in Produktion sichtbar und im Audit ----
+    // ---- Forensics 23.08.2026, K3: a deletion is visible in production and in the audit log ----
 
     @Test
     void delete_schreibtAuditEintrag() {
@@ -645,7 +646,7 @@ class MyUserBackingBeanTest {
         verify(auditService, never()).logDestructiveAction(any(), any(), any(), any(), any());
     }
 
-    /** Eine Speicherung ohne Rollenaenderung darf das Audit-Log nicht fluten. */
+    /** A save without a role change must not flood the audit log. */
     @Test
     void save_schreibtKeinAudit_ohneRollenaenderung() {
         when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);

@@ -6,22 +6,22 @@ package ch.plaintext.menuesteuerung.diagnose;
 import java.util.List;
 
 /**
- * Eine Zeile der Menue-Diagnose: ein Menuepunkt, die vier Filter aus
- * {@code MenuItemImpl.isOn()} einzeln, und zu jedem Nein der konkrete Grund.
+ * One row of the menu diagnostics: a menu item, the four filters from
+ * {@code MenuItemImpl.isOn()} individually, and the concrete reason behind each no.
  *
- * @param titel        voller Menue-Titel ({@code "Parent | Titel"})
- * @param link         Menue-Link, z.B. {@code mandatemenu.html}
- * @param modulKeys    die Modul-Keys des Menuepunkts (eigene {@code moduleId}, die der
- *                     Elternmenues, die Menu-Root-Id)
- * @param rolleOk      Filter 1: Annotation-Rollen
- * @param rolleGrund   Grund, wenn Filter 1 Nein sagt (sonst leer)
- * @param modulRolleOk Filter 2: konfigurierte Modul-Rollen
- * @param modulRolleGrund Grund, wenn Filter 2 Nein sagt (sonst leer)
- * @param modulOk      Filter 3: Modul aktiviert
- * @param modulGrund   Grund, wenn Filter 3 Nein sagt (sonst leer)
- * @param mandantOk    Filter 4: Mandanten-White-/Blacklist
- * @param mandantGrund Grund, wenn Filter 4 Nein sagt, sonst ein Hinweis (z.B. Root-Ausnahme)
- * @param sichtbar     Gesamtergebnis — die UND-Verknuepfung aller vier Filter
+ * @param titel        full menu title ({@code "Parent | Titel"})
+ * @param link         menu link, e.g. {@code mandatemenu.html}
+ * @param modulKeys    the module keys of the menu item (its own {@code moduleId}, those of the
+ *                     parent menus, the menu root id)
+ * @param rolleOk      filter 1: annotation roles
+ * @param rolleGrund   reason when filter 1 says no (empty otherwise)
+ * @param modulRolleOk filter 2: configured module roles
+ * @param modulRolleGrund reason when filter 2 says no (empty otherwise)
+ * @param modulOk      filter 3: module activated
+ * @param modulGrund   reason when filter 3 says no (empty otherwise)
+ * @param mandantOk    filter 4: tenant whitelist/blacklist
+ * @param mandantGrund reason when filter 4 says no, otherwise a note (e.g. the root exemption)
+ * @param sichtbar     overall result — the AND combination of all four filters
  * @author info@plaintext.ch
  * @since 1.608.0
  */
@@ -39,26 +39,26 @@ public record MenuDiagnoseZeile(
         String mandantGrund,
         boolean sichtbar) {
 
-    // Auftrag Daniel, 29.08.2026: Die beiden abgeleiteten Werte heissen bewusst NICHT getXxx().
-    // Diese Klasse ist ein Record, und der RecordELResolver (Jakarta EL 6) loest #{z.modulKeysText}
-    // ausschliesslich ueber eine parameterlose Methode NAMENS modulKeysText() auf — Bean-Getter
-    // kennt er nicht. Mit getModulKeysText() flog die Diagnose-Seite beim Rendern mit
-    // PropertyNotFoundException auseinander und blieb leer (guild PROD, 29.08.2026).
-    // MenuDiagnoseZeileElTest haelt diese Zusage fest.
+    // Order from Daniel, 29.08.2026: the two derived values are deliberately NOT named getXxx().
+    // This class is a record, and the RecordELResolver (Jakarta EL 6) resolves #{z.modulKeysText}
+    // exclusively through a parameterless method NAMED modulKeysText() — it does not know about
+    // bean getters. With getModulKeysText() the diagnostics page blew up while rendering with a
+    // PropertyNotFoundException and stayed empty (guild PROD, 29.08.2026).
+    // MenuDiagnoseZeileElTest pins this promise down.
 
     /**
-     * Die Modul-Keys als Text fuer die Tabelle.
+     * The module keys as text for the table.
      *
-     * @return kommaseparierte Modul-Keys, oder {@code "—"} wenn keine bekannt sind
+     * @return comma-separated module keys, or {@code "—"} when none are known
      */
     public String modulKeysText() {
         return modulKeys == null || modulKeys.isEmpty() ? "—" : String.join(", ", modulKeys);
     }
 
     /**
-     * Der erste Filter, der Nein sagt — die Antwort auf „warum sehe ich das nicht?".
+     * The first filter that says no — the answer to "why don't I see this?".
      *
-     * @return Klartext-Grund, oder {@code ""} wenn der Menuepunkt sichtbar ist
+     * @return plain-text reason, or {@code ""} when the menu item is visible
      */
     public String ersterGrund() {
         if (!rolleOk) {

@@ -287,15 +287,15 @@ class JpaEntityServiceTest {
 
     @Test
     void findByMandat_failsClosed_whenNoFindByMandatMethod() {
-        // SECURITY (Karte 307, K2.1): Fehlt eine findByMandat-Methode, darf NICHT auf findAll()
-        // zurueckgefallen werden (das lieferte alle Mandanten). Fail-closed: Exception statt Dump.
+        // SECURITY (Karte 307, K2.1): if a findByMandat method is missing, we must NOT fall back
+        // to findAll() (that would return all tenants). Fail-closed: exception instead of a dump.
         Object repoWithoutFindByMandat = mock(JpaRepository.class);
         when(registryService.getRepository("NoMandatEntity")).thenReturn(repoWithoutFindByMandat);
 
         assertThrows(IllegalStateException.class,
                 () -> service.findByMandat("NoMandatEntity", "m1"),
                 "Ohne findByMandat muss fail-closed geworfen werden, kein findAll-Fallback");
-        // findAll darf in diesem Pfad NICHT aufgerufen werden (kein Cross-Mandant-Leak).
+        // findAll must NOT be called on this path (no cross-tenant leak).
         verify((JpaRepository) repoWithoutFindByMandat, never()).findAll();
     }
 

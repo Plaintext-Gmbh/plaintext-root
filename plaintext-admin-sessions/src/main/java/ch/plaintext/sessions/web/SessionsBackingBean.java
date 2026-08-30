@@ -37,9 +37,9 @@ public class SessionsBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped): setzt die Rolle, sperrt Nicht-Admins/Nicht-ROOT per Redirect
-     * aus und laedt die Sitzungsliste FRISCH bei jedem GET. Der isPostback-Guard verhindert das Neuladen bei
-     * Ajax-Postbacks. Ersetzt das fruehere @PostConstruct init() + checkAccess().
+     * preRenderView listener (session-scoped): sets the role, locks out non-admins/non-ROOT via a
+     * redirect and loads the session list FRESH on every GET. The isPostback guard prevents the reload
+     * on Ajax postbacks. Replaces the former @PostConstruct init() + checkAccess().
      */
     public void onLoad() {
         root = security.ifGranted("ROLE_ROOT");

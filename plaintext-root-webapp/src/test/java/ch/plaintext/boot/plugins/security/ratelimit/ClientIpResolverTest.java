@@ -11,7 +11,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Karte 303, Befund 2: der Rate-Limit-Schluessel darf nicht vom Client bestimmbar sein.
+ * Card 303, finding 2: the rate-limit key must not be determinable by the client.
  */
 @DisplayName("ClientIpResolver")
 class ClientIpResolverTest {
@@ -42,8 +42,8 @@ class ClientIpResolverTest {
     @Test
     @DisplayName("PROD-Topologie Cloudflare -> cloudflared -> nginx -> App")
     void productionTopology() {
-        // Der Angreifer haengt "1.2.3.4" selbst an; Cloudflare haengt seine echte IP rechts an,
-        // nginx danach die Adresse des Tunnel-Containers.
+        // The attacker appends "1.2.3.4" themselves; Cloudflare appends its real IP on the right,
+        // nginx then the address of the tunnel container.
         assertEquals("198.51.100.7",
                 resolver.resolve(request("192.168.208.1", "1.2.3.4, 198.51.100.7, 192.168.1.224")));
     }
@@ -114,8 +114,8 @@ class ClientIpResolverTest {
             sb.append("1.2.3.").append(i % 250).append(", ");
         }
         sb.append("192.168.1.224");
-        // Nur die ersten 32 Elemente werden betrachtet; das 32. (Index 31) ist der letzte
-        // auswertbare Eintrag. Wichtig ist: das Ergebnis ist deterministisch und beschraenkt.
+        // Only the first 32 elements are considered; the 32nd (index 31) is the last
+        // evaluable entry. What matters is: the result is deterministic and bounded.
         assertEquals("1.2.3.31", resolver.resolve(request("192.168.208.1", sb.toString())));
     }
 }

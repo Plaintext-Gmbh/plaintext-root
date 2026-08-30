@@ -81,8 +81,8 @@ public class BrandingBean {
     }
 
     /**
-     * Anwendungsname aus den Settings ({@code branding.app.name}); Fallback
-     * "Plaintext App". Titel-Default des Templates.
+     * Application name from the settings ({@code branding.app.name}); fallback
+     * "Plaintext App". The template's title default.
      */
     public String getEffectiveAppName() {
         return (appName != null && !appName.isBlank()) ? appName : "Plaintext App";

@@ -96,10 +96,10 @@ public class AnforderungDetailBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped): laedt die Anforderung anhand des viewParam {@code id} bei jedem GET
-     * (bzw. legt im Neu-Modus eine an). viewParams sind vor preRenderView gesetzt, daher ist {@code anforderungId}
-     * hier verfuegbar. Der isPostback-Guard verhindert das Neuladen bei Ajax-Postbacks (Bearbeitungszustand bleibt
-     * erhalten, keine doppelte Neuanlage).
+     * preRenderView listener (session-scoped): loads the requirement from the {@code id} viewParam on every GET
+     * (or creates one in new mode). viewParams are set before preRenderView, therefore {@code anforderungId}
+     * is available here. The isPostback guard prevents a reload on Ajax postbacks (the editing state is
+     * preserved, no duplicate creation).
      */
     public void onLoad() {
         FacesContext ctx = FacesContext.getCurrentInstance();
@@ -125,7 +125,7 @@ public class AnforderungDetailBackingBean implements Serializable {
                 log.error("Error loading anforderung: {}", anforderungId, e);
             }
         } else {
-            // Neu-Modus: Erstelle neue Anforderung mit Standardwerten
+            // New mode: create a new requirement with default values
             log.info("Creating new anforderung in mobile view");
             createNewAnforderung();
         }
@@ -137,7 +137,7 @@ public class AnforderungDetailBackingBean implements Serializable {
         anforderung.setMandat(security.getMandat());
         anforderung.setErsteller(security.getUser());
 
-        // Standardwerte gemäss Anforderung
+        // Default values as specified by the requirement
         anforderung.setTitel("-");
         anforderung.setBeschreibung("-");
         anforderung.setStatus("OFFEN");
@@ -145,7 +145,7 @@ public class AnforderungDetailBackingBean implements Serializable {
         anforderung.setWiederkehrend(false);
         anforderung.setKategorie("-");
 
-        // Sofort speichern, damit die ID verfügbar ist
+        // Save immediately so that the ID is available
         try {
             anforderung = anforderungService.save(anforderung);
             anforderungId = anforderung.getId();

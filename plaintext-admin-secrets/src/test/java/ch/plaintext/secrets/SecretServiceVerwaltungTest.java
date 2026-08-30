@@ -35,9 +35,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): Ergaenzung zu
- * {@link SecretServiceResolveTest} (Aufloesung) um die Verwaltung — Anlegen/Setzen je Backend,
- * Soft-Delete nur im eigenen Mandanten, aktives Backend, Health und die Backend-Migration.
+ * Status report 2026-08-29, measure 13 (JaCoCo gate): complements
+ * {@link SecretServiceResolveTest} (resolution) with the management side — creating/setting per
+ * backend, soft delete only within the own tenant, active backend, health and the backend migration.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -181,8 +181,8 @@ class SecretServiceVerwaltungTest {
             verify(hashicorp).set("openbao-probe", "geheim", "Karte 855");
             verify(vaultwarden, never()).set(anyString(), anyString(), any());
             verify(crypto, never()).encrypt(anyString());
-            // Der Wert darf NICHT zusaetzlich in der Datenbank landen — sonst haette das Umhaengen
-            // eine zweite Kopie erzeugt, die niemand mitrotiert.
+            // The value must NOT additionally end up in the database — otherwise the move would have
+            // created a second copy that nobody rotates along with it.
             assertNull(e.getWertEncrypted());
             assertEquals(SecretBackendType.HASHICORP, e.getBackendType());
         }
@@ -195,8 +195,8 @@ class SecretServiceVerwaltungTest {
 
             SecretEntry e = service.set("openbao-probe", SecretBackendType.HASHICORP, "", "umgehaengt");
 
-            // Der Wert liegt schon im Ziel-Tresor; ein Schreibaufruf mit leerem Wert wuerde ihn
-            // ueberschreiben. Nur die Zuordnung wechselt.
+            // The value already lies in the target vault; a write call with an empty value would
+            // overwrite it. Only the assignment changes.
             verify(hashicorp, never()).set(anyString(), anyString(), any());
             assertEquals(SecretBackendType.HASHICORP, e.getBackendType());
         }
@@ -339,7 +339,7 @@ class SecretServiceVerwaltungTest {
                     .thenReturn(Optional.of(konfig(SecretBackendType.LOCAL_DB, true)));
             when(entryRepo.findByMandatAndDeletedOrderByNameAsc("plaintext", false)).thenReturn(List.of(e));
             when(vaultwarden.readValue("a")).thenReturn("klar");
-            when(crypto.isDevFallback()).thenReturn(true); // Ziel LOCAL_DB migriert auch bei Dev-Schluessel
+            when(crypto.isDevFallback()).thenReturn(true); // target LOCAL_DB migrates even with a dev key
 
             SecretService.MigrationResult r = service.migrate(SecretBackendType.LOCAL_DB, "{}");
 

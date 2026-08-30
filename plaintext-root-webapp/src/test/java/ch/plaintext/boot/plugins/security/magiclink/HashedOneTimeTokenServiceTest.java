@@ -88,7 +88,7 @@ class HashedOneTimeTokenServiceTest {
 
         OneTimeToken token = service.generate(new GenerateOneTimeTokenRequest("user@example.com"));
 
-        // Immer gleiches Verhalten nach aussen – kein Enumeration
+        // Always the same behaviour towards the outside - no enumeration
         assertThat(token).isNotNull();
         assertThat(token.getUsername()).isEqualTo("user@example.com");
         verify(tokenRepository, never()).save(any());
@@ -140,13 +140,13 @@ class HashedOneTimeTokenServiceTest {
         assertThatThrownBy(() -> service.consume(
                 new OneTimeTokenAuthenticationToken("ungueltigerToken")))
                 .isInstanceOf(InvalidOneTimeTokenException.class);
-        // Kein SELECT nach fehlgeschlagenem UPDATE – keine Info-Leakage
+        // No SELECT after a failed UPDATE - no information leakage
         verify(tokenRepository, never()).findByTokenHash(anyString());
     }
 
     @Test
     void consume_wirftException_beiAbgelaufenenToken() {
-        // Abgelaufener Token: das bedingte UPDATE (EXPIRES_AT > NOW) trifft keine Zeile
+        // Expired token: the conditional UPDATE (EXPIRES_AT > NOW) hits no row
         when(tokenRepository.consumeToken(anyString(), any(Instant.class))).thenReturn(0);
 
         assertThatThrownBy(() -> service.consume(
@@ -156,7 +156,7 @@ class HashedOneTimeTokenServiceTest {
 
     @Test
     void consume_wirftException_beiVerbrauchemToken() {
-        // Bereits eingeloester Token: das bedingte UPDATE (CONSUMED_AT IS NULL) trifft keine Zeile
+        // Already redeemed token: the conditional UPDATE (CONSUMED_AT IS NULL) hits no row
         when(tokenRepository.consumeToken(anyString(), any(Instant.class))).thenReturn(0);
 
         OneTimeTokenAuthenticationToken token = new OneTimeTokenAuthenticationToken("verbrauchterToken");
@@ -176,7 +176,7 @@ class HashedOneTimeTokenServiceTest {
         dbToken.setIssuedAt(Instant.now());
         dbToken.setExpiresAt(Instant.now().plusSeconds(600));
 
-        // Atomares UPDATE: der erste Aufruf trifft die Zeile (1), der zweite nicht mehr (0)
+        // Atomic UPDATE: the first call hits the row (1), the second no longer does (0)
         when(tokenRepository.consumeToken(eq(hash), any(Instant.class))).thenReturn(1, 0);
         when(tokenRepository.findByTokenHash(hash)).thenReturn(Optional.of(dbToken));
 
@@ -197,7 +197,7 @@ class HashedOneTimeTokenServiceTest {
         String hash2 = HashedOneTimeTokenService.hashToken(raw);
 
         assertThat(hash1).isEqualTo(hash2);
-        assertThat(hash1).hasSize(64); // SHA-256 = 32 Bytes = 64 Hex-Zeichen
+        assertThat(hash1).hasSize(64); // SHA-256 = 32 bytes = 64 hex characters
         assertThat(hash1).isNotEqualTo(raw);
     }
 }

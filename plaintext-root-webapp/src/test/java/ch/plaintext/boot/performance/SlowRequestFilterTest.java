@@ -28,10 +28,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Langsam-Erkennung (Karte 430).
+ * Slowness detection (card 430).
  *
- * <p>Geprueft wird das, was die Karte verlangt: Der langsame Request muss sichtbar werden, das Log
- * darf nicht ueberlaufen, und es duerfen KEINE Nutzdaten darin landen.
+ * <p>What is checked is what the card demands: the slow request has to become visible, the log
+ * must not overflow, and NO payload data may end up in it.
  *
  * @author plaintext.ch
  */
@@ -60,7 +60,7 @@ class SlowRequestFilterTest {
         logger.detachAppender(logs);
     }
 
-    /** Request-Attrappe; die Kette schlaeft die gewuenschte Dauer. */
+    /** Request dummy; the chain sleeps for the desired duration. */
     private void lauf(SlowRequestFilter filter, String methode, String pfad, String query, long dauerMs)
             throws Exception {
         HttpServletRequest req = mock(HttpServletRequest.class);
@@ -136,16 +136,16 @@ class SlowRequestFilterTest {
     @Test
     @DisplayName("Nach Ablauf des Meldeabstands wird wieder gemeldet — mit Anzahl der unterdrueckten")
     void unterdrueckteWerdenNachgemeldet() throws Exception {
-        // Der Meldeabstand muss deutlich GROESSER sein als die Requestdauer, sonst ist er beim
-        // zweiten Lauf ohnehin abgelaufen und es wird dreimal gemeldet (erste Testfassung: 1 ms
-        // Abstand bei 60 ms Requests — der Test mass sich selbst, nicht die Drosselung).
+        // The reporting interval has to be markedly LARGER than the request duration, otherwise it has
+        // already elapsed by the second run anyway and three messages are emitted (first version of the
+        // test: 1 ms interval with 60 ms requests — the test measured itself, not the throttling).
         props.setMeldeabstand(Duration.ofMillis(300));
         SlowRequestFilter filter = new SlowRequestFilter(props, performance);
 
-        lauf(filter, "POST", "/wiki.xhtml", null, 60);   // meldet
-        lauf(filter, "POST", "/wiki.xhtml", null, 60);   // unterdrueckt (60 ms < 300 ms)
+        lauf(filter, "POST", "/wiki.xhtml", null, 60);   // reports
+        lauf(filter, "POST", "/wiki.xhtml", null, 60);   // suppressed (60 ms < 300 ms)
         Thread.sleep(350);
-        lauf(filter, "POST", "/wiki.xhtml", null, 60);   // Abstand um -> meldet wieder
+        lauf(filter, "POST", "/wiki.xhtml", null, 60);   // interval elapsed -> reports again
 
         assertThat(meldungen()).hasSize(2);
         assertThat(meldungen().get(1)).contains("unterdrueckt");

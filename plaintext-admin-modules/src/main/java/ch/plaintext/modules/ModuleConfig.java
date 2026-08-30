@@ -11,9 +11,9 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Persistierter Ein-/Aus-Zustand eines Feature-Moduls (Task #016). App-weit pro {@code moduleId}
- * genau eine Zeile; {@code enabled=false} blendet das Modul aus. {@code mandat}/{@code createdDate}
- * kommen aus {@link SuperModel}.
+ * Persisted on/off state of a feature module (Task #016). Exactly one row per {@code moduleId}
+ * application-wide; {@code enabled=false} hides the module. {@code mandat}/{@code createdDate}
+ * come from {@link SuperModel}.
  */
 @Entity
 @Table(name = "module_config")

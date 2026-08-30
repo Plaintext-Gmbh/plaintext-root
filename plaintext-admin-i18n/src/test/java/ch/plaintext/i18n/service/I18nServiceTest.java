@@ -36,9 +36,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): {@code I18nService} war ausser
- * {@code isI18nEnabled()} ungetestet — Cache, Platzhalter-Anlage und der CSV-Seed-Import sind
- * aber genau die Stellen, an denen ein Fehler still Uebersetzungen verliert oder ueberschreibt.
+ * Status report 29.08.2026, measure 13 (JaCoCo gate): apart from {@code isI18nEnabled()},
+ * {@code I18nService} was untested — yet the cache, the creation of placeholders and the CSV seed
+ * import are exactly the places where a bug silently loses or overwrites translations.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -138,7 +138,7 @@ class I18nServiceTest {
 
         assertSame(bestehend, gespeichert);
         assertEquals("Save", bestehend.getTranslatedText());
-        // Cache greift: die DB wird fuer den Lookup nicht mehr gefragt.
+        // The cache takes effect: the DB is no longer queried for the lookup.
         assertEquals("Save", service.translate("Speichern", "en"));
         verify(repository, org.mockito.Mockito.times(1)).findByDefaultLabelAndLanguageCode("Speichern", "en");
     }
@@ -152,7 +152,7 @@ class I18nServiceTest {
         service.deleteTranslation(7L);
 
         verify(repository).delete(t);
-        // Nach dem Loeschen faellt translate() wieder auf die DB zurueck.
+        // After the deletion translate() falls back to the DB again.
         when(repository.findByDefaultLabelAndLanguageCode("Speichern", "en")).thenReturn(Optional.empty());
         assertEquals("X_Speichern", service.translate("Speichern", "en"));
     }
@@ -235,9 +235,9 @@ class I18nServiceTest {
 
             ArgumentCaptor<I18nTranslation> captor = ArgumentCaptor.forClass(I18nTranslation.class);
             verify(repository, atLeastOnce()).save(captor.capture());
-            // Schluessel Label+Sprache, nicht nur Label: auf dem Test-Classpath liegt neben der
-            // Fixture auch die echte Seed plaintext-root.csv, und die fuehrt jedes Label in drei
-            // Sprachen ("Speichern" -> Save/Enregistrer/Salva).
+            // Key is label + language, not just label: on the test classpath, next to the fixture,
+            // the real seed plaintext-root.csv is present too, and it carries every label in three
+            // languages ("Speichern" -> Save/Enregistrer/Salva).
             Map<String, String> gespeichert = captor.getAllValues().stream()
                     .collect(Collectors.toMap(t -> t.getDefaultLabel() + "::" + t.getLanguageCode(),
                             I18nTranslation::getTranslatedText, (a, b) -> b));

@@ -25,34 +25,34 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Zweite Haelfte des Abwaehl-Nachweises: {@link SchlankerKontextTest} zeigt, dass der
- * <b>Spring-Kontext</b> ohne die abwaehlbaren Module startet — er rendert aber keine Seite. Eine
- * XHTML des Kerns, die {@code #{webhookBean.x}} schreibt, faellt ihm deshalb nicht auf; sie wuerde
- * erst beim Seitenaufruf einer schlanken App mit {@code PropertyNotFoundException} auffliegen.
+ * Second half of the deselection proof: {@link SchlankerKontextTest} shows that the
+ * <b>Spring context</b> starts without the deselectable modules — but it renders no page. An
+ * XHTML of the core that writes {@code #{webhookBean.x}} therefore does not stand out to it; it would
+ * only blow up with a {@code PropertyNotFoundException} when a page of a slim app is opened.
  *
- * <p>Dieser Test schliesst die Luecke von der anderen Seite: Er sammelt die Bean-Namen der
- * abwaehlbaren Module (per Component-Scan, die Jars sind in diesem Lauf da) und prueft jede XHTML,
- * die <b>der Kern</b> ausliefert — {@code plaintext-root-webapp} und {@code plaintext-root-template}.
- * Wer so eine Bean dort anspricht, braucht im selben Dokument einen Null-Schutz
- * ({@code #{bean != null}} oder {@code empty bean}); heute hat genau eine Stelle einen, das
- * Benachrichtigungs-Glockchen in {@code includes/topbar.xhtml}.
+ * <p>This test closes the gap from the other side: it collects the bean names of the
+ * deselectable modules (via component scan, the jars are present in this run) and checks every XHTML
+ * that <b>the core</b> ships — {@code plaintext-root-webapp} and {@code plaintext-root-template}.
+ * Whoever addresses such a bean there needs a null guard in the same document
+ * ({@code #{bean != null}} or {@code empty bean}); today exactly one place has one, the
+ * notification bell in {@code includes/topbar.xhtml}.
  *
- * <p><b>Grenze, offen benannt:</b> Der Test sieht nur, <em>dass</em> ein Null-Schutz im Dokument
- * steht, nicht, <em>dass er die Stelle auch umschliesst</em>. Er ersetzt kein Nachdenken, aber er
- * verhindert die stille Variante — eine neue Referenz ganz ohne Schutz.
+ * <p><b>A limit, named openly:</b> the test only sees <em>that</em> a null guard stands in the
+ * document, not <em>that it also encloses the place in question</em>. It replaces no thinking, but it
+ * prevents the silent variant — a new reference without any guard at all.
  *
  * @since 1.644.0
  */
 class AbwaehlbareModuleXhtmlTest {
 
-    /** Muss zur Liste in der pom.xml und in {@link SchlankerKontextTest} passen. */
+    /** Must match the list in the pom.xml and in {@link SchlankerKontextTest}. */
     private static final List<String> ABWAEHLBARE_PAKETE = List.of(
             "ch.plaintext.webhooks",
             "ch.plaintext.notifications",
             "ch.plaintext.secrets",
             "ch.plaintext.modules");
 
-    /** Nur die XHTML dieser beiden Artefakte sind "Kern" — die Module bringen ihre eigenen mit. */
+    /** Only the XHTML of these two artifacts are "core" — the modules bring their own. */
     private static final List<String> KERN_ARTEFAKTE = List.of(
             "plaintext-root-webapp", "plaintext-root-template");
 
@@ -84,10 +84,10 @@ class AbwaehlbareModuleXhtmlTest {
         assertTrue(verstoesse.isEmpty(), "Kern-XHTML haengt ungeschuetzt an abwaehlbaren Modulen:\n  "
                 + String.join("\n  ", verstoesse)
                 + "\nEntweder Null-Schutz setzen (#{bean != null}) oder das Modul aus der Abwaehl-Liste "
-                + "nehmen (pom.xml, SchlankerKontextTest, docs/MODULE_ABWAEHLEN.md).");
+                + "nehmen (pom.xml, SchlankerKontextTest, docs/OPTIONAL_MODULES.md).");
     }
 
-    /** Bean-Name -&gt; Paket, fuer alle Spring-Beans der abwaehlbaren Module. */
+    /** Bean name -&gt; package, for all Spring beans of the deselectable modules. */
     private static Map<String, String> beanNamenDerAbwaehlbarenModule() {
         ClassPathScanningCandidateComponentProvider scanner =
                 new ClassPathScanningCandidateComponentProvider(true);
@@ -104,7 +104,7 @@ class AbwaehlbareModuleXhtmlTest {
         return namen;
     }
 
-    /** Alle XHTML, die aus plaintext-root-webapp oder plaintext-root-template kommen. */
+    /** All XHTML that come from plaintext-root-webapp or plaintext-root-template. */
     private static List<Resource> kernXhtml() throws IOException {
         Resource[] alle = new PathMatchingResourcePatternResolver()
                 .getResources("classpath*:META-INF/resources/**/*.xhtml");

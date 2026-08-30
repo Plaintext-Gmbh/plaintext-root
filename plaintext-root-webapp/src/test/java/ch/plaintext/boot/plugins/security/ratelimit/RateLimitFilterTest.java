@@ -78,7 +78,7 @@ class RateLimitFilterTest {
         verify(filterChain, times(3)).doFilter(request, response);
 
         // 4th should be blocked
-        // Karte 303: echter 429 statt 302-Redirect (sendRedirect hatte den 429 ueberschrieben)
+        // Card 303: a real 429 instead of a 302 redirect (sendRedirect had overwritten the 429)
         filter.doFilter(request, response, filterChain);
         verify(response).setStatus(429);
         verify(response, never()).sendRedirect(anyString());
@@ -109,9 +109,9 @@ class RateLimitFilterTest {
             + "faellt unter authenticated(); ein Limit darauf haette nichts zu bremsen")
     void shouldNotRateLimitRemovedTokenLogin() throws Exception {
         when(request.getRequestURI()).thenReturn("/token-login");
-        // Bewusst KEIN getRemoteAddr()-Stub: der Filter ermittelt fuer diesen Pfad gar keine
-        // Client-IP mehr. Mockitos strikte Stub-Pruefung ist hier der eigentliche Beweis --
-        // ein ueberfluessiger Stub liesse den Test scheitern, sobald der Zweig zurueckkaeme.
+        // Deliberately NO getRemoteAddr() stub: for this path the filter no longer determines a
+        // client IP at all. Mockito's strict stub checking is the actual proof here --
+        // a superfluous stub would make the test fail as soon as the branch came back.
 
         for (int i = 0; i < 5; i++) {
             filter.doFilter(request, response, filterChain);
@@ -258,16 +258,16 @@ class RateLimitFilterTest {
     }
 
     /**
-     * Karte 968 (Sonar {@code java:S2699}): Der Test rief nur {@code cleanupExpiredBuckets()} auf
-     * und pruefte nichts — er war gruen, egal was die Methode tut.
+     * Card 968 (Sonar {@code java:S2699}): the test only called {@code cleanupExpiredBuckets()}
+     * and checked nothing — it was green no matter what the method does.
      *
-     * <p>Die Aussage, auf die es ankommt, ist keine technische, sondern eine Sicherheitsaussage:
-     * <b>das Aufraeumen darf laufende Sperren nicht aufheben.</b> Wuerde es die Buckets pauschal
-     * leeren statt nur die abgelaufenen, bekaeme ein Angreifer sein Kontingent alle fuenf Minuten
-     * schenkt ({@code @Scheduled(fixedRate = 300000)}) — die Bremse waere praktisch wirkungslos.
+     * <p>The statement that matters is not a technical one but a security one:
+     * <b>the cleanup must not lift running blocks.</b> If it emptied the buckets indiscriminately
+     * instead of only the expired ones, an attacker would be handed their quota every five minutes
+     * ({@code @Scheduled(fixedRate = 300000)}) — the brake would be practically without effect.
      *
-     * <p>Das Ablaufen selbst ist eine Ebene tiefer belegt ({@code RateLimiterTest}, beide
-     * Richtungen). Hier geht es um das Zusammenspiel im Filter.
+     * <p>The expiry itself is covered one level deeper ({@code RateLimiterTest}, both
+     * directions). Here it is about the interplay inside the filter.
      */
     @Test
     void cleanupHebtLaufendeSperrenNichtAuf() throws Exception {
@@ -277,7 +277,7 @@ class RateLimitFilterTest {
         StringWriter sw = new StringWriter();
         lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
 
-        // Kontingent aufbrauchen (Login: 3 je Fenster) und die Sperre ausloesen.
+        // Use up the quota (login: 3 per window) and trigger the block.
         for (int i = 0; i < 4; i++) {
             filter.doFilter(request, response, filterChain);
         }
@@ -286,7 +286,7 @@ class RateLimitFilterTest {
 
         filter.cleanupExpiredBuckets();
 
-        // Der Bucket ist frisch, also nicht abgelaufen: die Sperre muss stehen bleiben.
+        // The bucket is fresh, hence not expired: the block has to stay in place.
         filter.doFilter(request, response, filterChain);
         verify(filterChain, times(3)).doFilter(request, response);
         verify(response, times(2)).setStatus(429);
@@ -311,7 +311,7 @@ class RateLimitFilterTest {
         when(session.getAttribute(org.springframework.security.web.context
                 .HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)).thenReturn(context);
 
-        // Deutlich mehr als das Limit von 3 - alle erfolgreich, also nie limitiert.
+        // Clearly more than the limit of 3 - all successful, hence never limited.
         for (int i = 0; i < 10; i++) {
             filter.doFilter(request, response, filterChain);
         }
@@ -337,9 +337,9 @@ class RateLimitFilterTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 16): {@code /nosec/wiki} hatte trotz gegenteiliger Zusage im
-     * Controller-Javadoc kein Rate-Limit — der Filter kannte den Pfad schlicht nicht. Der
-     * generische {@code /nosec/}-Auffangzweig deckt ihn jetzt ab.
+     * SECURITY (card 314, item 16): despite the promise to the contrary in the controller Javadoc,
+     * {@code /nosec/wiki} had no rate limit — the filter simply did not know the path. The
+     * generic {@code /nosec/} catch-all branch now covers it.
      */
     @Test
     void shouldRateLimitGenericNosecPaths() throws Exception {
@@ -358,7 +358,7 @@ class RateLimitFilterTest {
         verify(response).setStatus(429);
     }
 
-    /** Analog fuer /nosec/challenge — derselbe generische Zweig. */
+    /** Analogous for /nosec/challenge — the same generic branch. */
     @Test
     void shouldRateLimitNosecChallenge() throws Exception {
         when(request.getRequestURI()).thenReturn("/nosec/challenge/eintrag");
@@ -374,8 +374,8 @@ class RateLimitFilterTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 16): der generische Zweig darf {@code /nosec/api/claude} nicht
-     * zusaetzlich zaehlen, sonst verbraucht ein Request zwei Kontingente.
+     * SECURITY (card 314, item 16): the generic branch must not additionally count
+     * {@code /nosec/api/claude}, otherwise one request consumes two quotas.
      */
     @Test
     void claudeEndpointShouldNotBeCountedTwice() throws Exception {
@@ -384,8 +384,8 @@ class RateLimitFilterTest {
         StringWriter sw = new StringWriter();
         lenient().when(response.getWriter()).thenReturn(new PrintWriter(sw));
 
-        // claudeLimiter erlaubt 4, der generische Limiter nur 3 — kaeme beides zum Zug,
-        // waere schon der 4. Request blockiert.
+        // claudeLimiter permits 4, the generic limiter only 3 — if both applied,
+        // the 4th request would already be blocked.
         for (int i = 0; i < 4; i++) {
             filter.doFilter(request, response, filterChain);
         }
@@ -393,9 +393,9 @@ class RateLimitFilterTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 10): {@code POST /password-reset} ist permitAll und verschickt
-     * Mails an eine vom Aufrufer gewaehlte Adresse — ohne Limit ein Spam-Relais und ein
-     * Werkzeug zur Konto-Enumeration.
+     * SECURITY (card 314, item 10): {@code POST /password-reset} is permitAll and sends
+     * mails to an address chosen by the caller — without a limit a spam relay and a
+     * tool for account enumeration.
      */
     @Test
     void shouldRateLimitPasswordReset() throws Exception {
@@ -415,7 +415,7 @@ class RateLimitFilterTest {
         verify(response).setStatus(429);
     }
 
-    /** SECURITY (Karte 314, Punkt 10): dasselbe fuer die Selbstregistrierung. */
+    /** SECURITY (card 314, item 10): the same for the self-registration. */
     @Test
     void shouldRateLimitRegister() throws Exception {
         when(request.getRequestURI()).thenReturn("/register");
@@ -431,7 +431,7 @@ class RateLimitFilterTest {
         verify(response).setStatus(429);
     }
 
-    /** GET /password-reset (Formularanzeige) darf NICHT limitiert werden. */
+    /** GET /password-reset (form display) must NOT be limited. */
     @Test
     void shouldNotRateLimitPasswordResetForm() throws Exception {
         when(request.getRequestURI()).thenReturn("/password-reset");
@@ -444,13 +444,13 @@ class RateLimitFilterTest {
         verify(filterChain, times(10)).doFilter(request, response);
     }
 
-    // ---------------------------------------------------------------- CalDAV/CardDAV (Karte 657)
+    // ----------------------------------------------------------------- CalDAV/CardDAV (card 657)
 
     /**
-     * Karte 657: CalDAV lag im generischen /nosec-Eimer und hat damit 73 Mal echte Clients
-     * abgewiesen — darunter vier Aufrufe der oeffentlichen Terminseite durch einen Browser, der
-     * sich das Kontingent mit einem gleichzeitigen Apple-Sync teilte. Gemessen am nginx-Log von
-     * plaintext-app: Spitzen von 85 CalDAV-Anfragen pro Minute gegen eine Grenze von 60.
+     * Card 657: CalDAV lay in the generic /nosec bucket and thereby rejected real clients 73 times
+     * — among them four calls of the public appointments page by a browser that
+     * shared the quota with a concurrent Apple sync. Measured against the nginx log of
+     * plaintext-app: peaks of 85 CalDAV requests per minute against a limit of 60.
      */
     private RateLimitFilter mitDavGrenze(int davMax, int nosecPublicMax) {
         // api, login, claude, nosec-token, nosec-public, dav
@@ -460,8 +460,8 @@ class RateLimitFilterTest {
     @Test
     @DisplayName("CalDAV verbraucht den DAV-Eimer und nicht das generische /nosec-Limit")
     void calDavNutztEigenenEimer() throws Exception {
-        // Generisches Limit absichtlich winzig (1): Laege CalDAV noch darin, waere ab dem
-        // zweiten Aufruf Schluss. Der DAV-Eimer erlaubt 6.
+        // The generic limit is deliberately tiny (1): if CalDAV still lay within it, it would be over
+        // from the second call on. The DAV bucket permits 6.
         RateLimitFilter f = mitDavGrenze(6, 1);
         when(request.getRequestURI()).thenReturn("/nosec/caldav/mad/4/");
         when(request.getRemoteAddr()).thenReturn("203.0.113.40");
@@ -505,8 +505,8 @@ class RateLimitFilterTest {
     }
 
     /**
-     * Der Kern des Befunds: Ein CalDAV-Sync darf die oeffentliche Terminseite nicht mehr
-     * aussperren. Frueher teilten sich beide den nosec-public-Eimer.
+     * The core of the finding: a CalDAV sync must no longer lock out the public appointments
+     * page. Previously both shared the nosec-public bucket.
      */
     @Test
     @DisplayName("Ein ausgeschoepfter DAV-Eimer sperrt die oeffentliche Terminseite NICHT aus")
@@ -515,14 +515,14 @@ class RateLimitFilterTest {
         when(request.getRemoteAddr()).thenReturn("203.0.113.43");
         lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
 
-        // DAV-Eimer leerlaufen lassen (2 erlaubt, der dritte wird abgewiesen)
+        // Let the DAV bucket run empty (2 permitted, the third is rejected)
         when(request.getRequestURI()).thenReturn("/nosec/caldav/mad/");
         for (int i = 0; i < 3; i++) {
             f.doFilter(request, response, filterChain);
         }
         verify(filterChain, times(2)).doFilter(request, response);
 
-        // Derselbe Anschluss ruft jetzt die oeffentliche Terminseite auf — muss durchkommen.
+        // The same connection now calls the public appointments page — it has to get through.
         reset(filterChain);
         when(request.getRequestURI()).thenReturn("/nosec/khost/termin/9902861ff6774a9b8ae7ad442d44df8a");
         f.doFilter(request, response, filterChain);
@@ -530,7 +530,7 @@ class RateLimitFilterTest {
         verify(filterChain).doFilter(request, response);
     }
 
-    /** Die uebrigen /nosec-Pfade bleiben am generischen Limit — Karte 314/16 gilt unveraendert. */
+    /** The remaining /nosec paths stay on the generic limit — card 314/16 applies unchanged. */
     @Test
     @DisplayName("Nicht-DAV-Pfade unter /nosec bleiben am generischen Limit")
     void generischesNosecLimitUnveraendert() throws Exception {

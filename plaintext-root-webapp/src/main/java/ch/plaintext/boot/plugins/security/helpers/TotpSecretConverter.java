@@ -7,8 +7,8 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
 /**
- * JPA-Converter: TOTP-Secret verschluesselt at rest (siehe {@link TotpSecretCrypto}).
- * Bewusst nicht {@code autoApply}: nur die eine Spalte in {@code MyUserEntity}.
+ * JPA converter: TOTP secret encrypted at rest (see {@link TotpSecretCrypto}).
+ * Deliberately not {@code autoApply}: only the one column in {@code MyUserEntity}.
  *
  * @author info@plaintext.ch
  * @since 1.636.0

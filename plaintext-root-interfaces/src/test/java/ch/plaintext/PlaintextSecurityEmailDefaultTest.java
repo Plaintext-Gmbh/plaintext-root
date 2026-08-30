@@ -16,11 +16,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Karte 596: Die Default-Methode {@link PlaintextSecurity#getEmailForUser(long)}.
+ * Card 596: the default method {@link PlaintextSecurity#getEmailForUser(long)}.
  *
- * <p>Geprüft wird ausdrücklich, dass sie die Adresse über die <b>Benutzer-Id</b> auflöst und nicht
- * über den Sicherheitskontext — im Cron-Lauf liefert {@code getId()} dort {@code -1} (Karte 588),
- * und genau dieser Fehler soll hier auffallen.
+ * <p>What is explicitly checked is that it resolves the address via the <b>user id</b> and not via
+ * the security context — in a cron run {@code getId()} returns {@code -1} there (Card 588), and it
+ * is exactly that mistake this test is meant to catch.
  *
  * @author info@plaintext.ch
  * @since 07.08.2026
@@ -60,9 +60,9 @@ class PlaintextSecurityEmailDefaultTest {
     }
 
     /**
-     * Die Mutationsprobe aus Karte 596 in ihrer root-Fassung: Würde man den Empfänger aus dem
-     * Sicherheitskontext statt aus der übergebenen Id ziehen, müsste dieser Test rot werden.
-     * Er hält fest, dass GENAU die übergebene Id nachgeschlagen wird.
+     * The mutation probe from Card 596 in its root form: if the recipient were taken from the
+     * security context instead of from the id passed in, this test would have to turn red. It
+     * pins down that EXACTLY the id passed in is looked up.
      */
     @Test
     @DisplayName("Die Auflösung geht über die uebergebene Id, nicht über den Sicherheitskontext")
@@ -74,7 +74,7 @@ class PlaintextSecurityEmailDefaultTest {
         assertEquals(Optional.of("owner@plaintext.ch"), security.getEmailForUser(4711L));
 
         verify(security).getUsernameForUser(4711L);
-        // getId() ist der Weg, der im Cron-Kontext -1 liefert — er darf hier nicht benutzt werden.
+        // getId() is the route that returns -1 in a cron context — it must not be used here.
         verify(security, org.mockito.Mockito.never()).getId();
     }
 }

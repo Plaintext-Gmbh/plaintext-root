@@ -90,7 +90,7 @@ class IndexTest {
 
         index.getIndex(response);
 
-        // Bei mehreren konfigurierten Startseiten gewinnt die erste (einheitlich mit dem Login-Redirect).
+        // With several configured start pages the first one wins (consistent with the login redirect).
         verify(response).sendRedirect("first.html");
     }
 }

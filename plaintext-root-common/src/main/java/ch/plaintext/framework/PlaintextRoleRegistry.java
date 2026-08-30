@@ -17,15 +17,15 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Sammelt die von allen Modulen deklarierten Rollen ein — das Rollen-Pendant zur Menue-Registry:
- * Wie beim Menue-System steuern Module ihren Beitrag als Spring-Bean bei
- * ({@link PlaintextRoleProvider}), und root sammelt die Beitraege zentral ein (Union,
- * dedupliziert ueber den {@linkplain PlaintextRole#normalizedName() normalisierten Namen}).
+ * Collects the roles declared by all modules — the role counterpart to the menu registry: as
+ * with the menu system, modules contribute as a Spring bean
+ * ({@link PlaintextRoleProvider}), and root collects the contributions centrally (union,
+ * deduplicated by the {@linkplain PlaintextRole#normalizedName() normalized name}).
  *
- * <p>Konsumenten (z.B. die Benutzerverwaltung) erhalten damit eine vollstaendige, beschriebene
- * Rollen-Auswahl, statt dass Rollennamen freihaendig getippt werden muessen. Rollen, die kein
- * Modul (mehr) deklariert, verschwinden dadurch NICHT aus den Benutzern — die Konsumenten
- * mischen den Bestand (DB) als Fallback dazu.</p>
+ * <p>Consumers (e.g. the user administration) thereby get a complete, described role selection
+ * instead of having to type role names freehand. Roles that no module declares (any more) do
+ * NOT disappear from the users because of that — the consumers mix in the existing stock (DB)
+ * as a fallback.</p>
  *
  * @author info@plaintext.ch
  * @since 1.600.0
@@ -37,17 +37,17 @@ public class PlaintextRoleRegistry {
     private List<PlaintextRoleProvider> roleProviders;
 
     /**
-     * Fuer Kontexte ohne {@link PlaintextRoleProvider}-Bean: Spring faellt auf diesen Konstruktor
-     * zurueck, wenn keine Provider aufloesbar sind (dann bleibt die Registry leer).
+     * For contexts without a {@link PlaintextRoleProvider} bean: Spring falls back to this
+     * constructor when no providers can be resolved (the registry then stays empty).
      */
     public PlaintextRoleRegistry() {
         this(null);
     }
 
     /**
-     * Der von Spring bevorzugte Konstruktor: sammelt alle Provider-Beans ein.
+     * The constructor Spring prefers: collects all provider beans.
      *
-     * @param roleProviders alle {@link PlaintextRoleProvider}-Beans, darf {@code null} sein
+     * @param roleProviders all {@link PlaintextRoleProvider} beans, may be {@code null}
      */
     @Autowired(required = false)
     public PlaintextRoleRegistry(@Nullable List<PlaintextRoleProvider> roleProviders) {
@@ -55,11 +55,10 @@ public class PlaintextRoleRegistry {
     }
 
     /**
-     * Alle deklarierten Rollen, dedupliziert ueber den normalisierten Namen und alphabetisch
-     * sortiert. Deklarieren mehrere Module dieselbe Rolle, gewinnt die erste nicht-leere
-     * Beschreibung.
+     * All declared roles, deduplicated by the normalized name and sorted alphabetically.
+     * If several modules declare the same role, the first non-empty description wins.
      *
-     * @return deklarierte Rollen (nie {@code null})
+     * @return declared roles (never {@code null})
      */
     public List<PlaintextRole> getDeclaredRoles() {
         Map<String, PlaintextRole> byName = new LinkedHashMap<>();
@@ -94,10 +93,10 @@ public class PlaintextRoleRegistry {
     }
 
     /**
-     * Die normalisierten Namen aller deklarierten Rollen (lowercase, ohne {@code ROLE_}-Prefix) —
-     * das Format, in dem die Benutzerverwaltung Rollen am Benutzer speichert.
+     * The normalized names of all declared roles (lowercase, without the {@code ROLE_} prefix) —
+     * the format in which the user administration stores roles on a user.
      *
-     * @return normalisierte Rollennamen, alphabetisch sortiert
+     * @return normalized role names, sorted alphabetically
      */
     public Set<String> getDeclaredRoleNames() {
         Set<String> ret = new LinkedHashSet<>();
@@ -108,10 +107,10 @@ public class PlaintextRoleRegistry {
     }
 
     /**
-     * Die Authority-Namen aller deklarierten Rollen ({@code ROLE_<UPPERCASE>}) — das Format der
-     * Spring-Security-Authorities bzw. der Rollenzuteilung.
+     * The authority names of all declared roles ({@code ROLE_<UPPERCASE>}) — the format of the
+     * Spring Security authorities resp. of the role assignment.
      *
-     * @return Authority-Namen, alphabetisch sortiert
+     * @return authority names, sorted alphabetically
      */
     public Set<String> getDeclaredAuthorityNames() {
         Set<String> ret = new LinkedHashSet<>();
@@ -122,10 +121,10 @@ public class PlaintextRoleRegistry {
     }
 
     /**
-     * Die Beschreibung einer deklarierten Rolle, unabhaengig von Schreibweise/Prefix der Anfrage.
+     * The description of a declared role, regardless of the spelling/prefix of the request.
      *
-     * @param roleName Rollenname (beliebige Schreibweise, mit oder ohne {@code ROLE_}-Prefix)
-     * @return Beschreibung oder leerer String, wenn die Rolle nicht (mehr) deklariert ist
+     * @param roleName role name (any spelling, with or without the {@code ROLE_} prefix)
+     * @return description, or an empty string when the role is not (any longer) declared
      */
     public String getDescription(String roleName) {
         if (roleName == null || roleName.trim().isEmpty()) {

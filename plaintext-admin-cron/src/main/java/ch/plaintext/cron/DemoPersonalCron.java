@@ -10,17 +10,17 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 /**
- * Beweis-/Muster-Cron für {@link ExecutionScope#PERSOENLICH} (Task 005): loggt je aktivem Benutzer
- * des Mandanten Mandant+Benutzer. Dient als Muster + Integrationstest für die PERSOENLICH-Iteration
- * im Framework ({@link SuperCron#run()}) — keine echte PERSOENLICH-Umstellung bestehender Crons ist
- * Teil dieses Tasks (eigene Entscheidung je Cron).
+ * Proof-of-concept / sample cron for {@link ExecutionScope#PERSOENLICH} (Task 005): logs tenant +
+ * user for every active user of the tenant. Serves as a sample and as an integration test for the
+ * PERSOENLICH iteration in the framework ({@link SuperCron#run()}) — actually converting existing
+ * crons to PERSOENLICH is not part of this task (that is decided per cron).
  *
- * <p>Default-Cron-Ausdruck bewusst selten ({@code 1 1 1 1 1} — nächster 1. Januar, 01:01), damit der
- * Job im Normalbetrieb praktisch nie periodisch feuert. Die Config-Zeile wird beim erstmaligen
- * Anlegen wie jeder neue Cron mit {@code startup=true} erstellt (Framework-Standard, siehe
- * {@code CronController.createCronConfigEntity}) — feuert also einmalig beim ersten Deploy, was
- * für einen Beweis-Cron erwünscht ist (sofortige, sichtbare Bestätigung im Log, dass die
- * PERSOENLICH-Iteration funktioniert).</p>
+ * <p>The default cron expression is deliberately rare ({@code 1 1 1 1 1} — next 1 January, 01:01), so
+ * that the job practically never fires periodically in normal operation. When first created, the
+ * configuration row is created with {@code startup=true} like every new cron (framework default, see
+ * {@code CronController.createCronConfigEntity}) — so it fires once on the first deployment, which is
+ * desirable for a proof-of-concept cron (immediate, visible confirmation in the log that the
+ * PERSOENLICH iteration works).</p>
  */
 @Component
 @Scope("prototype")
@@ -44,8 +44,8 @@ public class DemoPersonalCron implements PlaintextCron {
 
     @Override
     public void run(String mandant) {
-        // PERSOENLICH-Crons erhalten normalerweise run(mandant, userId) je Benutzer; dieser Pfad
-        // wird nur erreicht, wenn ihn jemand direkt aufruft (z. B. Alt-Code) -- rein defensiv geloggt.
+        // PERSOENLICH crons normally receive run(mandant, userId) per user; this path is only
+        // reached when someone calls it directly (e.g. legacy code) -- logged purely defensively.
         log.warn("DemoPersonalCron.run(String) direkt aufgerufen (mandant={}) — erwartet wurde "
                 + "run(mandant, userId) je Benutzer", mandant);
     }

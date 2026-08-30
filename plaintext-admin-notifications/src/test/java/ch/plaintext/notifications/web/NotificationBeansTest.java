@@ -40,8 +40,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): die beiden JSF-Beans des Moduls —
- * Glocke im Header (request-scoped, ohne Login still) und Inbox-Seite (session-scoped).
+ * Status report 29.08.2026, measure 13 (JaCoCo gate): the module's two JSF beans — the bell in
+ * the header (request-scoped, silent without a login) and the inbox page (session-scoped).
  *
  * @author info@plaintext.ch
  * @since 2026

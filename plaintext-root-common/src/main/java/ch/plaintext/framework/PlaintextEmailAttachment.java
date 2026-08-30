@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.ToString;
 
 /**
- * Sicherheitskopie einer Mail
+ * Backup copy of a mail
  *
  * @author Plaintext GmbH
  * @since 0.0.1

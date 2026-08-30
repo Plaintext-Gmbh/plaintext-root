@@ -50,7 +50,7 @@ class SuperCronTest {
         }
     }
 
-    /** Konkrete Subklasse mit Scope PERSOENLICH, für die run(mandant,userId)-Iteration. */
+    /** Concrete subclass with scope PERSOENLICH, for the run(mandant,userId) iteration. */
     private static class PersoenlichTestCron extends SuperCron {
         private final List<String> aufgerufeneUser = new ArrayList<>();
         private final List<String> kontextNamenBeimAufruf = new ArrayList<>();
@@ -422,9 +422,9 @@ class SuperCronTest {
     void afterPropertiesSetDoesNotThrowWhenBeanIsPrototype() throws Exception {
         when(applicationContext.isSingleton("testCronBean")).thenReturn(false);
 
-        // Karte 968 (java:S2699): „should not throw" war hier keine Nebensache, sondern die
-        // GANZE Aussage der Methode - sie wirft bei Singleton und tut sonst nichts. Genau das
-        // gehoert dann auch zugesichert und nicht kommentiert.
+        // Card 968 (java:S2699): "should not throw" was not a side note here but the WHOLE
+        // statement of the method - it throws for a singleton and does nothing otherwise. That is
+        // exactly what belongs in an assertion rather than in a comment.
         assertDoesNotThrow(() -> cron.afterPropertiesSet());
     }
 
@@ -454,7 +454,7 @@ class SuperCronTest {
         assertThat(cron.getScope()).isEqualTo(ExecutionScope.MANDAT);
     }
 
-    // --- run() mit ExecutionScope.PERSOENLICH (Task 005) ---
+    // --- run() with ExecutionScope.PERSOENLICH (Task 005) ---
 
     private PersoenlichTestCron persoenlichCron(List<String> user) {
         PersoenlichTestCron pCron = new PersoenlichTestCron();
@@ -490,7 +490,7 @@ class SuperCronTest {
         PersoenlichTestCron pCron = persoenlichCron(List.of("alice", "bob", "carol"));
         pCron.userWoWirft = "bob";
 
-        pCron.run(); // darf NICHT werfen — Fehler-Isolation je Benutzer
+        pCron.run(); // must NOT throw — error isolation per user
 
         assertThat(pCron.aufgerufeneUser).containsExactly("alice", "carol");
     }
@@ -502,7 +502,7 @@ class SuperCronTest {
         pCron.run();
 
         assertThat(pCron.aufgerufeneUser).isEmpty();
-        assertThat(pCron.getCounter()).isEqualTo(1); // ende() lief trotzdem
+        assertThat(pCron.getCounter()).isEqualTo(1); // ende() ran anyway
     }
 
     @Test

@@ -19,15 +19,15 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Playwright-basierter Integration Test, der alle Seiten der Applikation aufruft
- * und prüft, dass keine Server-Fehler auftreten.
+ * Playwright-based integration test that opens all pages of the application
+ * and checks that no server errors occur.
  *
- * Voraussetzung: PostgreSQL läuft (docker compose up / ./start start-pg)
+ * Precondition: PostgreSQL is running (docker compose up / ./start start-pg)
  *
- * Ausführen:
+ * How to run:
  *   mvn failsafe:integration-test failsafe:verify -pl plaintext-root-webapp -Dit.test=PlaywrightPageIT
  *
- * Oder über das Shell-Script:
+ * Or via the shell script:
  *   ./run-playwright-tests.sh
  */
 @SpringBootTest(
@@ -85,10 +85,10 @@ class PlaywrightPageIT {
     }
 
     /**
-     * Login über das Spring Security Formular. Verwendet den beim Boot von
-     * {@code PlaintextInitLoader} angelegten Root-User (root@root.root / root, Rollen root+admin+user) —
-     * das frühere admin/admin stammte aus einer veralteten test-data.sql (Tabelle user_account existiert
-     * nicht mehr) und schlug immer fehl.
+     * Login through the Spring Security form. Uses the root user created at boot time by
+     * {@code PlaintextInitLoader} (root@root.root / root, roles root+admin+user) —
+     * the earlier admin/admin came from an outdated test-data.sql (the table user_account no longer
+     * exists) and always failed.
      */
     private void login() {
         page.navigate(baseUrl() + "/login.html");
@@ -101,7 +101,7 @@ class PlaywrightPageIT {
     }
 
     /**
-     * Prüft ob eine Seite ohne Server-Fehler geladen wird.
+     * Checks whether a page loads without server errors.
      */
     private PageLoadResult loadPage(String path) {
         List<String> consoleErrors = new ArrayList<>();

@@ -11,16 +11,16 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 
 /**
- * Publish-Seite des internen Event-Bus: verpackt ein Payload (typischerweise ein Model-Interface aus
- * einem {@code *-interfaces}-Modul) in einen {@link PlaintextBusEvent} und veröffentlicht ihn via
- * {@link ApplicationEventPublisher} — {@link PlaintextBusDispatcher} übernimmt Zustellung an
- * passende {@link PlaintextBusSubscriber}. Mandant/Benutzer werden automatisch aus
- * {@link PlaintextSecurityHolder} erfasst, nicht vom Aufrufer übergeben — analog zu, wie
- * {@code SuperCron} den Ausführungs-Kontext implizit aus dem laufenden Cron-Job ableitet.
+ * Publish side of the internal event bus: wraps a payload (typically a model interface from a
+ * {@code *-interfaces} module) into a {@link PlaintextBusEvent} and publishes it via the
+ * {@link ApplicationEventPublisher} — {@link PlaintextBusDispatcher} takes care of the delivery
+ * to matching {@link PlaintextBusSubscriber}s. Tenant/user are captured automatically from
+ * {@link PlaintextSecurityHolder}, not passed in by the caller — analogous to the way
+ * {@code SuperCron} derives the execution context implicitly from the running cron job.
  *
- * <p><b>At-most-once, in-memory, nach Commit</b> — keine Persistenz, kein Retry, keine
- * Reihenfolge-Garantie. Wer garantierte Zustellung braucht, nutzt das Delivery-Log+Cron-Muster
- * (wie {@code plaintext-admin-webhooks}) hinter einem Subscriber.</p>
+ * <p><b>At-most-once, in-memory, after commit</b> — no persistence, no retry, no ordering
+ * guarantee. Whoever needs guaranteed delivery uses the delivery-log + cron pattern (like
+ * {@code plaintext-admin-webhooks}) behind a subscriber.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -32,13 +32,13 @@ public class PlaintextEventBus {
     private final ApplicationEventPublisher eventPublisher;
 
     /**
-     * Veröffentlicht {@code payload} auf dem Bus. Bei {@link ExecutionScope#APPLICATION} wird kein
-     * Mandant erfasst (mandantenlos); bei {@link ExecutionScope#PERSOENLICH} zusätzlich der aktuelle
-     * Benutzer.
+     * Publishes {@code payload} on the bus. With {@link ExecutionScope#APPLICATION} no tenant is
+     * captured (tenant-less); with {@link ExecutionScope#PERSOENLICH} additionally the current
+     * user.
      *
-     * @param payload das Event-Objekt
-     * @param scope   Zustellungs-Scope
-     * @param <T>     Typ des Payloads
+     * @param payload the event object
+     * @param scope   delivery scope
+     * @param <T>     type of the payload
      */
     public <T> void publish(T payload, ExecutionScope scope) {
         String mandant = scope == ExecutionScope.APPLICATION ? null : PlaintextSecurityHolder.getMandat();

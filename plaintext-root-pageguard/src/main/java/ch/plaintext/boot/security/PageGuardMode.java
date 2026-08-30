@@ -4,15 +4,15 @@
 package ch.plaintext.boot.security;
 
 /**
- * Betriebsart des Seiten-Zugriffsschutzes (Karte 308).
+ * Operating mode of the page access guard (card 308).
  *
- * <p>Unabhaengig vom Modus gilt immer:
+ * <p>Regardless of the mode, the following always applies:
  * <ul>
- *   <li>Menue-Links werden kanonisch verglichen (Endungen {@code .htm}/{@code .html}/{@code .xhtml}/
- *       {@code .jsf} und ein fuehrender Slash werden auf beiden Seiten ignoriert). Vorher schlug
- *       der Vergleich bei jedem Link fehl, der nicht exakt auf {@code .html} endete.</li>
- *   <li>Eine Exception bei der Pruefung fuehrt zur <b>Verweigerung</b> (vorher: erlauben).</li>
- *   <li>Allowlist und View-Aliase werden ausgewertet.</li>
+ *   <li>Menu links are compared canonically (the extensions {@code .htm}/{@code .html}/
+ *       {@code .xhtml}/{@code .jsf} and a leading slash are ignored on both sides). Previously the
+ *       comparison failed for every link that did not end in exactly {@code .html}.</li>
+ *   <li>An exception during the check leads to a <b>denial</b> (previously: allow).</li>
+ *   <li>Allowlist and view aliases are evaluated.</li>
  * </ul>
  *
  * @author plaintext.ch
@@ -20,24 +20,24 @@ package ch.plaintext.boot.security;
 public enum PageGuardMode {
 
     /**
-     * Framework-Default. Eine View ohne Menuezuordnung, ohne Alias und ohne Allowlist-Eintrag
-     * wird <b>erlaubt</b>, aber mit WARN protokolliert. Eltern-Rollen werden nicht vererbt.
+     * Framework default. A view without a menu assignment, without an alias and without an
+     * allowlist entry is <b>allowed</b>, but logged with WARN. Parent roles are not inherited.
      *
-     * <p>Dieser Modus existiert, damit eine konsumierende App nach dem Framework-Update nicht
-     * schlagartig alle Detail-/Edit-Views aussperrt, die (noch) keinen Menueeintrag haben. Der
-     * Startup-Report {@code PageAccessGuardStartupReport} listet diese Views beim Boot auf.
+     * <p>This mode exists so that a consuming app does not abruptly lock out all detail/edit views
+     * that do not (yet) have a menu entry after the framework update. The startup report
+     * {@code PageAccessGuardStartupReport} lists these views at boot time.
      */
     REPORT,
 
     /**
-     * Fail-closed. Eine View ohne Menuezuordnung, ohne Alias und ohne Allowlist-Eintrag wird
-     * <b>verweigert</b>. Zusaetzlich werden die Rollen des Elternmenues vererbt: ein Menuepunkt
-     * <b>ohne eigene {@code roles}</b> unter einem rollenbeschraenkten Elternmenue ist nur
-     * erreichbar, wenn auch das Elternmenue sichtbar ist (so wie im gerenderten Menue, wo ein
-     * unsichtbares Elternmenue alle Kinder verbirgt). Deklariert ein Menuepunkt eigene
-     * {@code roles}, sind diese abschliessend — damit bleibt eine bewusst breiter erreichbare
-     * Seite unter einem eingeschraenkten Elternmenue moeglich (z.B. {@code notifications.html},
-     * das die Topbar-Glocke fuer jeden User verlinkt).
+     * Fail-closed. A view without a menu assignment, without an alias and without an allowlist
+     * entry is <b>denied</b>. In addition, the roles of the parent menu are inherited: a menu item
+     * <b>without {@code roles} of its own</b> below a role-restricted parent menu is only
+     * reachable if the parent menu is visible as well (just like in the rendered menu, where an
+     * invisible parent menu hides all of its children). If a menu item declares its own
+     * {@code roles}, those are final — this keeps a deliberately more broadly reachable page below
+     * a restricted parent menu possible (e.g. {@code notifications.html}, which the topbar bell
+     * links to for every user).
      */
     STRICT
 }

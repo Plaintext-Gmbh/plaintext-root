@@ -11,14 +11,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.mock.env.MockEnvironment;
 
 /**
- * Belegt, dass die gemeinsamen Grundeinstellungen ankommen — und dass sie sich weiterhin
- * ueberschreiben lassen.
+ * Shows that the shared base settings arrive — and that they can still be
+ * overridden.
  *
- * <p><b>Was dieser Test absichtlich NICHT tut:</b> pruefen, ob die Schluessel in
- * {@code plaintext-defaults.yml} <em>stehen</em>. Genau diese Sorte Test hat bei
- * {@code @EnableMethodSecurity} (Karte 546) gruen gemeldet, waehrend die Annotation wirkungslos
- * war: Vorhandensein ist nicht Wirksamkeit. Geprueft wird deshalb der aufgeloeste Wert im
- * {@code Environment} — also das, was die Anwendung tatsaechlich sieht.
+ * <p><b>What this test deliberately does NOT do:</b> check whether the keys <em>are present</em>
+ * in {@code plaintext-defaults.yml}. Exactly that kind of test reported green for
+ * {@code @EnableMethodSecurity} (Karte 546) while the annotation had no effect: presence is not
+ * effectiveness. What is checked is therefore the resolved value in the
+ * {@code Environment} — that is, what the application actually sees.
  */
 class PlaintextDefaultsEnvironmentPostProcessorTest {
 
@@ -49,8 +49,8 @@ class PlaintextDefaultsEnvironmentPostProcessorTest {
 
         processor.postProcessEnvironment(environment, new SpringApplication());
 
-        // INT laeuft mit demselben Profil wie PROD; scharf geschaltet wird je Container ueber
-        // PLAINTEXT_COOKIE_SECURE. Ein true an dieser Stelle waere ein INT-Ausfall.
+        // INT runs with the same profile as PROD; it is armed per container through
+        // PLAINTEXT_COOKIE_SECURE. A true at this point would be an INT outage.
         assertThat(environment.getProperty("server.servlet.session.cookie.secure"))
                 .isEqualTo("false");
     }
@@ -59,7 +59,7 @@ class PlaintextDefaultsEnvironmentPostProcessorTest {
     @DisplayName("Eine Anwendung kann jeden Wert weiterhin ueberschreiben")
     void anwendungGewinnt() {
         MockEnvironment environment = new MockEnvironment();
-        // MockEnvironment legt seine eigene Source VOR unsere — genau wie eine application.yml.
+        // MockEnvironment puts its own source BEFORE ours — exactly like an application.yml.
         environment.setProperty("server.servlet.session.cookie.same-site", "strict");
 
         processor.postProcessEnvironment(environment, new SpringApplication());
@@ -76,8 +76,8 @@ class PlaintextDefaultsEnvironmentPostProcessorTest {
 
         processor.postProcessEnvironment(environment, new SpringApplication());
 
-        // Karte 623: root schaltet beides seit Karte 314 ab, die Consumer nicht -- ihre eigene
-        // application.yml verdeckte die root-Fassung. Gemessen waren 38 bzw. 11 offene Pfade.
+        // Karte 623: root has switched both off since Karte 314, the consumers have not -- their own
+        // application.yml hid the root version. 38 resp. 11 open paths were measured.
         assertThat(environment.getProperty("springdoc.api-docs.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("springdoc.swagger-ui.enabled")).isEqualTo("false");
     }

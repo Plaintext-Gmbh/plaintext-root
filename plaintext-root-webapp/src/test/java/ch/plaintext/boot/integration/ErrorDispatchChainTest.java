@@ -27,25 +27,25 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 652 — der ERROR-Dispatch darf den urspruenglichen Fehlerstatus nicht ueberschreiben.
+ * Card 652 — the ERROR dispatch must not overwrite the original error status.
  *
- * <p><b>Der Befund:</b> Jeder ueber {@code response.sendError(...)} erzeugte Fehler loest im
- * Container einen zweiten, internen Durchlauf auf {@code /error} aus. Die
- * {@code springSecurityFilterChain} ist auf {@code REQUEST+ASYNC+ERROR} gemappt und lief dort
- * erneut — anonym, weil die Bearer-/Token-Filter als {@code FilterRegistrationBean} nur auf
- * {@code REQUEST} laufen. {@code /error} unter {@code anyRequest().authenticated()} hiess dann:
- * 302 auf die Anmeldeseite, und der echte Status (403/404/500) war weg. Ein Bearer-Client bekam
- * fuer eine fehlende Berechtigung HTML statt JSON, und ein Skript mit {@code curl -L} las daraus
- * HTTP 200 — eine Rechteverweigerung als Erfolg.</p>
+ * <p><b>The finding:</b> every error produced via {@code response.sendError(...)} triggers a
+ * second, internal pass on {@code /error} in the container. The
+ * {@code springSecurityFilterChain} is mapped to {@code REQUEST+ASYNC+ERROR} and ran there
+ * again — anonymously, because the bearer/token filters, being a {@code FilterRegistrationBean}, only
+ * run on {@code REQUEST}. {@code /error} under {@code anyRequest().authenticated()} then meant:
+ * 302 to the login page, and the real status (403/404/500) was gone. For a missing permission a
+ * bearer client got HTML instead of JSON, and a script with {@code curl -L} read
+ * HTTP 200 out of it — a permission denial as a success.</p>
  *
- * <p><b>Warum ueber die echte Kette und nicht mit MockMvc:</b> MockMvc fuehrt keinen
- * ERROR-Dispatch aus. Ein Mock-Test kann diesen Bug strukturell nicht sehen und haette ihn auch
- * nicht verhindern koennen — dieselbe Lehre wie beim {@link RateLimitChainTest} (Karte 303).
- * Deshalb echte HTTP-Requests gegen einen echten Tomcat.</p>
+ * <p><b>Why through the real chain and not with MockMvc:</b> MockMvc performs no
+ * ERROR dispatch. A mock test structurally cannot see this bug and could not have
+ * prevented it either — the same lesson as with the {@link RateLimitChainTest} (card 303).
+ * Hence real HTTP requests against a real Tomcat.</p>
  *
- * <p>Die beiden letzten Tests sind die Gegenproben: der Browser-Pfad muss unveraendert auf die
- * Anmeldung umleiten, und die neue Regel darf {@code /error} nicht fuer Aufrufer von aussen
- * oeffnen (dort steht {@code DispatcherType.REQUEST}, nicht {@code ERROR}).</p>
+ * <p>The last two tests are the counter-checks: the browser path must still redirect to the
+ * login unchanged, and the new rule must not open {@code /error} to callers from the
+ * outside (there {@code DispatcherType.REQUEST} applies, not {@code ERROR}).</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -60,9 +60,9 @@ class ErrorDispatchChainTest {
     private int port;
 
     /**
-     * Redirects duerfen NICHT gefolgt werden — genau das Verschlucken der 302 ist der Bug.
-     * {@code SimpleClientHttpRequestFactory} folgt bei GET sonst von selbst und der Test saehe
-     * die 200 der Anmeldeseite statt der 302.
+     * Redirects must NOT be followed — swallowing the 302 is precisely the bug.
+     * Otherwise {@code SimpleClientHttpRequestFactory} follows them by itself on GET and the test would
+     * see the 200 of the login page instead of the 302.
      */
     private RestTemplate client() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory() {
@@ -98,10 +98,10 @@ class ErrorDispatchChainTest {
     @Test
     @DisplayName("403 bleibt 403: eine Autorisierungsverweigerung wird nicht zur Anmeldeseite")
     void accessDeniedStaysForbidden() {
-        // POST auf einen permitAll-Pfad OHNE CSRF-Token: der CsrfFilter weist mit einer
-        // AccessDeniedException ab -> AccessDeniedHandlerImpl -> sendError(403) -> ERROR-Dispatch.
-        // Derselbe Weg, den eine fehlende Berechtigung eines Bearer-Clients nimmt, nur ohne
-        // Token-Infrastruktur reproduzierbar.
+        // POST to a permitAll path WITHOUT a CSRF token: the CsrfFilter rejects it with an
+        // AccessDeniedException -> AccessDeniedHandlerImpl -> sendError(403) -> ERROR dispatch.
+        // The same path that a missing permission of a bearer client takes, only reproducible
+        // without token infrastructure.
         ResponseEntity<String> response = post("/register", "username=nobody@example.com");
 
         assertEquals(403, response.getStatusCode().value(),
@@ -113,9 +113,9 @@ class ErrorDispatchChainTest {
     @Test
     @DisplayName("404 bleibt 404: ein unbekannter Pfad unter permitAll wird nicht zur Anmeldeseite")
     void notFoundStaysNotFound() {
-        // /nosec/** ist anonym erreichbar (DEFAULT_PERMIT_ALL). Ein 404 hier kann im ersten
-        // Durchlauf gar nicht abgewiesen worden sein — wer hier eine 302 sieht, sieht den
-        // ERROR-Dispatch.
+        // /nosec/** is reachable anonymously (DEFAULT_PERMIT_ALL). A 404 here cannot possibly have
+        // been rejected in the first pass — whoever sees a 302 here is seeing the
+        // ERROR dispatch.
         ResponseEntity<String> response = get("/nosec/diesen-pfad-gibt-es-nicht");
 
         assertEquals(404, response.getStatusCode().value(),
@@ -137,7 +137,7 @@ class ErrorDispatchChainTest {
     @Test
     @DisplayName("Gegenprobe: /error von aussen bleibt gesperrt — die Regel gilt nur intern")
     void errorPageIsNotOpenedForExternalCallers() {
-        // Ein Aufruf von aussen traegt DispatcherType.REQUEST; die neue Regel matcht nur ERROR.
+        // A call from the outside carries DispatcherType.REQUEST; the new rule only matches ERROR.
         ResponseEntity<String> response = get("/error");
 
         assertNotEquals(200, response.getStatusCode().value(),

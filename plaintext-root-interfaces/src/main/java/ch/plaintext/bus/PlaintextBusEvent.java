@@ -6,19 +6,18 @@ package ch.plaintext.bus;
 import java.time.Instant;
 
 /**
- * Umschlag, in dem {@link PlaintextEventBus} ein typisiertes Payload (typischerweise ein
- * Model-Interface aus einem {@code *-interfaces}-Modul, z. B. {@code IRechnung},
- * {@code IncomingMail}) auf den internen Bus veröffentlicht. Der Kontext ({@code mandant}/
- * {@code userId}) wird beim Publish aus {@code PlaintextSecurityHolder} erfasst und danach IMMER
- * aus dem Envelope gelesen — nie aus dem Thread des Subscribers (der laeuft ggf. auf einem anderen
- * Thread als der Publisher).
+ * Envelope in which {@link PlaintextEventBus} publishes a typed payload (typically a model
+ * interface from a {@code *-interfaces} module, e.g. {@code IRechnung}, {@code IncomingMail}) onto
+ * the internal bus. The context ({@code mandant}/{@code userId}) is captured from
+ * {@code PlaintextSecurityHolder} at publish time and read from the envelope ALWAYS thereafter —
+ * never from the subscriber's thread (which may differ from the publisher's).
  *
- * @param payload  das eigentliche Event-Objekt
- * @param scope    Zustellungs-Scope (siehe {@link ExecutionScope})
- * @param mandant  Mandant des Events, oder {@code null} bei {@link ExecutionScope#APPLICATION}
- * @param userId   auslösender Benutzer, nur bei {@link ExecutionScope#PERSOENLICH} gesetzt
- * @param at       Zeitpunkt des Publish
- * @param <T>      Typ des Payloads
+ * @param payload  the actual event object
+ * @param scope    delivery scope (see {@link ExecutionScope})
+ * @param mandant  tenant of the event, or {@code null} for {@link ExecutionScope#APPLICATION}
+ * @param userId   triggering user, set only for {@link ExecutionScope#PERSOENLICH}
+ * @param at       time of the publish
+ * @param <T>      type of the payload
  * @author info@plaintext.ch
  * @since 2026
  */

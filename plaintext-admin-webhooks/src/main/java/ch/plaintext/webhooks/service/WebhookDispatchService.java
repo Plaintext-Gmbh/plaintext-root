@@ -29,11 +29,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Nimmt {@link PlaintextDomainEvent}s entgegen (fachliche Module publizieren sie via
- * {@code ApplicationEventPublisher}, kein Cross-Modul-Aufruf nötig), ermittelt die passenden
- * aktiven {@link WebhookEndpoint}s des Mandanten und versendet best-effort synchron
- * (Fehler blockieren nie den auslösenden Fachfluss — analog {@code DestructiveActionAuditService}).
- * Fehlgeschlagene Zustellungen holt {@link WebhookRetryCron} mit exponentiellem Backoff nach.
+ * Receives {@link PlaintextDomainEvent}s (business modules publish them via
+ * {@code ApplicationEventPublisher}, no cross-module call needed), determines the matching
+ * active {@link WebhookEndpoint}s of the tenant and sends them best-effort synchronously
+ * (errors never block the triggering business flow — analogous to {@code DestructiveActionAuditService}).
+ * Failed deliveries are retried by {@link WebhookRetryCron} with exponential backoff.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -43,7 +43,7 @@ import java.util.Map;
 @Slf4j
 public class WebhookDispatchService {
 
-    /** Retry-Verzögerungen je Versuch (1min/5min/30min/2h/12h) — danach {@code GIVEN_UP}. */
+    /** Retry delays per attempt (1min/5min/30min/2h/12h) — after that {@code GIVEN_UP}. */
     static final Duration[] BACKOFF = {
             Duration.ofMinutes(1), Duration.ofMinutes(5), Duration.ofMinutes(30),
             Duration.ofHours(2), Duration.ofHours(12),
@@ -55,26 +55,26 @@ public class WebhookDispatchService {
     private final WebhookHttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Sonar java:S2229 (Karte 891): dispatch() traegt @Transactional, wurde hier aber per
-    // SELBSTAUFRUF erreicht — der umgeht den Spring-Proxy, die Annotation blieb also wirkungslos.
-    // Die Klammer gehoert deshalb hierher, und zwar zwingend als REQUIRES_NEW: in der Phase
-    // AFTER_COMMIT ist die ausloesende Transaktion zwar noch an den Thread gebunden, aber bereits
-    // abgeschlossen — Schreibvorgaenge, die sich ihr anschliessen, wuerden nie committet. Spring
-    // laesst hier darum nur REQUIRES_NEW oder NOT_SUPPORTED zu und verweigert jede andere
-    // Propagation schon beim Kontextstart ("@TransactionalEventListener method must not be
-    // annotated with @Transactional unless when declared as REQUIRES_NEW or NOT_SUPPORTED").
+    // Sonar java:S2229 (card 891): dispatch() carries @Transactional, but was reached here via
+    // SELF-INVOCATION — which bypasses the Spring proxy, so the annotation had no effect.
+    // The transaction boundary therefore belongs here, and necessarily as REQUIRES_NEW: in the
+    // AFTER_COMMIT phase the triggering transaction is still bound to the thread, but is already
+    // completed — writes that join it would never be committed. Spring therefore only permits
+    // REQUIRES_NEW or NOT_SUPPORTED here and rejects any other propagation already at context
+    // startup ("@TransactionalEventListener method must not be annotated with @Transactional
+    // unless when declared as REQUIRES_NEW or NOT_SUPPORTED").
     //
-    // Zustandsbericht 29.08.2026 (R2): Der Selbstaufruf selbst ist jetzt weg. Beide oeffentlichen
-    // Einstiege — dieser Listener und dispatch() fuer den Test-Ping aus WebhookEndpointService —
-    // rufen den privaten Kern anlegenUndZustellen(); keiner ruft mehr eine eigene @Transactional-
-    // Methode. Bewusst NICHT ueber einen ObjectProvider<WebhookDispatchService>-Self-Proxy (Muster
-    // BuildstatsSyncService in plaintext-app): dispatch() haette mit REQUIRED nur die hier bereits
-    // offene REQUIRES_NEW-Klammer betreten, der Umweg ueber den Proxy brachte zur Laufzeit nichts
-    // und haette den Konstruktor (und damit beide Tests) veraendert. Das innere @Transactional an
-    // dispatch() bleibt, denn der externe Aufruf WebhookEndpointService.testPing() hat sonst keine
-    // Klammer: Delivery anlegen und Ergebnis schreiben sind dort zwei Repository-Aufrufe, die
-    // zusammengehoeren. TransaktionsklammerVertragTest misst weiterhin genau EINE Transaktion je
-    // Event.
+    // Status report 29.08.2026 (R2): The self-invocation itself is gone now. Both public entry
+    // points — this listener and dispatch() for the test ping from WebhookEndpointService —
+    // call the private core anlegenUndZustellen(); neither calls its own @Transactional method
+    // any more. Deliberately NOT via an ObjectProvider<WebhookDispatchService> self-proxy (the
+    // BuildstatsSyncService pattern in plaintext-app): with REQUIRED, dispatch() would only have
+    // entered the REQUIRES_NEW bracket that is already open here, the detour via the proxy gained
+    // nothing at runtime and would have changed the constructor (and hence both tests). The inner
+    // @Transactional on dispatch() stays, because the external call WebhookEndpointService.testPing()
+    // otherwise has no bracket: creating the delivery and writing the result are two repository
+    // calls there that belong together. TransaktionsklammerVertragTest still measures exactly ONE
+    // transaction per event.
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onDomainEvent(PlaintextDomainEvent event) {
@@ -87,17 +87,17 @@ public class WebhookDispatchService {
     }
 
     /**
-     * Legt eine neue Delivery an und versucht sie sofort best-effort zuzustellen. Externer Einstieg
-     * (Test-Ping aus {@link WebhookEndpointService#testPing}); die Transaktionsklammer hier ist fuer
-     * genau diesen Weg da — {@link #onDomainEvent} bringt seine eigene (REQUIRES_NEW) mit und ruft
-     * den Kern direkt.
+     * Creates a new delivery and immediately attempts to deliver it best-effort. External entry
+     * point (test ping from {@link WebhookEndpointService#testPing}); the transaction boundary here
+     * exists for exactly this path — {@link #onDomainEvent} brings its own (REQUIRES_NEW) and calls
+     * the core directly.
      */
     @Transactional
     public WebhookDelivery dispatch(WebhookEndpoint endpoint, String eventType, String payloadJson) {
         return anlegenUndZustellen(endpoint, eventType, payloadJson);
     }
 
-    /** Gemeinsamer Kern von {@link #onDomainEvent} und {@link #dispatch}: Delivery anlegen, zustellen, Ergebnis schreiben. */
+    /** Shared core of {@link #onDomainEvent} and {@link #dispatch}: create the delivery, deliver it, write the result. */
     private WebhookDelivery anlegenUndZustellen(WebhookEndpoint endpoint, String eventType, String payloadJson) {
         WebhookDelivery delivery = new WebhookDelivery();
         delivery.setMandat(endpoint.getMandat());
@@ -109,7 +109,7 @@ public class WebhookDispatchService {
         return deliveryRepo.save(delivery);
     }
 
-    /** Vom Retry-Cron: erneuter Zustellversuch einer bereits bestehenden Delivery. */
+    /** From the retry cron: another delivery attempt for an already existing delivery. */
     @Transactional
     public void retry(WebhookDelivery delivery) {
         endpointRepo.findById(delivery.getEndpointId()).ifPresentOrElse(

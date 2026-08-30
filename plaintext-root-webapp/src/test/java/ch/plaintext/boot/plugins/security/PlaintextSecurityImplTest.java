@@ -82,7 +82,7 @@ class PlaintextSecurityImplTest {
         RequestContextHolder.resetRequestAttributes();
     }
 
-    /** Setzt einen Mock-HttpServletRequest MIT bestehender Session (fuer getCurrentSession()). */
+    /** Sets a mock HttpServletRequest WITH an existing session (for getCurrentSession()). */
     private MockHttpServletRequest requestWithSession() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession(true);
@@ -90,7 +90,7 @@ class PlaintextSecurityImplTest {
         return request;
     }
 
-    // ==================== Multi-Mandant / switchActiveMandat Tests ====================
+    // ==================== Multi-tenant / switchActiveMandat Tests =====================
 
     private void authWith(String username, String... authorities) {
         List<GrantedAuthority> list = new ArrayList<>();
@@ -115,11 +115,11 @@ class PlaintextSecurityImplTest {
 
     @Test
     void canSwitchMandat_shouldBeFalse_forRoot_withOnlyOneMandatInInstance() {
-        // Bugfix (Daniel 21.07.2026): der Wechsler soll verschwinden, nicht nur deaktiviert sein,
-        // wenn es instanzweit nur EIN Mandat gibt -- auch fuer ROOT (vorher IMMER sichtbar fuer ROOT).
+        // Bugfix (Daniel 21.07.2026): the switcher should disappear, not merely be disabled,
+        // when there is only ONE tenant instance-wide -- also for ROOT (previously ALWAYS visible for ROOT).
         authWith("root@x.ch", "ROLE_ROOT", "PROPERTY_MANDAT_alpha");
-        // userRepository.findAll() liefert per Default eine leere Liste -> getAllMandate()
-        // faellt auf genau {"default"} zurueck (siehe PlaintextSecurityImpl.getAllMandate()).
+        // userRepository.findAll() returns an empty list by default -> getAllMandate()
+        // falls back to exactly {"default"} (see PlaintextSecurityImpl.getAllMandate()).
 
         assertFalse(plaintextSecurity.isCanSwitchMandat());
     }
@@ -144,7 +144,7 @@ class PlaintextSecurityImplTest {
     @Test
     void canSwitchMandat_shouldBeFalse_forSingleMandantUser() {
         authWith("u@x.ch", "ROLE_USER", "PROPERTY_MANDAT_alpha");
-        // userMandateRepo gibt per Default eine leere Liste zurück -> nur Heimat-Mandant
+        // userMandateRepo returns an empty list by default -> home tenant only
         assertFalse(plaintextSecurity.isCanSwitchMandat());
     }
 
@@ -159,8 +159,8 @@ class PlaintextSecurityImplTest {
 
         plaintextSecurity.switchActiveMandat("beta");
 
-        // Ergebnis im Holder pruefen (der Wechsel setzt einen neuen Context, statt setAuthentication
-        // auf dem alten Context aufzurufen).
+        // Check the result in the holder (the switch sets a new context instead of calling
+        // setAuthentication on the old context).
         Authentication updated = SecurityContextHolder.getContext().getAuthentication();
         assertTrue(updated.getAuthorities().stream()
                 .anyMatch(x -> "PROPERTY_MANDAT_beta".equals(x.getAuthority())), "neuer Mandant beta gesetzt");
@@ -171,7 +171,7 @@ class PlaintextSecurityImplTest {
     @Test
     void switchActiveMandat_shouldDoNothing_whenNotAllowed() {
         authWith("u@x.ch", "ROLE_USER", "PROPERTY_MANDAT_alpha");
-        // 'gamma' ist nicht erlaubt (kein ROOT, kein Zusatz-Mandant)
+        // 'gamma' is not permitted (not ROOT, no additional tenant)
         plaintextSecurity.switchActiveMandat("gamma");
 
         verify(securityContext, never()).setAuthentication(any());
@@ -179,15 +179,15 @@ class PlaintextSecurityImplTest {
 
     @Test
     void switchActiveMandat_persistiertInDb_undSichertVorigesMandat() {
-        // "dauerhaft merken": gewaehltes Mandant wird in der DB-Rolle persistiert (robust gegen
-        // remember-me/neue Session), voriges Heimat-Mandant bleibt als wechselbares UserMandate.
+        // "remember permanently": the chosen tenant is persisted in the DB role (robust against
+        // remember-me/a new session), the previous home tenant stays as a switchable UserMandate.
         authWith("u@x.ch", "ROLE_USER", "PROPERTY_MANDAT_alpha", "PROPERTY_MYUSERID_5");
         UserMandate beta = new UserMandate();
         beta.setUsername("u@x.ch");
         beta.setMandat("beta");
         beta.setActive(true);
         when(userMandateRepo.findByUsernameAndActiveTrue("u@x.ch")).thenReturn(List.of(beta));
-        when(userMandateRepo.findByUsername("u@x.ch")).thenReturn(List.of(beta)); // alpha noch NICHT als UserMandate
+        when(userMandateRepo.findByUsername("u@x.ch")).thenReturn(List.of(beta)); // alpha NOT yet a UserMandate
         MyUserEntity user = new MyUserEntity();
         user.setId(5L);
         user.setMandat("alpha");
@@ -196,9 +196,9 @@ class PlaintextSecurityImplTest {
 
         plaintextSecurity.switchActiveMandat("beta");
 
-        // DB-Mandant-Rolle auf beta persistiert
+        // DB tenant role persisted to beta
         verify(userRepository).save(argThat(u -> "beta".equals(u.getMandat())));
-        // voriges Heimat-Mandant (alpha) als wechselbares UserMandate gesichert
+        // previous home tenant (alpha) preserved as a switchable UserMandate
         verify(userMandateRepo).save(argThat(um -> "alpha".equals(um.getMandat()) && um.isActive()));
     }
 
@@ -429,7 +429,7 @@ class PlaintextSecurityImplTest {
         verify(userRepository).findById(123L);
         verify(userRepository).save(argThat(u -> "new".equals(u.getMandat())));
 
-        // Then: Verify security context update (neuer Context im Holder)
+        // Then: Verify security context update (new context in the holder)
         Authentication updated = SecurityContextHolder.getContext().getAuthentication();
         assertTrue(updated.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("PROPERTY_MANDAT_new")));
@@ -454,7 +454,7 @@ class PlaintextSecurityImplTest {
         // When
         plaintextSecurity.setMandat("new");
 
-        // Then: Verify old mandat roles are removed (genau eine Mandat-Rolle bleibt)
+        // Then: Verify old mandat roles are removed (exactly one tenant role remains)
         Authentication updated = SecurityContextHolder.getContext().getAuthentication();
         long mandatCount = updated.getAuthorities().stream()
                 .filter(a -> a.getAuthority().toLowerCase().contains("mandat"))
@@ -509,7 +509,7 @@ class PlaintextSecurityImplTest {
         // When
         plaintextSecurity.setMandat("UPPERCASE");
 
-        // Then: Should be stored as lowercase (im neuen Holder-Context)
+        // Then: Should be stored as lowercase (in the new holder context)
         Authentication updated = SecurityContextHolder.getContext().getAuthentication();
         assertTrue(updated.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("PROPERTY_MANDAT_uppercase")));
@@ -662,7 +662,7 @@ class PlaintextSecurityImplTest {
         assertNull(mandat);
     }
 
-    // ==================== getUsernameForUser() / getEmailForUser() Tests (Karte 596) ====================
+    // ==================== getUsernameForUser() / getEmailForUser() Tests (card 596) ====================
 
     @Test
     void getUsernameForUser_shouldReturnUsernameFromDatabase() {
@@ -699,13 +699,13 @@ class PlaintextSecurityImplTest {
         // When
         String username = plaintextSecurity.getUsernameForUser(123L);
 
-        // Then: fail-soft — der Aufrufer soll weiterarbeiten koennen, nicht abbrechen
+        // Then: fail-soft — the caller should be able to carry on working, not abort
         assertNull(username);
     }
 
     /**
-     * Karte 596: Der Regelfall — der Benutzername IST die Mailadresse (die Selbstregistrierung
-     * setzt ihn so, der Passwort-Reset verschickt an ihn).
+     * Card 596: the regular case — the user name IS the mail address (the self-registration
+     * sets it that way, the password reset sends to it).
      */
     @Test
     void getEmailForUser_shouldReturnAddressWhenUsernameIsMail() {
@@ -718,9 +718,9 @@ class PlaintextSecurityImplTest {
     }
 
     /**
-     * Karte 596: Der Fall, um den es geht — Altbestand ohne Mailform. Es wird NICHT geworfen und
-     * NICHT der unbrauchbare Wert geliefert, sondern leer: Der Aufrufer schliesst die Zaehlung
-     * trotzdem und protokolliert den nicht erreichbaren Owner als Befund.
+     * Card 596: the case this is about — legacy data without a mail form. It does NOT throw and
+     * does NOT return the unusable value, but an empty one: the caller finishes the count
+     * anyway and logs the unreachable owner as a finding.
      */
     @Test
     void getEmailForUser_shouldBeEmptyForLegacyUsername() {
@@ -858,8 +858,8 @@ class PlaintextSecurityImplTest {
 
         plaintextSecurity.startImpersonation(2L);
 
-        // Authentication im Context wurde auf den Ziel-User umgeschaltet (securityContext ist ein Mock ohne
-        // eigenes Feld-Backing -- setAuthentication(...) abfangen statt per getAuthentication() zurueckzulesen)
+        // The authentication in the context was switched to the target user (securityContext is a mock without
+        // field backing of its own -- intercept setAuthentication(...) instead of reading back via getAuthentication())
         ArgumentCaptor<Authentication> authCaptor = ArgumentCaptor.forClass(Authentication.class);
         verify(securityContext).setAuthentication(authCaptor.capture());
         assertEquals("target@x.ch", authCaptor.getValue().getName());

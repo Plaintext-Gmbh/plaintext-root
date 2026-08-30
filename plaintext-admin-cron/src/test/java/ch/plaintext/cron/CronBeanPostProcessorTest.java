@@ -77,11 +77,11 @@ class CronBeanPostProcessorTest {
 
     @Test
     void wrappedSuperCronDelegatesGetScope() {
-        // Regressionstest (Task 005): der Wrapper delegierte urspruenglich NUR isGlobal(), NICHT
-        // getScope() -- eine eigene getScope()-Ueberschreibung des Original-Crons ging dadurch
-        // verloren (SuperCron.getScope() fiel auf den PlaintextCron-Default zurueck, der wiederum
-        // NUR isGlobal() DIESES WRAPPERS abfragt, nicht das Original). Erst beim lokalen App-Boot
-        // sichtbar geworden (DemoPersonalCron lief mit scope=MANDAT statt PERSOENLICH).
+        // Regression test (Task 005): the wrapper originally delegated ONLY isGlobal(), NOT
+        // getScope() -- a getScope() override of the original cron was lost that way
+        // (SuperCron.getScope() fell back to the PlaintextCron default, which in turn queries
+        // ONLY isGlobal() OF THIS WRAPPER, not the original). Only became visible on the local
+        // app boot (DemoPersonalCron ran with scope=MANDAT instead of PERSOENLICH).
         PlaintextCron persoenlichCron = new PlaintextCron() {
             @Override
             public ExecutionScope getScope() {
@@ -115,7 +115,7 @@ class CronBeanPostProcessorTest {
         };
 
         SuperCron wrapper = (SuperCron) processor.postProcessAfterInitialization(cron, "userCron");
-        // package-private Zugriff ueber die PlaintextCron-Schnittstelle, wie SuperCron.runProPersoenlich() es tut
+        // package-private access through the PlaintextCron interface, the way SuperCron.runProPersoenlich() does it
         ((PlaintextCron) wrapper).run("mandatA", "alice");
 
         assertThat(aufgerufenMit).containsExactly("mandatA", "alice");

@@ -17,12 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
- * SECURITY (Karte 314, Punkt 9) — Sessions nach dem Passwort-Reset beenden.
+ * SECURITY (card 314, item 9) — terminating sessions after the password reset.
  *
- * <p>Der Reset-Flow loeschte bisher nur die persistenten Remember-Me-Tokens. Wer bereits eine
- * offene HTTP-Session auf dem Konto hatte — genau der Fall, in dem ein Betroffener sein Passwort
- * zuruecksetzt — behielt seinen Zugriff bis zum Session-Timeout, der Reset war als
- * Wiederherstellungsmassnahme also wirkungslos.
+ * <p>So far the reset flow only deleted the persistent remember-me tokens. Anyone who already had
+ * an open HTTP session on the account — exactly the case in which an affected user resets their
+ * password — kept their access until the session timed out, so the reset was ineffective as a
+ * recovery measure.
  */
 @DisplayName("HttpSessionRegistry: Session-Invalidierung")
 class HttpSessionRegistryInvalidationTest {
@@ -85,7 +85,7 @@ class HttpSessionRegistryInvalidationTest {
         registry.registerSession("s1", stale);
         registry.registerSession("s2", live);
 
-        // Der Fehlschlag einer Session darf die uebrigen nicht stehen lassen.
+        // The failure of one session must not leave the remaining ones standing.
         assertEquals(1, registry.invalidateSessionsOfUser("opfer@example.invalid"));
         verify(live).invalidate();
     }

@@ -30,15 +30,15 @@ import java.io.IOException;
 @Slf4j
 public class PlaintextAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
-    /** Ziel der Zwei-Schritt-Anmeldung (TOTP-Code-Eingabe). */
+    /** Target of the two-step login (TOTP code entry). */
     static final String TOTP_STEP_PATH = "/login/totp";
 
     /**
-     * Selbstservice-Seite mit dem Passwort-Aenderungs-Formular. Ziel bei erzwungenem
-     * Passwortwechsel (Karte 306), unabhaengig von einer konfigurierten Startseite.
+     * Self-service page with the password change form. Target on an enforced
+     * password change (card 306), independently of a configured start page.
      */
-    // NOSONAR (S2068): kein Passwort, sondern der Dateiname der Selbstservice-Seite. Sonar
-    // schlaegt allein wegen des Bestandteils "PASSWORD" im Konstantennamen an (Karte 458).
+    // NOSONAR (S2068): no password, but the file name of the self-service page. Sonar
+    // trips merely because of the component "PASSWORD" in the constant name (card 458).
     static final String MUST_CHANGE_PASSWORD_PAGE = "myuser.xhtml"; // NOSONAR
 
     private final ApplicationEventPublisher eventPublisher;
@@ -46,14 +46,14 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
     private final SecurityContextRepository securityContextRepository;
     private final PlaintextSecurityProperties securityProperties;
     /**
-     * Zweifach genutzt: {@code loginSuccess(...)} stellt bei OAuth/OIDC das Remember-Me-Cookie aus
-     * (siehe #166 – der Filter macht das nur beim Form-Login automatisch); als {@code LogoutHandler}
-     * entfernt {@code logout(...)} im TOTP-Gate Cookie + DB-Token wieder (Bypass-Schutz, siehe unten).
+     * Used twice: {@code loginSuccess(...)} issues the remember-me cookie on OAuth/OIDC
+     * (see #166 - the filter only does that automatically on the form login); as a {@code LogoutHandler}
+     * {@code logout(...)} removes cookie + DB token again in the TOTP gate (bypass protection, see below).
      */
     private final PersistentTokenBasedRememberMeServices rememberMeServices;
 
-    // @Lazy auf rememberMeServices: Die Bean stammt aus PlaintextSecurityConfig, das seinerseits
-    // diesen SuccessHandler im Konstruktor braucht -> ohne @Lazy entstuende ein Bean-Zyklus.
+    // @Lazy on rememberMeServices: the bean comes from PlaintextSecurityConfig, which in turn
+    // needs this success handler in its constructor -> without @Lazy a bean cycle would arise.
     public PlaintextAuthenticationSuccessHandler(
             ApplicationEventPublisher eventPublisher,
             TotpAuthenticationService totpAuthenticationService,
@@ -76,24 +76,24 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
         Long userId = extractUserId(authentication);
         String mandat = extractMandat(authentication);
 
-        // Abgesicherte Startseite: individuelle (gültige) startpage oder Fallback index.html –
-        // niemand wird durch einen leeren/ungültigen Wert von der Startseite ausgesperrt.
+        // Secured start page: the individual (valid) startpage or the fallback index.html -
+        // nobody is locked out of the start page by an empty/invalid value.
         String page = StartpageResolver.resolve(authentication.getAuthorities());
-        // Karte 306: Muss dieser User sein Passwort wechseln (z.B. Root-Initialpasswort), wird er –
-        // unabhängig von der konfigurierten Startseite – auf die Selbstservice-Seite mit dem
-        // Passwort-Formular geleitet. Gilt für den direkten wie für den TOTP-Zwei-Schritt-Pfad,
-        // da beide unten dieselbe `page` verwenden.
+        // Card 306: if this user has to change their password (e.g. the root initial password), they are -
+        // independently of the configured start page - redirected to the self-service page with the
+        // password form. Applies to the direct path as well as to the TOTP two-step path,
+        // since both use the same `page` below.
         if (hasMustChangePassword(authentication)) {
             page = MUST_CHANGE_PASSWORD_PAGE;
         } else {
-            // Karte 345: Kam der Benutzer ueber einen Deep-Link aus einer Mail und war dabei nicht
-            // angemeldet, hat der DeepLinkController das Ziel in der Session gemerkt. Statt der
-            // Startseite geht es jetzt dorthin zurueck — aber NICHT als durchgereichte URL: aus den
-            // drei gemerkten Bezeichnern wird wieder ein /deeplink-Aufruf gebaut, der die komplette
-            // Pruefkette (Mandat-Zugriff, Datensatz-Zugriff) erneut durchlaeuft. Damit ist das hier
-            // kein offener Umleitungspunkt: das Ziel kann ausschliesslich diese eine Anwendung sein,
-            // und der Login allein oeffnet nichts, was der Benutzer nicht ohnehin sehen darf.
-            // Erzwungener Passwortwechsel geht vor (else-Zweig).
+            // Card 345: if the user arrived through a deep link from a mail and was not logged in at
+            // the time, the DeepLinkController remembered the target in the session. Instead of the
+            // start page it now goes back there - but NOT as a URL passed through: from the
+            // three remembered identifiers a /deeplink call is built again, which runs through the complete
+            // chain of checks (tenant access, record access) anew. This is therefore
+            // no open redirect point: the target can only ever be this one application,
+            // and the login alone opens nothing that the user is not allowed to see anyway.
+            // An enforced password change takes precedence (else branch).
             String deepLink = deepLinkZielAusSession(request);
             if (deepLink != null) {
                 page = deepLink;
@@ -101,46 +101,46 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
         }
         String contextPath = (request.getContextPath() != null) ? request.getContextPath() : "";
 
-        // === Zwei-Faktor-Gate ===
-        // Wenn das Feature global aktiv ist UND dieser User TOTP aktiviert hat, wird die volle
-        // Authentication NICHT finalisiert. Der AbstractAuthenticationProcessingFilter hat den
-        // Context zwar bereits gespeichert – wir ueberschreiben ihn hier bewusst mit einem LEEREN
-        // Context und legen die echte Authentication nur als "pending" in die Session. Erst der
-        // TotpVerificationController setzt sie nach gueltigem Code wieder in den SecurityContext.
-        // -> Wer nur das Passwort hat, kommt ohne zweiten Faktor NICHT durch (kein Bypass).
+        // === two-factor gate ===
+        // If the feature is globally active AND this user has TOTP enabled, the full
+        // authentication is NOT finalized. The AbstractAuthenticationProcessingFilter has already
+        // saved the context - we deliberately overwrite it here with an EMPTY
+        // context and put the real authentication into the session only as "pending". Only the
+        // TotpVerificationController puts it back into the SecurityContext after a valid code.
+        // -> whoever has only the password does NOT get through without a second factor (no bypass).
         if (totpAuthenticationService.isTotpRequired(userEmail)) {
             String targetUrl = contextPath + "/" + page;
             TotpPendingAuthentication pending = new TotpPendingAuthentication(authentication, userEmail, targetUrl);
 
-            // KRITISCH (Bypass-Schutz): Der AbstractAuthenticationProcessingFilter hat VOR diesem
-            // Handler bereits rememberMeServices.loginSuccess() aufgerufen und – falls der User
-            // "Angemeldet bleiben" gewaehlt hat – ein gueltiges Remember-Me-Cookie + Persistent-Token
-            // gesetzt. Ohne Widerruf koennte der RememberMeAuthenticationFilter den User beim naechsten
-            // Request voll authentifizieren und damit den zweiten Faktor UMGEHEN. Daher hier Cookie +
-            // DB-Token wieder entfernen. (Remember-Me nach bestandenem TOTP ist bewusst nicht Teil
-            // dieses PRs.)
+            // CRITICAL (bypass protection): BEFORE this handler the AbstractAuthenticationProcessingFilter
+            // has already called rememberMeServices.loginSuccess() and - if the user
+            // chose "stay logged in" - set a valid remember-me cookie + persistent token.
+            // Without revoking them the RememberMeAuthenticationFilter could fully authenticate the user on
+            // the next request and thereby BYPASS the second factor. Hence remove cookie +
+            // DB token again here. (Remember-me after a passed TOTP is deliberately not part
+            // of this PR.)
             try {
-                // Entfernt den DB-Persistent-Token (falls das Request-Cookie einen traegt) und
-                // fuegt ueber cancelCookie ein Loesch-Cookie hinzu.
+                // Removes the DB persistent token (if the request cookie carries one) and
+                // adds a deletion cookie via cancelCookie.
                 rememberMeServices.logout(request, response, authentication);
             } catch (Exception e) {
                 log.warn("TOTP-Gate: Remember-Me-Widerruf fehlgeschlagen: {}", e.getMessage());
             }
-            // Zusaetzlich (deterministisch): ein Loesch-Cookie als LETZTES remember-me-Set-Cookie
-            // ausgeben, damit ein evtl. von loginSuccess() gesetztes gueltiges Cookie im Browser
-            // sicher ueberschrieben wird (Last-Set-Cookie-wins) – unabhaengig von der Header-
-            // Reihenfolge des Filters.
-            // NOSONAR (S2092): bewusst KEIN secure-Flag. Hinter dem Reverse-Proxy wuerde secure=true
-            // das Loesch-Cookie ueber HTTP verwerfen, sodass das gueltige remember-me-Cookie stehen
-            // bliebe (2FA-Bypass). Es ist zudem ein leeres Loesch-Cookie (Max-Age=0), kein Secret.
+            // Additionally (deterministic): emit a deletion cookie as the LAST remember-me Set-Cookie,
+            // so that a valid cookie possibly set by loginSuccess() is reliably overwritten in the
+            // browser (last-set-cookie wins) - independently of the header
+            // order of the filter.
+            // NOSONAR (S2092): deliberately NO secure flag. Behind the reverse proxy secure=true would
+            // make the deletion cookie be discarded over HTTP, so that the valid remember-me cookie would
+            // stay in place (2FA bypass). Besides it is an empty deletion cookie (Max-Age=0), no secret.
             jakarta.servlet.http.Cookie loesch = new jakarta.servlet.http.Cookie("remember-me", ""); // NOSONAR
             loesch.setMaxAge(0);
             loesch.setPath(contextPath.isEmpty() ? "/" : contextPath);
             loesch.setHttpOnly(true);
             response.addCookie(loesch);
 
-            // Echte Authentication aus dem SecurityContext entfernen und leeren Context persistieren,
-            // damit KEIN Folge-Request als authentifiziert gilt.
+            // Remove the real authentication from the SecurityContext and persist an empty context,
+            // so that NO subsequent request counts as authenticated.
             SecurityContext empty = SecurityContextHolder.createEmptyContext();
             SecurityContextHolder.setContext(empty);
             securityContextRepository.saveContext(empty, request, response);
@@ -159,12 +159,12 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
             log.warn("Failed to publish login event: {}", e.getMessage());
         }
 
-        // Remember-Me bei OAuth/OIDC: Der AbstractAuthenticationProcessingFilter ruft
-        // rememberMeServices.loginSuccess(...) NUR beim Form-Login automatisch auf, beim
-        // oauth2Login NICHT. Deshalb hier nachziehen – aber AUSSCHLIESSLICH für
-        // OAuth2AuthenticationToken. Beim Form-Login (UsernamePasswordAuthenticationToken)
-        // hat der Filter loginSuccess schon selbst aufgerufen; ein zweiter Aufruf würde einen
-        // zweiten PERSISTENT_LOGINS-Eintrag (Doppel-Ausstellung) erzeugen.
+        // Remember-me on OAuth/OIDC: the AbstractAuthenticationProcessingFilter calls
+        // rememberMeServices.loginSuccess(...) automatically ONLY on the form login, on
+        // oauth2Login NOT. Hence catch up here - but EXCLUSIVELY for
+        // OAuth2AuthenticationToken. On the form login (UsernamePasswordAuthenticationToken)
+        // the filter has already called loginSuccess itself; a second call would create a
+        // second PERSISTENT_LOGINS entry (double issuance).
         // Flag-gated: plaintext.security.remember-me-on-oauth (default true).
         if (securityProperties.isRememberMeOnOauth() && authentication instanceof OAuth2AuthenticationToken) {
             try {
@@ -175,16 +175,16 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
             }
         }
 
-        // Absoluter Pfad (relativ würde gegen /login/oauth2/code/ aufgelöst).
+        // Absolute path (a relative one would be resolved against /login/oauth2/code/).
         String redirectUrl = contextPath + "/" + page;
         log.debug("Redirecting user {} to {}", userEmail, redirectUrl);
         response.sendRedirect(redirectUrl);
     }
 
     /**
-     * Vom {@code TotpVerificationController} nach gueltigem zweitem Faktor aufgerufen: publiziert
-     * das (bislang zurueckgehaltene) Login-Event. Haelt die Event-Semantik identisch zum
-     * Ein-Schritt-Login (Konsumenten erhalten den Login erst, wenn er vollstaendig ist).
+     * Called by the {@code TotpVerificationController} after a valid second factor: publishes
+     * the (until then withheld) login event. Keeps the event semantics identical to the
+     * one-step login (consumers receive the login only once it is complete).
      */
     public void publishLoginEvent(HttpServletRequest request, Authentication authentication) {
         try {
@@ -200,15 +200,15 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
     }
 
     /**
-     * Gemerkten Deep-Link (Karte 345) als Seiten-Angabe OHNE fuehrenden Slash — der Aufrufer haengt
-     * {@code contextPath + "/"} davor, genau wie bei einem normalen Seitennamen. Liefert
-     * {@code null}, wenn nichts gemerkt war.
+     * The remembered deep link (card 345) as a page designation WITHOUT a leading slash — the caller
+     * prepends {@code contextPath + "/"}, exactly as for a normal page name. Returns
+     * {@code null} if nothing was remembered.
      */
     static String deepLinkZielAusSession(HttpServletRequest request) {
         try {
             DeepLinkPendingStore.PendingDeepLink pending = DeepLinkPendingStore.entnehme(request);
             String pfad = DeepLinkPendingStore.alsPfad(pending);
-            // alsPfad liefert "/deeplink?..." — der fuehrende Slash muss weg.
+            // alsPfad returns "/deeplink?..." — the leading slash has to go.
             return pfad == null ? null : pfad.substring(1);
         } catch (Exception e) {
             log.warn("Gemerkter Deep-Link konnte nicht aufgeloest werden: {}", e.getMessage());
@@ -252,7 +252,7 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
         return "default";
     }
 
-    /** Ob der User beim Login zwingend sein Passwort wechseln muss (Karte 306). */
+    /** Whether the user must change their password on login (card 306). */
     private static boolean hasMustChangePassword(Authentication auth) {
         for (GrantedAuthority ga : auth.getAuthorities()) {
             if (MyUserDetailsService.MUST_CHANGE_PASSWORD_AUTHORITY.equals(ga.getAuthority())) {

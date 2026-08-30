@@ -13,13 +13,13 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import java.io.IOException;
 
 /**
- * {@link AuthenticationEntryPoint}, der einen JSF-/PrimeFaces-Ajax-Request mit einer gueltigen
- * XML-{@code partial-response} samt {@code <redirect>} beantwortet (Karte 385). Alle anderen
- * Requests gehen an den regulaeren Entry-Point (Form-Login-Redirect) weiter.
+ * {@link AuthenticationEntryPoint} that answers a JSF/PrimeFaces Ajax request with a valid
+ * XML {@code partial-response} including a {@code <redirect>} (card 385). All other
+ * requests are passed on to the regular entry point (form login redirect).
  *
- * <p>Ohne das erhaelt die Ajax-Engine bei abgelaufener Session einen HTML-Redirect auf die
- * Login-Seite bzw. einen JSON-Fehler und kann beides nicht verarbeiten — der Ladeindikator
- * dreht endlos.</p>
+ * <p>Without this the Ajax engine receives, on an expired session, an HTML redirect to the
+ * login page resp. a JSON error and can process neither — the loading indicator
+ * spins forever.</p>
  */
 @Slf4j
 public class JsfAjaxAwareAuthenticationEntryPoint implements AuthenticationEntryPoint {
@@ -36,13 +36,13 @@ public class JsfAjaxAwareAuthenticationEntryPoint implements AuthenticationEntry
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException, ServletException {
         if (JsfAjaxResponses.isJsfAjaxRequest(request)) {
-            // LOGGING (Karte 385, Manager-Review): siehe JsfAjaxAwareAccessDeniedHandler. Hier
-            // bewusst INFO statt WARN: dieser Zweig ist der Normalfall einer abgelaufenen bzw.
-            // nach einem Blue/Green-Deploy verlorenen Session. Als WARN wuerde er das Log bei
-            // jedem Deploy fluten und die echten CSRF-Ablehnungen darin unsichtbar machen — genau
-            // den Effekt, den dieser Fix beseitigen soll. Die Sichtbarkeit bleibt erhalten, die
-            // Dringlichkeit ist eine andere.
-            // Bewusst NICHT geloggt: Token, Session-Id, Benutzername, Request-Parameter.
+            // LOGGING (card 385, manager review): see JsfAjaxAwareAccessDeniedHandler. Here
+            // deliberately INFO instead of WARN: this branch is the normal case of an expired session resp.
+            // one lost after a blue/green deploy. As WARN it would flood the log on
+            // every deploy and make the genuine CSRF denials invisible in it — exactly
+            // the effect this fix is meant to remove. The visibility is retained, the
+            // urgency is a different one.
+            // Deliberately NOT logged: token, session id, user name, request parameters.
             log.info("Ajax-Request ohne gueltige Authentifizierung (Session abgelaufen): {} {} "
                             + "— beantwortet mit JSF-partial-response, Redirect auf {}",
                     request.getMethod(), request.getRequestURI(), loginUrl);

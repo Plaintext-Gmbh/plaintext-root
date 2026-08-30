@@ -22,70 +22,70 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Karte 546 — <b>die Leitplanke: jedes MCP-Werkzeug muss eine nachweisbare Scope-Schranke haben.</b>
+ * Card 546 — <b>the guardrail: every MCP tool must have a demonstrable scope barrier.</b>
  *
- * <p><b>Wogegen sie schützt.</b> Bis zum 06.08.2026 hatte nur schuetu Scope-Prüfungen auf seinen
- * MCP-Werkzeugen; in app, guild und root durfte ein Token mit Scope {@code READ} über MCP
- * <em>schreiben</em> — der Scope war dort eine Beschriftung ohne Wirkung. Beim Nachrüsten von rund
- * 150 Werkzeugen ist die Gefahr nicht der Umfang, sondern das eine übersehene schreibende Werkzeug:
- * Es fällt nicht im Review auf, sondern im Betrieb, und dann als offene Schreibmöglichkeit.
+ * <p><b>What it protects against.</b> Until 06.08.2026 only schuetu had scope checks on its
+ * MCP tools; in app, guild and root a token with scope {@code READ} was allowed to
+ * <em>write</em> via MCP — the scope was a label without effect there. When retrofitting some
+ * 150 tools the danger is not the sheer number, but the one overlooked writing tool:
+ * it does not show up in review but in production, and then as an open write capability.
  *
- * <p><b>Warum das Kriterium nicht „hat {@code @PreAuthorize}" lautet.</b> Diese Fassung urteilt
- * nachweislich falsch, wo eine Schranke <em>strenger</em> als eine Annotation ist:
- * {@code ApiTokenMcpTools} und {@code SecretsMcpTools} prüfen im Methodenrumpf und verlangen
- * {@code SCOPE_ADMIN} <b>und</b> die Rolle {@code ADMIN}/{@code ROOT}. Wer diesen „Verstoss behebt",
- * indem er auf {@code @PreAuthorize} umstellt, <b>verliert die Rollenprüfung</b>. Solche Stellen
- * gehören darum in die Ausnahmeliste — jede mit Begründung, und keine ohne.
+ * <p><b>Why the criterion is not "has {@code @PreAuthorize}".</b> That version demonstrably judges
+ * wrongly wherever a barrier is <em>stricter</em> than an annotation:
+ * {@code ApiTokenMcpTools} and {@code SecretsMcpTools} check inside the method body and require
+ * {@code SCOPE_ADMIN} <b>and</b> the role {@code ADMIN}/{@code ROOT}. Whoever "fixes this violation"
+ * by switching to {@code @PreAuthorize} <b>loses the role check</b>. Such places therefore
+ * belong in the exception list — each one with a justification, and none without.
  *
- * <p><b>Warum jedes Werkzeug annotiert wird, auch lesende.</b> Die Einstufung lesend/schreibend
- * über den Werkzeugnamen trägt nicht: {@code sync_mailbox}, {@code reprocess_email} und
- * {@code prepare_email} klingen neutral und schreiben, {@code vorschau_rechnungslauf} klingt
- * schreibend und liest. Trägt <em>jedes</em> Werkzeug eine Schranke (lesende mit
- * {@code SCOPE_READ}), muss niemand raten, und eine fehlende Annotation sagt etwas. So hat schuetu
- * es gemacht: 27 von 27, davon 7 mit {@code SCOPE_READ}.
+ * <p><b>Why every tool is annotated, reading ones included.</b> Classifying read/write
+ * by the tool name does not hold: {@code sync_mailbox}, {@code reprocess_email} and
+ * {@code prepare_email} sound neutral and write, {@code vorschau_rechnungslauf} sounds
+ * like writing and reads. If <em>every</em> tool carries a barrier (reading ones with
+ * {@code SCOPE_READ}), nobody has to guess, and a missing annotation says something. That is how
+ * schuetu did it: 27 out of 27, 7 of them with {@code SCOPE_READ}.
  *
- * <p><b>Warum es eine Untergrenze gibt.</b> Ein Vertragstest der Form „alle gefundenen Werkzeuge
- * sind in Ordnung" ist auch dann grün, wenn gar keine mehr gefunden werden — und das ist kein
- * Gedankenspiel. Gemessen am proxied Bean von {@code ListenMcpTools} (Karte 546, guild#113):
+ * <p><b>Why there is a lower bound.</b> A contract test of the form "all tools found
+ * are in order" is green even when none are found any more — and that is no
+ * thought experiment. Measured on the proxied bean of {@code ListenMcpTools} (card 546, guild#113):
  *
  * <pre>
- * proxy-bewusster Weg (der benutzte)  = 9 Werkzeuge
- * naiver Weg (Bibliotheks-Basisklasse) = 0 Werkzeuge — die CGLIB-Subklasse erbt @McpTool nicht
+ * proxy-aware way (the one used)       = 9 tools
+ * naive way (library base class)       = 0 tools — the CGLIB subclass does not inherit @McpTool
  * </pre>
  *
- * Ein zu niedriger Wert sieht aus wie Fortschritt. Dieselbe Falle hat der Analyst beim Zählen
- * erlebt (schuetu meldete 20 statt 27, weil sechs Werkzeuge kein {@code name}-Attribut haben —
- * ausgerechnet die schreibenden Live-Kommandos). Deshalb führt jeder Consumer seine Zahl in der
- * Vertragsdatei, und der Test wird rot, wenn sie unterschritten wird.
+ * A value that is too low looks like progress. The analyst ran into the same trap while counting
+ * (schuetu reported 20 instead of 27, because six tools have no {@code name} attribute —
+ * of all things the writing live commands). That is why every consumer keeps its number in the
+ * contract file, and the test turns red when the number is undercut.
  *
- * <p><b>Warum hier und nicht je Repo.</b> {@code McpToolParamVertragTest} existiert bereits als
- * zwei nicht identische Kopien (guild und app). Eine dritte und vierte wären derselbe Weg, auf dem
- * die nächste Fundstelle unbemerkt bleibt — „die sechste Fundstelle wäre die, in der die Kopie
- * fehlt" (Karte 502). Dieser Test liegt darum wie die übrigen Regeln dieses Moduls in
- * {@code src/main/java} und läuft im Consumer über Surefire {@code <dependenciesToScan>} gegen
- * dessen Klassen — <b>einschliesslich der konsumierten Jars</b>. Das ist beabsichtigt: guild liefert
- * rund 38 Werkzeuge aus app-Modulen aus, und wer sie ausliefert, verantwortet sie.
+ * <p><b>Why here and not per repository.</b> {@code McpToolParamVertragTest} already exists as
+ * two non-identical copies (guild and app). A third and a fourth would be the same road on which
+ * the next occurrence goes unnoticed — "the sixth occurrence would be the one where the copy
+ * is missing" (card 502). This test therefore lives, like the other rules of this module, in
+ * {@code src/main/java} and runs in the consumer via Surefire {@code <dependenciesToScan>} against
+ * that consumer's classes — <b>including the consumed jars</b>. That is intentional: guild ships
+ * some 38 tools from app modules, and whoever ships them is responsible for them.
  *
- * <p><b>Was dieser Test NICHT leisten kann.</b> Er sieht Code, nicht Laufzeit. Ob eine vorhandene
- * Annotation auch <em>wirkt</em>, hängt an {@code @EnableMethodSecurity} und daran, dass das Bean
- * proxied wird — beides ist Laufzeit. Dafür gibt es {@code MethodSecurityEnabledTest} (je
- * Anwendung) und {@code McpScopeGateWirktTest} (guild, misst am echten Werkzeug über den echten
- * Registrierungsweg). Ohne die beiden wäre ein grünes Ergebnis hier eine Aussage über
- * <em>Beschriftungen</em>, nicht über Schranken.
+ * <p><b>What this test can NOT do.</b> It sees code, not runtime. Whether an existing
+ * annotation actually <em>takes effect</em> depends on {@code @EnableMethodSecurity} and on the bean
+ * being proxied — both are runtime. For that there are {@code MethodSecurityEnabledTest} (per
+ * application) and {@code McpScopeGateWirktTest} (guild, measured on the real tool through the real
+ * registration path). Without those two a green result here would be a statement about
+ * <em>labels</em>, not about barriers.
  *
- * <h2>Die Vertragsdatei</h2>
+ * <h2>The contract file</h2>
  *
- * Jeder Consumer legt {@code src/test/resources/mcp-scope-vertrag.properties} an:
+ * Every consumer creates {@code src/test/resources/mcp-scope-vertrag.properties}:
  *
  * <pre>
  * mindestens.werkzeuge = 4
- * ausnahme.ch.plaintext.apitoken.ApiTokenMcpTools#createApiToken = Rumpfprüfung, strenger: \
- *     SCOPE_ADMIN UND Rolle ADMIN/ROOT
+ * ausnahme.ch.plaintext.apitoken.ApiTokenMcpTools#createApiToken = body check, stricter: \
+ *     SCOPE_ADMIN AND role ADMIN/ROOT
  * </pre>
  *
- * Fehlt die Datei und findet der Scan <b>keine</b> Werkzeuge, ist alles in Ordnung — die Anwendung
- * hat schlicht keine. Fehlt sie, obwohl Werkzeuge da sind, wird der Test rot: Dann ist die Zahl
- * nirgends festgehalten und ein späterer Ausfall bliebe unsichtbar.
+ * If the file is missing and the scan finds <b>no</b> tools, everything is in order — the application
+ * simply has none. If it is missing although tools are there, the test turns red: the number is then
+ * recorded nowhere and a later drop-out would stay invisible.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -95,17 +95,17 @@ class PlaintextMcpScopeVertragTest {
     private static final String MCP_TOOL = "org.springaicommunity.mcp.annotation.McpTool";
     private static final String PRE_AUTHORIZE = "org.springframework.security.access.prepost.PreAuthorize";
 
-    /** Von der Vertragsdatei erwarteter Ort im Test-Classpath des Consumers. */
+    /** Location expected of the contract file in the consumer's test classpath. */
     private static final String VERTRAG = "mcp-scope-vertrag.properties";
 
     private static final String SCHLUESSEL_MINDESTENS = "mindestens.werkzeuge";
     private static final String PRAEFIX_AUSNAHME = "ausnahme.";
 
     /**
-     * Nur eine Schranke, die einen Scope nennt, zählt. {@code @PreAuthorize("isAuthenticated()")}
-     * wäre eine Schranke, aber keine <em>Scope</em>-Schranke — und genau darum geht es hier: Ein
-     * gültiges Token ist immer authentifiziert (jedes bekommt {@code SCOPE_READ}), der Scope ist
-     * das Einzige, was READ von WRITE unterscheidet.
+     * Only a barrier that names a scope counts. {@code @PreAuthorize("isAuthenticated()")}
+     * would be a barrier, but no <em>scope</em> barrier — and that is exactly the point here: a
+     * valid token is always authenticated (every one gets {@code SCOPE_READ}), the scope is
+     * the only thing that separates READ from WRITE.
      */
     private static final String SCOPE_MARKER = "SCOPE_";
 
@@ -135,9 +135,9 @@ class PlaintextMcpScopeVertragTest {
     }
 
     /**
-     * Eine Ausnahmeliste, die niemand aufräumt, versteinert: Sie deckt irgendwann Stellen ab, die es
-     * nicht mehr gibt, und verdeckt damit, dass sie kürzer sein könnte. Dasselbe Muster führt
-     * {@code McpToolParamVertragTest} als {@code keineUeberfluessigenAltlasten}.
+     * An exception list that nobody tidies up petrifies: at some point it covers places that no
+     * longer exist and thereby hides that it could be shorter. {@code McpToolParamVertragTest}
+     * keeps the same pattern as {@code keineUeberfluessigenAltlasten}.
      */
     @Test
     void keineUeberfluessigenAusnahmen() {
@@ -159,8 +159,8 @@ class PlaintextMcpScopeVertragTest {
     }
 
     /**
-     * Die Untergrenze. Ein Scanner, der nichts findet, meldet sonst „alles in Ordnung" — der
-     * schlechtestmögliche Zustand mit grünem Ergebnis.
+     * The lower bound. A scanner that finds nothing otherwise reports "everything in order" — the
+     * worst possible state with a green result.
      */
     @Test
     void derScanFindetMindestensDieFestgehalteneZahlWerkzeuge() {
@@ -200,15 +200,15 @@ class PlaintextMcpScopeVertragTest {
         return gefunden;
     }
 
-    /** Ein am Klassenpfad gefundenes MCP-Werkzeug samt seiner Schranke (oder deren Fehlen). */
+    /** An MCP tool found on the classpath together with its barrier (or the absence of one). */
     private record Werkzeug(JavaMethod methode) {
 
-        /** {@code paket.Klasse#methode} — ohne Parameter, das genügt als Kennung und liest sich. */
+        /** {@code paket.Klasse#methode} — without parameters, that is enough as an identifier and reads well. */
         String kennung() {
             return methode.getOwner().getName() + "#" + methode.getName();
         }
 
-        /** Der nach aussen sichtbare Werkzeugname; ohne {@code name}-Attribut leitet MCP ihn ab. */
+        /** The externally visible tool name; without a {@code name} attribute MCP derives it. */
         String name() {
             Object wert = methode.getAnnotationOfType(MCP_TOOL).get("name").orElse("");
             String benannt = String.valueOf(wert);
@@ -228,7 +228,7 @@ class PlaintextMcpScopeVertragTest {
             return "  " + name() + "  (" + kennung() + (quelle.isEmpty() ? "" : ", aus " + quelle) + ")";
         }
 
-        /** Aus welchem Jar/Modul der Fund stammt — sonst sucht der Leser ihn im falschen Repo. */
+        /** Which jar/module the finding comes from — otherwise the reader looks for it in the wrong repository. */
         private String herkunft() {
             return methode.getOwner().getSource()
                     .map(s -> s.getUri().toString())
@@ -238,9 +238,9 @@ class PlaintextMcpScopeVertragTest {
         }
     }
 
-    // ------------------------------------------------------------------ Vertragsdatei
+    // ------------------------------------------------------------------ Contract file
 
-    /** Die Angaben, die der jeweilige Consumer über seine MCP-Werkzeuge festhält. */
+    /** The details that the respective consumer records about its MCP tools. */
     private record Vertrag(boolean vorhanden, int mindestens, TreeMap<String, String> ausnahmen) {
 
         static Vertrag laden() {

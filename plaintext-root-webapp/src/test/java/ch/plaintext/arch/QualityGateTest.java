@@ -16,16 +16,16 @@ import java.util.Properties;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Quality-Gate-Wächter der wöchentlichen Voll-Analyse.
+ * Quality gate guard of the weekly full analysis.
  *
- * <p>Die Weekly-Pipeline (Sonar + OWASP-CVE) schreibt bei Schwellenüberschreitung
- * {@code quality/quality-gate.properties} (status=BREACHED) ins Repo und schickt Pushover.
- * Dieser Test liest das File und <b>schlägt mit dem Inhalt als Meldung fehl</b> — sichtbar in
- * nightly-, PR- und lokalen Builds, sodass der Handlungsbedarf hart auffällt.
+ * <p>When a threshold is exceeded, the weekly pipeline (Sonar + OWASP CVE) writes
+ * {@code quality/quality-gate.properties} (status=BREACHED) into the repository and sends a Pushover
+ * notification. This test reads that file and <b>fails with its content as the message</b> — visible in
+ * nightly, PR and local builds, so that the need for action stands out unmistakably.
  *
- * <p>Er trägt {@code @Tag("quality-gate")}: der Deploy-Build läuft mit
- * {@code -DexcludedGroups=quality-gate} und überspringt ihn, damit ein Hotfix trotz aktivem
- * Alert-File rausgehen kann. Nach dem Fix setzt der nächste Weekly-Lauf wieder {@code status=OK}.
+ * <p>It carries {@code @Tag("quality-gate")}: the deploy build runs with
+ * {@code -DexcludedGroups=quality-gate} and skips it, so that a hotfix can go out despite an active
+ * alert file. After the fix the next weekly run sets {@code status=OK} again.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -37,7 +37,7 @@ class QualityGateTest {
     void qualityGateNichtVerletzt() throws IOException {
         Path file = findGateFile();
         if (file == null) {
-            return; // kein Statusfile -> nichts zu prüfen (grün)
+            return; // no status file -> nothing to check (green)
         }
         Properties p = new Properties();
         try (Reader r = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
@@ -71,7 +71,7 @@ class QualityGateTest {
         }
     }
 
-    /** Sucht quality/quality-gate.properties ab dem Arbeitsverzeichnis nach oben (Modul → Repo-Wurzel). */
+    /** Looks for quality/quality-gate.properties upwards from the working directory (module → repository root). */
     private Path findGateFile() {
         Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
         for (int i = 0; i < 8 && dir != null; i++) {

@@ -15,10 +15,10 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Leichtgewichtiges Backing Bean fuer die Glocke im Header ({@code topbar.xhtml}, geteilt ueber alle
- * Apps mit root-Layout). Der Header prueft {@code #{notificationTopbarBean != null}} — existiert diese
- * Bean nicht (Modul nicht auf dem Klassenpfad der jeweiligen App), bleibt die Glocke einfach unsichtbar,
- * exakt das etablierte Muster von {@code i18nService}.
+ * Lightweight Backing Bean for the bell in the header ({@code topbar.xhtml}, shared across all
+ * apps with the root layout). The header checks {@code #{notificationTopbarBean != null}} — if this
+ * bean does not exist (module not on the classpath of the respective app), the bell simply stays
+ * invisible, exactly the established pattern of {@code i18nService}.
  */
 @Component("notificationTopbarBean")
 @Scope("request")

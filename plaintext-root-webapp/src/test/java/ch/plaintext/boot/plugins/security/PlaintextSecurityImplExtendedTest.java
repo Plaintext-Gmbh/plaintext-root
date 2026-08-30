@@ -63,16 +63,16 @@ class PlaintextSecurityImplExtendedTest {
     }
 
     /**
-     * Den global gesetzten Mock-Kontext wieder abraeumen.
+     * Clear away the globally set mock context again.
      *
-     * <p>Ohne das bleibt der Mockito-{@code SecurityContext} im {@link SecurityContextHolder} stehen
-     * und verschmutzt jede spaeter laufende Testklasse: Ein {@code getContext().setAuthentication(...)}
-     * dort landet auf dem Mock und tut nichts, {@code getAuthentication()} liefert weiterhin
-     * {@code null} — der Test sieht einen abgemeldeten Benutzer, obwohl er einen angemeldeten gesetzt
-     * hat. Genau das hat {@code JsfAjaxAwareHandlersTest} zum Scheitern gebracht, aber nur auf
-     * Maschinen, auf denen Surefire diese Klasse VOR jener ausfuehrt (die Reihenfolge haengt vom
-     * Dateisystem ab — deshalb lief es lokal und auf dem self-hosted Runner gruen und auf
-     * ubuntu-latest rot; Karte 426).</p>
+     * <p>Without this the Mockito {@code SecurityContext} stays in the {@link SecurityContextHolder}
+     * and pollutes every test class that runs later: a {@code getContext().setAuthentication(...)}
+     * there lands on the mock and does nothing, {@code getAuthentication()} keeps returning
+     * {@code null} — the test sees a logged-out user although it has set a logged-in one.
+     * Exactly that made {@code JsfAjaxAwareHandlersTest} fail, but only on
+     * machines on which Surefire runs this class BEFORE that one (the order depends on the
+     * file system — which is why it ran green locally and on the self-hosted runner and red on
+     * ubuntu-latest; card 426).</p>
      */
     @AfterEach
     void tearDown() {

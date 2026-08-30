@@ -7,8 +7,8 @@ import ch.plaintext.boot.menu.MenuAnnotation;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 /**
- * Test-Fixture: ein Menuepunkt, der nur mit {@code test.menu.feature=true} existiert — das Muster
- * von {@code SwaggerMenu} ({@code springdoc.swagger-ui.enabled}).
+ * Test fixture: a menu item that only exists with {@code test.menu.feature=true} — the pattern
+ * of {@code SwaggerMenu} ({@code springdoc.swagger-ui.enabled}).
  */
 @ConditionalOnProperty(name = "test.menu.feature", havingValue = "true")
 @MenuAnnotation(title = "Nur mit Property", link = "bedingt.html", parent = "Root", order = 2)

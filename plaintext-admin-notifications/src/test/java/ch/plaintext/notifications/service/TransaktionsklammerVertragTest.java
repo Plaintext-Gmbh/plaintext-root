@@ -26,19 +26,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Vertragstest zur Transaktionsklammer (Sonar java:S2229, Karte 891).
+ * Contract test for the transaction boundary (Sonar java:S2229, card 891).
  *
- * <p><b>Warum dieser Test existiert.</b> {@code notifyMandant} erreichte {@code notify} per
- * Selbstaufruf. Ein Selbstaufruf geht nicht durch den Spring-Proxy, also blieb dessen
- * {@code @Transactional} wirkungslos — jede {@code save()} committete für sich, obwohl der Code das
- * Gegenteil versprach. Der Fehler ist an der Quelle unsichtbar: die Annotation steht da, sie tut
- * nur nichts. Genau deshalb genügt es nicht, sie an die äussere Methode zu schreiben und den
- * Befund abzuhaken — dieser Test <em>misst</em>, ob beim Aufruf von aussen tatsächlich eine
- * Transaktion angefordert wird, und würde erneut rot, wenn jemand die Annotation entfernt.</p>
+ * <p><b>Why this test exists.</b> {@code notifyMandant} reached {@code notify} by
+ * self-invocation. A self-invocation does not go through the Spring proxy, so its
+ * {@code @Transactional} had no effect — every {@code save()} committed on its own, although the
+ * code promised the opposite. The bug is invisible in the source: the annotation is there, it
+ * simply does nothing. That is exactly why it is not enough to move it to the outer method and
+ * tick the finding off — this test <em>measures</em> whether a transaction is actually requested
+ * on a call from outside, and would go red again if someone removed the annotation.</p>
  *
- * <p>Gemessen wird am {@link PlatformTransactionManager}: der Transaktionsinterceptor fordert dort
- * für jede Klammer eine Transaktion an. Ein Mock zählt diese Anforderungen mit — das braucht weder
- * Datenbank noch Schema und misst trotzdem das echte Proxy-Verhalten.</p>
+ * <p>The measurement is taken at the {@link PlatformTransactionManager}: the transaction
+ * interceptor requests a transaction there for every boundary. A mock counts those requests — that
+ * needs neither a database nor a schema and still measures the real proxy behaviour.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -75,8 +75,8 @@ class TransaktionsklammerVertragTest {
 
     @Test
     void einzelnesNotifyOeffnetEineTransaktion() {
-        // Positivkontrolle: ohne sie belegt die Zählung im Test darunter nichts — eine Messung, die
-        // gar keine Transaktion sehen kann, meldet genauso 0 wie eine fehlende Annotation.
+        // Positive control: without it the count in the test below proves nothing — a measurement
+        // that cannot see a transaction at all reports 0 just like a missing annotation.
         when(templates.render(any(), any(), any(), any(), any())).thenReturn(new RenderedMail("T", "B"));
 
         try (AnnotationConfigApplicationContext ctx = kontext()) {
@@ -98,10 +98,10 @@ class TransaktionsklammerVertragTest {
                     .notifyMandant("m1", "typ", "Titel", "Text", Map.of(), "/ziel");
         }
 
-        // Drei Benachrichtigungen, aber nur EINE Transaktion: die äussere Klammer deckt alle ab.
-        // Die 1 belegt zugleich beide Seiten des Befundes — vor der Behebung wäre sie 0 gewesen
-        // (keine Klammer), und dass sie nicht 3 ist, zeigt, dass der Selbstaufruf nach wie vor am
-        // Proxy vorbeigeht. Er darf es jetzt, weil die Klammer schon offen ist.
+        // Three notifications, but only ONE transaction: the outer boundary covers them all.
+        // The 1 proves both sides of the finding at once — before the fix it would have been 0
+        // (no boundary), and the fact that it is not 3 shows that the self-invocation still
+        // bypasses the proxy. It is allowed to now, because the boundary is already open.
         verify(repo, times(3)).save(any());
         verify(txManager, times(1)).getTransaction(any());
     }

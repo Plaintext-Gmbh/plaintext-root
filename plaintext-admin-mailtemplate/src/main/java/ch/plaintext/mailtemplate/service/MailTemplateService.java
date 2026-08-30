@@ -18,9 +18,9 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Admin-editierbare Mailtexte: DB-Override (mandantengescoped) mit Fallback auf den vom Aufrufer
- * übergebenen Code-Default. Cache analog {@code I18nService} (vollständig beim Start geladen,
- * bei Save/Delete gezielt aktualisiert statt komplett neu geladen).
+ * Admin-editable mail texts: DB override (tenant-scoped) with a fallback to the code default
+ * passed in by the caller. Cache analogous to {@code I18nService} (loaded completely at startup,
+ * updated selectively on save/delete instead of being reloaded in full).
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -67,7 +67,7 @@ public class MailTemplateService implements IMailTemplateProvider {
         return result;
     }
 
-    /** Legt einen Override an oder aktualisiert ihn. */
+    /** Creates an override or updates it. */
     @Transactional
     public MailTemplate save(String mandat, String templateKey, String betreff, String body, boolean html) {
         MailTemplate t = repository.findByMandatAndTemplateKey(mandat, templateKey).orElseGet(MailTemplate::new);
@@ -81,7 +81,7 @@ public class MailTemplateService implements IMailTemplateProvider {
         return saved;
     }
 
-    /** Entfernt einen Override — künftige {@link #render} Aufrufe fallen wieder auf den Code-Default zurück. */
+    /** Removes an override — future {@link #render} calls fall back to the code default again. */
     @Transactional
     public void deleteOverride(Long id) {
         repository.findById(id).ifPresent(t -> {

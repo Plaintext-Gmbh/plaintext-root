@@ -56,9 +56,9 @@ public class I18nBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped statt @ViewScoped): setzt die Rolle, sperrt Nicht-ROOT aus
-     * und lädt die Übersetzungsliste FRISCH bei jedem Seitenaufruf (GET). Der isPostback-Guard verhindert
-     * das Neuladen bei jedem Ajax-Postback, damit der Bearbeitungszustand erhalten bleibt.
+     * preRenderView listener (session-scoped instead of @ViewScoped): sets the role, locks out non-ROOT
+     * users and loads the translation list FRESH on every page call (GET). The isPostback guard prevents
+     * a reload on every Ajax postback, so that the editing state is preserved.
      */
     public void onLoad() {
         root = security.ifGranted("ROLE_ROOT");

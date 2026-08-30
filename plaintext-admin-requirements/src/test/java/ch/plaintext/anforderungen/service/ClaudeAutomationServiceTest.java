@@ -120,11 +120,11 @@ class ClaudeAutomationServiceTest {
         assertThat(service.validateToken("token-abc")).isTrue();
     }
 
-    // --- validateToken: SHA-256-Hash-Vergleich + Lazy-Migration (H3-Haertung) ---
+    // --- validateToken: SHA-256 hash comparison + lazy migration (H3 hardening) ---
 
     @Test
     void validateTokenMatchesViaStoredHashWithoutPlaintext() {
-        // Zukunfts-Zustand: Zeile traegt nur noch den Hash, keinen Klartext mehr.
+        // Future state: the row only carries the hash, no cleartext any more.
         String token = "hashed-token";
         String hash = ApiTokenHasher.sha256Hex(token);
         AnforderungApiSettings settings = new AnforderungApiSettings();
@@ -133,7 +133,7 @@ class ClaudeAutomationServiceTest {
         when(apiSettingsRepository.findByApiTokenHash(hash)).thenReturn(Optional.of(settings));
 
         assertThat(service.validateToken(token)).isTrue();
-        // Kein Legacy-Lookup noetig, keine Migration
+        // No legacy lookup needed, no migration
         verify(apiSettingsRepository, never()).save(any());
     }
 
@@ -150,7 +150,7 @@ class ClaudeAutomationServiceTest {
 
     @Test
     void validateTokenMigratesHashOnFirstPlaintextMatch() {
-        // Alt-Zeile: nur Klartext, Hash noch leer -> beim ersten Match wird der Hash geschrieben.
+        // Legacy row: cleartext only, hash still empty -> the hash is written on the first match.
         String token = "legacy-plaintext-token";
         AnforderungApiSettings settings = new AnforderungApiSettings();
         settings.setMandat("mandatA");
@@ -164,13 +164,13 @@ class ClaudeAutomationServiceTest {
         ArgumentCaptor<AnforderungApiSettings> captor = ArgumentCaptor.forClass(AnforderungApiSettings.class);
         verify(apiSettingsRepository).save(captor.capture());
         assertThat(captor.getValue().getApiTokenHash()).isEqualTo(ApiTokenHasher.sha256Hex(token));
-        // Verhalten fuer den aktiven Client identisch: Klartext bleibt (Uebergangsphase)
+        // Behaviour identical for the active client: the cleartext stays (transitional phase)
         assertThat(captor.getValue().getApiToken()).isEqualTo(token);
     }
 
     @Test
     void validateTokenSurvivesFailingHashMigration() {
-        // Persistenz-Fehler bei der Lazy-Migration darf die Validierung NICHT brechen.
+        // A persistence error during the lazy migration must NOT break the validation.
         String token = "legacy-plaintext-token";
         AnforderungApiSettings settings = new AnforderungApiSettings();
         settings.setMandat("mandatA");
@@ -185,7 +185,7 @@ class ClaudeAutomationServiceTest {
 
     @Test
     void validateTokenDoesNotResaveAlreadyMigratedRow() {
-        // Zeile mit Klartext UND aktuellem Hash: Match ueber Hash-Lookup, kein erneutes save().
+        // Row with cleartext AND an up-to-date hash: match via hash lookup, no further save().
         String token = "migrated-token";
         String hash = ApiTokenHasher.sha256Hex(token);
         AnforderungApiSettings settings = new AnforderungApiSettings();
@@ -219,8 +219,8 @@ class ClaudeAutomationServiceTest {
         when(apiSettingsRepository.findByApiToken(token)).thenReturn(Optional.empty());
         when(security.getMandat()).thenReturn("mandatA");
         AnforderungApiSettings settings = new AnforderungApiSettings();
-        settings.setApiToken(token); // Klartext wuerde matchen ...
-        settings.setApiTokenHash(ApiTokenHasher.sha256Hex("ANDERER-token")); // ... aber Hash gewinnt
+        settings.setApiToken(token); // the cleartext would match ...
+        settings.setApiTokenHash(ApiTokenHasher.sha256Hex("ANDERER-token")); // ... but the hash wins
         when(apiSettingsRepository.findByMandat("mandatA")).thenReturn(Optional.of(settings));
 
         assertThat(service.validateToken(token)).isFalse();
@@ -940,7 +940,7 @@ class ClaudeAutomationServiceTest {
         Anforderung anf = new Anforderung();
         anf.setId(1L);
         anf.setStatus("OFFEN");
-        anf.setMandat("mandatB"); // fremder Mandant
+        anf.setMandat("mandatB"); // foreign tenant
         when(anforderungRepository.findById(1L)).thenReturn(Optional.of(anf));
 
         boolean result = service.updateAnforderungStatus(1L, "ERLEDIGT", "token");
@@ -1050,7 +1050,7 @@ class ClaudeAutomationServiceTest {
         assertThat(service.getFullContextForAnforderung(999L, "token")).isNull();
     }
 
-    // --- Karte 968: wiederkehrende Aufgaben (java:S6809) ---
+    // --- Card 968: recurring tasks (java:S6809) ---
 
     private static AnforderungApiSettings aktiveEinstellungen() {
         AnforderungApiSettings settings = new AnforderungApiSettings();
@@ -1072,10 +1072,10 @@ class ClaudeAutomationServiceTest {
     }
 
     /**
-     * Das Wiedereroeffnen war bis Karte 968 durch keinen Test gedeckt — und trug ein
-     * {@code @Transactional}, das an einer privaten Methode ohnehin wirkungslos war. Beim Entfernen
-     * der Annotation musste belegt sein, <b>was</b> die Methode tut, sonst waere es eine
-     * Aenderung ins Blaue gewesen.
+     * Until card 968 the reopening was not covered by any test — and it carried a
+     * {@code @Transactional} that was ineffective on a private method anyway. When removing
+     * the annotation it had to be proven <b>what</b> the method does, otherwise it would have
+     * been a change made blindly.
      */
     @Test
     void ueberfaelligeWiederkehrendeAufgabeWirdWiederEroeffnetUndSofortAusgeliefert() {
@@ -1089,7 +1089,7 @@ class ClaudeAutomationServiceTest {
         ArgumentCaptor<Anforderung> gespeichert = ArgumentCaptor.forClass(Anforderung.class);
         verify(anforderungRepository).save(gespeichert.capture());
         assertThat(gespeichert.getValue().getStatus()).isEqualTo("OFFEN");
-        // Und sie kommt im selben Aufruf zurueck - der Filter arbeitet auf derselben Instanz.
+        // And it comes back in the same call - the filter works on the same instance.
         assertThat(ergebnis).isPresent();
         assertThat(ergebnis.get().getId()).isEqualTo(10L);
     }
@@ -1101,8 +1101,8 @@ class ClaudeAutomationServiceTest {
         when(anforderungRepository.findByMandatOrderByCreatedDateDesc("mandatA"))
                 .thenReturn(new ArrayList<>(List.of(frisch)));
 
-        // Gegenprobe zum Fall darueber: ohne sie waere ein Dienst, der ALLES wiedereroeffnet,
-        // ebenfalls gruen.
+        // Counter-check to the case above: without it, a service that reopens EVERYTHING would
+        // be green as well.
         assertThat(service.getNextTask("token")).isEmpty();
         verify(anforderungRepository, never()).save(any());
         assertThat(frisch.getStatus()).isEqualTo("ERLEDIGT");
@@ -1110,9 +1110,9 @@ class ClaudeAutomationServiceTest {
 
     @Test
     void eineFehlgeschlageneAufgabeHaeltDieUebrigenNichtAuf() {
-        // Jeder save() laeuft in seiner eigenen Transaktion - genau das steht seit Karte 968 auch
-        // im Javadoc der Methode. Bricht einer weg, muss der naechste Aufruf den Rest nachholen
-        // koennen; ein halb durchgelaufener Lauf darf nicht in sich zusammenfallen.
+        // Every save() runs in its own transaction - since card 968 that is exactly what the
+        // method's Javadoc says as well. If one of them fails, the next call has to be able to
+        // catch up on the rest; a half-completed run must not collapse in on itself.
         when(apiSettingsRepository.findByApiToken("token")).thenReturn(Optional.of(aktiveEinstellungen()));
         Anforderung a = wiederkehrend(20L, 3, LocalDateTime.now().minusDays(9));
         when(anforderungRepository.findByMandatOrderByCreatedDateDesc("mandatA"))
@@ -1121,8 +1121,8 @@ class ClaudeAutomationServiceTest {
 
         assertThatThrownBy(() -> service.getNextTask("token")).isInstanceOf(RuntimeException.class);
 
-        // Der Status im Speicher steht bereits auf OFFEN - in der DB nicht. Beim naechsten Lauf
-        // wird die Aufgabe erneut als ueberfaellig erkannt und noch einmal versucht.
+        // The in-memory status is already OFFEN - in the DB it is not. On the next run the task
+        // is detected as overdue again and retried.
         assertThat(a.getStatus()).isEqualTo("OFFEN");
     }
 }

@@ -62,36 +62,36 @@ public interface PlaintextSecurity {
     String getMandatForUser(long userId);
 
     /**
-     * Liefert den Benutzernamen (Login-Namen) zu einer Benutzer-Id.
+     * Returns the username (login name) for a user id.
      *
-     * <p><b>Wofür (Karte 596):</b> Hintergrundläufe müssen den Empfänger aus dem <b>Datensatz</b>
-     * nehmen, nie aus dem Sicherheitskontext — dort liefert {@link #getId()} im Cron-Lauf
-     * {@code -1} (Karte 588). Der Datensatz trägt nur die Id; diese Methode ist die Brücke.
+     * <p><b>What for (Card 596):</b> background runs have to take the recipient from the
+     * <b>record</b>, never from the security context — there {@link #getId()} returns {@code -1}
+     * during a cron run (Card 588). The record carries only the id; this method is the bridge.
      *
-     * <p><b>Das ist NICHT zwingend eine Mailadresse.</b> In der Regel ist der Benutzername
-     * zugleich die Adresse, aber im Altbestand stehen auch reine Kürzel. Wer versenden will,
-     * nimmt {@link #getEmailForUser(long)}.
+     * <p><b>This is NOT necessarily a mail address.</b> As a rule the username is also the
+     * address, but legacy data also holds plain short handles. Anyone who wants to send mail uses
+     * {@link #getEmailForUser(long)}.
      *
-     * @param userId Benutzer-Id
-     * @return der Benutzername, oder {@code null} wenn kein Benutzer mit dieser Id existiert
+     * @param userId user id
+     * @return the username, or {@code null} if no user with this id exists
      */
     String getUsernameForUser(long userId);
 
     /**
-     * Liefert die <b>zustellbare Mailadresse</b> zu einer Benutzer-Id — oder nichts.
+     * Returns the <b>deliverable mail address</b> for a user id — or nothing.
      *
-     * <p>In dieser Anwendung ist der Benutzername zugleich die Mailadresse: Die
-     * Selbstregistrierung setzt ihn so, der Passwort-Reset verschickt an ihn, und die
-     * Benutzerverwaltung erzwingt beim Anlegen die Mailform. Für den Altbestand
-     * ({@code plafferma}) und für maschinelle Schreiber ({@code anonymousUser}) gilt das nicht.
+     * <p>In this application the username is also the mail address: self-registration sets it that
+     * way, the password reset sends to it, and user management enforces the mail form when
+     * creating an account. That does not hold for legacy data ({@code plafferma}) or for machine
+     * writers ({@code anonymousUser}).
      *
-     * <p><b>Der {@link Optional}-Rückgabewert ist Absicht:</b> Ein nicht auflösbarer Empfänger ist
-     * ein Befund, kein Normalfall — aber er darf den Aufrufer nicht scheitern lassen. Der Typ
-     * zwingt zur Behandlung, ohne eine Ausnahme zu werfen.
+     * <p><b>The {@link Optional} return type is deliberate:</b> a recipient that cannot be
+     * resolved is a finding, not a normal case — but it must not make the caller fail. The type
+     * forces the case to be handled without throwing an exception.
      *
-     * @param userId Benutzer-Id
-     * @return die Mailadresse, oder {@link Optional#empty()} wenn der Benutzer unbekannt ist
-     *         oder sein Benutzername keine Adresse ist
+     * @param userId user id
+     * @return the mail address, or {@link Optional#empty()} if the user is unknown or the
+     *         username is not an address
      */
     default Optional<String> getEmailForUser(long userId) {
         return PlaintextEmailAddress.asDeliverable(getUsernameForUser(userId));
@@ -143,11 +143,11 @@ public interface PlaintextSecurity {
     Long getOriginalUserId();
 
     /**
-     * Liefert alle Mandate, zwischen denen der aktuelle Benutzer wechseln darf.
-     * <p>Default-Implementierung: nur der aktuelle Mandant. Die echte Implementierung
-     * liefert für ROOT alle Mandate und sonst {Heimat-Mandant} ∪ zugeordnete Zusatz-Mandate.
+     * Returns all tenants the current user is allowed to switch between.
+     * <p>Default implementation: the current tenant only. The real implementation returns all
+     * tenants for ROOT, and otherwise {home tenant} ∪ assigned additional tenants.
      *
-     * @return Menge erlaubter Mandanten (kleingeschrieben)
+     * @return set of permitted tenants (lowercase)
      */
     default Set<String> getAllowedMandate() {
         Set<String> single = new HashSet<>();
@@ -159,37 +159,37 @@ public interface PlaintextSecurity {
     }
 
     /**
-     * Ob dem aktuellen Benutzer ein Mandanten-Wechsler angezeigt werden soll — nur wenn mehr als
-     * ein erlaubter Mandant existiert (für ROOT sind das alle Mandate der Instanz, sonst
-     * Heimat-Mandant plus zugeordnete Zusatz-Mandate). Bei genau einem erlaubten Mandanten gibt es
-     * nichts auszuwählen, der Wechsler bleibt dann ausgeblendet statt nur deaktiviert.
-     * <p>Default-Implementierung: {@code false}.
+     * Whether a tenant switcher should be shown to the current user — only when more than one
+     * permitted tenant exists (for ROOT that is every tenant of the instance, otherwise the home
+     * tenant plus the assigned additional tenants). With exactly one permitted tenant there is
+     * nothing to choose, so the switcher stays hidden rather than merely disabled.
+     * <p>Default implementation: {@code false}.
      *
-     * @return true, wenn ein Wechsel möglich ist
+     * @return true if switching is possible
      */
     default boolean isCanSwitchMandat() {
         return false;
     }
 
     /**
-     * Wechselt den aktiven Mandanten NUR für die laufende Session (ohne DB-Persistierung),
-     * sofern er in {@link #getAllowedMandate()} enthalten ist.
-     * <p>Default-Implementierung: keine Aktion.
+     * Switches the active tenant for the running session ONLY (without persisting it to the DB),
+     * provided it is contained in {@link #getAllowedMandate()}.
+     * <p>Default implementation: no action.
      *
-     * @param mandat Ziel-Mandant
+     * @param mandat target tenant
      */
     default void switchActiveMandat(String mandat) {
-        // Default: keine Aktion – nur die echte Implementierung wechselt den Mandanten.
+        // Default: no action – only the real implementation switches the tenant.
     }
 
     /**
-     * Liefert alle Benutzernamen, die Zugriff auf den Mandanten haben — als Heimat-Mandant
-     * ODER als zugeordneten (aktiven) Zusatz-Mandant.
-     * <p>Default-Implementierung: nur die Benutzer des Heimat-Mandanten
+     * Returns all usernames that have access to the tenant — either as their home tenant OR as an
+     * assigned (active) additional tenant.
+     * <p>Default implementation: only the users of the home tenant
      * ({@link #getUsersForMandat(String)}).
      *
-     * @param mandat Mandant
-     * @return Benutzernamen mit Zugriff auf den Mandanten
+     * @param mandat tenant
+     * @return usernames with access to the tenant
      */
     default List<String> getUsernamesWithMandatAccess(String mandat) {
         return getUsersForMandat(mandat);

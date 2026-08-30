@@ -45,7 +45,7 @@ class PasswordResetServiceTest {
     private final IMailTemplateProvider mailTemplateProvider = new MailTemplateService(mock(MailTemplateRepository.class));
 
     private SelfServiceProperties properties;
-    /** SECURITY (Karte 314, Punkt 9): Registry zum Beenden aktiver Sessions nach dem Reset. */
+    /** SECURITY (card 314, item 9): registry for terminating active sessions after the reset. */
     @Mock
     private ObjectProvider<ch.plaintext.sessions.service.HttpSessionRegistry> sessionRegistryProvider;
 
@@ -122,7 +122,7 @@ class PasswordResetServiceTest {
         MyUserEntity user = new MyUserEntity();
         user.setUsername("u@example.com");
         user.setPassword("OLD");
-        // Karte 307, K2.3: Lookup per Hash + ATOMARES Einloesen (consumeToken == 1).
+        // Card 307, K2.3: lookup by hash + ATOMIC redemption (consumeToken == 1).
         when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(token));
         when(tokenRepository.consumeToken(anyString(), any(Instant.class))).thenReturn(1);
         when(userRepository.findByUsername("u@example.com")).thenReturn(user);
@@ -134,15 +134,15 @@ class PasswordResetServiceTest {
         assertEquals("BCRYPT::new-strong-pw", user.getPassword());
         verify(tokenRepository).consumeToken(anyString(), any(Instant.class));
         verify(userRepository).save(user);
-        // Remember-Me / PERSISTENT_LOGINS des Users muss invalidiert werden.
+        // The user's remember-me / PERSISTENT_LOGINS have to be invalidated.
         verify(rememberMeRepository).deleteAllByUsername("u@example.com");
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 9): der Reset muss auch die noch AKTIVEN HTTP-Sessions beenden.
-     * Vorher wurden nur die persistenten Remember-Me-Tokens geloescht — wer bereits eine offene
-     * Session hatte (genau der Fall, in dem jemand sein Passwort zuruecksetzt), behielt seinen
-     * Zugriff bis zum Session-Timeout.
+     * SECURITY (card 314, item 9): the reset also has to terminate the still ACTIVE HTTP sessions.
+     * Previously only the persistent remember-me tokens were deleted — whoever already had an open
+     * session (exactly the case in which somebody resets their password) kept their
+     * access until the session timeout.
      */
     @Test
     void completeReset_invalidatesActiveSessions() {
@@ -161,8 +161,8 @@ class PasswordResetServiceTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 9): fehlt das optionale Sessions-Modul, muss der Reset trotzdem
-     * durchlaufen — ein fehlender Baustein darf den Wiederherstellungsweg nicht blockieren.
+     * SECURITY (card 314, item 9): if the optional sessions module is missing, the reset still has to
+     * run through — a missing building block must not block the recovery path.
      */
     @Test
     void completeReset_worksWithoutSessionRegistry() {
@@ -184,7 +184,7 @@ class PasswordResetServiceTest {
     void completeReset_rejectsExpiredToken() {
         PasswordResetToken expired = newToken("u@example.com", "default", Duration.ofHours(-1));
         when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(expired));
-        // Abgelaufen/verbraucht -> das bedingte UPDATE trifft 0 Zeilen.
+        // Expired/consumed -> the conditional UPDATE hits 0 rows.
         when(tokenRepository.consumeToken(anyString(), any(Instant.class))).thenReturn(0);
 
         PasswordResetService.ResetResult result = service.completeReset("expired", "new-strong-pw");

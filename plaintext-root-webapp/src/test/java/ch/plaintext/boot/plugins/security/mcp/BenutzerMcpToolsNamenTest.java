@@ -17,17 +17,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die nach aussen sichtbaren MCP-Werkzeugnamen von {@link BenutzerMcpTools} sind ein Vertrag: Ein
- * Client ruft {@code import_benutzer} auf, nicht {@code importBenutzer}. Ein vergessenes
- * {@code name = "…"} benennt das Werkzeug still um — das faellt weder beim Kompilieren noch in
- * einem fachlichen Test auf, sondern erst, wenn der Client es nicht mehr findet.
+ * The externally visible MCP tool names of {@link BenutzerMcpTools} are a contract: a
+ * client calls {@code import_benutzer}, not {@code importBenutzer}. A forgotten
+ * {@code name = "…"} silently renames the tool — that shows up neither at compile time nor in
+ * a functional test, but only when the client no longer finds it.
  *
- * <p>Nach dem Muster von {@code ApiTokenMcpToolsNamenTest} (Karte 489). Die Namensregel ist die des
- * {@code SyncMcpToolProvider}: gesetzter {@code name} gewinnt, sonst der Methodenname.
+ * <p>Following the pattern of {@code ApiTokenMcpToolsNamenTest} (card 489). The naming rule is that of
+ * the {@code SyncMcpToolProvider}: a set {@code name} wins, otherwise the method name.
  */
 class BenutzerMcpToolsNamenTest {
 
-    /** Die ausgelieferten Werkzeugnamen, Stand 28.08.2026. */
+    /** The shipped tool names, as of 28.08.2026. */
     private static final Set<String> ERWARTETE_TOOLS = Set.of(
             "list_benutzer",
             "export_benutzer",
@@ -67,7 +67,7 @@ class BenutzerMcpToolsNamenTest {
                         + "mcp-scope-vertrag.properties mitziehen.");
     }
 
-    /** Gegenprobe: Ohne sie waere der Test auch gruen, wenn die Reflection gar nichts sieht. */
+    /** Counter-check: without it the test would be green even if the reflection saw nothing at all. */
     @Test
     void diePruefungSiehtUeberhauptTools() {
         assertEquals(3, ausgelieferteTools().size(),

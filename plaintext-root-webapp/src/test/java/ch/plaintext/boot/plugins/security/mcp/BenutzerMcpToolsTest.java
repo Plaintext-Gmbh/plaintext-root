@@ -38,9 +38,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests fuer {@link BenutzerMcpTools}. Schwerpunkt ist nicht das Abbilden von Feldern, sondern das,
- * was der Import <b>nicht</b> tun darf: privilegierte Rollen aus einer Datei vergeben, den Mandanten
- * aus der Datei uebernehmen, ein bestehendes Konto ueberschreiben oder Geheimnisse ausgeben.
+ * Tests for {@link BenutzerMcpTools}. The focus is not the mapping of fields, but what
+ * the import must <b>not</b> do: grant privileged roles from a file, take the tenant
+ * from the file, overwrite an existing account or hand out secrets.
  */
 class BenutzerMcpToolsTest {
 
@@ -52,7 +52,7 @@ class BenutzerMcpToolsTest {
 
     @BeforeEach
     void setUp() {
-        // PlaintextSecurityHolder haelt seinen Delegaten statisch; im Unit-Test wird er von Hand gesetzt.
+        // PlaintextSecurityHolder keeps its delegate statically; in a unit test it is set by hand.
         new PlaintextSecurityHolder().setDelegate(security);
         when(security.getMandat()).thenReturn("guild42");
         when(mandateRepository.findByMandatAndActiveTrue(anyString())).thenReturn(List.of());
@@ -64,7 +64,7 @@ class BenutzerMcpToolsTest {
         SecurityContextHolder.clearContext();
     }
 
-    // ── Autorisierung ─────────────────────────────────────────────────────────────────────────
+    // ── Authorization ─────────────────────────────────────────────────────────────────────────
 
     @Test
     void ohneAuthentication_keinZugriff() {
@@ -242,9 +242,9 @@ class BenutzerMcpToolsTest {
                 "Was der Export schreibt, muss der Import lesen koennen: " + bericht);
     }
 
-    // ── Hilfen ────────────────────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────────────────────
 
-    /** Packt einen Benutzersatz in einen gueltigen Dateikopf. */
+    /** Wraps a user record in a valid file header. */
     private static String datei(String satzJson) {
         return "{\"format\":\"plaintext-benutzer\",\"version\":1,\"quellMandat\":\"plaintext\","
                 + "\"benutzer\":[" + satzJson + "]}";
@@ -280,7 +280,7 @@ class BenutzerMcpToolsTest {
                 "PROPERTY_MYUSERID_2", "PROPERTY_MANDAT_guild42");
     }
 
-    /** Gegenprobe zum Aufbau: ohne Mandat im Kontext bricht der Import ab, statt irgendwo zu landen. */
+    /** Counter-check on the setup: without a tenant in the context the import aborts instead of landing somewhere. */
     @Test
     void ohneMandatKeinImport() {
         authAdmin();

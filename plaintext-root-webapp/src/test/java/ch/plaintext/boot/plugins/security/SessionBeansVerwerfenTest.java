@@ -19,23 +19,23 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Meldung Daniel, 25.08.2026: „Mein Konto" zeigte nach dem Impersonieren weiter den vorherigen
- * Benutzer. Ursache: {@code startImpersonation()} tauschte nur die {@code Authentication} und
- * liess die Sitzung unangetastet — der Kommentar dort versprach seit jeher ein Aufraeumen, das
- * im Code fehlte. Jede session-scoped Bean, die ihren Zustand einmalig im {@code @PostConstruct}
- * aufbaut, blieb damit beim alten Benutzer stehen.
+ * Report by Daniel, 25.08.2026: "Mein Konto" kept showing the previous user after impersonating.
+ * Cause: {@code startImpersonation()} only exchanged the {@code Authentication} and
+ * left the session untouched — the comment there had always promised a cleanup that
+ * was missing from the code. Every session-scoped bean that builds up its state once in
+ * {@code @PostConstruct} therefore stayed with the old user.
  *
- * <p>Der heikle Teil ist nicht das Wegwerfen, sondern das <b>Nicht</b>-Wegwerfen: in derselben
- * Sitzung liegen der Spring-Security-Kontext, die Impersonation-Merker und der
- * JSF-Ansichtszustand. Wuerde die Aufraeumung pauschal leeren, waere der Benutzer abgemeldet oder
- * die laufende Ansicht zerstoert. Genau diese Grenze pruefen die beiden Faelle unten.
+ * <p>The delicate part is not the discarding but the <b>not</b> discarding: the same session holds
+ * the Spring Security context, the impersonation markers and the
+ * JSF view state. If the cleanup emptied everything indiscriminately, the user would be logged out or
+ * the running view destroyed. Exactly that boundary is what the two cases below check.
  */
 class SessionBeansVerwerfenTest {
 
     private MockHttpServletRequest request;
     private PlaintextSecurityImpl security;
 
-    /** Eine BeanFactory, in der genau die genannten Namen Scope „session" haben. */
+    /** A BeanFactory in which exactly the named beans have scope "session". */
     private static ObjectProvider<ConfigurableListableBeanFactory> factoryMit(String... sessionBeans) {
         ConfigurableListableBeanFactory factory = mock(ConfigurableListableBeanFactory.class);
         String[] alle = {"meinKontoBackingBean", "scopedTarget.userPreferencesBackingBean",
@@ -81,8 +81,8 @@ class SessionBeansVerwerfenTest {
     }
 
     /**
-     * Die eigentliche Zusicherung. Ohne sie waere {@code session.invalidate()} eine gruene,
-     * aber katastrophale Loesung: der Benutzer waere nach dem Impersonieren abgemeldet.
+     * The actual guarantee. Without it {@code session.invalidate()} would be a green
+     * but catastrophic solution: the user would be logged out after impersonating.
      */
     @Test
     @DisplayName("Sicherheitskontext, Impersonation-Merker und JSF-Zustand bleiben unberuehrt")
@@ -99,7 +99,7 @@ class SessionBeansVerwerfenTest {
         assertThat(request.getSession().getAttribute("impersonation.originalAuth")).isNotNull();
         assertThat(request.getSession().getAttribute("com.sun.faces.application.view.activeViewMaps")).isNotNull();
         assertThat(request.getSession().getAttribute("einSingleton")).isNotNull();
-        // Positivkontrolle im selben Fall: die Aufraeumung hat ueberhaupt etwas getan.
+        // Positive control in the same case: the cleanup did anything at all.
         assertThat(request.getSession().getAttribute("meinKontoBackingBean")).isNull();
     }
 

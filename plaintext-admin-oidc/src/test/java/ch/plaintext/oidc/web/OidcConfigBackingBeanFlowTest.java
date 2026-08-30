@@ -43,9 +43,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): Ergaenzung zu
- * {@link OidcConfigBackingBeanTest} (Session-abgelaufen-Guard) um die normalen Ablaeufe —
- * Laden, Auswahl, Verbindungstest, JSON-Export/-Import, Scopes-Liste.
+ * Status report 29.08.2026, measure 13 (JaCoCo gate): supplements
+ * {@link OidcConfigBackingBeanTest} (session-expired guard) with the normal flows —
+ * loading, selection, connection test, JSON export/import, scopes list.
  *
  * @author info@plaintext.ch
  * @since 2026

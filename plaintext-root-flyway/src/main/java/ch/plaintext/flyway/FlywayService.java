@@ -131,9 +131,9 @@ public class FlywayService {
             return;
         }
 
-        // Karte 458 (java:S2077): installedRank wird als Parameter gebunden statt in den
-        // SQL-Text konkateniert. Der Wert ist zwar ein int und damit nicht injizierbar, aber
-        // ein PreparedStatement macht das nachweisbar statt argumentierbar.
+        // Karte 458 (java:S2077): installedRank is bound as a parameter instead of being
+        // concatenated into the SQL text. The value is an int and therefore not injectable, but
+        // a PreparedStatement makes that provable rather than merely arguable.
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "DELETE FROM \"flyway_schema_history\" WHERE \"installed_rank\" = ?")) {

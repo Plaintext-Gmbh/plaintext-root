@@ -6,7 +6,7 @@ package ch.plaintext.secrets;
 import ch.plaintext.boot.menu.MenuAnnotation;
 
 /**
- * Menüpunkt „Secrets" (Admin, nur ROOT) — Liste + Settings + Generator auf einer Seite.
+ * Menu item "Secrets" (admin, ROOT only) — list + settings + generator on a single page.
  */
 @MenuAnnotation(
     title = "Secrets",

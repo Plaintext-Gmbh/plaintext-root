@@ -17,19 +17,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Baut echte {@link PageAccessGuardService}-Instanzen mit echten {@link MenuItemImpl}-Objekten fuer
- * die Tests.
+ * Builds real {@link PageAccessGuardService} instances with real {@link MenuItemImpl} objects for
+ * the tests.
  *
- * <p>Absichtlich keine Mocks fuer {@code MenuItemImpl}: die Rollen-/Eltern-Logik von
- * {@link MenuItemImpl#isOn()} ist Teil dessen, was hier geprueft werden soll. Gemockt wird nur die
- * Registry.
+ * <p>Deliberately no mocks for {@code MenuItemImpl}: the role/parent logic of
+ * {@link MenuItemImpl#isOn()} is part of what is meant to be checked here. Only the registry is
+ * mocked.
  */
 final class PageAccessGuardTestFactory {
 
     private PageAccessGuardTestFactory() {
     }
 
-    /** Ein sichtbarer Menuepunkt ohne Rollenbeschraenkung. */
+    /** A visible menu item without a role restriction. */
     static MenuItemImpl menu(String link, boolean sichtbar) {
         MenuItemImpl item = new MenuItemImpl();
         item.setTitle(link);
@@ -42,8 +42,8 @@ final class PageAccessGuardTestFactory {
     }
 
     /**
-     * Menuepunkt mit Titel, Elternmenue und Rollen; die Sichtbarkeit ergibt sich aus den Rollen des
-     * simulierten Benutzers.
+     * Menu item with title, parent menu and roles; the visibility follows from the roles of the
+     * simulated user.
      */
     static MenuItemImpl menu(String titel, String parent, String link, Set<String> benutzerRollen, String... rollen) {
         MenuItemImpl item = new MenuItemImpl();
@@ -55,7 +55,7 @@ final class PageAccessGuardTestFactory {
         return item;
     }
 
-    /** {@link SecurityProvider}, der genau die angegebenen Rollen kennt (case-insensitive). */
+    /** {@link SecurityProvider} that knows exactly the given roles (case-insensitive). */
     static SecurityProvider securityProvider(Set<String> benutzerRollen) {
         Set<String> gross = benutzerRollen.stream()
                 .map(r -> r.toUpperCase(Locale.ROOT))
@@ -81,7 +81,7 @@ final class PageAccessGuardTestFactory {
         return new PageAccessGuardService(registry, properties);
     }
 
-    /** Registry, die beim Zugriff eine Exception wirft (fail-closed-Nachweis). */
+    /** Registry that throws an exception on access (fail-closed proof). */
     static PageAccessGuardService guardMitFehler(PageGuardMode mode) {
         MenuRegistryImpl registry = mock(MenuRegistryImpl.class);
         when(registry.getAllMenuItemsImpl()).thenThrow(new IllegalStateException("Menu registry kaputt"));

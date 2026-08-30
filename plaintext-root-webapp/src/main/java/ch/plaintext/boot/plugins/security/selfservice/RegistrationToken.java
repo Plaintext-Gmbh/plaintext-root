@@ -22,7 +22,7 @@ public class RegistrationToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // SECURITY (Karte 307, K2.3): nur der SHA-256-Hash des Tokens, nie der Klartext (Muster MagicLinkToken).
+    // SECURITY (card 307, K2.3): only the SHA-256 hash of the token, never the clear text (pattern MagicLinkToken).
     @Column(name = "TOKEN_HASH", nullable = false, unique = true, length = 64)
     private String tokenHash;
 

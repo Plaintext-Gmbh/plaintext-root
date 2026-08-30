@@ -64,9 +64,9 @@ public class JpaEntityService {
             // Handle List return type
             return (List<?>) result;
         } catch (NoSuchMethodException e) {
-            // SECURITY (Karte 307, K2.1): FAIL-CLOSED. Fehlt eine mandantenscopende findByMandat-Methode,
-            // darf NICHT auf findAll() zurueckgefallen werden — das lieferte einem Mandant-ADMIN saemtliche
-            // Datensaetze ALLER Mandanten (z.B. Reset-Tokens). Lieber gar nichts als mandantenuebergreifend.
+            // SECURITY (Karte 307, K2.1): FAIL-CLOSED. If a tenant-scoping findByMandat method is missing,
+            // we must NOT fall back to findAll() — that would hand a tenant ADMIN every record of ALL
+            // tenants (e.g. reset tokens). Better nothing at all than data across tenant boundaries.
             log.error("SECURITY: Entity {} hat keine findByMandat-Methode — mandantenscoped Zugriff verweigert "
                     + "(kein Fallback auf findAll). Entity gehoert nicht in die mandantenscopende Datenverwaltung.", entityName);
             throw new IllegalStateException(

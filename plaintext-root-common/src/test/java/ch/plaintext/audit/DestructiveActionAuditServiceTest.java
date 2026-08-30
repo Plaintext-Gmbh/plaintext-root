@@ -46,11 +46,11 @@ class DestructiveActionAuditServiceTest {
     }
 
     /**
-     * Karte 332: Das Verschlucken der Exception oben genügt NICHT — lief der Audit-Insert in der
-     * Transaktion des Aufrufers mit (Propagation.REQUIRED), markierte sein Scheitern diese fremde
-     * Transaktion als rollback-only und der Aufrufer verlor beim Commit seine fachliche Änderung mit
-     * „Transaction silently rolled back" (so brach delete_email_account ab). Nur eine EIGENE Transaktion
-     * hält das Best-effort-Versprechen dieser Klasse strukturell.
+     * Karte 332: swallowing the exception above is NOT enough — if the audit insert ran inside the
+     * caller's transaction (Propagation.REQUIRED), its failure marked that foreign transaction as
+     * rollback-only and on commit the caller lost its business change with
+     * "Transaction silently rolled back" (that is how delete_email_account aborted). Only a
+     * transaction of its OWN keeps this class's best-effort promise structurally.
      */
     @Test
     void logDestructiveAction_laeuftInEigenerTransaktion() throws Exception {

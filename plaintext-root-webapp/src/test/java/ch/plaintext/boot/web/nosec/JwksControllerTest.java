@@ -23,11 +23,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * JWK Set nach RFC 7517 (Karte 635).
+ * JWK set according to RFC 7517 (card 635).
  *
- * <p>Der wichtigste Test hier ist {@link #niemalsPrivateSchluesselImJwkSet()}. Der Endpunkt ist
- * ohne Anmeldung erreichbar — diese Zusage trägt die ganze Konstruktion, und sie muss geprüft
- * sein, nicht behauptet.
+ * <p>The most important test here is {@link #niemalsPrivateSchluesselImJwkSet()}. The endpoint is
+ * reachable without a login — that promise carries the whole construction, and it has to be
+ * checked, not asserted.
  */
 class JwksControllerTest {
 
@@ -64,8 +64,8 @@ class JwksControllerTest {
     }
 
     /**
-     * Die Zusage, auf der alles beruht: Ein RSA-JWK mit privatem Anteil trüge zusätzlich d, p, q,
-     * dp, dq, qi. Keines davon darf je erscheinen — der Endpunkt ist unauthentifiziert.
+     * The promise on which everything rests: an RSA JWK with a private part would additionally carry d, p, q,
+     * dp, dq, qi. None of them may ever appear — the endpoint is unauthenticated.
      */
     @Test
     void niemalsPrivateSchluesselImJwkSet() {
@@ -76,10 +76,10 @@ class JwksControllerTest {
     }
 
     /**
-     * Der Modulus muss sich wieder zum Originalschlüssel zusammensetzen lassen. Ohne diesen Test
-     * fiele das führende Null-Byte aus {@link BigInteger#toByteArray()} nicht auf: Das JWK sähe
-     * plausibel aus, wäre ein Byte zu lang, und die Signaturprüfung schlüge bei der Gegenstelle
-     * fehl — mit einem Fehlerbild, das nach falschem Schlüssel aussieht.
+     * The modulus has to be reassemblable into the original key. Without this test
+     * the leading zero byte from {@link BigInteger#toByteArray()} would go unnoticed: the JWK would look
+     * plausible, would be one byte too long, and the signature check would fail at the counterpart
+     * — with a symptom that looks like a wrong key.
      */
     @Test
     void modulusLaesstSichZumOriginalSchluesselZurueckbauen() throws Exception {
@@ -88,16 +88,16 @@ class JwksControllerTest {
 
         byte[] nBytes = Base64.getUrlDecoder().decode((String) jwk.get("n"));
 
-        // DIE LAENGE ist hier die eigentliche Aussage, nicht der Zahlenwert.
+        // THE LENGTH is the actual statement here, not the numeric value.
         //
-        // Eine Mutationsprobe hat gezeigt, dass der Wert-Vergleich unten allein NICHTS beweist:
-        // `new BigInteger(1, ...)` liest die Bytes als vorzeichenlose Zahl, und ein
-        // vorangestelltes Null-Byte aendert daran nichts -- der Test blieb gruen, obwohl das
-        // JWK ein Byte zu lang war. Eine Gegenstelle mit strenger Laengenpruefung haette den
-        // Schluessel abgelehnt, und der Fehler haette wie ein falscher Schluessel ausgesehen.
+        // A mutation probe showed that the value comparison below alone proves NOTHING:
+        // `new BigInteger(1, ...)` reads the bytes as an unsigned number, and a
+        // leading zero byte changes nothing about that -- the test stayed green even though the
+        // JWK was one byte too long. A counterpart with a strict length check would have rejected the
+        // key, and the defect would have looked like a wrong key.
         //
-        // RFC 7518 verlangt fuer `n` die Darstellung ohne fuehrende Nullen: bei RSA-2048 sind
-        // das genau 256 Byte.
+        // For `n` RFC 7518 demands the representation without leading zeros: with RSA-2048 that is
+        // exactly 256 bytes.
         assertThat(nBytes).hasSize(original.getModulus().bitLength() / 8);
 
         BigInteger n = new BigInteger(1, nBytes);
@@ -111,7 +111,7 @@ class JwksControllerTest {
         assertThat(wiederhergestellt).isEqualTo(original);
     }
 
-    /** Base64url ohne Padding — mit '=' am Ende lehnen strenge Bibliotheken das JWK ab. */
+    /** Base64url without padding — with '=' at the end strict libraries reject the JWK. */
     @Test
     void base64urlOhnePaddingUndOhneStandardalphabet() {
         Map<String, Object> jwk = keysAus(controllerMit(paar.getPublic())).get(0);
@@ -121,8 +121,8 @@ class JwksControllerTest {
     }
 
     /**
-     * Der kid ist der Thumbprint nach RFC 7638. Hier unabhängig nachgerechnet — genau das muss
-     * eine Gegenstelle auch können, sonst ist der Wert wertlos.
+     * The kid is the thumbprint according to RFC 7638. Recomputed independently here — exactly that
+     * is what a counterpart has to be able to do as well, otherwise the value is worthless.
      */
     @Test
     void kidIstDerNachrechenbareThumbprintNachRfc7638() throws Exception {
@@ -148,9 +148,9 @@ class JwksControllerTest {
     }
 
     /**
-     * Solange die Schlüssel noch nicht geladen sind (der Start wartet auf den Vault), liefert der
-     * Endpunkt ein leeres Set statt eines Fehlers. Ein halb gestarteter Dienst ist kein Grund,
-     * dem Abrufer eine Störung zu melden — er soll es gleich noch einmal versuchen können.
+     * As long as the keys are not loaded yet (the startup waits for the vault), the
+     * endpoint returns an empty set instead of an error. A half-started service is no reason
+     * to report a malfunction to the caller — it should be able to try again right away.
      */
     @Test
     void ohneGeladeneSchluesselEinLeeresSetUndKeinFehler() {
@@ -163,7 +163,7 @@ class JwksControllerTest {
         assertThat((List<?>) antwort.getBody().get("keys")).isEmpty();
     }
 
-    /** Nach einem Schlüsselwechsel muss die Gegenstelle den neuen sofort sehen. */
+    /** After a key rotation the counterpart has to see the new key immediately. */
     @Test
     void antwortWirdNichtZwischengespeichert() {
         var antwort = controllerMit(paar.getPublic()).jwks();

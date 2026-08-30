@@ -19,8 +19,8 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Backing-Bean für {@code mailtemplates.xhtml}: Liste der Mailtext-Overrides des aktuellen
- * Mandanten, Anlegen/Ändern/Entfernen. Ohne Override gilt der Code-Default (siehe
+ * Backing Bean for {@code mailtemplates.xhtml}: list of the mail text overrides of the current
+ * tenant, creating/changing/removing them. Without an override the code default applies (see
  * {@link MailTemplateService#render}).
  */
 @Component("mailTemplateBean")
@@ -34,7 +34,7 @@ public class MailTemplateBackingBean implements Serializable {
 
     private List<MailTemplate> templates;
 
-    // Formular: Override anlegen/ändern
+    // Form: create/change an override
     private String templateKey;
     private String betreff;
     private String body;
@@ -49,7 +49,7 @@ public class MailTemplateBackingBean implements Serializable {
         templates = mailTemplateService.getOverrides(PlaintextSecurityHolder.getMandat());
     }
 
-    /** Legt einen Override an oder aktualisiert ihn (Zuordnung über templateKey). */
+    /** Creates an override or updates it (matched via templateKey). */
     public void save() {
         try {
             if (templateKey == null || templateKey.isBlank()) {
@@ -79,7 +79,7 @@ public class MailTemplateBackingBean implements Serializable {
         }
     }
 
-    /** Lädt einen bestehenden Override ins Formular, um ihn zu ändern. */
+    /** Loads an existing override into the form in order to change it. */
     public void edit(MailTemplate entry) {
         templateKey = entry.getTemplateKey();
         betreff = entry.getBetreff();

@@ -34,9 +34,9 @@ class PlaintextInitLoaderTest {
     private ISetupConfigService setupConfigService;
 
     /**
-     * SECURITY (Karte 314, Punkt 7): der PasswordEncoder wird jetzt injiziert (zentrale Bean mit
-     * Kostenfaktor 12) statt lokal instanziiert. Als @Spy, damit die Tests weiterhin gegen echtes
-     * BCrypt pruefen koennen.
+     * SECURITY (card 314, item 7): the PasswordEncoder is now injected (central bean with
+     * cost factor 12) instead of being instantiated locally. As a @Spy, so that the tests can still
+     * check against real BCrypt.
      */
     @org.mockito.Spy
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -62,14 +62,14 @@ class PlaintextInitLoaderTest {
         assertTrue(rootUser.getRoles().contains("root"));
         assertTrue(rootUser.getRoles().contains("admin"));
         assertTrue(rootUser.getRoles().contains("user"));
-        // Karte 306: KEIN statisches "root"-Passwort mehr.
+        // Card 306: NO static "root" password any more.
         assertFalse(encoder.matches("root", rootUser.getPassword()),
                 "Root-User darf nicht mehr mit dem statischen Passwort 'root' anlegbar sein");
     }
 
     /**
-     * Karte 306: Der Root-Bootstrap-User bekommt ein zufaelliges Einmal-Initialpasswort (nicht
-     * "root") und das Flag mustChangePassword=true, das beim ersten Login den Wechsel erzwingt.
+     * Card 306: the root bootstrap user gets a random one-time initial password (not
+     * "root") and the flag mustChangePassword=true, which forces the change on the first login.
      */
     @Test
     void createRootUserDelayed_shouldUseRandomPasswordAndForceChange() {
@@ -134,11 +134,11 @@ class PlaintextInitLoaderTest {
     }
 
     /**
-     * SECURITY (Forensik 23.08.2026): Das Einmal-Initialpasswort stand im Klartext im Log — und damit im
-     * Container-Log und in Graylog. Der Test haengt einen Logback-Appender an den Logger und
-     * verlangt, dass in KEINER Zeile ein Klartext-Passwort auftaucht: weder der bcrypt-Hash noch
-     * ein Base64url-Wort, das wie das erzeugte Passwort aussieht. {@code mustChangePassword}
-     * bleibt gesetzt.
+     * SECURITY (forensics 23.08.2026): the one-time initial password stood in the log in plain text — and
+     * thereby in the container log and in Graylog. The test attaches a Logback appender to the logger and
+     * demands that NO line contains a plain-text password: neither the bcrypt hash nor
+     * a base64url word that looks like the generated password. {@code mustChangePassword}
+     * stays set.
      */
     @Test
     void createRootUserDelayed_darfKeinPasswortLoggen() {
@@ -170,7 +170,7 @@ class PlaintextInitLoaderTest {
             assertFalse(zeile.contains(hash), "Der Passwort-Hash darf nicht im Log stehen: " + zeile);
             assertFalse(zeile.toUpperCase(java.util.Locale.ROOT).contains("INITIALPASSWORT"),
                     "Es darf kein Initialpasswort mehr ausgegeben werden: " + zeile);
-            // Das erzeugte Passwort ist 22 Zeichen Base64url — kein solches Wort darf im Log stehen.
+            // The generated password is 22 base64url characters — no such word may appear in the log.
             assertFalse(java.util.regex.Pattern.compile("\\b[A-Za-z0-9_-]{22}\\b").matcher(zeile).find(),
                     "Verdaechtiges Base64url-Wort (moegliches Passwort) im Log: " + zeile);
         }

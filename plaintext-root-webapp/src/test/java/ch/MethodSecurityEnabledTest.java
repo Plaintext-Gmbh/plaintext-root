@@ -9,23 +9,23 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * Karte 546: hält fest, dass Spring-Method-Security in root eingeschaltet bleibt.
+ * Card 546: records that Spring method security stays switched on in root.
  *
- * <p>Ohne {@code @EnableMethodSecurity} wird jedes {@code @PreAuthorize} <b>still ignoriert</b> —
- * die Annotation steht im Code, sieht nach einer Schranke aus und lässt jeden durch. Dass das kein
- * theoretisches Risiko ist, belegt der Bestand selbst: Zwei Stellen haben genau deshalb im
- * Methodenrumpf geprüft statt zu annotieren, jeweils mit schriftlicher Begründung
- * ({@code PlaintextSecurityImpl:501} „wuerde also still wirkungslos annotiert",
- * {@code I18nExportController:49} „die Annotation waere eine stille Attrappe").
+ * <p>Without {@code @EnableMethodSecurity} every {@code @PreAuthorize} is <b>silently ignored</b> —
+ * the annotation stands in the code, looks like a barrier and lets everybody through. That this is no
+ * theoretical risk is proven by the existing code itself: two places checked in the
+ * method body instead of annotating for exactly that reason, each with a written justification
+ * ({@code PlaintextSecurityImpl:501} "would therefore be annotated silently without effect",
+ * {@code I18nExportController:49} "the annotation would be a silent dummy").
  *
- * <p>Mit Karte 546 rüsten app, guild und root ihre MCP-Werkzeuge auf {@code @PreAuthorize}-Gates
- * um, abgesichert durch {@link ch.plaintext.arch.PlaintextMcpScopeVertragTest}. Fällt dieser
- * Schalter wieder weg, sind sie alle auf einen Schlag wirkungslos — und der Vertragstest bliebe
- * grün, weil er die <em>Annotation</em> prüft und nicht ihre <em>Wirkung</em>. Genau diese Lücke
- * schliesst dieser Test. Vorbild ist schuetus gleichnamiger Test (Audit-Befund C-4); app und guild
- * haben ihn seit {@code plaintext-app#566} bzw. {@code plaintext-guild#112}.
+ * <p>With card 546 app, guild and root migrate their MCP tools to {@code @PreAuthorize} gates,
+ * safeguarded by {@link ch.plaintext.arch.PlaintextMcpScopeVertragTest}. If this
+ * switch disappears again, all of them become ineffective in one stroke — and the contract test would
+ * stay green, because it checks the <em>annotation</em> and not its <em>effect</em>. Exactly that gap
+ * is closed by this test. The model is schuetu's test of the same name (audit finding C-4); app and
+ * guild have had it since {@code plaintext-app#566} resp. {@code plaintext-guild#112}.
  *
- * <p>Bootet keine DB.
+ * <p>Boots no DB.
  */
 class MethodSecurityEnabledTest {
 

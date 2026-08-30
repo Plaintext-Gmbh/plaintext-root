@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 
 /**
- * Einfache, wiederverwendbare {@link SearchProvider.SearchHit}-Implementierung, damit ein Provider
- * keine eigene innere Klasse braucht. Ein Modul baut seine Treffer typischerweise so:
+ * Simple, reusable {@link SearchProvider.SearchHit} implementation, so that a provider does not
+ * need an inner class of its own. A module typically builds its hits like this:
  * <pre>{@code
  * new SearchHitDTO(k.getTitel(), k.getDatum().toString(),
  *                  "korrespondenz.html?id=" + k.getId(), "pi pi-envelope", score)
@@ -26,18 +26,18 @@ public class SearchHitDTO implements SearchProvider.SearchHit, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** Haupttext des Treffers. */
+    /** Main text of the hit. */
     private String title;
 
-    /** Kontext-Zeile (Datum/Mandant/Kurzbeschreibung), darf {@code null} sein. */
+    /** Context line (date/tenant/short description), may be {@code null}. */
     private String subtitle;
 
-    /** Deep-Link auf die Modul-Zielseite (relativ zum Context-Path), wie ein {@code MenuAnnotation.link}. */
+    /** Deep link to the module's target page (relative to the context path), like a {@code MenuAnnotation.link}. */
     private String link;
 
-    /** PrimeFaces-Icon-Klasse, darf {@code null} sein. */
+    /** PrimeFaces icon class, may be {@code null}. */
     private String icon;
 
-    /** Ranking innerhalb der Modul-Gruppe (höher = weiter oben). */
+    /** Ranking within the module group (higher = further up). */
     private int score;
 }

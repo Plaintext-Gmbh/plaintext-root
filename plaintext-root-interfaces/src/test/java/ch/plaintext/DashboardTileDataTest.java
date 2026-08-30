@@ -8,8 +8,9 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests für {@link DashboardTileData}: CSS-sichere Status-Farbe ({@link DashboardTileData#getSafeStatusColor()})
- * und sichere Kachel-Links ({@link DashboardTileData.TileAction#getSafeLink()}).
+ * Tests for {@link DashboardTileData}: CSS-safe status color
+ * ({@link DashboardTileData#getSafeStatusColor()}) and safe tile links
+ * ({@link DashboardTileData.TileAction#getSafeLink()}).
  *
  * @author plaintext.ch
  */
@@ -55,7 +56,7 @@ class DashboardTileDataTest {
 
     @Test
     void shouldRejectCssInjectionAttempts() {
-        // Versuch, aus dem CSS-Kontext auszubrechen bzw. Daten abzuziehen
+        // Attempt to break out of the CSS context or to exfiltrate data
         assertNull(withColor("red; background:url(https://evil.example/x)").getSafeStatusColor());
         assertNull(withColor("url(https://evil.example/x)").getSafeStatusColor());
         assertNull(withColor("#fff;}body{display:none").getSafeStatusColor());
@@ -107,14 +108,14 @@ class DashboardTileDataTest {
 
     @Test
     void safeLinkShouldRejectJavascriptWithEmbeddedControlChars() {
-        // Browser ignorieren z.B. \t oder \n im Scheme-Teil
+        // Browsers ignore e.g. \t or \n in the scheme part
         assertNull(withLink("java\tscript:alert(1)").getSafeLink());
         assertNull(withLink("java\nscript:alert(1)").getSafeLink());
     }
 
     @Test
     void safeLinkShouldRejectProtocolRelativeUrls() {
-        // Protokoll-relative URLs interpretiert der Browser als absolute URL (Open Redirect)
+        // The browser reads protocol-relative URLs as an absolute URL (open redirect)
         assertNull(withLink("//evil.com/").getSafeLink());
         assertNull(withLink("//evil.com/path?q=1").getSafeLink());
         assertNull(withLink("  //evil.com/").getSafeLink());

@@ -17,9 +17,9 @@ import java.util.Base64;
 import java.util.List;
 
 /**
- * Verwaltung der {@link WebhookEndpoint}s (CRUD) + Delivery-Log-Zugriff + Test-Ping. Das
- * Signing-Secret wird bei {@link #create} zufällig erzeugt, verschlüsselt gespeichert und nur als
- * Rückgabewert dieser Methode einmalig im Klartext zurückgegeben (Muster wie {@code ApiToken}).
+ * Management of the {@link WebhookEndpoint}s (CRUD) + delivery log access + test ping. The signing
+ * secret is generated randomly in {@link #create}, stored encrypted and returned in plain text only
+ * once, as the return value of that method (same pattern as {@code ApiToken}).
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -44,7 +44,7 @@ public class WebhookEndpointService {
         return deliveryRepo.findByEndpointIdOrderByCreatedDateDesc(endpointId);
     }
 
-    /** Legt einen neuen Endpoint an; generiert das Signing-Secret und gibt es einmalig im Klartext zurück. */
+    /** Creates a new endpoint; generates the signing secret and returns it in plain text exactly once. */
     @Transactional
     public String create(String mandat, String name, String url, boolean enabled, String eventTypes) {
         String secret = generateSecret();
@@ -60,13 +60,13 @@ public class WebhookEndpointService {
         return secret;
     }
 
-    /** Aktualisiert Stammdaten (NICHT das Secret — dafür {@link #rotateSecret}). */
+    /** Updates the master data (NOT the secret — use {@link #rotateSecret} for that). */
     @Transactional
     public void update(WebhookEndpoint endpoint) {
         endpointRepo.save(endpoint);
     }
 
-    /** Erzeugt ein neues Signing-Secret für einen bestehenden Endpoint; gibt es einmalig im Klartext zurück. */
+    /** Generates a new signing secret for an existing endpoint; returns it in plain text exactly once. */
     @Transactional
     public String rotateSecret(WebhookEndpoint endpoint) {
         String secret = generateSecret();
@@ -83,7 +83,7 @@ public class WebhookEndpointService {
         log.info("Webhook-Endpoint '{}' (id={}) geloescht", endpoint.getName(), endpoint.getId());
     }
 
-    /** Verschickt ein synthetisches {@code webhook.test}-Event an den Endpoint (unabhängig von dessen eventTypes-Filter). */
+    /** Sends a synthetic {@code webhook.test} event to the endpoint (regardless of its eventTypes filter). */
     public WebhookDelivery testPing(WebhookEndpoint endpoint) {
         String payload = "{\"eventType\":\"webhook.test\",\"message\":\"Test-Ping von plaintext-admin-webhooks\"}";
         return dispatchService.dispatch(endpoint, "webhook.test", payload);

@@ -13,14 +13,13 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Sichert die Eigenschaft, wegen der es dieses Modul gibt: die Web-Infrastruktur muss auch dann
- * bereitstehen, wenn die konsumierende Anwendung {@code ch.plaintext} <b>nicht</b>
- * component-scannt.
+ * Guards the property this module exists for: the web infrastructure has to be available even
+ * when the consuming application does <b>not</b> component-scan {@code ch.plaintext}.
  *
- * <p>Der Runner startet ausschliesslich die AutoConfiguration — kein Scan, keine Stereotypen.
- * Wuerde jemand die Registrierung wieder an {@code @Component} haengen, faellt dieser Test um.
- * Ohne ihn faellt statt dessen nichts um: die Anwendung startet sauber, und das URL-Rewriting
- * fehlt einfach, sodass jede {@code .html}-URL ins Leere laeuft.
+ * <p>The runner starts the AutoConfiguration and nothing else — no scan, no stereotypes. If
+ * somebody were to tie the registration back to {@code @Component}, this test falls over. Without
+ * it nothing falls over instead: the application starts cleanly and the URL rewriting is simply
+ * missing, so that every {@code .html} URL runs into nothing.
  */
 class WebAutoConfigurationTest {
 
@@ -37,9 +36,9 @@ class WebAutoConfigurationTest {
     }
 
     /**
-     * Der Rollen-Anbieter ist die Bruecke zwischen Spring Security und der Menue-Sichtbarkeit.
-     * Bringt eine Anwendung einen eigenen mit, muss dieser gewinnen — sonst haette sie zwei
-     * Quellen fuer dieselbe Frage.
+     * The role provider is the bridge between Spring Security and menu visibility. If an
+     * application brings its own, that one has to win — otherwise it would have two sources for
+     * the same question.
      */
     @Test
     void weichtEinemEigenenSecurityProvider() {
@@ -59,7 +58,7 @@ class WebAutoConfigurationTest {
         });
     }
 
-    /** Ohne Servlet-Umgebung darf nichts davon anspringen. */
+    /** Without a servlet environment none of this may kick in. */
     @Test
     void bleibtAusserhalbEinerWebAnwendungStumm() {
         new org.springframework.boot.test.context.runner.ApplicationContextRunner()

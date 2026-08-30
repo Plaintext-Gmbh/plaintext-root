@@ -62,9 +62,9 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
     private final ImpersonationAuditRepository impersonationAuditRepository;
 
     /**
-     * Wird nur gebraucht, um die session-scoped Beans zu benennen, die beim Rollenwechsel
-     * wegmuessen. Optional verdrahtet, damit schlanke Kontexte (Tests ohne vollen
-     * Anwendungskontext) die Bean weiter bauen koennen.
+     * Only needed to name the session-scoped beans that have to go when the role changes.
+     * Wired optionally, so that lean contexts (tests without a full
+     * application context) can still build the bean.
      */
     private final ObjectProvider<ConfigurableListableBeanFactory> beanFactory;
 
@@ -81,30 +81,30 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
     }
 
     /**
-     * Wirft alle session-scoped Beans aus der Sitzung, damit sie sich beim naechsten Zugriff neu
-     * aufbauen.
+     * Throws all session-scoped beans out of the session, so that they rebuild themselves on the
+     * next access.
      *
-     * <p><b>Warum es das braucht (Meldung Daniel, 25.08.2026).</b> „Mein Konto" zeigte nach dem
-     * Impersonieren weiter den vorherigen Benutzer. Der Grund liegt hier: weder
-     * {@link #startImpersonation(Long)} noch {@link #switchActiveMandat(String)} haben je etwas
-     * aus der Sitzung entfernt — getauscht wurde nur die {@code Authentication} im
-     * {@code SecurityContextHolder}. Der Kommentar in startImpersonation lautete seit jeher
-     * „clear all attributes except security-related ones"; im Code stand kein einziges
-     * {@code removeAttribute}. Jede session-scoped Bean, die ihren Zustand einmalig im
-     * {@code @PostConstruct} aufbaut, blieb damit beim alten Benutzer stehen.
+     * <p><b>Why this is needed (report by Daniel, 25.08.2026).</b> "My account" kept showing the
+     * previous user after impersonating. The reason lies here: neither
+     * {@link #startImpersonation(Long)} nor {@link #switchActiveMandat(String)} ever removed anything
+     * from the session — only the {@code Authentication} in the
+     * {@code SecurityContextHolder} was swapped. The comment in startImpersonation had always read
+     * "clear all attributes except security-related ones"; the code contained not a single
+     * {@code removeAttribute}. Every session-scoped bean that builds its state once in
+     * {@code @PostConstruct} therefore stayed with the old user.
      *
-     * <p><b>Warum nicht einfach alles loeschen.</b> In derselben Sitzung liegen der
-     * Spring-Security-Kontext, die Impersonation-Merker und der JSF-Ansichtszustand. Ein
-     * pauschales Leeren wuerde den Benutzer abmelden oder die laufende Ansicht zerstoeren.
-     * Deshalb werden ausschliesslich Attribute entfernt, die nachweislich <b>Spring-Beans mit
-     * Scope "session"</b> sind — die Liste kommt aus den Bean-Definitionen, nicht aus einer
-     * Namensregel. Beide Ablageformen sind damit erfasst: der einfache Bean-Name und der
-     * {@code scopedTarget.}-Name eines Beans mit Scope-Proxy.
+     * <p><b>Why not simply delete everything.</b> The same session holds the
+     * Spring Security context, the impersonation markers and the JSF view state. Blanket
+     * clearing would log the user out or destroy the running view.
+     * That is why exclusively those attributes are removed that are demonstrably <b>Spring beans with
+     * scope "session"</b> — the list comes from the bean definitions, not from a
+     * naming rule. Both storage forms are thereby covered: the plain bean name and the
+     * {@code scopedTarget.} name of a bean with a scope proxy.
      *
-     * <p>Entfernt wird ueber {@code RequestAttributes}, nicht ueber {@code HttpSession}, damit die
-     * bei Spring hinterlegten Aufraeum-Rueckrufe ({@code @PreDestroy}) regulaer laufen.
+     * <p>Removal goes through {@code RequestAttributes}, not through {@code HttpSession}, so that the
+     * cleanup callbacks registered with Spring ({@code @PreDestroy}) run as usual.
      */
-    // Paket-sichtbar statt private, damit der Test genau diesen Schritt messen kann.
+    // Package-visible instead of private, so that the test can measure exactly this step.
     void verwerfeSessionBeans() {
         ConfigurableListableBeanFactory factory = beanFactory == null ? null : beanFactory.getIfAvailable();
         if (factory == null) {
@@ -176,7 +176,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
             Set<String> mandanten = new HashSet<>();
 
             try {
-                // 1. Mandate aus Benutzern laden
+                // 1. load tenants from users
                 List<MyUserEntity> allUsers = userRepository.findAll();
                 for (MyUserEntity user : allUsers) {
                     String mandat = user.getMandat();
@@ -186,7 +186,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
                 }
                 log.debug("Found {} unique mandanten from users: {}", mandanten.size(), mandanten);
 
-                // 2. Mandate aus MandateMenuConfig laden
+                // 2. load tenants from MandateMenuConfig
                 List<MandateMenuConfig> menuConfigs = mandateMenuConfigRepository.findAll();
                 for (MandateMenuConfig config : menuConfigs) {
                     String mandat = config.getMandateName();
@@ -198,11 +198,11 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
 
             } catch (Exception e) {
                 log.error("Error loading mandanten from database", e);
-                // Fallback auf default
+                // fall back to default
                 mandanten.add("default");
             }
 
-            // Wenn keine Mandate gefunden wurden, default hinzufügen
+            // If no tenants were found, add default
             if (mandanten.isEmpty()) {
                 log.warn("No mandanten found in database, using 'default'");
                 mandanten.add("default");
@@ -220,14 +220,14 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
      */
     public void setMandat(String mandat) {
         try {
-            // 1) Mandat-Rolle im SecurityContext setzen
+            // 1) set the tenant role in the SecurityContext
             if (!applyMandatAuthority(mandat)) {
                 log.warn("No authentication present – cannot set mandat");
                 return;
             }
 
-            // 2) Mandat als Heimat-Mandant in der Datenbank speichern
-            Long userId = getId(); // nutzt bereits die Rollen, um myuserid rauszuziehen
+            // 2) store the tenant as the home tenant in the database
+            Long userId = getId(); // already uses the roles to pull out myuserid
             if (userId == null || userId <= 0) {
                 log.warn("Cannot persist mandat – invalid userId: {}", userId);
                 return;
@@ -247,11 +247,11 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
     }
 
     /**
-     * Tauscht die {@code PROPERTY_MANDAT_}-Rolle im SecurityContext (gleicher Principal,
-     * gleiche Credentials). Persistiert NICHT in der Datenbank.
+     * Swaps the {@code PROPERTY_MANDAT_} role in the SecurityContext (same principal,
+     * same credentials). Does NOT persist to the database.
      *
-     * @param mandat Ziel-Mandant
-     * @return true, wenn ein eingeloggter Benutzer vorhanden war und die Rolle gesetzt wurde
+     * @param mandat target tenant
+     * @return true if a logged-in user was present and the role was set
      */
     private boolean applyMandatAuthority(String mandat) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -267,20 +267,20 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(newAuth);
         SecurityContextHolder.setContext(context);
-        // Spring Security 6 speichert einen nur im SecurityContextHolder gesetzten Context NICHT
-        // mehr automatisch in die HTTP-Session (SecurityContextHolderFilter statt des alten
-        // SecurityContextPersistenceFilter). Ohne explizites Speichern lebt der Mandant-Wechsel
-        // nur im aktuellen Ajax-Request; nach dem window.location.reload() des Dropdowns laedt
-        // der neue Request den alten Context aus der Session -> der Wechsel waere wieder weg.
+        // Spring Security 6 no longer stores a context that is only set in the SecurityContextHolder
+        // into the HTTP session automatically (SecurityContextHolderFilter instead of the old
+        // SecurityContextPersistenceFilter). Without saving explicitly, the tenant switch lives
+        // only in the current Ajax request; after the window.location.reload() of the dropdown
+        // the new request loads the old context from the session -> the switch would be gone again.
         persistSecurityContextToSession(context);
         log.info("Mandat (SecurityContext) auf {} gesetzt", rolle);
         return true;
     }
 
     /**
-     * Schreibt den (gewechselten) SecurityContext explizit in die HTTP-Session, damit der
-     * Mandant-Wechsel den folgenden Request (Reload) ueberlebt. Ausserhalb eines Web-Requests
-     * (z. B. Tests/Cron) passiert nichts ausser dem bereits gesetzten Holder.
+     * Writes the (switched) SecurityContext explicitly into the HTTP session, so that the
+     * tenant switch survives the following request (reload). Outside a web request
+     * (e.g. tests/cron) nothing happens beyond the holder that has already been set.
      */
     private void persistSecurityContextToSession(SecurityContext context) {
         try {
@@ -297,7 +297,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
 
     @Override
     public Set<String> getAllowedMandate() {
-        // ROOT darf zwischen allen Mandaten wechseln (wie bisher).
+        // ROOT may switch between all tenants (as before).
         if (ifGranted("ROOT")) {
             return getAllMandate();
         }
@@ -323,9 +323,9 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
 
     @Override
     public boolean isCanSwitchMandat() {
-        // getAllowedMandate() liefert fuer ROOT bereits ALLE Mandate der Instanz -> kein separates
-        // ifGranted("ROOT")-Oder noetig. Vorher sah JEDER ROOT-User den Umschalter, auch wenn es
-        // instanzweit nur ein einziges Mandat gab (reine Verwirrung, nichts zum Auswaehlen).
+        // getAllowedMandate() already returns ALL tenants of the instance for ROOT -> no separate
+        // ifGranted("ROOT") or-clause needed. Previously EVERY ROOT user saw the switcher, even when there
+        // was only a single tenant instance-wide (pure confusion, nothing to select).
         return getAllowedMandate().size() > 1;
     }
 
@@ -341,14 +341,14 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
             return;
         }
         String previous = getMandat();
-        // Dauerhaft merken: die aktive Mandant-Rolle in der DB persistieren (robust gegen remember-me
-        // und neue Sessions) UND im SecurityContext + der HTTP-Session setzen. setMandat() erledigt
-        // beides (Authority-Swap + user.setMandat + save). Reine SecurityContext-Persistenz reichte
-        // nicht: ein neuer Request/remember-me lud wieder das DB-Heimat-Mandant.
+        // Remember permanently: persist the active tenant role in the DB (robust against remember-me
+        // and new sessions) AND set it in the SecurityContext + the HTTP session. setMandat() does
+        // both (authority swap + user.setMandat + save). Persisting the SecurityContext alone was not
+        // enough: a new request/remember-me loaded the DB home tenant again.
         setMandat(target);
-        // Damit der Benutzer nach dem Wechsel den Zugriff auf das bisherige Mandant NICHT verliert
-        // (das frühere Heimat-Mandant steckte in der jetzt überschriebenen PROPERTY_MANDAT_-Rolle und
-        // fiele sonst aus getAllowedMandate), wird es als zusätzliches, wechselbares UserMandate gesichert.
+        // So that the user does NOT lose access to the previous tenant after the switch
+        // (the former home tenant sat in the now overwritten PROPERTY_MANDAT_ role and
+        // would otherwise drop out of getAllowedMandate), it is saved as an additional, switchable UserMandate.
         if (previous != null && !previous.equalsIgnoreCase(target)) {
             ensureSwitchableMandate(getUser(), previous);
         }
@@ -357,9 +357,9 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
     }
 
     /**
-     * Stellt sicher, dass {@code mandat} als aktives, wechselbares {@link UserMandate} des Benutzers
-     * vorliegt (legt es bei Bedarf an). So bleibt ein per Switch verlassenes Heimat-Mandant weiterhin
-     * in {@link #getAllowedMandate()} und damit wählbar.
+     * Makes sure that {@code mandat} is present as an active, switchable {@link UserMandate} of the user
+     * (creates it if needed). This way a home tenant left behind by a switch stays
+     * in {@link #getAllowedMandate()} and therefore selectable.
      */
     private void ensureSwitchableMandate(String username, String mandat) {
         if (username == null || SYSTEM_USER.equals(username) || mandat == null || mandat.isBlank()) {
@@ -379,12 +379,12 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         log.info("Voriges Mandant '{}' als wechselbares UserMandate fuer '{}' gesichert", m, username);
     }
 
-    /** EL-Getter für die Mandanten-Auswahl (aktueller Mandant). */
+    /** EL getter for the tenant selection (current tenant). */
     public String getActiveMandat() {
         return getMandat();
     }
 
-    /** EL-Setter: löst beim Ändern der Auswahl den (validierten, session-only) Wechsel aus. */
+    /** EL setter: triggers the (validated, session-only) switch when the selection changes. */
     public void setActiveMandat(String mandat) {
         switchActiveMandat(mandat);
     }
@@ -471,12 +471,12 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
     }
 
     /**
-     * Karte 596: Auflösung Benutzer-Id -&gt; Benutzername, damit Hintergrundläufe den Empfänger aus
-     * dem Datensatz nehmen können. Im Cron-Kontext liefert {@link #getId()} {@code -1} (Karte 588),
-     * der Sicherheitskontext taugt dort also nicht als Quelle.
+     * Card 596: resolution of user id -&gt; user name, so that background runs can take the recipient
+     * from the record. In a cron context {@link #getId()} returns {@code -1} (card 588),
+     * so the security context is no usable source there.
      *
-     * <p>Aufbau bewusst identisch zu {@link #getMandatForUser(long)} — gleiche Absicherung,
-     * gleiche Null-Semantik, damit sich beide gleich verhalten.
+     * <p>Deliberately built identically to {@link #getMandatForUser(long)} — same safeguards,
+     * same null semantics, so that the two behave the same.
      */
     @Override
     public String getUsernameForUser(long userId) {
@@ -593,10 +593,10 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
             log.warn("Cannot start impersonation with null userId");
             return;
         }
-        // Zweite Verteidigungslinie: MyUserBackingBean.impersonateUser() prueft isRoot() bereits vor
-        // diesem Aufruf, aber das ist nur der bisher EINZIGE Aufrufer -- kein @PreAuthorize moeglich
-        // (kein @EnableMethodSecurity im Framework, wuerde also still wirkungslos annotiert), daher
-        // hier ein expliziter Check direkt in der sicherheitskritischen Methode selbst.
+        // Second line of defence: MyUserBackingBean.impersonateUser() checks isRoot() before
+        // this call already, but that is only the so far ONLY caller -- no @PreAuthorize possible
+        // (no @EnableMethodSecurity in the framework, so it would be annotated silently without effect), hence
+        // an explicit check here directly in the security-critical method itself.
         if (!ifGranted("ROOT")) {
             log.warn("SECURITY: startImpersonation abgelehnt - Aufrufer ist nicht ROOT (Ziel-User {})", userId);
             return;
@@ -667,8 +667,8 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
             // Update security context
             SecurityContextHolder.getContext().setAuthentication(newAuth);
 
-            // Erst nach dem Wechsel: eine Bean, die sich dazwischen neu aufbaut, wuerde sonst
-            // wieder die alte Identitaet sehen.
+            // Only after the switch: a bean that rebuilds itself in between would otherwise
+            // see the old identity again.
             verwerfeSessionBeans();
 
             recordImpersonationStart(currentUserId, currentAuth.getName(), userId, targetUser.getUsername(),
@@ -682,7 +682,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         }
     }
 
-    /** Auditiert den Start einer Impersonation (abfragbare Historie statt nur Log). Best effort. */
+    /** Audits the start of an impersonation (a queryable history instead of only a log). Best effort. */
     private void recordImpersonationStart(Long adminUserId, String adminUsername, Long targetUserId,
                                           String targetUsername, String sessionId) {
         try {
@@ -719,8 +719,8 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
             // Restore original authentication
             SecurityContextHolder.getContext().setAuthentication(originalAuth);
 
-            // Auch der Rueckweg braucht es: sonst behalten die Beans die Daten des
-            // impersonierten Benutzers.
+            // The way back needs it too: otherwise the beans keep the data of the
+            // impersonated user.
             verwerfeSessionBeans();
 
             // Clear impersonation session attributes
@@ -736,7 +736,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         }
     }
 
-    /** Auditiert das Ende einer Impersonation (schliesst den offenen Audit-Eintrag). Best effort. */
+    /** Audits the end of an impersonation (closes the open audit entry). Best effort. */
     private void recordImpersonationEnd(Long adminUserId) {
         try {
             impersonationAuditRepository

@@ -9,26 +9,26 @@ import java.util.Collection;
 import java.util.regex.Pattern;
 
 /**
- * Löst die individuelle Start-/Landing-Page eines Benutzers aus seinen {@link GrantedAuthority}s auf
- * und sichert sie ab. Eine konfigurierte Startseite (Authority {@code PROPERTY_STARTPAGE_<page>}) wird
- * nur verwendet, wenn sie wie ein gültiger app-interner Seitenpfad aussieht; andernfalls
- * (leer/ungültig) fällt sie auf {@link #DEFAULT_PAGE} zurück, damit kein Benutzer von der Startseite
- * ausgesperrt wird. So bleiben individuelle Startseiten erhalten, ein kaputter Wert führt aber immer
- * verlässlich auf index.html.
+ * Resolves the individual start/landing page of a user from their {@link GrantedAuthority}s and
+ * secures it. A configured start page (authority {@code PROPERTY_STARTPAGE_<page>}) is
+ * only used if it looks like a valid app-internal page path; otherwise
+ * (empty/invalid) it falls back to {@link #DEFAULT_PAGE}, so that no user is locked out of the
+ * start page. This keeps individual start pages working, while a broken value always leads
+ * reliably to index.html.
  *
  * @author plaintext.ch
  */
 public final class StartpageResolver {
 
-    /** Standard-Landing-Page, wenn keine gültige individuelle Startseite gesetzt ist. */
+    /** Default landing page when no valid individual start page is set. */
     public static final String DEFAULT_PAGE = "index.html";
 
     private static final String STARTPAGE_PREFIX = "PROPERTY_STARTPAGE_";
 
     /**
-     * Erlaubt einen relativen Seitenpfad aus Pfadsegmenten (Buchstaben/Ziffern/{@code _-}), der auf
-     * {@code .html} oder {@code .xhtml} endet, optional gefolgt von einem einfachen Query-String –
-     * kein Schema, kein führender Slash (auch kein protokoll-relatives {@code //host}), kein {@code ..}.
+     * Permits a relative page path made of path segments (letters/digits/{@code _-}) that ends in
+     * {@code .html} or {@code .xhtml}, optionally followed by a simple query string -
+     * no scheme, no leading slash (also no protocol-relative {@code //host}), no {@code ..}.
      */
     private static final Pattern SAFE_PAGE =
             Pattern.compile("[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*\\.x?html(?:\\?[A-Za-z0-9_=&%.+-]*)?");
@@ -37,12 +37,12 @@ public final class StartpageResolver {
     }
 
     /**
-     * Liefert die abgesicherte Startseite (relativer Pfad ohne führenden Slash) für die gegebenen
-     * Authorities: die konfigurierte {@code PROPERTY_STARTPAGE_}-Seite, falls gültig, sonst
+     * Returns the secured start page (relative path without a leading slash) for the given
+     * authorities: the configured {@code PROPERTY_STARTPAGE_} page if it is valid, otherwise
      * {@link #DEFAULT_PAGE}.
      *
-     * @param authorities die GrantedAuthorities des Benutzers (darf {@code null} sein)
-     * @return ein gültiger relativer Seitenpfad
+     * @param authorities the granted authorities of the user (may be {@code null})
+     * @return a valid relative page path
      */
     public static String resolve(Collection<? extends GrantedAuthority> authorities) {
         String page = DEFAULT_PAGE;
@@ -51,7 +51,7 @@ public final class StartpageResolver {
                 String authStr = authority.getAuthority();
                 if (authStr != null && authStr.startsWith(STARTPAGE_PREFIX)) {
                     page = authStr.substring(STARTPAGE_PREFIX.length());
-                    break; // die erste konfigurierte Startseite gewinnt
+                    break; // the first configured start page wins
                 }
             }
         }
@@ -59,11 +59,11 @@ public final class StartpageResolver {
     }
 
     /**
-     * Validiert einen Startseiten-Wert; liefert ihn nur zurück, wenn er wie ein gültiger app-interner
-     * Seitenpfad aussieht, sonst {@link #DEFAULT_PAGE}.
+     * Validates a start page value; returns it only if it looks like a valid app-internal
+     * page path, otherwise {@link #DEFAULT_PAGE}.
      *
-     * @param page der zu prüfende Seitenpfad (darf {@code null} sein)
-     * @return der getrimmte Pfad, wenn gültig, sonst {@link #DEFAULT_PAGE}
+     * @param page the page path to check (may be {@code null})
+     * @return the trimmed path if valid, otherwise {@link #DEFAULT_PAGE}
      */
     public static String safe(String page) {
         if (page == null) {

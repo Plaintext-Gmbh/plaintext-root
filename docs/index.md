@@ -3,75 +3,45 @@ layout: default
 title: Plaintext Root Framework
 ---
 
-# Plaintext Root Framework
+# Plaintext Root
 
-An open-source Jakarta Faces application framework for rapidly building multi-tenant web applications.
-
-## What is Plaintext Root?
-
-Plaintext Root provides a complete foundation for building enterprise web applications with:
-
-- **Multi-Tenancy** — Built-in mandate system for tenant data isolation
-- **Security** — Spring Security with role-based access control
-- **Admin Panels** — Pre-built modules for settings, sessions, cron jobs, emails
-- **Menu System** — Annotation-driven, role-aware navigation
-- **Template System** — Swappable UI templates with dark/light mode
-
-## Quick Start
+An open-source Jakarta Faces application framework for building multi-tenant
+web applications — security, navigation, admin screens and a swappable UI
+template, so an application can start with its own domain instead of with a
+login form.
 
 ```bash
 git clone https://github.com/Plaintext-Gmbh/plaintext-root.git
 cd plaintext-root
 mvn clean install -DskipTests
-docker compose up -d            # PostgreSQL on port 5434
+docker compose up -d                       # PostgreSQL on port 5434
 mvn spring-boot:run -pl plaintext-root-webapp
 ```
 
-Open [http://localhost:8080](http://localhost:8080) in your browser.
+Then open <http://localhost:8080>.
 
 ## Documentation
 
-### Guides
+The full, grouped list lives at the bottom of the
+[README](https://github.com/Plaintext-Gmbh/plaintext-root#documentation) — it is
+maintained in one place so the two cannot drift apart. The entry points:
 
-| Document | Description |
-|----------|-------------|
-| [Getting Started](GETTING_STARTED.md) | Setup, build, and run the application |
-| [Architecture Overview](ARCHITECTURE.md) | System design, module dependencies, and data flow |
-| [Module Reference](MODULE_REFERENCE.md) | Detailed reference for all 24 modules |
-| [Module abwählen](MODULE_ABWAEHLEN.md) | Welche Admin-Module eine App per `<exclusions>` streichen kann — und welche nicht |
-| [Flyway Migrations](FLYWAY_MIGRATIONS.md) | Database migration conventions and tooling |
-| [Role Registry](ROLE_REGISTRY.md) | How modules declare their roles for the user admin selection |
-| [Page Access Guard](security/PAGE_ACCESS_GUARD.md) | Per-view authorization derived from menu visibility |
-| [Architecture Decisions](adr/) | ADRs 0001–0008 |
+| I want to … | Start here |
+|-------------|-----------|
+| understand how it is built | [Architecture](ARCHITECTURE.md) · [Module reference](MODULE_REFERENCE.md) · [ADRs](adr/) |
+| build an application on it | [Getting started](GETTING_STARTED.md) · [Menu system](MENU_SYSTEM.md) · [Page access guard](security/PAGE_ACCESS_GUARD.md) |
+| contribute to the framework | [Contributing](https://github.com/Plaintext-Gmbh/plaintext-root/blob/master/CONTRIBUTING.md) · [CI pipeline](CI.md) · [Flyway migrations](FLYWAY_MIGRATIONS.md) |
+| run it | [Prometheus](operator/PROMETHEUS.md) · [Two-factor auth](security/TOTP_2FA.md) · [Login paths](security/LOGIN_PATHS.md) |
 
-### Reference
+## At a glance
 
-| Document | Description |
-|----------|-------------|
-| [German Terms](GERMAN_TERMS.md) | Mapping of German class/module names to English equivalents |
-| [Configuration Encryption](CRYPTO.md) | Cipher format and migration guide for stored secrets |
-| [REST API (Swagger UI)](/swagger-ui/index.html) | Interactive API documentation (when app is running) |
+- **Multi-tenancy** — a discriminator column on every entity, one shared base
+  class, tenant-aware finders
+- **Security** — Spring Security, role-based, plus a page guard that derives
+  per-view authorization from the menu the user actually sees
+- **Menu** — declared by annotation on the backing bean, role-aware, switchable
+  per tenant
+- **Admin modules** — twelve of them, each removable with a Maven exclusion
+- **Template** — one jar with no dependencies; replace it to reskin everything
 
-### Project
-
-| Document | Description |
-|----------|-------------|
-| [Contributing Guide](../CONTRIBUTING.md) | How to contribute to the project |
-| [Security Policy](../SECURITY.md) | Vulnerability reporting process |
-| [Improvement Proposals](IMPROVEMENT_PROPOSALS.md) | Tracked improvements grouped by theme and priority |
-| [Docs Overhaul Plan](DOCS_OVERHAUL_PLAN.md) | Plan for the upcoming user-facing documentation site |
-| [CI umschalten](CI-UMSCHALTEN.md) | GitHub Actions ↔ Woodpecker: der `.ci-engine`-Umschalter, was root als `release-only`-Repo anders macht, und was beim Motorwechsel schwächer wird |
-
-## Tech Stack
-
-| Technology | Version |
-|-----------|---------|
-| Java | 25 |
-| Spring Boot | 4.x |
-| Jakarta Faces | 4.1 |
-| PrimeFaces | 15.x |
-| PostgreSQL | 18+ |
-
-## License
-
-Licensed under the [Mozilla Public License 2.0](https://opensource.org/licenses/MPL-2.0).
+Licensed under the [Mozilla Public License 2.0](https://github.com/Plaintext-Gmbh/plaintext-root/blob/master/LICENSE).

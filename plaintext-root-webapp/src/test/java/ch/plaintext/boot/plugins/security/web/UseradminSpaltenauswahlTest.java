@@ -29,9 +29,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Auftrag Daniel, 25.08.2026: „gerne oben noch eine Auswahl mit Checkbox, dass man sich pro
- * Benutzer die Auswahl der Spalten speichern kann. Immer wenn man dort aufklappt und die
- * Spaltenauswahl macht, soll gespeichert werden."
+ * Request by Daniel, 25.08.2026: "I would also like a selection with a checkbox at the top, so that
+ * the choice of columns can be saved per user. Whenever you open that up and make the
+ * column selection, it should be saved."
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -66,7 +66,7 @@ class UseradminSpaltenauswahlTest {
                 null, null, null, userPreferences);
     }
 
-    // ---------------------------------------------------------------- Voreinstellung / Laden
+    // ------------------------------------------------------------- Default setting / loading
 
     @Test
     @DisplayName("Ohne gespeicherte Auswahl gilt die Voreinstellung - der bisherige Bestand")
@@ -94,10 +94,10 @@ class UseradminSpaltenauswahlTest {
     }
 
     /**
-     * Der Unterschied, an dem so etwas sonst scheitert: „nie etwas ausgewaehlt" ({@code null})
-     * und „ausdruecklich nichts ausgewaehlt" (leere Liste) sind zweierlei. Wuerde die leere Liste
-     * wie {@code null} behandelt, kaeme die volle Voreinstellung zurueck — der Benutzer haette
-     * abgewaehlt und beim naechsten Anmelden staende wieder alles da.
+     * The distinction on which such a feature otherwise founders: "never selected anything"
+     * ({@code null}) and "explicitly selected nothing" (empty list) are two different things. If the
+     * empty list were treated like {@code null}, the full default setting would come back — the user
+     * would have deselected and on the next login everything would be there again.
      */
     @Test
     @DisplayName("Eine ausdruecklich leere Auswahl bleibt leer")
@@ -110,7 +110,7 @@ class UseradminSpaltenauswahlTest {
         assertThat(bean.spalteSichtbar("username")).isFalse();
     }
 
-    // ---------------------------------------------------------------- Speichern
+    // ------------------------------------------------------------------- Saving
 
     @Test
     @DisplayName("Jede Aenderung wird sofort gespeichert - ohne Speichern-Knopf")
@@ -137,7 +137,7 @@ class UseradminSpaltenauswahlTest {
         verify(userPreferences, never()).merkeTabellenSpalten(anyString(), any());
     }
 
-    // ---------------------------------------------------------------- Mandanten-Mehrfachfilter
+    // ------------------------------------------------------------------ Multiple tenant filter
 
     @Test
     @DisplayName("Der Mandantenfilter zeigt jeden vorkommenden Mandanten genau einmal, sortiert")
@@ -151,8 +151,8 @@ class UseradminSpaltenauswahlTest {
     }
 
     /**
-     * Ein Benutzer ohne Mandant darf nicht unauffindbar werden. Er bekommt einen eigenen,
-     * benannten Eintrag statt eines leeren Kaestchens.
+     * A user without a tenant must not become impossible to find. They get their own,
+     * named entry instead of an empty box.
      */
     @Test
     @DisplayName("Benutzer ohne Mandant sind ueber einen eigenen Eintrag auffindbar")
@@ -165,7 +165,7 @@ class UseradminSpaltenauswahlTest {
         assertThat(leer.getLabel()).isEqualTo("(ohne Mandant)");
     }
 
-    // ---------------------------------------------------------------- Anzeigename
+    // --------------------------------------------------------------- Display name
 
     @Test
     @DisplayName("Der Anzeigename haelt auch aus, wenn nur ein Teil gesetzt ist")

@@ -35,10 +35,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests für {@link ApiTokenService#validateToken(String)} — den Pfad, der aus Servlet-Filtern /
- * MCP-Kontexten läuft. Sichert das Validierungsverhalten (gültig / revoked / deleted / invalidated)
- * und als Regression, dass die Methode <b>nicht</b> {@code @Transactional} ist (sonst leakt sie
- * aus dem Filter-/Reactive-Kontext Hikari-Connections, bis der Pool leer ist).
+ * Tests for {@link ApiTokenService#validateToken(String)} — the path that runs from servlet
+ * filters / MCP contexts. Secures the validation behaviour (valid / revoked / deleted / invalidated)
+ * and, as a regression, that the method is <b>not</b> {@code @Transactional} (otherwise it leaks
+ * Hikari connections out of the filter/reactive context until the pool is empty).
  */
 import org.mockito.ArgumentCaptor;
 
@@ -56,8 +56,8 @@ class ApiTokenServiceTest {
     }
 
     /**
-     * Der Zustand, den der Revocation-Lookup liefert (Karte 659) — seit dem Umbau auf JDBC läuft
-     * dieser eine Pfad nicht mehr über das JPA-Repository.
+     * The state that the revocation lookup returns (card 659) — since the switch to JDBC this one
+     * path no longer goes through the JPA repository.
      */
     private ApiTokenRevocationLookup.TokenZustand storedToken() {
         return new ApiTokenRevocationLookup.TokenZustand(42L, false, false, "u@x.ch");
@@ -74,8 +74,8 @@ class ApiTokenServiceTest {
         assertEquals(7L, res.get().userId());
         assertEquals("plaintext", res.get().mandat());
         assertEquals("u@x.ch", res.get().email());
-        verify(lookup).markUsed(42L);               // last-used best effort fortgeschrieben
-        verify(repo, never()).save(any());          // und zwar OHNE JPA im Filter-Pfad
+        verify(lookup).markUsed(42L);               // last-used updated on a best-effort basis
+        verify(repo, never()).save(any());          // and that WITHOUT JPA in the filter path
     }
 
     @Test
@@ -120,9 +120,9 @@ class ApiTokenServiceTest {
     }
 
     /**
-     * Die Nutzungsstatistik ist ausdrücklich <b>best effort</b> (Karte 659): Fällt der Zähler-Update
-     * aus, bleibt der Zugriff gültig. Andernfalls würde ein gesperrter Schreibzugriff auf
-     * {@code api_token} jeden Bearer-Aufruf abweisen — ein Ausfall aus einer Statistikzeile heraus.
+     * The usage statistic is explicitly <b>best effort</b> (card 659): if the counter update fails,
+     * the access stays valid. Otherwise a blocked write access to
+     * {@code api_token} would reject every bearer call — an outage caused by a statistics row.
      */
     @Test
     void fehlerBeimNutzungszaehlerKipptDieEntscheidungNicht() {
@@ -138,9 +138,9 @@ class ApiTokenServiceTest {
     }
 
     /**
-     * Regression gegen den Hikari-Connection-Leak: {@code validateToken} wird aus Servlet-Filtern /
-     * reaktiven MCP-Kontexten aufgerufen; eine dort gebundene {@code @Transactional} gibt ihre
-     * Connection nie an den Pool zurück. Die Methode muss daher transaktionsfrei bleiben.
+     * Regression against the Hikari connection leak: {@code validateToken} is called from servlet
+     * filters / reactive MCP contexts; a {@code @Transactional} bound there never returns its
+     * connection to the pool. The method must therefore stay free of transactions.
      */
     @Test
     void validateTokenIstNichtTransactional() throws NoSuchMethodException {
@@ -149,12 +149,12 @@ class ApiTokenServiceTest {
                 "validateToken darf NICHT @Transactional sein — leakt sonst Hikari-Connections aus Filter/Reactive-Kontext");
     }
 
-    // ── Service-Tokens fuer maschinelle Aussteller (Karte 349) ──────────────────────────────────
+    // ── Service tokens for machine issuers (card 349) ──────────────────────────────────
 
     /**
-     * Der Juriwagen mintet bei JEDEM Oeffnen der SPA ein Token. Die Duplikat-Namen-Pruefung von
-     * createToken() wuerde beim zweiten Oeffnen werfen — fuer einen maschinellen Flow darf das nicht
-     * passieren, sonst steht der Betrieb am Turniertag.
+     * The Juriwagen mints a token EVERY time the SPA is opened. The duplicate-name check of
+     * createToken() would throw on the second open — that must not happen for a machine-driven
+     * flow, otherwise operations come to a standstill on tournament day.
      */
     @Test
     void serviceToken_darfMehrfachMitGleichemNamenAusgestelltWerden() {
@@ -170,7 +170,7 @@ class ApiTokenServiceTest {
         verify(repo, times(2)).save(any(ApiToken.class));
     }
 
-    /** Jedes Service-Token bekommt eine DB-Zeile mit Hash — genau das braucht validation=DATABASE. */
+    /** Every service token gets a DB row with a hash — exactly what validation=DATABASE needs. */
     @Test
     void serviceToken_persistiertHashUndScope() {
         when(jwt.generateToken(eq(7L), eq("plaintext"), eq("u@x.ch"), eq("Zeiterfassung-Uhr"), eq(90), eq("READ")))
@@ -193,8 +193,8 @@ class ApiTokenServiceTest {
     }
 
     /**
-     * Abgelaufene Tokens desselben Flows werden aufgeraeumt, ein noch GUELTIGES bleibt bestehen —
-     * sonst wuerde ein zweites Geraet desselben Users mitten im Betrieb ausgesperrt.
+     * Expired tokens of the same flow are cleaned up, a still VALID one is kept —
+     * otherwise a second device of the same user would be locked out mid-operation.
      */
     @Test
     void serviceToken_raeumtNurAbgelaufeneAufUndLaesstAktiveBestehen() {
@@ -224,14 +224,14 @@ class ApiTokenServiceTest {
         assertFalse(andererFlow.getDeleted(), "anderer Flow darf nicht angetastet werden");
     }
 
-    // -------------------------------------------------- Scope-Durchgriff (Karte 504)
+    // -------------------------------------------------- Scope pass-through (card 504)
 
     /**
-     * Karte 504 verlangt die Gegenprobe in <b>beide</b> Richtungen: Ein gewaehlter Scope muss
-     * ankommen — der weite genauso wie der enge. Ein Test, der nur ADMIN prueft, waere auch gruen,
-     * wenn der Service stur ADMIN setzte.
+     * Card 504 demands the counter-check in <b>both</b> directions: a selected scope must
+     * arrive — the wide one just as much as the narrow one. A test that only checks ADMIN would be
+     * green even if the service stubbornly set ADMIN.
      *
-     * <p>Geprueft wird der Weg, den die Maske nimmt: {@code createToken(..., scope)}.</p>
+     * <p>What is checked is the path the form takes: {@code createToken(..., scope)}.</p>
      */
     @Test
     void gewaehlterScopeKommtBeiDerJwtErzeugungAn() {
@@ -253,21 +253,22 @@ class ApiTokenServiceTest {
     }
 
     /**
-     * <b>Bekannter Mangel, hier festgehalten statt uebersehen (Karte 504, Nebenbefund):</b>
-     * „Token neu erzeugen" reicht <b>keinen</b> Scope durch — {@code regenerateToken} ruft die
-     * Ueberladung ohne Scope, und {@link ApiToken} hat kein Scope-Feld, aus dem sich der alte Wert
-     * wiederherstellen liesse. Der neue Token traegt also gar keinen {@code scope}-Claim.
+     * <b>Known shortcoming, recorded here instead of being overlooked (card 504, side finding):</b>
+     * "Token neu erzeugen" (regenerate token) passes <b>no</b> scope through —
+     * {@code regenerateToken} calls the overload without a scope, and {@link ApiToken} has no scope
+     * field from which the old value could be restored. The new token therefore carries no
+     * {@code scope} claim at all.
      *
-     * <p>Das ist heute <b>nicht</b> gefaehrlich: Ein fehlender Claim gilt seit Karte 312
-     * fail-closed als {@code READ}, und der Rueckschalter
-     * {@code plaintext.mcp.bearer-filter.legacy-scope-admin} ist in keinem Repo gesetzt (geprueft
-     * in root, app, guild, schuetu, iot, fwtool). Wer seinen ADMIN-Token erneuert, bekommt also
-     * einen zu schwachen, keinen zu starken.
+     * <p>Today that is <b>not</b> dangerous: since card 312 a missing claim counts
+     * fail-closed as {@code READ}, and the fallback switch
+     * {@code plaintext.mcp.bearer-filter.legacy-scope-admin} is not set in any repo (checked
+     * in root, app, guild, schuetu, iot, fwtool). Whoever renews their ADMIN token therefore gets
+     * one that is too weak, not one that is too strong.
      *
-     * <p><b>Dieser Test schreibt den Ist-Zustand fest, nicht den Sollzustand.</b> Die Behebung
-     * braucht eine Spalte {@code scope} in {@code api_token} — und die Tabelle wird von Karte 349
-     * ({@code validation: DATABASE}) ohnehin angefasst. Wird das dort erledigt, gehoert diese
-     * Erwartung umgedreht.
+     * <p><b>This test pins down the actual state, not the target state.</b> Fixing it
+     * needs a {@code scope} column in {@code api_token} — and that table is touched by card 349
+     * ({@code validation: DATABASE}) anyway. Once it is dealt with there, this
+     * expectation should be inverted.
      */
     @Test
     void regenerateTokenVerliertDenScope_bekannterMangel() {
@@ -293,9 +294,9 @@ class ApiTokenServiceTest {
     }
 
     /**
-     * Karte 664: Ohne den {@code jti} in der Zeile kann der Filter ein eingehendes Token nicht
-     * seiner Zeile zuordnen — {@code revoke_api_token} meldet dann Erfolg und das Token
-     * funktioniert weiter. Der Test haelt das Bindeglied fest.
+     * Card 664: Without the {@code jti} in the row, the filter cannot match an incoming token to
+     * its row — {@code revoke_api_token} then reports success while the token
+     * keeps working. This test pins down that link.
      */
     @Test
     void createTokenSchreibtDenJtiInDieZeile() {
@@ -314,8 +315,8 @@ class ApiTokenServiceTest {
     }
 
     /**
-     * Karte 664: Auch Service-Tokens (Uhr, Juriwagen) muessen widerrufbar sein — sie laufen
-     * ueber einen eigenen Ausstellungspfad, der sonst leicht vergessen wird.
+     * Card 664: Service tokens (clock, Juriwagen) must be revocable as well — they run
+     * through their own issuing path, which is otherwise easily forgotten.
      */
     @Test
     void createServiceTokenSchreibtDenJtiEbenfalls() {
@@ -333,9 +334,9 @@ class ApiTokenServiceTest {
     }
 
     /**
-     * Karte 664: Ein nicht lesbarer jti darf die Ausstellung nicht scheitern lassen. Die Zeile
-     * bekommt dann {@code null} — das heisst „unbekannt", nicht „widerrufen", und das Token
-     * verhaelt sich wie eines von vor dieser Karte.
+     * Card 664: An unreadable jti must not make the issuing fail. The row then
+     * gets {@code null} — which means "unknown", not "revoked", and the token
+     * behaves like one from before this card.
      */
     @Test
     void createTokenBleibtErfolgreichWennDerJtiNichtLesbarIst() {

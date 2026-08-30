@@ -42,7 +42,7 @@ import java.util.List;
 @Slf4j
 public class PlaintextSecurityConfig {
 
-    /** Anmeldeseite — Form-Login, OIDC-Login und die Ajax-Redirects (Karte 385) zeigen hierhin. */
+    /** Login page — form login, OIDC login and the Ajax redirects (card 385) point here. */
     private static final String LOGIN_PAGE = "/login.html";
 
     private final String rememberMeSigningKey;
@@ -56,78 +56,78 @@ public class PlaintextSecurityConfig {
     private final HashedOneTimeTokenService hashedOneTimeTokenService;
     private final MagicLinkGenerationSuccessHandler magicLinkGenerationSuccessHandler;
 
-    // Framework-Defaults: CSRF ignorieren.
-    // ACHTUNG: JSF-Seiten (*.xhtml/*.html) werden bewusst NICHT ignoriert. Der JSF-ViewState ist
-    // State-Management und KEIN CSRF-Schutz. Jedes <h:form> muss deshalb das Token als
-    // <input type="hidden" name="_csrf" value="#{_csrf.token}"/> einbetten (Konvention, siehe
-    // CsrfFormInvariantTest). PrimeFaces serialisiert das Hidden-Feld auch bei AJAX-Submits mit.
-    // SECURITY (Karte 314, Punkt 4): /api/preferences/** ist NICHT mehr CSRF-befreit. Die
-    // Endpunkte sind session-authentifiziert; ohne CSRF-Schutz konnte eine fremde Seite per
-    // Formular-POST die Theme-/Farbeinstellungen des eingeloggten Benutzers ueberschreiben.
-    // Die einzigen Aufrufer sind die vier fetch()-Aufrufe in includes/config.xhtml, und die
-    // haengen das Token bereits an (params.append('_csrf', ...)) — der Fix ist deshalb rein
-    // konfigurativ und bricht keinen produktiven Flow.
-    // Karte 560: /token-login ist hier raus, weil es den Endpunkt nicht mehr gibt. Ein permitAll
-    // auf einen unbesetzten Pfad ist nicht bloss ueberfluessig -- er haelt die Tuer offen, falls je
-    // wieder ein Controller unter diesem Mapping entsteht.
+    // Framework defaults: ignore CSRF.
+    // ATTENTION: JSF pages (*.xhtml/*.html) are deliberately NOT ignored. The JSF view state is
+    // state management and NO CSRF protection. Every <h:form> must therefore embed the token as
+    // <input type="hidden" name="_csrf" value="#{_csrf.token}"/> (convention, see
+    // CsrfFormInvariantTest). PrimeFaces also serializes the hidden field on AJAX submits.
+    // SECURITY (card 314, item 4): /api/preferences/** is NO LONGER exempt from CSRF. The
+    // endpoints are session-authenticated; without CSRF protection a foreign page could overwrite
+    // the theme/colour settings of the logged-in user with a form POST.
+    // The only callers are the four fetch() calls in includes/config.xhtml, and those
+    // already append the token (params.append('_csrf', ...)) — the fix is therefore purely
+    // configurational and breaks no productive flow.
+    // Card 560: /token-login is out of here, because the endpoint no longer exists. A permitAll
+    // on an unoccupied path is not merely superfluous -- it holds the door open in case a
+    // controller under this mapping ever arises again.
     private static final List<String> DEFAULT_CSRF_IGNORE = List.of(
             "/nosec/**"
     );
 
-    // Framework-Defaults: Ohne Authentication erreichbar
+    // Framework defaults: reachable without authentication
     private static final List<String> DEFAULT_PERMIT_ALL = List.of(
             "/login.xhtml", "/login.html", "/jakarta.faces.resource/**",
             "/actuator/health",
             "/nosec/**",
-            // Karte 635: JWK Set dieser Instanz (RFC 7517). Der Pfad ist der von RFC 8414 und
-            // OpenID Connect Discovery vorgesehene -- dort sucht jede Bibliothek von selbst,
-            // deshalb liegt er ausserhalb von /nosec und braucht eine eigene Freigabe.
+            // Card 635: JWK set of this instance (RFC 7517). The path is the one prescribed by RFC 8414 and
+            // OpenID Connect Discovery -- every library looks there on its own,
+            // which is why it lies outside /nosec and needs a permit of its own.
             //
-            // Ohne Anmeldung erreichbar zu sein IST der Zweck: Eine Gegenstelle soll ein von uns
-            // ausgestelltes Token pruefen koennen, ohne dass ihr jemand den Schluessel von Hand
-            // ueberreicht. Der Endpunkt gibt ausschliesslich OEFFENTLICHE Schluessel heraus
-            // (JwksController; ein Test besteht darauf, dass kein privater Anteil erscheint).
+            // Being reachable without a login IS the purpose: a peer shall be able to check a token
+            // issued by us without somebody handing it the key by hand.
+            // The endpoint only ever hands out PUBLIC keys
+            // (JwksController; a test insists that no private part appears).
             "/.well-known/jwks.json",
             "/oauth2/**", "/login/oauth2/**",
             "/register", "/register/**",
             "/password-reset", "/password-reset/**",
             "/ott/generate",
             "/login/ott",
-            // Zweiter Schritt der TOTP-Anmeldung: der User ist hier noch NICHT voll
-            // authentifiziert (Passwort ok, zweiter Faktor ausstehend). Die Seite/POST
-            // muss daher anonym erreichbar sein. CSRF bleibt aktiv (Token im Formular),
-            // der eigentliche Gate steckt im TotpVerificationController (pending-Session).
+            // Second step of the TOTP login: at this point the user is NOT yet fully
+            // authenticated (password ok, second factor pending). The page/POST
+            // must therefore be reachable anonymously. CSRF stays active (token in the form),
+            // the actual gate sits in the TotpVerificationController (pending session).
             "/login/totp", "/login-totp.xhtml",
-            // Karte 345: Deep-Link-Einstieg. NICHT offen im Sinne von ungeschuetzt — der
-            // DeepLinkController prueft selbst, ob eine Authentication vorliegt, und schickt
-            // anonyme Aufrufer ausschliesslich zur Login-Seite (das Ziel wird nur als
-            // type/mandat/id in der Server-Session gemerkt, nie als URL durchgereicht). Nur so
-            // laesst sich der Mail-Klick eines abgemeldeten Benutzers nach dem Login fortsetzen;
-            // unter anyRequest().authenticated() waere er verloren. Die eigentlichen Pruefungen
-            // (Mandat-Zugriff, Datensatz-Zugriff) macht der DeepLinkResolver nach dem Login.
+            // Card 345: deep-link entry point. NOT open in the sense of unprotected — the
+            // DeepLinkController checks by itself whether an authentication is present and sends
+            // anonymous callers exclusively to the login page (the target is only remembered as
+            // type/mandat/id in the server session, never passed through as a URL). Only this way
+            // can the mail click of a logged-out user be continued after the login;
+            // under anyRequest().authenticated() it would be lost. The actual checks
+            // (tenant access, record access) are done by the DeepLinkResolver after the login.
             DeepLinkService.DEEPLINK_PATH
     );
 
     /**
-     * SECURITY (Karte 308, Punkt 4): Seiten, die nur ROOT sehen darf — hart verdrahtet,
-     * unabhaengig von der Menue-Sichtbarkeit. Ein Pattern pro Seite; {@code *} matcht innerhalb
-     * eines Pfad-Segments und deckt damit {@code .html}, {@code .htm}, {@code .xhtml} und
-     * {@code .jsf} ab. {@code /mandate*.*} deckt {@code mandate}, {@code mandatemenu} und
-     * {@code mandatemenudetail} ab — letztere hat gar keinen Menueeintrag und war damit voellig
-     * ungeschuetzt.
+     * SECURITY (card 308, item 4): pages that only ROOT may see — hard-wired,
+     * independently of the menu visibility. One pattern per page; {@code *} matches within
+     * a path segment and thereby covers {@code .html}, {@code .htm}, {@code .xhtml} and
+     * {@code .jsf}. {@code /mandate*.*} covers {@code mandate}, {@code mandatemenu} and
+     * {@code mandatemenudetail} — the last of which has no menu entry at all and was therefore
+     * entirely unprotected.
      */
     private static final String[] ROOT_ONLY_PAGES = {
-            // Karte 345: Uebersicht der Deep-Link-Ziele. Nur ROOT — die Seite zeigt, auf welche
-            // Module/Datensaetze sich Links bauen lassen, und kann Beispiel-Links fuer beliebige
-            // Mandate erzeugen (die Links selbst verleihen nichts, die Uebersicht ist aber
-            // Verwaltungsinformation).
+            // Card 345: overview of the deep-link targets. ROOT only — the page shows for which
+            // modules/records links can be built, and can generate example links for arbitrary
+            // tenants (the links themselves grant nothing, but the overview is
+            // administrative information).
             "/deeplinks.*",
             "/mandate*.*",
-            // Menue-Diagnose: zeigt die Sichtbarkeit JEDES Menuepunkts inkl. der Gruende (welche
-            // Rolle fehlt, welche Mandanten-Liste greift). Verwaltungsinformation — nur ROOT.
+            // Menu diagnostics: shows the visibility of EVERY menu entry incl. the reasons (which
+            // role is missing, which tenant list applies). Administrative information — ROOT only.
             "/menudiagnose.*",
-            // Anleitung der Menuesteuerung: verweist auf Mandanten-Listen und Diagnose, also auf
-            // Dinge, die admin nicht sieht.
+            // Guide to the menu control: refers to tenant lists and diagnostics, hence to
+            // things that admin does not see.
             "/menuesteuerung-anleitung.*",
             "/rootentities.*",
             "/root-api-token.*",
@@ -143,14 +143,14 @@ public class PlaintextSecurityConfig {
     };
 
     /**
-     * SECURITY (Karte 308, Punkt 4): Seiten fuer ADMIN oder ROOT — hart verdrahtet.
-     * {@code /useradmin.*} ersetzt das bisherige, in RENDER_RESPONSE haengende Gate
-     * {@code myUserBackingBean.checkAccess()}.
+     * SECURITY (card 308, item 4): pages for ADMIN or ROOT — hard-wired.
+     * {@code /useradmin.*} replaces the previous gate {@code myUserBackingBean.checkAccess()},
+     * which hung in RENDER_RESPONSE.
      */
     private static final String[] ADMIN_PAGES = {
             "/useradmin.*",
-            // Auftrag Daniel, 29.08.2026: Mailtexte sind mandantenbezogen und gehoeren dem admin —
-            // aus ROOT_ONLY_PAGES hierher verschoben, Menuepunkt jetzt unter „Admin".
+            // Instruction by Daniel, 29.08.2026: mail texts are tenant-related and belong to the admin —
+            // moved here from ROOT_ONLY_PAGES, menu entry now under "Admin".
             "/mailtemplates.*",
             "/adminentities.*",
             "/admin-api-token.*",
@@ -190,8 +190,8 @@ public class PlaintextSecurityConfig {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 13): erkennt die Produktivumgebung am aktiven Spring-Profil
-     * {@code prod} (so setzt es das Dockerfile per {@code SPRING_PROFILES_ACTIVE}).
+     * SECURITY (card 314, item 13): recognizes the production environment by the active Spring profile
+     * {@code prod} (that is how the Dockerfile sets it via {@code SPRING_PROFILES_ACTIVE}).
      */
     static boolean isProduction(org.springframework.core.env.Environment environment) {
         if (environment == null) {
@@ -206,12 +206,12 @@ public class PlaintextSecurityConfig {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 13): der Signierschluessel des Remember-Me-Cookies ist in PROD
-     * Pflicht. Bisher wurde bei fehlendem Schluessel nur eine WARN geloggt und ein fluechtiger
-     * Zufallsschluessel erzeugt — funktional unauffaellig (die Cookies verfielen bei jedem
-     * Neustart), aber genau deshalb faellt ein versehentlich fehlender Schluessel im Betrieb nie
-     * auf. In dev/test bleibt der Zufallsschluessel erhalten, damit ein lokaler Start weiterhin
-     * ohne Env-Setup funktioniert.
+     * SECURITY (card 314, item 13): the signing key of the remember-me cookie is mandatory in PROD.
+     * Until now a missing key only produced a WARN in the log and a volatile
+     * random key — functionally inconspicuous (the cookies expired on every
+     * restart), but exactly for that reason an accidentally missing key never
+     * stands out in production. In dev/test the random key is retained, so that a local start still
+     * works without an env setup.
      */
     private static String resolveRememberMeKey(String configured, boolean production) {
         if (configured != null && !configured.isBlank()) {
@@ -237,12 +237,12 @@ public class PlaintextSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    SecurityContextRepository securityContextRepository,
                                                    PageAccessGuardService pageAccessGuardService) throws Exception {
-        // CSRF-Ignore: Framework-Defaults + App-spezifische Pfade
+        // CSRF ignore: framework defaults + app-specific paths
         List<String> csrfIgnore = new ArrayList<>(DEFAULT_CSRF_IGNORE);
         csrfIgnore.addAll(securityProperties.getCsrfIgnorePatterns());
         String[] csrfIgnoreArray = csrfIgnore.toArray(new String[0]);
 
-        // PermitAll: Framework-Defaults + App-spezifische Pfade
+        // PermitAll: framework defaults + app-specific paths
         List<String> permitAll = new ArrayList<>(DEFAULT_PERMIT_ALL);
         permitAll.addAll(securityProperties.getPermitAllPatterns());
         String[] permitAllArray = permitAll.toArray(new String[0]);
@@ -252,24 +252,24 @@ public class PlaintextSecurityConfig {
                         .securityContextRepository(securityContextRepository)
                 )
                 .csrf(csrf -> {
-                        // Plain (un-maskiertes) CSRF-Token statt des Default-XorCsrfTokenRequestAttributeHandler.
-                        // Die Views betten das Token als <input name="_csrf" value="#{_csrf.token}"/> ein
-                        // (raw Token). Der Default-Xor-Handler erwartet beim Submit jedoch ein BREACH-
-                        // maskiertes Token -> der einzige CSRF-validierte POST (/logout) schlug mit 403 fehl,
-                        // der JS-Fallback landete dann auf GET /logout -> 404. Mit dem Attribute-Handler
-                        // passt das gesendete raw-Token zur Validierung.
+                        // Plain (unmasked) CSRF token instead of the default XorCsrfTokenRequestAttributeHandler.
+                        // The views embed the token as <input name="_csrf" value="#{_csrf.token}"/>
+                        // (raw token). On submit, however, the default xor handler expects a BREACH-
+                        // masked token -> the only CSRF-validated POST (/logout) failed with 403,
+                        // the JS fallback then landed on GET /logout -> 404. With the attribute handler
+                        // the raw token that is sent matches the validation.
                         csrf.csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler());
                         var matchers = new java.util.ArrayList<org.springframework.security.web.util.matcher.RequestMatcher>();
                         for (String pattern : csrfIgnore) {
                             matchers.add(PathPatternRequestMatcher.pathPattern(pattern));
                         }
-                        // NOSONAR (S4502): Die Ausnahme trifft ausschliesslich tokenbasierte,
-                        // sessionlose Pfade — Framework-Default /nosec/**, dazu
-                        // was eine App ausdruecklich in plaintext.security.csrf-ignore-patterns
-                        // eintraegt. CSRF schuetzt gegen das automatische Mitsenden von
-                        // Session-Cookies; wo die Berechtigung aus einem Bearer-Token im Header
-                        // stammt, gibt es nichts, was ein fremdes Formular mitschicken koennte.
-                        // Alle cookie-authentifizierten Pfade bleiben CSRF-geschuetzt (Karte 458).
+                        // NOSONAR (S4502): the exception applies exclusively to token-based,
+                        // sessionless paths — the framework default /nosec/**, plus
+                        // whatever an app explicitly enters in plaintext.security.csrf-ignore-patterns.
+                        // CSRF protects against session cookies being sent along
+                        // automatically; where the authorization comes from a bearer token in the header
+                        // there is nothing a foreign form could send along.
+                        // All cookie-authenticated paths stay CSRF-protected (card 458).
                         csrf.ignoringRequestMatchers(matchers.toArray(new org.springframework.security.web.util.matcher.RequestMatcher[0])); // NOSONAR
                 })
                 .headers(headers -> {
@@ -278,98 +278,98 @@ public class PlaintextSecurityConfig {
                     headers.referrerPolicy(ref -> ref.policy(
                             org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
                     headers.permissionsPolicy(pp -> pp.policy("camera=(), microphone=(), geolocation=(), payment=()"));
-                    // SECURITY (Karte 314, Punkt 2): HSTS explizit statt implizitem Spring-Default.
-                    // Spring schreibt den Header nur auf als sicher erkannten Requests; hinter dem
-                    // Reverse-Proxy haengt das an forward-headers-strategy=FRAMEWORK (oben gesetzt).
-                    // preload bleibt bewusst aus: ein Preload-Eintrag ist praktisch nicht mehr
-                    // ruecknehmbar und wuerde ALLE Subdomains dauerhaft auf HTTPS zwingen.
+                    // SECURITY (card 314, item 2): HSTS explicitly instead of Spring's implicit default.
+                    // Spring only writes the header on requests recognized as secure; behind the
+                    // reverse proxy that depends on forward-headers-strategy=FRAMEWORK (set above).
+                    // preload deliberately stays off: a preload entry is practically impossible to
+                    // take back and would force ALL subdomains onto HTTPS permanently.
                     headers.httpStrictTransportSecurity(hsts -> hsts
                             .includeSubDomains(true)
                             .preload(false)
-                            .maxAgeInSeconds(31536000L)); // 1 Jahr
+                            .maxAgeInSeconds(31536000L)); // 1 year
                     headers.contentSecurityPolicy(csp -> csp.policyDirectives(
                             cspPolicy(securityProperties.getCsp().isScriptUnsafeInline())));
                 })
                 .authorizeHttpRequests(authorize -> {
                     authorize
-                            // SECURITY/API-VERTRAG (Karte 652): Jeder ueber response.sendError(...)
-                            // erzeugte Fehler — 403 aus dem AccessDeniedHandler, 404 aus Spring MVC,
-                            // 500 aus einem Controller — loest im Servlet-Container einen zweiten,
-                            // INTERNEN Durchlauf auf /error aus (DispatcherType.ERROR), und zwar erst
-                            // NACHDEM die komplette Filterkette zurueckgekehrt ist. Die
-                            // springSecurityFilterChain ist per Boot-Default auf REQUEST+ASYNC+ERROR
-                            // gemappt und lief deshalb erneut — dort ist der Aufrufer anonym (die
-                            // Bearer-/Token-Filter sind FilterRegistrationBeans und laufen nur auf
-                            // REQUEST), /error faellt unter anyRequest().authenticated(), und der
-                            // LoginUrlAuthenticationEntryPoint ueberschrieb den urspruenglichen
-                            // Status mit 302 auf die Anmeldeseite.
+                            // SECURITY/API CONTRACT (card 652): every error produced via response.sendError(...)
+                            // — a 403 from the AccessDeniedHandler, a 404 from Spring MVC,
+                            // a 500 from a controller — triggers a second, INTERNAL pass
+                            // on /error in the servlet container (DispatcherType.ERROR), and does so only
+                            // AFTER the complete filter chain has returned. The
+                            // springSecurityFilterChain is mapped to REQUEST+ASYNC+ERROR by Boot default
+                            // and therefore ran again — there the caller is anonymous (the
+                            // bearer/token filters are FilterRegistrationBeans and only run on
+                            // REQUEST), /error falls under anyRequest().authenticated(), and the
+                            // LoginUrlAuthenticationEntryPoint overwrote the original
+                            // status with a 302 to the login page.
                             //
-                            // Messbar war das ohne jede Authentisierung: GET /nosec/gibtsnicht — ein
-                            // permitAll-Pfad — lieferte 302 auf /login.html statt 404 (schuetu INT,
-                            // 11.08.2026). Fuer API-Clients ist der Effekt schwerwiegender: eine
-                            // fehlende Berechtigung kam als HTML-Anmeldeseite an, und ein Skript mit
-                            // `curl -L` sah daraus HTTP 200 — eine Rechteverweigerung als Erfolg.
+                            // This was measurable without any authentication at all: GET /nosec/gibtsnicht — a
+                            // permitAll path — returned a 302 to /login.html instead of a 404 (schuetu INT,
+                            // 11.08.2026). For API clients the effect is more severe: a
+                            // missing permission arrived as an HTML login page, and a script with
+                            // `curl -L` saw HTTP 200 out of it — a denial of permission as a success.
                             //
-                            // Der DispatcherType ERROR wird ausschliesslich vom Container gesetzt;
-                            // ein Aufruf von aussen traegt immer REQUEST. Diese Regel oeffnet /error
-                            // also NICHT fuer externe Aufrufer (Gegenprobe im ErrorDispatchChainTest).
+                            // The dispatcher type ERROR is set exclusively by the container;
+                            // a call from outside always carries REQUEST. This rule therefore does NOT open /error
+                            // to external callers (counter-check in the ErrorDispatchChainTest).
                             .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll()
                             .requestMatchers(permitAllArray).permitAll()
                             .requestMatchers("/actuator/**").hasRole("ADMIN")
-                            // SECURITY (Karte 304): /api/i18n/** ist Uebersetzungs-Verwaltung und lag
-                            // vorher nur unter anyRequest().authenticated() -- jeder ROLE_USER durfte
-                            // per POST /api/i18n/import Uebersetzungen fuer ALLE Mandanten
-                            // ueberschreiben (I18nTranslation hat keine mandat-Spalte) und per
-                            // GET /api/i18n/export alle Labels abziehen. ROOT ist mitgelistet, weil
-                            // die konsumierende Seite i18n-translations.xhtml unter dem ROOT-Menue
-                            // haengt (RootSuperMenu roles={"ROOT"}) und ihren Export-Link sonst
-                            // verlieren wuerde, falls ein root-User keine admin-Rolle hat.
+                            // SECURITY (card 304): /api/i18n/** is translation administration and used to lie
+                            // only under anyRequest().authenticated() -- every ROLE_USER was allowed to
+                            // overwrite translations for ALL tenants via POST /api/i18n/import
+                            // (I18nTranslation has no mandat column) and to pull all labels via
+                            // GET /api/i18n/export. ROOT is listed as well, because
+                            // the consuming page i18n-translations.xhtml hangs under the ROOT menu
+                            // (RootSuperMenu roles={"ROOT"}) and would otherwise lose its export link
+                            // if a root user has no admin role.
                             .requestMatchers("/api/i18n/**").hasAnyRole("ADMIN", "ROOT")
                             .requestMatchers("/api/branding/logo").authenticated()
                             .requestMatchers("/api/preferences/**").authenticated()
-                            // SECURITY (Karte 314, Punkt 5): die vier /debug/*-Endpoints lagen bisher
-                            // nur unter anyRequest().authenticated() — jeder eingeloggte USER sah
-                            // absolute Dateisystempfade und JAR-Namen (/debug/xhtml-resources), die
-                            // vollstaendige Seiten-/Rollenmatrix (/debug/menu-scan) und die
-                            // Menuekonfiguration ALLER Mandanten (/debug/mandate-menu-config).
-                            // Achtung: das bestehende ADMIN_PAGES-Pattern "/debug.*" trifft nur eine
-                            // View "debug.<ext>" und greift fuer diese Pfade NICHT.
-                            // Zusaetzlich sind die Controller selbst auf @Profile("dev") gesetzt, in
-                            // PROD existieren die Endpunkte also gar nicht mehr (Defense in Depth).
+                            // SECURITY (card 314, item 5): the four /debug/* endpoints used to lie
+                            // only under anyRequest().authenticated() — every logged-in USER saw
+                            // absolute file system paths and JAR names (/debug/xhtml-resources), the
+                            // complete page/role matrix (/debug/menu-scan) and the
+                            // menu configuration of ALL tenants (/debug/mandate-menu-config).
+                            // Attention: the existing ADMIN_PAGES pattern "/debug.*" only matches a
+                            // view "debug.<ext>" and does NOT apply to these paths.
+                            // In addition the controllers themselves are set to @Profile("dev"), so in
+                            // PROD the endpoints do not exist at all any more (defense in depth).
                             .requestMatchers("/debug/**").hasRole("ROOT")
-                            // SECURITY (Karte 308): Defense in Depth fuer die Admin-/ROOT-Seiten des
-                            // Frameworks. Bisher war der EINZIGE Zugriffsschutz dieser Seiten die
-                            // Menue-Sichtbarkeit (PageAccessGuardService) — und die war fail-open:
-                            // ein Menue-Link, der nicht exakt auf ".html" endete, fand keinen Treffer
-                            // und der Guard erlaubte. Bei "mandatemenu.xhtml" (ROOT-Menuesteuerung
-                            // fuer ALLE Mandanten) reichte dieser eine Buchstabe, damit jeder
-                            // eingeloggte USER die Seite bedienen konnte. Diese Regeln greifen
-                            // unabhaengig von jeder Menue-Logik.
-                            // Die Patterns decken .html/.htm/.xhtml/.jsf ab ("*" matcht innerhalb
-                            // eines Pfad-Segments), weil das FacesServlet auf alle vier gemappt ist
-                            // bzw. der UrlRewriteFilter .html/.htm auf .xhtml forwardet.
-                            // Keine dieser View-Namen existiert in einer konsumierenden App
-                            // (geprueft ueber plaintext-app/-guild/-schuetu/-iot/-fwtool), die Regeln
-                            // koennen dort also nichts zusperren.
+                            // SECURITY (card 308): defense in depth for the admin/ROOT pages of the
+                            // framework. Until now the ONLY access protection of these pages was the
+                            // menu visibility (PageAccessGuardService) — and that was fail-open:
+                            // a menu link that did not end exactly in ".html" found no match
+                            // and the guard permitted. With "mandatemenu.xhtml" (ROOT menu control
+                            // for ALL tenants) that single letter was enough for every
+                            // logged-in USER to operate the page. These rules apply
+                            // independently of any menu logic.
+                            // The patterns cover .html/.htm/.xhtml/.jsf ("*" matches within
+                            // a path segment), because the FacesServlet is mapped to all four
+                            // resp. the UrlRewriteFilter forwards .html/.htm to .xhtml.
+                            // None of these view names exists in a consuming app
+                            // (checked across plaintext-app/-guild/-schuetu/-iot/-fwtool), so the rules
+                            // can lock nothing away there.
                             .requestMatchers(ROOT_ONLY_PAGES).hasRole("ROOT")
                             .requestMatchers(ADMIN_PAGES).hasAnyRole("ADMIN", "ROOT")
                             .anyRequest().authenticated();
                 })
-                // SECURITY (Karte 308, H3): Der Menue-Guard lief bisher nur als
-                // f:event preRenderView (RENDER_RESPONSE, Phase 6) — also NACH
-                // INVOKE_APPLICATION (Phase 5). Ein Postback auf eine gesperrte Seite hatte die
-                // Action-Methode damit schon ausgefuehrt. Hier laeuft er direkt nach der
-                // Autorisierung und damit vor dem FacesServlet.
+                // SECURITY (card 308, H3): the menu guard used to run only as an
+                // f:event preRenderView (RENDER_RESPONSE, phase 6) — hence AFTER
+                // INVOKE_APPLICATION (phase 5). A postback on a locked page had therefore already
+                // executed the action method. Here it runs directly after the
+                // authorization and thus before the FacesServlet.
                 .addFilterAfter(new PageAccessGuardFilter(pageAccessGuardService), AuthorizationFilter.class)
-                // BUGFIX (Karte 385): Ein JSF-/PrimeFaces-Ajax-POST mit abgelaufenem CSRF-Token
-                // oder abgelaufener Session bekam bisher HTTP 403 mit JSON-Body. Die Ajax-Engine
-                // erwartet zwingend eine XML-partial-response, kann JSON nicht verarbeiten, meldet
-                // nichts — und der Ladeindikator dreht endlos ("Klick tut nichts"). Das trifft ALLE
-                // Ajax-Aktionen der App, nicht nur einzelne Seiten, und passiert nach jedem
-                // Blue/Green-Deploy sowie nach jedem Re-Login in einem anderen Tab.
-                // Die Handler liefern statt dessen eine gueltige partial-response mit <redirect>
-                // (HTTP 200); PrimeFaces fuehrt den Redirect aus, der Nutzer landet auf der
-                // Anmeldung. Nicht-Ajax-Requests bleiben beim Spring-Default-Verhalten.
+                // BUGFIX (card 385): a JSF/PrimeFaces Ajax POST with an expired CSRF token
+                // or an expired session used to get an HTTP 403 with a JSON body. The Ajax engine
+                // strictly expects an XML partial response, cannot process JSON, reports
+                // nothing — and the loading indicator spins forever ("the click does nothing"). This affects ALL
+                // Ajax actions of the app, not only individual pages, and happens after every
+                // blue/green deploy as well as after every re-login in another tab.
+                // Instead the handlers deliver a valid partial response with <redirect>
+                // (HTTP 200); PrimeFaces performs the redirect, the user lands on the
+                // login. Non-Ajax requests keep Spring's default behaviour.
                 .exceptionHandling(ex -> ex
                         .defaultAuthenticationEntryPointFor(
                                 new JsfAjaxAwareAuthenticationEntryPoint(
@@ -405,7 +405,7 @@ public class PlaintextSecurityConfig {
                 .rememberMe(rememberMe -> rememberMe
                         .rememberMeServices(rememberMeServices())
                         .tokenRepository(tokenRepository)
-                        // SECURITY (Karte 314, Punkt 13): vorher hart 1209600s (2 Wochen).
+                        // SECURITY (card 314, item 13): previously hard-coded 1209600s (2 weeks).
                         .tokenValiditySeconds((int) securityProperties.getRememberMeValidity().toSeconds())
                         .key(rememberMeSigningKey)
                 )
@@ -422,13 +422,13 @@ public class PlaintextSecurityConfig {
     }
 
     /**
-     * Logout gegen den OIDC-Provider durchreichen (RP-Initiated-Logout, Keycloak {@code end_session_endpoint}):
-     * ohne das ueberlebt die Keycloak-SSO-Session einen lokalen Logout, ein erneuter "Mit SSO anmelden"-Klick
-     * loggt den User dann still (ohne Passwort-Prompt) wieder ein. Faellt fuer Form-/Magic-Link-Logins
-     * (kein {@code OidcUser}-Principal) automatisch auf den lokalen {@code postLogoutRedirectUri} zurueck.
-     * ACHTUNG: setzt voraus, dass die "Valid post logout redirect URIs" des jeweiligen Keycloak-Clients
-     * {@code {baseUrl}/login.html} erlauben -- sonst zeigt Keycloak dort eine Fehlerseite statt des Redirects
-     * (der lokale Logout selbst ist davon nicht betroffen, nur die Rueckleitung).
+     * Pass the logout on to the OIDC provider (RP-initiated logout, Keycloak {@code end_session_endpoint}):
+     * without it the Keycloak SSO session survives a local logout, and a renewed "log in with SSO" click
+     * then silently logs the user back in (without a password prompt). For form/magic-link logins
+     * (no {@code OidcUser} principal) it automatically falls back to the local {@code postLogoutRedirectUri}.
+     * ATTENTION: this requires that the "Valid post logout redirect URIs" of the respective Keycloak client
+     * permit {@code {baseUrl}/login.html} -- otherwise Keycloak shows an error page there instead of the redirect
+     * (the local logout itself is unaffected, only the way back).
      */
     @Bean
     public LogoutSuccessHandler oidcLogoutSuccessHandler() {
@@ -440,12 +440,12 @@ public class PlaintextSecurityConfig {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 7): BCrypt-Kostenfaktor {@value #BCRYPT_STRENGTH} statt des
-     * Spring-Defaults 10. Der Default stammt aus 2010er-Hardware; 12 vervierfacht den Aufwand
-     * eines Offline-Angriffs auf einen erbeuteten Hash und kostet beim Login weiterhin nur
-     * einen Bruchteil einer Sekunde. BCrypt-Hashes tragen ihren Kostenfaktor im String
-     * ({@code $2a$10$...}), bestehende Passwoerter bleiben deshalb ohne Migration gueltig —
-     * sie werden lediglich erst beim naechsten Passwortwechsel auf 12 angehoben.
+     * SECURITY (card 314, item 7): BCrypt cost factor {@value #BCRYPT_STRENGTH} instead of Spring's
+     * default of 10. That default stems from 2010s hardware; 12 quadruples the effort
+     * of an offline attack on a stolen hash and still costs only
+     * a fraction of a second at login. BCrypt hashes carry their cost factor in the string
+     * ({@code $2a$10$...}), so existing passwords stay valid without a migration —
+     * they are merely raised to 12 on the next password change.
      */
     static final int BCRYPT_STRENGTH = 12;
 
@@ -466,64 +466,64 @@ public class PlaintextSecurityConfig {
 
     @Bean
     PersistentTokenBasedRememberMeServices rememberMeServices() {
-        // Karte 898: PlaintextRememberMeServices statt der Spring-Klasse. Ein Series/Token-Mismatch
-        // wirft dort keine CookieTheftException nach draussen mehr — sie schlug bis in den
-        // dispatcherServlet durch und machte /login.html zu HTTP 500 (sechsmal in sieben Tagen,
-        // gemessen in Karte 892). Der Diebstahlschutz bleibt unberuehrt: removeUserTokens laeuft
-        // in processAutoLoginCookie VOR dem throw, das Cookie wird per cancelCookie geloescht.
+        // Card 898: PlaintextRememberMeServices instead of the Spring class. There a series/token mismatch
+        // no longer throws a CookieTheftException to the outside — it used to propagate into the
+        // dispatcherServlet and turned /login.html into an HTTP 500 (six times in seven days,
+        // measured in card 892). The theft protection is untouched: removeUserTokens runs
+        // in processAutoLoginCookie BEFORE the throw, the cookie is deleted via cancelCookie.
         PersistentTokenBasedRememberMeServices services =
                 new PlaintextRememberMeServices(rememberMeSigningKey, userDetail, tokenRepository);
-        // Bei OAuth/OIDC-Login gibt es keinen 'remember-me'-Formparameter. Damit
-        // PlaintextAuthenticationSuccessHandler#loginSuccess dennoch einen persistenten
-        // Cookie ausstellt, muss alwaysRemember=true sein (sonst prüft loginSuccess den
-        // fehlenden Parameter und stellt nichts aus). Nebenwirkung: auch der Form-Login
-        // erhält dann IMMER einen remember-me-Cookie – für diesen Personal-Admin-Use-Case
-        // gewollt (siehe plaintext.security.remember-me-on-oauth). Flag=false => altes
-        // Opt-in-Verhalten (nur mit remember-me-Checkbox).
+        // On an OAuth/OIDC login there is no 'remember-me' form parameter. For
+        // PlaintextAuthenticationSuccessHandler#loginSuccess to issue a persistent
+        // cookie nonetheless, alwaysRemember has to be true (otherwise loginSuccess checks the
+        // missing parameter and issues nothing). Side effect: the form login then
+        // ALWAYS receives a remember-me cookie as well - intended for this personal-admin use case
+        // (see plaintext.security.remember-me-on-oauth). Flag=false => the old
+        // opt-in behaviour (only with the remember-me checkbox).
         services.setAlwaysRemember(securityProperties.isRememberMeOnOauth());
         return services;
     }
 
     /**
-     * Baut die Content-Security-Policy zusammen.
+     * Assembles the content security policy.
      *
-     * <p>Herausgezogen aus der Filterkette, weil {@code script-src} seit Welle 4 umschaltbar ist
-     * ({@code plaintext.security.csp.script-unsafe-inline}) und dieser eine Unterschied sonst in
-     * einem 20-zeiligen String-Konkat versteckt waere, den kein Test erreicht.
+     * <p>Pulled out of the filter chain because {@code script-src} has been switchable since wave 4
+     * ({@code plaintext.security.csp.script-unsafe-inline}) and this one difference would otherwise be
+     * hidden in a 20-line string concatenation that no test reaches.
      *
-     * <p><b>Warum das ueberhaupt ein Schalter ist.</b> Mit {@code 'unsafe-inline'} fuehrt der
-     * Browser jedes {@code <script>} aus, das im Dokument steht — auch ein eingeschleustes. Die
-     * uebrige Policy bleibt davon unberuehrt, aber gegen XSS wirkt sie an dieser Stelle nicht.
-     * Ohne {@code 'unsafe-inline'} laeuft nur JavaScript aus Dateien gleicher Herkunft. Der
-     * Schalter steht auf {@code true} (Bestandsverhalten) und wird app-weise umgelegt, sobald die
-     * jeweilige App kein eigenes Inline-JavaScript mehr hat — geprueft von
-     * {@code PlaintextInlineJsVertragTest} — und {@code joinfaces.primefaces.csp=true} gesetzt
-     * ist, damit PrimeFaces seine eigenen Handler herauszieht.
+     * <p><b>Why this is a switch at all.</b> With {@code 'unsafe-inline'} the browser executes
+     * every {@code <script>} that stands in the document — an injected one included. The
+     * rest of the policy is unaffected by that, but at this point it does not work against XSS.
+     * Without {@code 'unsafe-inline'} only JavaScript from files of the same origin runs. The
+     * switch stands at {@code true} (existing behaviour) and is thrown per app as soon as the
+     * respective app has no inline JavaScript of its own left — checked by
+     * {@code PlaintextInlineJsVertragTest} — and {@code joinfaces.primefaces.csp=true} is set,
+     * so that PrimeFaces pulls its own handlers out.
      *
-     * <p><b>ACHTUNG, gemessen am 30.08.2026 gegen die laufende root-Anwendung:</b> Sobald
-     * {@code joinfaces.primefaces.csp=true} gesetzt ist, schreibt PrimeFaces auf jeder
-     * Faces-Seite einen EIGENEN {@code Content-Security-Policy}-Header und ERSETZT damit den
-     * hier gebauten — uebrig bleibt {@code script-src 'self' 'nonce-…';}, also weder
-     * {@code default-src} noch {@code frame-ancestors}, {@code form-action}, {@code img-src}
-     * oder {@code connect-src}. Auf Nicht-Faces-Pfaden (REST, Actuator, statische Dateien)
-     * bleibt dieser Header hier in Kraft. Wer den Schalter umlegt, muss PrimeFaces deshalb die
-     * vollstaendige Policy mitgeben ({@code joinfaces.primefaces.csp-policy}) — und dort MUSS
-     * {@code script-src} die LETZTE Direktive sein: PrimeFaces haengt das Nonce-Token schlicht
-     * ans Ende der Zeichenkette, es landet sonst in der falschen Direktive (nachgemessen:
+     * <p><b>ATTENTION, measured on 30.08.2026 against the running root application:</b> as soon as
+     * {@code joinfaces.primefaces.csp=true} is set, PrimeFaces writes its OWN
+     * {@code Content-Security-Policy} header on every Faces page and thereby REPLACES the one
+     * built here — what is left is {@code script-src 'self' 'nonce-…';}, hence neither
+     * {@code default-src} nor {@code frame-ancestors}, {@code form-action}, {@code img-src}
+     * or {@code connect-src}. On non-Faces paths (REST, actuator, static files)
+     * this header stays in force. Whoever throws the switch must therefore hand PrimeFaces the
+     * complete policy ({@code joinfaces.primefaces.csp-policy}) — and there
+     * {@code script-src} MUST be the LAST directive: PrimeFaces simply appends the nonce token
+     * to the end of the string, otherwise it ends up in the wrong directive (measured:
      * {@code … form-action 'self' 'nonce-…'}).
      *
-     * @param scriptUnsafeInline {@code true} = {@code script-src} fuehrt {@code 'unsafe-inline'}
-     * @return vollstaendige Policy fuer den {@code Content-Security-Policy}-Header
+     * @param scriptUnsafeInline {@code true} = {@code script-src} carries {@code 'unsafe-inline'}
+     * @return complete policy for the {@code Content-Security-Policy} header
      */
     static String cspPolicy(boolean scriptUnsafeInline) {
         String unsafeInline = scriptUnsafeInline ? "'unsafe-inline' " : "";
         return "default-src 'self'; " +
-                // SECURITY (Karte 314, Punkt 3): 'unsafe-eval' entfernt. Weder eigener
-                // JS-Code noch PrimeFaces 15 brauchen es (im Repo kein eval()/new Function()).
+                // SECURITY (card 314, item 3): 'unsafe-eval' removed. Neither our own
+                // JS code nor PrimeFaces 15 needs it (no eval()/new Function() in the repository).
                 "script-src 'self' " + unsafeInline + "https://cdn.jsdelivr.net https://unpkg.com; " +
-                // style-src behaelt 'unsafe-inline': die Views tragen Hunderte style="…"-Attribute,
-                // und PrimeFaces schreibt Stile zur Laufzeit. Das ist ein eigener, deutlich
-                // groesserer Umbau — und ein Inline-Stil ist nicht dasselbe Risiko wie Inline-Code.
+                // style-src keeps 'unsafe-inline': the views carry hundreds of style="…" attributes,
+                // and PrimeFaces writes styles at runtime. That is a separate, considerably
+                // larger rebuild — and an inline style is not the same risk as inline code.
                 "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; " +
                 "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org https://server.arcgisonline.com https://raw.githubusercontent.com https://wmts.geo.admin.ch https://unpkg.com; " +
                 "font-src 'self' data:; " +
@@ -531,11 +531,11 @@ public class PlaintextSecurityConfig {
                 "worker-src 'self' blob:; " +
                 "frame-ancestors 'self'; " +
                 "base-uri 'self'; " +
-                // SECURITY (Karte 314, Punkt 3): form-action auf 'self' reduziert.
-                // Im gesamten Repo existiert kein Formular mit absoluter action-URL
-                // auf eine andere Domain; der OIDC-Flow verlaesst die Anwendung per
-                // 302-Redirect (GET), nicht per Formular-POST, und ist von
-                // form-action daher nicht betroffen.
+                // SECURITY (card 314, item 3): form-action reduced to 'self'.
+                // In the whole repository there is no form with an absolute action URL
+                // pointing to another domain; the OIDC flow leaves the application via a
+                // 302 redirect (GET), not via a form POST, and is therefore not affected
+                // by form-action.
                 "form-action 'self'";
     }
 

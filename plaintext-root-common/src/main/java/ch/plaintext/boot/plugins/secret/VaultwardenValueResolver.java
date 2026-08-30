@@ -12,56 +12,57 @@ import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Uebersetzt einen {@code vault:}-Property-Wert in das entsprechende Secret aus
- * Vaultwarden. Kapselt Parsing der drei Syntaxformen, die
- * Namenskonventions-Pruefung, das Caching pro Boot und das Fail-fast-Verhalten.
+ * Translates a {@code vault:} property value into the corresponding secret from
+ * Vaultwarden. Encapsulates the parsing of the three syntax forms, the naming
+ * convention check, the per-boot caching and the fail-fast behaviour.
  *
- * <p>Der {@link VaultwardenSecretService} wird ueber einen {@link Supplier} LAZY
- * bezogen und erst beim ersten aufzuloesenden Wert instanziiert (ein einziges Mal,
- * danach gecacht). So ist der Resolver unabhaengig vom Spring-Context testbar
- * (gemockter Service).</p>
+ * <p>The {@link VaultwardenSecretService} is obtained LAZILY through a
+ * {@link Supplier} and only instantiated on the first value to be resolved (exactly
+ * once, cached afterwards). That makes the resolver testable independently of the
+ * Spring context (mocked service).</p>
  *
- * <h2>Boot-Retry bei transienter Stoerung</h2>
- * <p>Scheitert die Aufloesung, weil der Vault-Zugriff selbst gescheitert ist (Login/Sync-Fehler,
- * Timeout, HTTP 429), wird VOR dem Fail-fast mehrfach gewartet und erneut versucht — nach einem
- * 429 bewusst lange (das Rate-Limit fuellt sich nur ueber Zeit wieder auf). Nur wenn der Sync
- * ERFOLGREICH war und das Item trotzdem fehlt, bricht der Boot sofort ab: dann ist die leere
- * Antwort definitiv (Tippfehler-Fall schuetu.remember-me-keyn, 18.08.2026). Anlass fuer den
- * Retry: 21.08.2026 — ein crashloopender Nachbar-Container hielt den geteilten Login-Bucket
- * leer, und guild 1.372.0 sowie app-snapshot scheiterten im ersten und einzigen Versuch.</p>
+ * <h2>Boot retry on a transient disturbance</h2>
+ * <p>If the resolution fails because the vault access itself failed (login/sync error,
+ * timeout, HTTP 429), the resolver waits and retries several times BEFORE failing fast — after
+ * a 429 deliberately for a long time (the rate limit only refills over time). Only when the
+ * sync SUCCEEDED and the item is still missing does the boot abort immediately: the empty
+ * answer is definitive then (the typo case schuetu.remember-me-keyn, 18.08.2026). What
+ * prompted the retry: 21.08.2026 — a crash-looping neighbouring container kept the shared
+ * login bucket empty, and guild 1.372.0 as well as app-snapshot failed on their first and
+ * only attempt.</p>
  */
 @Slf4j
 class VaultwardenValueResolver {
 
-    /** Wert-Prefix, das eine Tresor-Referenz kennzeichnet. */
+    /** Value prefix that marks a vault reference. */
     static final String VAULT_PREFIX = "vault:";
 
-    /** Selektor-Trenner zwischen Item-Name und Feld-Selektor. */
+    /** Selector separator between the item name and the field selector. */
     private static final char SELECTOR_SEP = '#';
 
-    /** Prefix des Custom-Feld-Selektors ({@code #field:<name>}). */
+    /** Prefix of the custom field selector ({@code #field:<name>}). */
     private static final String FIELD_SELECTOR = "field:";
 
     /**
-     * Namenskonvention {@code <app>.<key>} (z.B. {@code app.jira-bit-admin}).
-     * Passt der Item-Name nicht, wird nur ge-WARN-t, aber trotzdem aufgeloest.
+     * Naming convention {@code <app>.<key>} (e.g. {@code app.jira-bit-admin}).
+     * If the item name does not match, only a WARN is logged, but it is resolved anyway.
      */
     private static final Pattern NAME_CONVENTION = Pattern.compile("^[a-z0-9-]+\\.[a-z0-9-]+");
 
-    /** Boot-Retry: Gesamtzahl der Leseversuche je Referenz bei transienter Stoerung. */
+    /** Boot retry: total number of read attempts per reference on a transient disturbance. */
     static final int BOOT_MAX_VERSUCHE = 4;
 
-    /** Wartezeit vor dem ersten Boot-Retry; verdoppelt sich je weiterem Versuch (5s, 10s, 20s). */
+    /** Waiting time before the first boot retry; doubles with every further attempt (5s, 10s, 20s). */
     static final long BOOT_WARTE_START_MS = 5_000;
 
     /**
-     * Wartezeit nach einem HTTP 429: knapp UEBER der Default-Refill-Rate des Vaultwarden-Login-
-     * Limiters (1 Token je 60s). Kuerzer zu warten hiesse, den naechsten Versuch sicher wieder
-     * in den leeren Bucket zu schicken.
+     * Waiting time after an HTTP 429: just ABOVE the default refill rate of the Vaultwarden login
+     * limiter (1 token per 60s). Waiting any less would mean sending the next attempt straight
+     * back into the empty bucket.
      */
     static final long BOOT_WARTE_RATE_LIMIT_MS = 65_000;
 
-    /** Schlaf-Hook — im Betrieb {@link Thread#sleep(long)}, im Test ein Rekorder ohne Echtzeit. */
+    /** Sleep hook — {@link Thread#sleep(long)} in production, a recorder without real time in the test. */
     @FunctionalInterface
     interface Schlaefer {
         void schlafe(long millis) throws InterruptedException;
@@ -69,7 +70,7 @@ class VaultwardenValueResolver {
 
     private final Supplier<VaultwardenSecretService> serviceSupplier;
     private final Schlaefer schlaefer;
-    /** Pro Boot aufgeloeste Werte (Key = kompletter Roh-Wert inkl. {@code vault:}-Prefix). */
+    /** Values resolved per boot (key = the complete raw value including the {@code vault:} prefix). */
     private final Map<String, String> cache = new ConcurrentHashMap<>();
     private volatile VaultwardenSecretService service;
 
@@ -82,18 +83,18 @@ class VaultwardenValueResolver {
         this.schlaefer = schlaefer;
     }
 
-    /** {@code true}, wenn der Wert eine {@code vault:}-Referenz ist. */
+    /** {@code true} when the value is a {@code vault:} reference. */
     static boolean isVaultReference(Object value) {
         return value instanceof String s && s.startsWith(VAULT_PREFIX);
     }
 
     /**
-     * Loest einen {@code vault:}-Roh-Wert auf.
+     * Resolves a {@code vault:} raw value.
      *
-     * @param propertyName Property-Schluessel (nur fuer Log/Exception, kein Secret)
-     * @param rawValue     Roh-Wert mit {@code vault:}-Prefix
-     * @return der aufgeloeste Secret-Wert (nie {@code null})
-     * @throws VaultwardenPropertyResolutionException wenn nicht aufloesbar (Fail-fast)
+     * @param propertyName property key (only for log/exception, not a secret)
+     * @param rawValue     raw value with the {@code vault:} prefix
+     * @return the resolved secret value (never {@code null})
+     * @throws VaultwardenPropertyResolutionException when it cannot be resolved (fail fast)
      */
     String resolve(String propertyName, String rawValue) {
         String cached = cache.get(rawValue);
@@ -130,7 +131,7 @@ class VaultwardenValueResolver {
         return result;
     }
 
-    /** Menschliche Bezeichnung des Selektors; wirft bei unbekanntem Selektor (Fail-fast). */
+    /** Human-readable designation of the selector; throws on an unknown selector (fail fast). */
     private static String artDesSelektors(String propertyName, String itemName, String selector) {
         if (selector.isEmpty() || selector.equalsIgnoreCase("password")) {
             return "Passwort";
@@ -145,7 +146,7 @@ class VaultwardenValueResolver {
                 "unbekannter Selektor '#" + selector + "'");
     }
 
-    /** Liest den Wert gemaess Selektor (Selektor ist hier bereits validiert). */
+    /** Reads the value according to the selector (the selector is already validated here). */
     private static Optional<String> leseWert(VaultwardenSecretService svc, String itemName, String selector) {
         if (selector.isEmpty() || selector.equalsIgnoreCase("password")) {
             return svc.getPassword(itemName);
@@ -157,10 +158,10 @@ class VaultwardenValueResolver {
     }
 
     /**
-     * Wiederholt die Leseoperation, solange der leere Wert auf einer TRANSIENTEN Vault-Stoerung
-     * beruht (Login/Sync-Fehler, Timeout, HTTP 429) — mit Wartezeit dazwischen, nach einem 429
-     * bewusst {@value #BOOT_WARTE_RATE_LIMIT_MS}ms. Eine leere Antwort nach ERFOLGREICHEM Sync
-     * ist definitiv (Item fehlt wirklich) und wird nicht wiederholt.
+     * Repeats the read operation for as long as the empty value is due to a TRANSIENT vault
+     * disturbance (login/sync error, timeout, HTTP 429) — with a waiting time in between, after
+     * a 429 deliberately {@value #BOOT_WARTE_RATE_LIMIT_MS}ms. An empty answer after a SUCCESSFUL
+     * sync is definitive (the item really is missing) and is not repeated.
      */
     private Optional<String> mitBootRetry(Optional<String> wert, VaultwardenSecretService svc,
                                           String propertyName, String itemName, String selector) {
@@ -178,7 +179,7 @@ class VaultwardenValueResolver {
                 schlaefer.schlafe(warteMs);
             } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
-                return wert; // unterbrochen -> ohne weiteren Versuch in den Fail-fast
+                return wert; // interrupted -> into the fail-fast without a further attempt
             }
             svc.erzwingeNeuenVersuch();
             wert = leseWert(svc, itemName, selector);
@@ -188,9 +189,10 @@ class VaultwardenValueResolver {
     }
 
     /**
-     * Fail-fast-Begruendung: unterscheidet die transiente Stoerung (Vault-Zugriff scheitert,
-     * Aussage ueber das Item unmoeglich) vom definitiv fehlenden Item nach erfolgreichem Sync.
-     * Die Meldung nennt NIE Secret-Werte — nur die secret-freie Fehlermeldung des Clients.
+     * Fail-fast rationale: distinguishes the transient disturbance (vault access fails, no
+     * statement about the item possible) from the definitively missing item after a successful
+     * sync. The message NEVER names secret values — only the secret-free error message of the
+     * client.
      */
     private static String fehlertext(String kind, VaultwardenSecretService svc) {
         if (svc.istLetzterZugriffTransientGescheitert()) {
@@ -202,7 +204,7 @@ class VaultwardenValueResolver {
                 + " fehlt bzw. heisst anders)";
     }
 
-    /** Lazy-Singleton: Service genau einmal beziehen (erst beim ersten vault:-Wert). */
+    /** Lazy singleton: obtain the service exactly once (only on the first vault: value). */
     private VaultwardenSecretService service() {
         VaultwardenSecretService s = service;
         if (s == null) {

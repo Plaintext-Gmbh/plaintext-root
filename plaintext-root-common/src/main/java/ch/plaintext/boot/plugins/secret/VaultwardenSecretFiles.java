@@ -15,40 +15,40 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Liest die Bootstrap-Geheimnisse des Vault-Clients aus einer <b>Datei</b> statt aus einer
- * Umgebungsvariablen — die {@code *_FILE}-Konvention, wie sie Postgres, MySQL und die meisten
- * Docker-Images kennen (Karte 942).
+ * Reads the bootstrap secrets of the vault client from a <b>file</b> instead of from an
+ * environment variable — the {@code *_FILE} convention as known from Postgres, MySQL and most
+ * Docker images (Karte 942).
  *
- * <h2>Warum das noetig wurde</h2>
- * <p>Am 30.08.2026 gemessen: {@code PLAINTEXT_VAULT_MASTER_PASSWORD} stand im Klartext in der
- * Umgebung <b>aller vier</b> PROD-Container. Eine Umgebungsvariable ist fuer jeden lesbar, der
- * einen Befehl im Container ausfuehren darf ({@code printenv}, ein Befehl, kein sudo) — und sie
- * landet zusaetzlich in {@code docker inspect}, in Crash-Dumps, in Prozesslisten und in jeder
- * Support-Ausgabe, die die Umgebung mitschreibt.</p>
+ * <h2>Why this became necessary</h2>
+ * <p>Measured on 30.08.2026: {@code PLAINTEXT_VAULT_MASTER_PASSWORD} sat in plaintext in the
+ * environment of <b>all four</b> PROD containers. An environment variable is readable by
+ * anyone allowed to run a command in the container ({@code printenv}, one command, no sudo) —
+ * and it additionally ends up in {@code docker inspect}, in crash dumps, in process listings
+ * and in every support dump that records the environment.</p>
  *
- * <p><b>Warum nicht einfach ein API-Key.</b> Der naheliegende Gedanke — Personal-API-Key
- * ({@code clientId}/{@code clientSecret}) statt Master-Passwort — traegt nicht, und das ist
- * gemessen: {@link VaultwardenClient} braucht das Master-Passwort nicht nur zum Anmelden, sondern
- * zum <b>Entschluesseln</b> des UserKeys ({@code stretchMasterKey(masterKey)}). Der API-Key
- * ersetzt nur den Token-Grant. Bitwarden verschluesselt clientseitig; ohne den aus dem
- * Master-Passwort abgeleiteten Schluessel bleiben die Eintraege unlesbar.</p>
+ * <p><b>Why not simply an API key.</b> The obvious idea — a personal API key
+ * ({@code clientId}/{@code clientSecret}) instead of the master password — does not hold, and
+ * that has been measured: {@link VaultwardenClient} needs the master password not only to log
+ * in but to <b>decrypt</b> the user key ({@code stretchMasterKey(masterKey)}). The API key
+ * only replaces the token grant. Bitwarden encrypts client-side; without the key derived from
+ * the master password the entries stay unreadable.</p>
  *
- * <h2>Was diese Klasse leistet — und was nicht</h2>
- * <p>Sie holt den Wert aus der Umgebung heraus. Im Dateisystem des Containers steht er weiterhin;
- * wer dort lesen darf, kommt heran. Der Unterschied ist die Zahl der Wege: eine Datei mit
- * {@code 0400} liest der Anwendungsbenutzer, ein {@code printenv} liest jeder Prozess, und
- * {@code docker inspect} liest jeder mit Docker-Zugriff — <b>ohne</b> in den Container zu
- * muessen.</p>
+ * <h2>What this class achieves — and what it does not</h2>
+ * <p>It takes the value out of the environment. In the container's file system it is still
+ * there; whoever may read there can get at it. The difference is the number of ways in: a file
+ * with {@code 0400} is read by the application user, a {@code printenv} is read by every
+ * process, and {@code docker inspect} is read by everyone with Docker access — <b>without</b>
+ * having to get into the container at all.</p>
  *
- * <h2>Verwendung (app.env)</h2>
+ * <h2>Usage (app.env)</h2>
  * <pre>
- * # statt:
+ * # instead of:
  * # PLAINTEXT_VAULT_MASTER_PASSWORD=...
  * PLAINTEXT_VAULT_MASTER_PASSWORD_FILE=/run/secrets/vault-master-password
  * </pre>
- * <p>Dazu im Compose die Datei read-only einhaengen. Ist <b>beides</b> gesetzt, gewinnt die
- * direkte Variable und es wird eine WARN geloggt — sonst repariert man an der Datei und wundert
- * sich, warum nichts passiert.</p>
+ * <p>Additionally mount the file read-only in the compose file. If <b>both</b> are set, the
+ * direct variable wins and a WARN is logged — otherwise one keeps fixing the file and wonders
+ * why nothing happens.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -56,15 +56,15 @@ import java.util.Map;
 @Slf4j
 final class VaultwardenSecretFiles {
 
-    /** Property-Name der Quelle, die die aus Dateien gelesenen Werte traegt. */
+    /** Property name of the source that carries the values read from files. */
     static final String SOURCE_NAME = "vaultwardenSecretFiles";
 
     /**
-     * Property-Paare: der Zielschluessel und der Schluessel, der auf die Datei zeigt.
-     * Bewusst eine feste, kleine Liste statt einer generischen {@code *_FILE}-Regel ueber alle
-     * Properties: Diese drei sind die Bootstrap-Geheimnisse des Vault-Clients: alles andere kommt
-     * anschliessend als {@code vault:}-Referenz aus dem Tresor und steht ohnehin nicht in der
-     * Umgebung.
+     * Property pairs: the target key and the key that points at the file.
+     * Deliberately a fixed, small list instead of a generic {@code *_FILE} rule across all
+     * properties: these three are the bootstrap secrets of the vault client; everything else
+     * comes from the vault afterwards as a {@code vault:} reference and is not in the
+     * environment anyway.
      */
     private static final Map<String, String> ZIEL_ZU_DATEI = Map.of(
             "plaintext.vault.master-password", "plaintext.vault.master-password-file",
@@ -75,13 +75,13 @@ final class VaultwardenSecretFiles {
     }
 
     /**
-     * Haengt — falls {@code *-file}-Properties gesetzt sind und die Dateien lesbar sind — eine
-     * Property-Quelle mit den gelesenen Werten ins Environment.
+     * Attaches — if {@code *-file} properties are set and the files are readable — a property
+     * source with the values that were read into the environment.
      *
-     * <p><b>Fail-fast bei einem echten Fehler:</b> Zeigt ein {@code *-file}-Property auf eine
-     * Datei, die fehlt oder nicht lesbar ist, bricht der Start ab. Die Alternative waere, still
-     * ohne Geheimnis weiterzulaufen — und das endet in einem Vault-Login-Fehler, dessen Ursache
-     * niemand mehr der Dateiangabe zuordnet.</p>
+     * <p><b>Fail fast on a real error:</b> if a {@code *-file} property points at a file that is
+     * missing or unreadable, startup aborts. The alternative would be to carry on silently
+     * without the secret — and that ends in a vault login error whose cause nobody traces back
+     * to the file setting.</p>
      */
     static void anwenden(ConfigurableEnvironment environment) {
         if (environment.getPropertySources().contains(SOURCE_NAME)) {
@@ -100,7 +100,7 @@ final class VaultwardenSecretFiles {
                 continue;
             }
             gelesen.put(ziel, lies(pfad.trim(), e.getValue()));
-            // Bewusst nur Pfad und Laenge im Log — nie der Wert (Karte 667).
+            // Deliberately only the path and the length in the log — never the value (Karte 667).
             log.info("Vault-Bootstrap: {} aus Datei gelesen ({})", ziel, pfad.trim());
         }
         if (!gelesen.isEmpty()) {
@@ -109,9 +109,9 @@ final class VaultwardenSecretFiles {
     }
 
     /**
-     * Liest eine Geheimnis-Datei. Ein abschliessender Zeilenumbruch wird entfernt — er entsteht
-     * bei jedem {@code echo > datei} und waere sonst Teil des Passworts, was in einem
-     * Anmeldefehler endet, den niemand der Datei ansieht.
+     * Reads a secret file. A trailing line break is removed — it arises with every
+     * {@code echo > file} and would otherwise be part of the password, which ends in a login
+     * error that nobody would attribute to the file.
      */
     private static String lies(String pfad, String propertyName) {
         Path p = Path.of(pfad);

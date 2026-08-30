@@ -15,8 +15,8 @@ import org.springframework.core.env.Environment;
 import java.util.List;
 
 /**
- * Spring {@link BeanDefinitionRegistryPostProcessor}, der nach {@link DashboardTile} scannt und die
- * gefundenen Kacheln als Spring-Beans registriert – analog zum
+ * Spring {@link BeanDefinitionRegistryPostProcessor} that scans for {@link DashboardTile} and
+ * registers the tiles it finds as Spring beans – analogous to the
  * {@link ch.plaintext.boot.menu.MenuRegistryPostProcessor}.
  *
  * @author plaintext.ch
@@ -35,7 +35,7 @@ public class TileRegistryPostProcessor implements BeanDefinitionRegistryPostProc
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
         Environment environment = beanFactory.getBean(Environment.class);
-        // Eigene Property mit Fallback auf die Menü-Scan-Property bzw. ch.plaintext
+        // Dedicated property, falling back to the menu scan property resp. ch.plaintext
         String menuDefault = environment.getProperty("plaintext.menu.scan-package", "ch.plaintext");
         String scanPackagesProperty = environment.getProperty("plaintext.dashboard.scan-package", menuDefault);
 

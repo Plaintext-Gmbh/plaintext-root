@@ -15,20 +15,20 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 /**
- * Registriert die wiederverwendbare Web-Infrastruktur.
+ * Registers the reusable web infrastructure.
  *
- * <p><b>Warum eine AutoConfiguration.</b> Die Klassen tragen {@code @Component}/{@code @Controller}
- * und wurden damit nur zu Beans, wenn die konsumierende Anwendung {@code ch.plaintext}
- * component-scannt. Fuer die root-App trifft das zu; eine Anwendung, die sich einzelne Module
- * nimmt, bekam sie stillschweigend nicht — sie startet ohne Fehlermeldung, und das
- * URL-Rewriting fehlt einfach. Genau diese Klasse von Fehler faellt erst im Betrieb auf.
+ * <p><b>Why an AutoConfiguration.</b> The classes carry {@code @Component}/{@code @Controller} and
+ * therefore only became beans if the consuming application component-scans {@code ch.plaintext}.
+ * That holds for the root app; an application that picks individual modules silently did not get
+ * them — it starts without any error message and the URL rewriting is simply missing. Exactly this
+ * class of bug only surfaces in production.
  *
- * <p>Alle Beans sind {@link ConditionalOnMissingBean}; eine Anwendung kann also jede einzelne
- * durch eine eigene ersetzen, ohne dass hier etwas dazwischenfunkt.
+ * <p>All beans are {@link ConditionalOnMissingBean}; an application can therefore replace each one
+ * of them with its own without anything here getting in the way.
  *
- * <p>Die Debug-Controller sind bewusst <b>nicht</b> hier registriert: sie legen interne Pfade
- * und Menuestrukturen offen und gehoeren deshalb hinter eine bewusste Entscheidung der
- * konsumierenden Anwendung (Component-Scan oder eigene {@code @Bean}-Deklaration).
+ * <p>The debug controllers are deliberately <b>not</b> registered here: they expose internal paths
+ * and menu structures and therefore belong behind a deliberate decision by the consuming
+ * application (component scan or its own {@code @Bean} declaration).
  *
  * @author plaintext.ch
  * @since 1.494.0
@@ -41,19 +41,19 @@ import org.springframework.context.annotation.Import;
 public class WebAutoConfiguration {
 
     /**
-     * Liest die Rollen des angemeldeten Benutzers aus dem Spring-Security-Kontext und beantwortet
-     * damit die Sichtbarkeitsfragen des Menues.
+     * Reads the roles of the logged-in user from the Spring Security context and answers the
+     * menu's visibility questions with them.
      *
-     * <p><b>Die Reihenfolge ist hier sicherheitsrelevant</b>, siehe {@link AutoConfigureBefore}
-     * an dieser Klasse. {@link MenuAutoConfiguration} bietet einen permissiven Default-Provider
-     * an ({@code hasRole} liefert immer {@code true}), damit eine App ohne Security ueberhaupt
-     * ein Menue bekommt. Beide Beans sind {@link ConditionalOnMissingBean} — ohne die
-     * Ordnungsangabe gewaenne der Default, und jeder Menuepunkt waere fuer jeden sichtbar. Weil
-     * der Seiten-Zugriffsschutz seine Regeln aus derselben Sichtbarkeit ableitet, waeren damit
-     * auch alle Seiten erreichbar. Ein fail-open ohne jede Fehlermeldung.
-     * {@code SecurityProviderReihenfolgeTest} haelt das fest.
+     * <p><b>The order is security-relevant here</b>, see {@link AutoConfigureBefore} on this
+     * class. {@link MenuAutoConfiguration} offers a permissive default provider
+     * ({@code hasRole} always returns {@code true}), so that an app without security gets a menu
+     * at all. Both beans are {@link ConditionalOnMissingBean} — without the ordering the default
+     * would win and every menu item would be visible to everyone. Because the page access guard
+     * derives its rules from the very same visibility, all pages would then be reachable as well.
+     * A fail-open without any error message.
+     * {@code SecurityProviderReihenfolgeTest} pins this down.
      *
-     * @return der Rollen-Anbieter
+     * @return the role provider
      */
     @Bean
     @ConditionalOnMissingBean(SecurityProvider.class)

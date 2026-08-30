@@ -15,15 +15,15 @@ import java.time.Duration;
 public class MagicLinkProperties {
 
     /**
-     * Gueltigkeitsdauer eines Magic-Links (Default: 10 Minuten).
+     * Validity period of a magic link (default: 10 minutes).
      */
     private Duration tokenTtl = Duration.ofMinutes(10);
 
     /**
-     * Oeffentliche Basis-URL fuer den versendeten Link (z. B. {@code https://app.example.com}).
-     * Sollte in jeder Umgebung konfiguriert sein. Leer = Fallback auf Scheme/Server-Name/Port des
-     * eingehenden Requests – bewusst OHNE {@code X-Forwarded-*}-Header (Host-Header-Injection),
-     * mit WARN-Log.
+     * Public base URL for the sent link (e.g. {@code https://app.example.com}).
+     * Should be configured in every environment. Empty = fallback to scheme/server name/port of the
+     * incoming request - deliberately WITHOUT {@code X-Forwarded-*} headers (host header injection),
+     * with a WARN log entry.
      */
     private String publicBaseUrl = "";
 }

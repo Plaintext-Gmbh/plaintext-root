@@ -20,25 +20,25 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Service für Page Access Control basierend auf Menu-Sichtbarkeit.
- * Prüft ob ein Benutzer Zugriff auf eine JSF View hat, indem die
- * MenuItem.isOn() Methode verwendet wird. Diese prüft sowohl:
- * - Rollen-basierte Sichtbarkeit (via SecurityProvider)
- * - Mandate-basierte Sichtbarkeit (via MenuVisibilityProvider)
+ * Service for page access control based on menu visibility.
+ * Checks whether a user has access to a JSF view by using the
+ * MenuItem.isOn() method. That method checks both:
+ * - role-based visibility (via SecurityProvider)
+ * - tenant-based visibility (via MenuVisibilityProvider)
  *
- * <p><b>Karte 308 (SECURITY).</b> Vorher war dieser Guard an drei Stellen fail-open:
+ * <p><b>Card 308 (SECURITY).</b> This guard used to be fail-open in three places:
  * <ol>
- *   <li>Der Link-Vergleich normalisierte nur {@code .xhtml -> .html} und verglich dann exakt.
- *       Jeder Menuepunkt, dessen {@code link} nicht genau auf {@code .html} endete, fand also
- *       keinen Treffer — {@code mandatemenu.xhtml} in root (ROOT-Menuesteuerung!), 31 {@code .htm}
- *       -Links in plaintext-schuetu, 5 in plaintext-fwtool, 4 {@code .xhtml}-Links in
- *       plaintext-app. Jetzt wird kanonisch verglichen (siehe {@link #kanonisch(String)}).</li>
- *   <li>Kein Menuetreffer -> {@code return true}. Jetzt abhaengig vom {@link PageGuardMode}.</li>
- *   <li>{@code catch (Exception)} -> {@code return true}. Jetzt immer verweigern.</li>
+ *   <li>The link comparison only normalized {@code .xhtml -> .html} and then compared exactly.
+ *       Every menu item whose {@code link} did not end in exactly {@code .html} therefore found
+ *       no match — {@code mandatemenu.xhtml} in root (the ROOT menu configuration!), 31 {@code .htm}
+ *       links in plaintext-schuetu, 5 in plaintext-fwtool, 4 {@code .xhtml} links in
+ *       plaintext-app. The comparison is now canonical (see {@link #kanonisch(String)}).</li>
+ *   <li>No menu match -> {@code return true}. Now depends on the {@link PageGuardMode}.</li>
+ *   <li>{@code catch (Exception)} -> {@code return true}. Now always denies.</li>
  * </ol>
- * Ausserdem entschied vorher der <i>erste</i> gefundene Menuepunkt; bei mehreren Menuepunkten auf
- * denselben Link (z.B. dreimal {@code index.html}) war das von der Bean-Reihenfolge abhaengig.
- * Jetzt gilt: Zugriff erlaubt, wenn <i>irgendein</i> passender Menuepunkt sichtbar ist.
+ * On top of that, the <i>first</i> menu item found used to decide; with several menu items pointing
+ * at the same link (e.g. {@code index.html} three times) that depended on the bean order.
+ * The rule now is: access is granted if <i>any</i> matching menu item is visible.
  *
  * @author plaintext.ch
  * @since 1.42.0
@@ -50,8 +50,8 @@ public class PageAccessGuardService {
     private final PageGuardProperties properties;
 
     /**
-     * Systemseiten die immer erreichbar sein sollen, unabhängig von Menü-Konfiguration.
-     * Kanonische Schreibweise (ohne Endung, ohne führenden Slash).
+     * System pages that must always be reachable, regardless of the menu configuration.
+     * Canonical spelling (without extension, without leading slash).
      */
     private static final Set<String> SYSTEM_PAGES = Set.of(
             "home",
@@ -62,51 +62,52 @@ public class PageAccessGuardService {
     );
 
     /**
-     * Framework-Views ohne Menueeintrag, die trotzdem immer erreichbar sein muessen.
-     * Kanonische Schreibweise.
+     * Framework views without a menu entry that must be reachable anyway.
+     * Canonical spelling.
      */
     private static final Set<String> FRAMEWORK_ALLOWLIST = Set.of(
-            // Zweiter Schritt der TOTP-Anmeldung. Der User ist hier noch nicht voll
-            // authentifiziert; das Gate sitzt im TotpVerificationController.
+            // Second step of the TOTP login. The user is not yet fully authenticated at this
+            // point; the gate sits in TotpVerificationController.
             "login-totp",
-            // Eigenes Profil — in includes/topbar.xhtml fuer JEDEN User verlinkt.
+            // Own profile — linked in includes/topbar.xhtml for EVERY user.
             "myuser",
-            // Benutzerverwaltung: hat ein eigenes Gate (MyUserBackingBean.checkAccess) UND ist in
-            // PlaintextSecurityConfig hart auf ADMIN/ROOT verdrahtet. Der Menue-Guard hat hier
-            // nichts zu entscheiden.
+            // User administration: has a gate of its own (MyUserBackingBean.checkAccess) AND is
+            // hard-wired to ADMIN/ROOT in PlaintextSecurityConfig. The menu guard has nothing to
+            // decide here.
             "useradmin",
-            // Anleitung der Menuesteuerung (Auftrag Daniel, 29.08.2026): kein eigener Menuepunkt
-            // mehr, sondern der Info-Knopf auf mandatemenu/mandatemenudetail/menudiagnose. In
-            // PlaintextSecurityConfig hart auf ROOT verdrahtet (ROOT_ONLY_PAGES).
+            // Menu configuration manual (order from Daniel, 29.08.2026): no menu item of its own
+            // any more, but the info button on mandatemenu/mandatemenudetail/menudiagnose.
+            // Hard-wired to ROOT in PlaintextSecurityConfig (ROOT_ONLY_PAGES).
             "menuesteuerung-anleitung"
     );
 
     /**
-     * Praefixe, unter denen alles erreichbar ist. {@code nosec/} ist im Repo die etablierte
-     * Konvention fuer bewusst offene Pfade (siehe {@code DEFAULT_PERMIT_ALL} und
-     * {@code DEFAULT_CSRF_IGNORE} in {@code PlaintextSecurityConfig}). Ohne diesen Eintrag wuerden
-     * die {@code nosec}-Views der Consumer-Apps (Zeiterfassungs-Uhr, schuetu-Anzeigetafeln) vom
-     * Filter erfasst — der greift, anders als der alte {@code preRenderView}-Guard, auch bei Views
-     * mit eigenem Template.
+     * Prefixes under which everything is reachable. {@code nosec/} is the established convention in
+     * this repository for deliberately open paths (see {@code DEFAULT_PERMIT_ALL} and
+     * {@code DEFAULT_CSRF_IGNORE} in {@code PlaintextSecurityConfig}). Without this entry the
+     * {@code nosec} views of the consuming apps (time-tracking clock, schuetu scoreboards) would be
+     * caught by the filter — unlike the old {@code preRenderView} guard, it also applies to views
+     * with a template of their own.
      */
     private static final Set<String> FRAMEWORK_ALLOW_PREFIXES = Set.of(
             "nosec/"
     );
 
     /**
-     * View-Aliase des Frameworks: Detailseiten ohne eigenen Menueeintrag werden wie ihre
-     * Listenseite bewacht und erben damit deren Rollen. Das ist praeziser als eine Allowlist —
-     * die Seiten bleiben geschuetzt — und braucht keinen zusaetzlichen (sichtbaren) Menuepunkt.
+     * View aliases of the framework: detail pages without a menu entry of their own are guarded
+     * like their list page and thus inherit its roles. That is more precise than an allowlist —
+     * the pages stay protected — and needs no additional (visible) menu item.
      */
     private static final Map<String, String> FRAMEWORK_ALIASES = Map.of(
-            // ROOT-Detailseite der Menuesteuerung. Zusaetzlich hart in PlaintextSecurityConfig.
+            // ROOT detail page of the menu configuration. Additionally hard-wired in
+            // PlaintextSecurityConfig.
             "mandatemenudetail", "mandatemenu",
             "anforderungdetail", "anforderungen",
             "claudesummary", "anforderungen",
             "howtodetail", "howtos"
     );
 
-    /** Schutz gegen Zyklen in der Menue-Hierarchie. */
+    /** Protection against cycles in the menu hierarchy. */
     private static final int MAX_PARENT_TIEFE = 10;
 
     public PageAccessGuardService(MenuRegistry menuRegistry, PageGuardProperties properties) {
@@ -115,13 +116,13 @@ public class PageAccessGuardService {
     }
 
     /**
-     * Prüft ob der aktuelle Benutzer Zugriff auf die angegebene View hat.
-     * Berücksichtigt BEIDE:
-     * - Rollen-basierte Sichtbarkeit (MenuItem.roles via SecurityProvider)
-     * - Mandate-basierte Sichtbarkeit (via MenuVisibilityProvider)
+     * Checks whether the current user has access to the given view.
+     * Takes BOTH into account:
+     * - role-based visibility (MenuItem.roles via SecurityProvider)
+     * - tenant-based visibility (via MenuVisibilityProvider)
      *
-     * @param viewId JSF View ID (z.B. "/kontakte.xhtml")
-     * @return true wenn Zugriff erlaubt, false sonst
+     * @param viewId JSF view ID (e.g. "/kontakte.xhtml")
+     * @return true if access is allowed, false otherwise
      */
     public boolean hasAccessToView(String viewId) {
         if (viewId == null || viewId.isBlank()) {
@@ -158,8 +159,8 @@ public class PageAccessGuardService {
             for (MenuItemImpl item : alleMenus) {
                 String link = item.getCommand();
                 if (link == null || link.isBlank()) {
-                    // Container-Menues ohne Link (z.B. link="" in plaintext-fwtool) duerfen nie
-                    // als Treffer gelten, sonst wuerde ein leerer kanonischer Pfad matchen.
+                    // Container menus without a link (e.g. link="" in plaintext-fwtool) must never
+                    // count as a match, otherwise an empty canonical path would match.
                     continue;
                 }
                 if (kanonisch(link).equals(ziel)) {
@@ -183,14 +184,14 @@ public class PageAccessGuardService {
             return false;
 
         } catch (Exception e) {
-            // Karte 308: vorher wurde hier erlaubt ("um Systemausfall zu vermeiden"). Das ist ein
-            // stiller Autorisierungs-Bypass, sobald irgendwo eine Exception fliegt. Jetzt: verweigern.
+            // Card 308: this used to allow access ("to avoid a system outage"). That is a silent
+            // authorization bypass as soon as an exception is thrown anywhere. Now: deny.
             log.error("SECURITY: Error checking access to view '{}' - denying access: {}", viewId, e.getMessage(), e);
             return false;
         }
     }
 
-    /** Verhalten bei einer View ohne Menuezuordnung — abhaengig vom Modus. */
+    /** Behaviour for a view without a menu assignment — depends on the mode. */
     private boolean keinMenuTreffer(String viewId, String ziel) {
         if (properties.getMode() == PageGuardMode.STRICT) {
             log.warn("SECURITY: Access denied to view '{}' - no menu entry, no alias and not allowlisted "
@@ -208,11 +209,12 @@ public class PageAccessGuardService {
     }
 
     /**
-     * Sichtbarkeit eines Menuepunkts. In {@link PageGuardMode#STRICT} zusaetzlich mit Vererbung der
-     * Eltern-Rollen: {@link MenuItemImpl#isOn()} prueft nur die <i>eigenen</i> {@code roles}. Im
-     * gerenderten Menue verbirgt ein unsichtbares Elternmenue trotzdem alle Kinder
-     * ({@code PrimefacesSubmenu.isRendered()}); ohne Vererbung waere jeder Menuepunkt ohne eigene
-     * {@code roles} unter einem ROOT-/ADMIN-Menue per Direkt-URL fuer jeden User offen.
+     * Visibility of a menu item. In {@link PageGuardMode#STRICT} this additionally inherits the
+     * roles of the parent: {@link MenuItemImpl#isOn()} only checks the item's <i>own</i>
+     * {@code roles}. In the rendered menu an invisible parent menu nevertheless hides all of its
+     * children ({@code PrimefacesSubmenu.isRendered()}); without inheritance every menu item
+     * without {@code roles} of its own below a ROOT/ADMIN menu would be open to every user via a
+     * direct URL.
      */
     private boolean istSichtbar(MenuItemImpl item, List<MenuItemImpl> alleMenus) {
         if (properties.getMode() != PageGuardMode.STRICT) {
@@ -226,11 +228,11 @@ public class PageAccessGuardService {
         if (!item.isOn()) {
             return false;
         }
-        // Eigene roles sind abschliessend: wer sie deklariert, erbt nicht. Das ist die
-        // Ausstiegsklausel fuer bewusst breiter erreichbare Seiten unter einem eingeschraenkten
-        // Elternmenue — z.B. notifications.html (Topbar-Glocke fuer jeden User) oder
-        // api-token.html, die beide roles={"USER","ADMIN","ROOT"} deklarieren, obwohl sie im
-        // Menuebaum unter "Root" bzw. "Admin" haengen.
+        // An item's own roles are final: whoever declares them does not inherit. This is the
+        // escape clause for pages that are deliberately more broadly reachable below a restricted
+        // parent menu — e.g. notifications.html (the topbar bell for every user) or
+        // api-token.html, both of which declare roles={"USER","ADMIN","ROOT"} even though they sit
+        // below "Root" resp. "Admin" in the menu tree.
         if (item.getRoles() != null && !item.getRoles().isEmpty()) {
             return true;
         }
@@ -251,7 +253,7 @@ public class PageAccessGuardService {
             }
         }
         if (eltern.isEmpty()) {
-            // Elternmenue existiert nicht (Tippfehler im parent-Wert). Nicht aussperren.
+            // The parent menu does not exist (typo in the parent value). Do not lock anyone out.
             log.debug("PageAccessGuard: parent menu '{}' of '{}' not found - treating as visible",
                     elternTitel, item.buildFullTitle());
             return true;
@@ -264,7 +266,7 @@ public class PageAccessGuardService {
         return false;
     }
 
-    /** Allowlist = Framework-Defaults + konfigurierte Ergaenzungen. */
+    /** Allowlist = framework defaults + configured additions. */
     private boolean istAufAllowlist(String seite) {
         if (FRAMEWORK_ALLOWLIST.contains(seite)) {
             return true;
@@ -291,7 +293,7 @@ public class PageAccessGuardService {
         return false;
     }
 
-    /** Alias-Ziel (Framework-Defaults + konfigurierte Ergaenzungen), kanonisiert. */
+    /** Alias target (framework defaults + configured additions), canonicalized. */
     private String aliasZiel(String seite) {
         for (Map.Entry<String, String> eintrag : properties.getAliases().entrySet()) {
             if (kanonisch(eintrag.getKey()).equals(seite)) {
@@ -304,14 +306,15 @@ public class PageAccessGuardService {
     }
 
     /**
-     * Kanonische Form eines Pfades oder Menue-Links: kleingeschrieben, ohne fuehrenden Slash, ohne
-     * Query-String und ohne die Endungen {@code .xhtml}, {@code .jsf}, {@code .html}, {@code .htm}.
+     * Canonical form of a path or menu link: lower-cased, without a leading slash, without the
+     * query string and without the extensions {@code .xhtml}, {@code .jsf}, {@code .html},
+     * {@code .htm}.
      *
-     * <p>Damit matchen {@code /kontakte.xhtml}, {@code kontakte.html}, {@code kontakte.htm} und
-     * {@code kontakte} auf denselben Wert. Genau dieser Vergleich fehlte vorher: der Guard
-     * normalisierte nur die View-Id ({@code .xhtml -> .html}), nicht den Menue-Link — der
-     * {@code UrlRewriteFilter} akzeptiert aber sowohl {@code .html} als auch {@code .htm}, und
-     * {@code *.xhtml} ist ebenfalls auf das {@code FacesServlet} gemappt.
+     * <p>This makes {@code /kontakte.xhtml}, {@code kontakte.html}, {@code kontakte.htm} and
+     * {@code kontakte} match the same value. Exactly this comparison was missing before: the guard
+     * only normalized the view id ({@code .xhtml -> .html}), not the menu link — but the
+     * {@code UrlRewriteFilter} accepts both {@code .html} and {@code .htm}, and {@code *.xhtml} is
+     * mapped to the {@code FacesServlet} as well.
      */
     static String kanonisch(String pfad) {
         if (pfad == null) {
@@ -338,8 +341,8 @@ public class PageAccessGuardService {
     }
 
     /**
-     * Alle registrierten Menuepunkte. Verwendet {@link MenuRegistryImpl#getAllMenuItemsImpl()},
-     * um Classloader-Probleme im Spring-Boot-JAR zu vermeiden.
+     * All registered menu items. Uses {@link MenuRegistryImpl#getAllMenuItemsImpl()} to avoid
+     * classloader problems in the Spring Boot JAR.
      */
     private List<MenuItemImpl> alleMenuEintraege() {
         if (menuRegistry instanceof MenuRegistryImpl impl) {
@@ -355,8 +358,8 @@ public class PageAccessGuardService {
     }
 
     /**
-     * Alle Menue-Links in kanonischer Form -> vollstaendiger Menuetitel. Fuer den Startup-Report
-     * und den Invariantentest.
+     * All menu links in canonical form -> full menu title. For the startup report and the
+     * invariant test.
      */
     public Map<String, String> menuLinksKanonisch() {
         Map<String, String> ergebnis = new LinkedHashMap<>();
@@ -371,12 +374,12 @@ public class PageAccessGuardService {
     }
 
     /**
-     * Prueft, ob eine View ueberhaupt einer Regel unterliegt (Systemseite, Allowlist, Alias oder
-     * Menuetreffer). Wird vom Startup-Report genutzt, um die Views zu melden, die in
-     * {@link PageGuardMode#STRICT} gesperrt wuerden.
+     * Checks whether a view is subject to any rule at all (system page, allowlist, alias or menu
+     * match). Used by the startup report to report the views that would be blocked in
+     * {@link PageGuardMode#STRICT}.
      *
-     * @param viewId View-Id oder Pfad
-     * @return {@code true} wenn die View einer Regel zugeordnet ist
+     * @param viewId view id or path
+     * @return {@code true} if the view is assigned to a rule
      */
     public boolean istZugeordnet(String viewId) {
         String seite = kanonisch(viewId);
@@ -386,18 +389,18 @@ public class PageAccessGuardService {
         return menuLinksKanonisch().containsKey(aliasZiel(seite));
     }
 
-    /** Aktueller Modus (fuer Filter, Startup-Report und Tests). */
+    /** Current mode (for the filter, the startup report and tests). */
     public PageGuardMode getMode() {
         return properties.getMode();
     }
 
-    /** Not-Aus-Schalter (fuer Filter und Tests). */
+    /** Emergency off switch (for the filter and tests). */
     public boolean isEnabled() {
         return properties.isEnabled();
     }
 
     /**
-     * Redirect zu Access Denied Seite
+     * Redirect to the access denied page
      */
     public void redirectToAccessDenied() throws IOException {
         FacesContext context = FacesContext.getCurrentInstance();

@@ -21,9 +21,9 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 
 /**
- * Baut und versendet Magic-Links per E-Mail. Kapselt die zuvor im
- * {@link MagicLinkGenerationSuccessHandler} liegende Link-Bau- und Mail-Versand-Logik, damit sie
- * auch aus den Self-Service-/Admin-Formularen wiederverwendet werden kann.
+ * Builds and sends magic links by e-mail. Encapsulates the link-building and mail-sending logic
+ * that previously sat in the {@link MagicLinkGenerationSuccessHandler}, so that it
+ * can also be reused from the self-service/admin forms.
  */
 @Service
 @RequiredArgsConstructor
@@ -38,10 +38,10 @@ public class MagicLinkService {
     private final IMailTemplateProvider mailTemplateProvider;
 
     /**
-     * Versendet den fertigen Magic-Link per System-Mail an den User.
+     * Sends the finished magic link to the user via system mail.
      *
-     * @return {@code true}, wenn die Mail tatsaechlich versendet wurde, sonst {@code false}
-     * (kein Sender, kein Systemmailkonto, Versand fehlgeschlagen).
+     * @return {@code true} if the mail was actually sent, otherwise {@code false}
+     * (no sender, no system mail account, sending failed).
      */
     public boolean sendMagicLinkEmail(MyUserEntity user, String link) {
         String mandat = user.getMandat();
@@ -85,7 +85,7 @@ public class MagicLinkService {
     }
 
     /**
-     * Baut den Magic-Link fuer ein bereits generiertes Token und versendet ihn per Mail.
+     * Builds the magic link for an already generated token and sends it by mail.
      */
     public boolean sendForExistingToken(MyUserEntity user, String rawToken, HttpServletRequest request) {
         String link = buildMagicLink(request, rawToken);
@@ -93,8 +93,8 @@ public class MagicLinkService {
     }
 
     /**
-     * Generiert ein neues Einmal-Token fuer den User und versendet den Magic-Link per Mail.
-     * Bei unbekanntem User, fehlendem Mandat oder deaktiviertem Feature wird nichts generiert/versendet.
+     * Generates a new one-time token for the user and sends the magic link by mail.
+     * For an unknown user, a missing tenant or a deactivated feature nothing is generated/sent.
      */
     public boolean generateAndSend(String username, HttpServletRequest request) {
         MyUserEntity user = userRepository.findByUsername(username);
@@ -117,9 +117,9 @@ public class MagicLinkService {
     }
 
     /**
-     * Fallback-Basis-URL, wenn {@code plaintext.magiclink.public-base-url} nicht konfiguriert ist.
-     * Verwendet bewusst KEINE {@code X-Forwarded-*}-Header: die sind vom Client setzbar und
-     * erlaubten sonst Phishing-Links mit echtem Token auf fremde Hosts (Host-Header-Injection).
+     * Fallback base URL when {@code plaintext.magiclink.public-base-url} is not configured.
+     * Deliberately uses NO {@code X-Forwarded-*} headers: those can be set by the client and
+     * would otherwise allow phishing links with a real token pointing to foreign hosts (host header injection).
      */
     private static String extractBaseUrl(HttpServletRequest request) {
         log.warn("MagicLink: plaintext.magiclink.public-base-url ist nicht konfiguriert – "

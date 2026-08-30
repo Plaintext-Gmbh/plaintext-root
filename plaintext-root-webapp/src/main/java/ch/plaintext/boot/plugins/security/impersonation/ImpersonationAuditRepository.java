@@ -12,6 +12,6 @@ public interface ImpersonationAuditRepository extends JpaRepository<Impersonatio
 
     List<ImpersonationAudit> findAllByOrderByStartedAtDesc();
 
-    /** Die zuletzt gestartete, noch nicht beendete Impersonation für diesen Admin (falls vorhanden). */
+    /** The most recently started impersonation for this admin that has not been ended yet (if any). */
     Optional<ImpersonationAudit> findFirstByAdminUserIdAndEndedAtIsNullOrderByStartedAtDesc(Long adminUserId);
 }

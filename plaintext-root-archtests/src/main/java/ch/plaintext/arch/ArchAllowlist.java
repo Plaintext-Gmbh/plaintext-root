@@ -12,31 +12,31 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Begruendete Ausnahmen fuer die geteilten Linter — eine Datei je Reactor:
+ * Justified exceptions for the shared linters — one file per reactor:
  * {@code <reactor-wurzel>/plaintext-arch-allowlist.txt}.
  *
- * <p>Format, eine Ausnahme je Zeile, Begruendung ist Pflicht:
+ * <p>Format, one exception per line, a justification is mandatory:
  * <pre>
- * # Kommentarzeilen und Leerzeilen sind erlaubt
- * header-hygiene  plaintext-foo/src/main/java/ch/plaintext/foo/Alt.java   # Altbestand, Karte 123
- * header-hygiene  plaintext-foo/src/test/java/**                          # Fixtures, Karte 123
- * jsf-view        plaintext-foo/src/main/resources/META-INF/resources/x.xhtml  # eigener Metadaten-Insert
+ * # comment lines and blank lines are allowed
+ * header-hygiene  plaintext-foo/src/main/java/ch/plaintext/foo/Alt.java   # legacy code, card 123
+ * header-hygiene  plaintext-foo/src/test/java/**                          # fixtures, card 123
+ * jsf-view        plaintext-foo/src/main/resources/META-INF/resources/x.xhtml  # own metadata insert
  * facelets-el     plaintext-foo/src/main/resources/META-INF/resources/y.xhtml  # ...
- * i18n-seed       plaintext-foo/src/main/resources/META-INF/resources/z.xhtml  # Altbestand, Uebersetzung folgt
- * session-bean    FooBackingBean.barService                                # Designfrage, Karte 915
+ * i18n-seed       plaintext-foo/src/main/resources/META-INF/resources/z.xhtml  # legacy code, translation to follow
+ * session-bean    FooBackingBean.barService                                # design question, card 915
  * </pre>
- * Spalte 1 ist die Regel-Kennung, Spalte 2 das Ziel (Pfad relativ zur Reactor-Wurzel mit
- * {@code *}/{@code **} als Platzhalter, bzw. {@code Klasse.feld}), nach {@code #} die
- * Begruendung. Ein Eintrag ohne Begruendung ist ungueltig und laesst den Test fehlschlagen —
- * genau das unterscheidet eine Allowlist von einem Schalter.
+ * Column 1 is the rule identifier, column 2 the target (path relative to the reactor root with
+ * {@code *}/{@code **} as wildcards, or {@code Klasse.feld}), after {@code #} the
+ * justification. An entry without a justification is invalid and makes the test fail —
+ * exactly that is what separates an allowlist from a switch.
  *
- * <p>Warum eine Datei statt eines Markers im Quelltext: Bei Header-/Autor-Verstoessen IST der
- * Quelltext der Verstoss, ein Marker dort waere Selbstbestaetigung. Fuer XHTML gibt es zusaetzlich
- * die Inline-Marker der jeweiligen Linter ({@code jsf-view-ok}, {@code el-quote-ok}) fuer
- * einzelne Zeilen.
+ * <p>Why a file instead of a marker in the source: for header/author violations the source itself
+ * IS the violation, so a marker there would be self-certification. For XHTML the individual
+ * linters additionally offer inline markers ({@code jsf-view-ok}, {@code el-quote-ok}) for
+ * single lines.
  *
- * <p>root fuehrt diese Datei nicht: das Framework muss die eigenen Regeln ohne Ausnahme bestehen.
- * Consumer (app, guild, schuetu, iot) legen sie an, wenn sie Altbestand nicht sofort bereinigen.
+ * <p>root does not keep such a file: the framework has to pass its own rules without exception.
+ * Consumers (app, guild, schuetu, iot) create one when they cannot clean up legacy code right away.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -53,7 +53,7 @@ final class ArchAllowlist {
         this.regel = regel;
     }
 
-    /** Laedt die Ausnahmen der Regel {@code regel} aus der Allowlist des Reactors (fehlt sie: keine Ausnahmen). */
+    /** Loads the exceptions of rule {@code regel} from the reactor's allowlist (if it is missing: no exceptions). */
     static ArchAllowlist fuer(String regel) {
         Path root = ReactorLayout.repoRoot();
         return fuer(regel, root == null ? null : root.resolve(DATEINAME));
@@ -90,7 +90,7 @@ final class ArchAllowlist {
             return;
         }
         if (!teile[0].equals(regel)) {
-            return; // Eintrag einer anderen Regel
+            return; // entry belonging to a different rule
         }
         if (grund.isEmpty()) {
             fehler.add(datei.getFileName() + ":" + nr + " -> Ausnahme ohne Begruendung (nach '#' angeben): " + raw);
@@ -99,7 +99,7 @@ final class ArchAllowlist {
         ziele.add(glob(teile[1].strip()));
     }
 
-    /** {@code **} = beliebig tief, {@code *} = beliebig innerhalb eines Segments; alles andere woertlich. */
+    /** {@code **} = any depth, {@code *} = anything within one segment; everything else literal. */
     private static Pattern glob(String ziel) {
         StringBuilder rx = new StringBuilder();
         for (int i = 0; i < ziel.length(); i++) {
@@ -118,13 +118,13 @@ final class ArchAllowlist {
         return Pattern.compile(rx.toString());
     }
 
-    /** Ist {@code ziel} (relativer Pfad bzw. {@code Klasse.feld}) begruendet ausgenommen? */
+    /** Is {@code ziel} (relative path resp. {@code Klasse.feld}) excepted with a justification? */
     boolean erlaubt(String ziel) {
         String z = ziel.replace('\\', '/');
         return ziele.stream().anyMatch(p -> p.matcher(z).matches());
     }
 
-    /** Formfehler der Datei (fehlende Begruendung, unvollstaendige Zeile) — der Test meldet sie als Verstoss. */
+    /** Format errors of the file (missing justification, incomplete line) — the test reports them as a violation. */
     List<String> fehler() {
         return fehler;
     }

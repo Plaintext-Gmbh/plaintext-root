@@ -22,29 +22,29 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 938: {@code data-theme-colors} muss <b>JSON</b> sein, nicht JavaScript.
+ * Karte 938: {@code data-theme-colors} has to be <b>JSON</b>, not JavaScript.
  *
- * <p><b>Der Defekt.</b> {@link ThemeColorProvider#getColorsJson()} baute ein
- * JavaScript-Objektliteral — unquotierte Schluessel, einfache Anfuehrungszeichen. Solange der
- * Wert direkt in einen {@code <script>}-Block geschrieben wurde, war das gueltiges JavaScript.
- * Seit Karte 502 steht er im Attribut {@code data-theme-colors} an {@code #layout-config} und
- * wird von {@code plaintext-layout/js/config.js} mit {@code JSON.parse} gelesen. JSON kennt
- * beides nicht — auf jeder Seite jeder Anwendung stand
- * {@code SyntaxError: Expected property name or '}' in JSON at position 1} in der Konsole,
- * und weil der Wurf auf oberster Ebene der Datei passierte, war das komplette
- * Konfigurationspanel (Farbe, Dunkelmodus, Menuemodus, Speichern) funktionslos.</p>
+ * <p><b>The defect.</b> {@link ThemeColorProvider#getColorsJson()} built a
+ * JavaScript object literal — unquoted keys, single quotes. As long as the
+ * value was written straight into a {@code <script>} block, that was valid JavaScript.
+ * Since Karte 502 it sits in the attribute {@code data-theme-colors} on {@code #layout-config}
+ * and is read by {@code plaintext-layout/js/config.js} with {@code JSON.parse}. JSON knows
+ * neither of the two — on every page of every application the console showed
+ * {@code SyntaxError: Expected property name or '}' in JSON at position 1},
+ * and because the throw happened at the top level of the file, the entire
+ * configuration panel (colour, dark mode, menu mode, saving) was without function.</p>
  *
- * <p><b>Warum ein Test.</b> Der Unterschied zwischen den beiden Formaten ist mit blossem Auge
- * kaum zu sehen, und im Java-Quelltext heisst die Methode {@code getColorsJson} — sie
- * <i>behauptet</i> also bereits, JSON zu liefern. Nur ein Parser kann das nachpruefen.
- * Dieselbe stille Fehlerform wie in den Karten 430 und 502: HTTP 200, kein Serverlog,
- * sichtbar ist allein, dass nichts passiert.</p>
+ * <p><b>Why a test.</b> The difference between the two formats is barely visible to the naked
+ * eye, and in the Java source the method is called {@code getColorsJson} — so it already
+ * <i>claims</i> to deliver JSON. Only a parser can verify that.
+ * The same silent failure shape as in Karte 430 and 502: HTTP 200, no server log,
+ * all that is visible is that nothing happens.</p>
  */
 class ThemeColorProviderJsonTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    /** Die Schluessel, die {@code applyColorVariables()} in config.js anfasst. */
+    /** The keys that {@code applyColorVariables()} in config.js touches. */
     private static final List<String> FELDER = List.of(
             "primary", "primaryText", "primaryLighter", "primaryBg16", "primaryBg04", "focusRing");
 
@@ -60,8 +60,8 @@ class ThemeColorProviderJsonTest {
     }
 
     /**
-     * Die Gegenprobe zur Pruefung selbst: genau die alte Schreibweise muss durchfallen. Ohne
-     * diesen Fall waere der Test oben auch dann gruen, wenn er gar nichts pruefte.
+     * The counter-check for the check itself: exactly the old spelling has to fail. Without
+     * this case the test above would be green even if it checked nothing at all.
      */
     @Test
     void dasAlteJavaScriptLiteralWaereDurchgefallen() {
@@ -101,8 +101,8 @@ class ThemeColorProviderJsonTest {
     }
 
     /**
-     * Die Werte landen als CSS-Custom-Property im Dokument. Ein Wert, den JSON escapen muesste,
-     * waere ein Zeichen dafuer, dass hier etwas Fremdes durchgereicht wird.
+     * The values end up as a CSS custom property in the document. A value that JSON would have to
+     * escape would be a sign that something foreign is being passed through here.
      */
     @Test
     void dieWerteSindFarbenUndBrauchenKeinEscaping() throws Exception {
@@ -117,17 +117,17 @@ class ThemeColorProviderJsonTest {
     }
 
     /**
-     * Der Attributwert soll zwischen zwei Starts derselben Version identisch sein — sonst
-     * unterscheidet sich ausgeliefertes HTML ohne inhaltlichen Grund und verrauscht jeden
-     * Vergleich (Diff, Cache, Fehlersuche).
+     * The attribute value should be identical between two starts of the same version — otherwise
+     * the delivered HTML differs for no substantive reason and adds noise to every comparison
+     * (diff, cache, debugging).
      *
-     * <p><b>Warum das nicht mit zwei Aufrufen zu pruefen ist.</b> Die Unruhe kommt von
-     * {@code Map.of}/{@code Map.ofEntries}: ihre Iterationsreihenfolge haengt an einem
-     * <b>beim JVM-Start gewuerfelten</b> SALT. Innerhalb eines Laufs liefern zwei Aufrufe
-     * deshalb immer dasselbe — ein Vergleich zweier Instanzen kann den Fehler prinzipiell nicht
-     * sehen. Gemessen wird stattdessen die Reihenfolge selbst: alphabetisch aussen (TreeMap),
-     * light vor dark innen (LinkedHashMap). Beide waeren mit einer {@code Map.of}-Huelle in
-     * einem von mehreren JVM-Laeufen falsch.</p>
+     * <p><b>Why this cannot be checked with two calls.</b> The unrest comes from
+     * {@code Map.of}/{@code Map.ofEntries}: their iteration order depends on a SALT that is
+     * <b>drawn at JVM start</b>. Within one run two calls therefore always return the same
+     * thing — a comparison of two instances cannot see the bug in principle. What is measured
+     * instead is the ordering itself: alphabetical on the outside (TreeMap), light before dark on
+     * the inside (LinkedHashMap). Both would be wrong with a {@code Map.of} shell in one out of
+     * several JVM runs.</p>
      */
     @Test
     void dieReihenfolgeIstStabil() {

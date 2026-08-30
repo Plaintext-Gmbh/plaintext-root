@@ -22,33 +22,33 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Waechter fuer die {@code pt:}-Taglib aus {@code plaintext-root-template} (Karte 984).
+ * Guard for the {@code pt:} taglib from {@code plaintext-root-template} (card 984).
  *
- * <p><b>Warum es diesen Test gibt.</b> Die Taglib besteht aus zwei Teilen, die nichts voneinander
- * wissen: der Deklaration in {@code META-INF/plaintext.taglib.xml} und den Tag-Files in
- * {@code META-INF/tags/}. Faellt eines auseinander — ein Tag deklariert, aber die Datei
- * umbenannt —, merkt das kein Compiler. Der Fehler erscheint erst, wenn jemand die Seite
- * aufruft, und dann als HTTP 500.</p>
+ * <p><b>Why this test exists.</b> The taglib consists of two parts that know nothing about each
+ * other: the declaration in {@code META-INF/plaintext.taglib.xml} and the tag files in
+ * {@code META-INF/tags/}. If one of them drifts apart — a tag declared but the file
+ * renamed — no compiler notices. The defect only appears when somebody opens the page,
+ * and then as an HTTP 500.</p>
  *
- * <p><b>Die zweite Regel hier ist teuer erkauft.</b> Sie haelt einen Fallstrick fest, der am
- * 30.08.2026 an gerendertem HTML gemessen wurde und den man beim Lesen des Codes nicht sieht:</p>
+ * <p><b>The second rule here was dearly bought.</b> It records a pitfall that was measured on
+ * rendered HTML on 30.08.2026 and that you cannot see by reading the code:</p>
  *
- * <p><b>Ein Tag-File erbt die Attribute des umgebenden Tag-Files.</b> Ruft jemand
- * {@code pt:colText} ohne {@code rendered} innerhalb einer {@code pt:table} auf, die ein
- * {@code rendered} traegt, sieht die Spalte das {@code rendered} der Tabelle. Im Pilotversuch
- * erbte auf diese Weise jede einzelne Tabellenzelle die {@code styleClass} der Tabelle
- * ({@code class="token-table"} an 12 von 12 Zellen). Deshalb duerfen optionale Attribute der
- * inneren Tags <b>nicht</b> so heissen wie Attribute von {@code pt:table} — sie tragen ein
- * Praefix ({@code colClass}, {@code colRendered}, {@code btnClass}, …). Pflichtattribute sind
- * unkritisch, weil sie immer gesetzt werden und darum nie erben.</p>
+ * <p><b>A tag file inherits the attributes of the surrounding tag file.</b> If somebody calls
+ * {@code pt:colText} without {@code rendered} inside a {@code pt:table} that carries a
+ * {@code rendered}, the column sees the {@code rendered} of the table. In the pilot run every
+ * single table cell inherited the {@code styleClass} of the table this way
+ * ({@code class="token-table"} on 12 of 12 cells). That is why optional attributes of the
+ * inner tags must <b>not</b> be named like attributes of {@code pt:table} — they carry a
+ * prefix ({@code colClass}, {@code colRendered}, {@code btnClass}, …). Mandatory attributes are
+ * uncritical, because they are always set and therefore never inherit.</p>
  *
- * <p>Der dritte Fallstrick — {@code var="#{var}"} an einer {@code p:dataTable} wirft
- * {@code IllegalArgumentException} in {@code UIData.setValueExpression} — laesst sich nicht als
- * Regel pruefen, weil er nur eine einzige Stelle betrifft. Er steht als Warnung im Kopf von
+ * <p>The third pitfall — {@code var="#{var}"} on a {@code p:dataTable} throws
+ * {@code IllegalArgumentException} in {@code UIData.setValueExpression} — cannot be checked as a
+ * rule, because it affects only a single place. It stands as a warning in the header of
  * {@code tags/table.xhtml}.</p>
  *
- * <p>Der Test laeuft im Consumer ueber {@code dependenciesToScan} mit; Reactoren ohne Taglib
- * bestehen ihn (dann ist schlicht nichts zu pruefen).</p>
+ * <p>The test also runs in the consumer via {@code dependenciesToScan}; reactors without a taglib
+ * pass it (there is then simply nothing to check).</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -57,19 +57,19 @@ class PlaintextTaglibVertragTest {
 
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
-    /** {@code <tag-name>x</tag-name>} und {@code <source>tags/x.xhtml</source>} aus der Deklaration. */
+    /** {@code <tag-name>x</tag-name>} and {@code <source>tags/x.xhtml</source>} from the declaration. */
     private static final Pattern TAG_NAME = Pattern.compile("<tag-name>\\s*([^<\\s]+)\\s*</tag-name>");
     private static final Pattern SOURCE = Pattern.compile("<source>\\s*([^<\\s]+)\\s*</source>");
 
     /**
-     * Attribute, die {@code pt:table} selbst fuehrt und die deshalb in einem inneren Tag-File
-     * nicht als OPTIONALES Attribut auftauchen duerfen — sonst erben sie stillschweigend.
-     * {@code value} steht bewusst NICHT hier: es ist ueberall Pflicht und wird immer gesetzt.
+     * Attributes that {@code pt:table} itself carries and that therefore must not appear in an inner
+     * tag file as an OPTIONAL attribute — otherwise they inherit silently.
+     * {@code value} deliberately is NOT in this list: it is mandatory everywhere and always set.
      */
     private static final Set<String> ERBENDE_ATTRIBUTE =
             Set.of("rendered", "styleClass", "paginator", "rows", "emptyMessage", "widgetVar", "reflow");
 
-    /** Tag-Files, die selbst die Tabelle aufspannen — fuer sie gilt die Erb-Regel nicht. */
+    /** Tag files that span the table themselves — the inheritance rule does not apply to them. */
     private static final Set<String> TABELLEN_TAGS = Set.of("table.xhtml");
 
     private static List<Path> taglibDeklarationen() {
@@ -126,7 +126,7 @@ class PlaintextTaglibVertragTest {
                 }
             }
 
-            // Gegenprobe: Ohne sie waere der Test auch dann gruen, wenn die Regex nichts findet.
+            // Counter-check: without it the test would be green even if the regex found nothing.
             long tagNamen = TAG_NAME.matcher(xml).results().count();
             if (tagNamen == 0) {
                 fehler.add(ReactorLayout.relativ(deklaration) + ": kein einziges <tag-name> gefunden — "
@@ -152,9 +152,9 @@ class PlaintextTaglibVertragTest {
                     }
                     String inhalt = lies(datei);
                     for (String attribut : ERBENDE_ATTRIBUTE) {
-                        // Gesucht ist die VERWENDUNG als eigener Parameter: #{attribut} oder
-                        // #{empty attribut ...}. Ein gleichnamiges XML-Attribut (styleClass="#{colClass}")
-                        // ist gerade der richtige Weg und darf nicht anschlagen.
+                        // What we look for is the USE as a parameter of its own: #{attribut} or
+                        // #{empty attribut ...}. An XML attribute of the same name (styleClass="#{colClass}")
+                        // is precisely the right way and must not trip the rule.
                         Pattern verwendung = Pattern.compile("#\\{\\s*(empty\\s+)?" + attribut + "\\b");
                         if (verwendung.matcher(inhalt).find()) {
                             fehler.add(ReactorLayout.relativ(datei) + ": benutzt #{" + attribut + "} als "

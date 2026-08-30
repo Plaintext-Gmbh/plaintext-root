@@ -15,12 +15,12 @@ public interface AnforderungApiSettingsRepository extends JpaRepository<Anforder
     Optional<AnforderungApiSettings> findByMandat(String mandat);
 
     /**
-     * Legacy-Klartext-Lookup — nur noch für die Übergangsphase/Lazy-Migration
-     * (Alt-Zeilen ohne {@code api_token_hash}). Neue Validierungen laufen über
+     * Legacy cleartext lookup — only for the transitional phase / lazy migration
+     * (legacy rows without {@code api_token_hash}). New validations go through
      * {@link #findByApiTokenHash(String)}.
      */
     Optional<AnforderungApiSettings> findByApiToken(String apiToken);
 
-    /** Lookup über den SHA-256-Hash (hex) des Tokens — der kanonische Weg. */
+    /** Lookup by the SHA-256 hash (hex) of the token — the canonical way. */
     Optional<AnforderungApiSettings> findByApiTokenHash(String apiTokenHash);
 }

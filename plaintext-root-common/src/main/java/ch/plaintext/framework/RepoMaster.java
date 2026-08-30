@@ -18,18 +18,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Registry der {@link PlaintextRepository}-Beans, nach Entitätsname aufschlüsselbar.
+ * Registry of the {@link PlaintextRepository} beans, keyed by entity name.
  *
- * <p><b>Karte 687:</b> Hier stand bis zum 12.08.2026 zusätzlich {@code getNextID(Object)} — eine
- * Id-Vergabe über {@code max(id) + 1}, die für einen unbekannten Typ <b>{@code -1}</b> zurückgab.
- * Ihr einziger Aufrufer war der Generator {@code UseExistingIdOtherwiseGenerateUsingIdentity} in
- * {@link SuperModel}, und der lief seit dem Hibernate-7-Umstieg nicht mehr (Begründung dort). Die
- * Methode war damit unerreichbar — und wäre sie es nicht gewesen, hätte sie Schaden angerichtet:
- * für Entitätstypen ohne {@code PlaintextRepository} die Id {@code -1}, für alle anderen eine unter
- * Nebenläufigkeit doppelt vergebene. Zwei Ausfallmechanismen, von denen einer den anderen verdeckte.
+ * <p><b>Karte 687:</b> until 12.08.2026 this additionally held {@code getNextID(Object)} — an id
+ * assignment via {@code max(id) + 1} that returned <b>{@code -1}</b> for an unknown type. Its
+ * only caller was the generator {@code UseExistingIdOtherwiseGenerateUsingIdentity} in
+ * {@link SuperModel}, and that one had not run since the move to Hibernate 7 (the reasoning is
+ * there). The method was therefore unreachable — and had it not been, it would have done damage:
+ * for entity types without a {@code PlaintextRepository} the id {@code -1}, for all others an id
+ * handed out twice under concurrency. Two failure mechanisms, one of which concealed the other.
  *
- * <p>Mit ihr ist das statische {@code instance}-Feld entfallen; auch das hatte nur der Generator
- * gelesen. Was bleibt, ist die Registry selbst.
+ * <p>Along with it the static {@code instance} field is gone; only the generator had read that
+ * one as well. What remains is the registry itself.
  *
  * @author Plaintext GmbH
  * @since 600
@@ -39,15 +39,15 @@ import java.util.Map;
 public class RepoMaster extends SuperModel {
 
     /**
-     * {@code required = false}, damit ein Kontext ohne eine einzige {@link PlaintextRepository}-Bean
-     * startet (Zustandsbericht 29.08.2026, §3 „Aggregator ohne Opt-out"). Vorher hielt die
-     * Standard-Injektion einer leeren Liste den Start an — und die einzigen Implementierungen im
-     * Framework liegen in {@code plaintext-admin-modules} und {@code plaintext-admin-secrets}. Wer
-     * beide abwaehlte, bekam einen Startfehler an einer Stelle, die mit keinem der beiden Module
-     * etwas zu tun hat. Am Verhalten der bestehenden Apps aendert das nichts: sobald mindestens
-     * eine Bean da ist, spritzt Spring die Liste wie bisher; ohne sie bleibt das bereits
-     * initialisierte {@code new ArrayList<>()} stehen, {@link #init()} baut eine leere Map und
-     * {@link #getRepo(String)} liefert {@code null} — genau wie heute schon fuer jeden unbekannten Typ.
+     * {@code required = false}, so that a context without a single {@link PlaintextRepository} bean
+     * starts (status report 29.08.2026, §3 "aggregator without an opt-out"). Previously the standard
+     * injection of an empty list stopped startup — and the only implementations in the framework
+     * live in {@code plaintext-admin-modules} and {@code plaintext-admin-secrets}. Whoever
+     * deselected both got a startup error in a place that has nothing to do with either module.
+     * This changes nothing about the behaviour of the existing apps: as soon as at least one bean
+     * is there, Spring injects the list as before; without one, the already initialized
+     * {@code new ArrayList<>()} stays in place, {@link #init()} builds an empty map and
+     * {@link #getRepo(String)} returns {@code null} — exactly as it already does today for any unknown type.
      */
     @Autowired(required = false)
     private List<PlaintextRepository> repos = new ArrayList<>();

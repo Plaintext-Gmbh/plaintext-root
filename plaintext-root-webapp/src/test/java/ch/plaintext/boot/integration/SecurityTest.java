@@ -60,32 +60,32 @@ class SecurityTest {
         assertTrue(port > 0);
     }
 
-    // --- CSRF-Validierung auf JSF-Seiten (*.xhtml / *.html) ---------------------------------
-    // Die Patterns /**/*.xhtml und /**/*.html wurden aus DEFAULT_CSRF_IGNORE entfernt:
-    // Spring Security validiert jetzt das _csrf-Token, das alle h:form als Hidden-Input einbetten
-    // (JSF-ViewState ist State-Management, KEIN CSRF-Schutz).
+    // --- CSRF validation on JSF pages (*.xhtml / *.html) ------------------------------------
+    // The patterns /**/*.xhtml and /**/*.html were removed from DEFAULT_CSRF_IGNORE:
+    // Spring Security now validates the _csrf token that every h:form embeds as a hidden input
+    // (the JSF ViewState is state management, NOT CSRF protection).
     //
-    // Beobachtetes Framework-Verhalten bei fehlendem/ungültigem Token:
-    //  - anonym:          302 -> /login.html (AccessDenied wird für anonyme Requests
-    //                     in einen Login-Redirect übersetzt)
-    //  - authentifiziert: 403
+    // Observed framework behaviour on a missing/invalid token:
+    //  - anonymous:      302 -> /login.html (AccessDenied is translated into a login
+    //                    redirect for anonymous requests)
+    //  - authenticated:  403
     //
-    // WICHTIG (CI-Robustheit): Als POST-/Rendering-Ziele werden bewusst NUR Seiten ohne
-    // Modul-/DB-Datenabhängigkeit verwendet — der CSRF-Filter greift für jede .xhtml gleich:
-    //  - /login.xhtml         : permitAll, minimal, rendert immer 200 (Token-Quelle + POST-Ziel)
-    //  - /access-denied.xhtml : SYSTEM_PAGE (PageAccessGuardService), authentifiziert erreichbar,
-    //                           trägt h:form id="fm" + _csrf + jakarta.faces.ViewState und hängt
-    //                           NICHT am Dashboard (dashboardBean.tiles). Nur der AJAX-Postback-Test
-    //                           braucht einen echten ViewState und nutzt daher diese Seite.
-    // NICHT verwendet wird /index.xhtml: dessen Dashboard-Tiles können im Integrationskontext
-    // (geteilte CI-DB) beim Rendern 500 werfen — das ist unabhängig von CSRF (GET ist unberührt).
+    // IMPORTANT (CI robustness): as POST/rendering targets ONLY pages without a
+    // module/DB data dependency are used deliberately — the CSRF filter applies to every .xhtml alike:
+    //  - /login.xhtml         : permitAll, minimal, always renders 200 (token source + POST target)
+    //  - /access-denied.xhtml : SYSTEM_PAGE (PageAccessGuardService), reachable when authenticated,
+    //                           carries h:form id="fm" + _csrf + jakarta.faces.ViewState and does
+    //                           NOT depend on the dashboard (dashboardBean.tiles). Only the AJAX postback
+    //                           test needs a real ViewState and therefore uses this page.
+    // NOT used is /index.xhtml: its dashboard tiles can throw a 500 while rendering in the integration
+    // context (shared CI DB) — that is independent of CSRF (GET is unaffected).
 
     private static final String TEST_USER = "csrf-testuser";
     private static final String TEST_PASSWORD = "csrf-test-passwort";
 
-    /** Robustes POST-Ziel (permitAll, kein Dashboard) — der CSRF-Filter greift trotzdem. */
+    /** Robust POST target (permitAll, no dashboard) — the CSRF filter applies nonetheless. */
     private static final String POST_ZIEL = "/login.xhtml";
-    /** Robuste JSF-Seite mit h:form + ViewState für den AJAX-Postback (SYSTEM_PAGE, kein Dashboard). */
+    /** Robust JSF page with h:form + ViewState for the AJAX postback (SYSTEM_PAGE, no dashboard). */
     private static final String AJAX_ZIEL = "/access-denied.xhtml";
 
     @Autowired
@@ -97,7 +97,7 @@ class SecurityTest {
     @Autowired
     private ch.plaintext.boot.plugins.security.totp.TotpService totpService;
 
-    /** Client, der bei 4xx/5xx nicht wirft und Redirects nicht folgt. */
+    /** Client that does not throw on 4xx/5xx and does not follow redirects. */
     private RestClient lenientClient() {
         java.net.http.HttpClient jdkClient = java.net.http.HttpClient.newBuilder()
                 .followRedirects(java.net.http.HttpClient.Redirect.NEVER)
@@ -106,21 +106,21 @@ class SecurityTest {
                 .requestFactory(new org.springframework.http.client.JdkClientHttpRequestFactory(jdkClient))
                 .baseUrl("http://localhost:" + port)
                 .defaultStatusHandler(status -> true, (request, response) -> {
-                    // Status wird im Test selbst geprüft
+                    // the status is checked in the test itself
                 })
                 .build();
     }
 
     @Test
     void anonymerPostAufXhtmlOhneCsrfTokenWirdGeblockt() {
-        // /login.xhtml ist permitAll — die Blockade hier ist eindeutig CSRF, nicht Autorisierung
-        // ERWARTUNG GEAENDERT (Karte 652): Bis zum 11.08.2026 verlangte dieser Test eine
-        // 3xx-Umleitung auf /login.html. Genau das war der Bug: `sendError(403)` loeste einen
-        // ERROR-Dispatch auf /error aus, der erneut durch die Security-Kette lief und den Status
-        // mit einer Umleitung ueberschrieb. Der Test hat dieses Verhalten als Normalfall
-        // festgeschrieben — eine abgewiesene Anfrage kam beim Aufrufer als "geh dich anmelden" an,
-        // und ein Skript mit `curl -L` las daraus HTTP 200.
-        // Geblockt wird weiterhin, nur sichtbar: 403 statt Umleitung.
+        // /login.xhtml is permitAll — the blockage here is unambiguously CSRF, not authorization
+        // EXPECTATION CHANGED (card 652): until 11.08.2026 this test demanded a
+        // 3xx redirect to /login.html. Exactly that was the bug: `sendError(403)` triggered an
+        // ERROR dispatch to /error, which ran through the security chain again and overwrote the
+        // status with a redirect. The test had cemented that behaviour as the normal case —
+        // a rejected request arrived at the caller as "go and log in",
+        // and a script with `curl -L` read HTTP 200 out of it.
+        // It is still blocked, only visibly so: 403 instead of a redirect.
         ResponseEntity<String> response = lenientClient().post()
                 .uri("/login.xhtml")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
@@ -147,7 +147,7 @@ class SecurityTest {
 
     @Test
     void getAufXhtmlBleibtOhneTokenErlaubt() {
-        // Safe methods (GET) werden von der CSRF-Validierung nicht erfasst
+        // Safe methods (GET) are not covered by the CSRF validation
         ResponseEntity<String> response = lenientClient().get()
                 .uri("/login.xhtml")
                 .retrieve()
@@ -199,8 +199,8 @@ class SecurityTest {
 
     @Test
     void jsfAjaxPostbackMitCsrfTokenFunktioniert() {
-        // PrimeFaces/JSF-AJAX serialisiert alle Formularfelder inkl. des _csrf-Hidden-Inputs.
-        // Getestet gegen eine Seite mit echtem h:form + ViewState (access-denied.xhtml).
+        // PrimeFaces/JSF AJAX serializes all form fields including the _csrf hidden input.
+        // Tested against a page with a real h:form + ViewState (access-denied.xhtml).
         AngemeldeteSession session = meldeTestUserAn();
         JsfSeite seite = holeJsfSeite(session.cookie(), AJAX_ZIEL);
 
@@ -225,11 +225,11 @@ class SecurityTest {
     }
 
     /**
-     * BUGFIX Karte 385: Bis dahin lieferte ein JSF-AJAX-Postback ohne gueltiges CSRF-Token
-     * HTTP 403 mit JSON-Body. Die PrimeFaces-Ajax-Engine kann das nicht parsen, meldet nichts
-     * und der Ladeindikator dreht endlos — auf PROD reproduziert als „Klick tut nichts".
-     * Der Request muss statt dessen eine verarbeitbare partial-response mit &lt;redirect&gt;
-     * bekommen (HTTP 200), damit PrimeFaces den Nutzer auf die Anmeldung schickt.
+     * BUGFIX card 385: until then a JSF AJAX postback without a valid CSRF token returned
+     * HTTP 403 with a JSON body. The PrimeFaces Ajax engine cannot parse that, reports nothing
+     * and the loading indicator spins forever — reproduced on PROD as "the click does nothing".
+     * Instead the request has to get a processable partial response with a &lt;redirect&gt;
+     * (HTTP 200), so that PrimeFaces sends the user to the login.
      */
     @Test
     void jsfAjaxPostbackOhneCsrfTokenLiefertPartialResponseMitRedirect() {
@@ -259,7 +259,7 @@ class SecurityTest {
                 "Kein JSON-Fehlerbody mehr");
     }
 
-    /** Karte 385: Ein Nicht-Ajax-POST bleibt beim unveraenderten Spring-Verhalten (403). */
+    /** Card 385: a non-Ajax POST keeps the unchanged Spring behaviour (403). */
     @Test
     void nichtAjaxPostbackOhneCsrfTokenGibtWeiterhin403() {
         AngemeldeteSession session = meldeTestUserAn();
@@ -278,9 +278,9 @@ class SecurityTest {
     }
 
     /**
-     * Karte 385: Auch ohne Session (abgelaufen / nach Blue-Green-Deploy) darf ein Ajax-Request
-     * keine unverarbeitbare Antwort bekommen — der AuthenticationEntryPoint muss ebenfalls eine
-     * partial-response mit Redirect liefern statt eines HTML-Login-Redirects.
+     * Card 385: even without a session (expired / after a blue-green deploy) an Ajax request
+     * must not get an unprocessable response — the AuthenticationEntryPoint likewise has to deliver a
+     * partial response with a redirect instead of an HTML login redirect.
      */
     @Test
     void jsfAjaxRequestOhneSessionLiefertPartialResponseMitRedirect() {
@@ -297,10 +297,10 @@ class SecurityTest {
 
     @Test
     void multipartPostAufXhtmlMitGueltigemCsrfTokenWirdAkzeptiert() {
-        // p:fileUpload sendet multipart/form-data an die View-URL; das _csrf-Hidden wird als
-        // Multipart-Feld mitserialisiert. Tomcat parst die Felder, weil JoinFaces die
-        // MultipartConfig am FacesServlet registriert — sonst würde die CSRF-Validierung
-        // das Token nicht finden und Uploads mit 403 blocken.
+        // p:fileUpload sends multipart/form-data to the view URL; the _csrf hidden field is
+        // serialized along as a multipart field. Tomcat parses the fields because JoinFaces
+        // registers the MultipartConfig on the FacesServlet — otherwise the CSRF validation
+        // would not find the token and uploads would be blocked with a 403.
         AngemeldeteSession session = meldeTestUserAn();
         String boundary = "----csrfTestBoundary42";
         String body = "--" + boundary + "\r\n"
@@ -337,10 +337,10 @@ class SecurityTest {
     }
 
     /**
-     * Default-OFF-Beweis: Ohne {@code plaintext.security.totp.enabled=true} (Default in diesem
-     * Profil) aendert sich fuer NIEMANDEN etwas – selbst ein User mit {@code totpEnabled=true}
-     * wird NICHT auf den zweiten Schritt geleitet, sondern direkt eingeloggt. So kann ein
-     * PROD-Deploy mit diesem Feature nichts kaputt machen, solange das Flag aus ist.
+     * Proof of default-OFF: without {@code plaintext.security.totp.enabled=true} (the default in this
+     * profile) nothing changes for ANYBODY - even a user with {@code totpEnabled=true}
+     * is NOT sent to the second step but logged in directly. This way a PROD deploy with this
+     * feature can break nothing as long as the flag is off.
      */
     @Test
     void beiFeatureFlagAusWirdKeinTotpSchrittErzwungen() {
@@ -352,7 +352,7 @@ class SecurityTest {
             user.setPassword(passwordEncoder.encode(passwort));
             user.setMandat("default");
             user.addRole("user");
-            // User HAT TOTP aktiviert – aber das globale Feature ist im Default AUS.
+            // The user HAS TOTP switched on - but the global feature is OFF by default.
             user.setTotpEnabled(true);
             user.setTotpSecret(totpService.generateSecret());
             userRepository.save(user);
@@ -374,18 +374,18 @@ class SecurityTest {
         assertFalse(location.contains("error"), "Login muss normal durchlaufen, war: " + location);
     }
 
-    // --- SECURITY Karte 304: /api/i18n/** nur fuer ADMIN/ROOT -------------------------------
-    // Vorher fiel /api/i18n/** unter anyRequest().authenticated(): ein beliebiger ROLE_USER
-    // konnte per POST /api/i18n/import global (die Entity I18nTranslation hat keine
-    // mandat-Spalte) Uebersetzungen ueberschreiben, die anschliessend auf Admin-Seiten
-    // gerendert werden -> Stored XSS im Admin-Kontext. Und per GET /api/i18n/export alle
-    // Labels abziehen.
+    // --- SECURITY card 304: /api/i18n/** only for ADMIN/ROOT --------------------------------
+    // Previously /api/i18n/** fell under anyRequest().authenticated(): any ROLE_USER
+    // could overwrite translations globally via POST /api/i18n/import (the entity I18nTranslation has
+    // no mandat column), translations that are subsequently
+    // rendered on admin pages -> stored XSS in the admin context. And they could pull all
+    // labels via GET /api/i18n/export.
     //
-    // Die Paare (normaler User -> 403 / Admin -> 2xx) beweisen, dass die Ablehnung aus der
-    // AUTORISIERUNG kommt und nicht aus CSRF: bei einem CSRF-Problem wuerde auch der
-    // Admin-Fall 403 liefern. Das Token wird als X-CSRF-TOKEN-Header gesendet — bei
-    // multipart/form-data ist das robuster als ein Formularfeld, weil der CsrfFilter vor der
-    // Multipart-Auswertung laeuft.
+    // The pairs (ordinary user -> 403 / admin -> 2xx) prove that the rejection comes from
+    // AUTHORIZATION and not from CSRF: with a CSRF problem the
+    // admin case would return 403 as well. The token is sent as an X-CSRF-TOKEN header — with
+    // multipart/form-data that is more robust than a form field, because the CsrfFilter runs before
+    // the multipart evaluation.
 
     private static final String PLAIN_USER = "i18n-plain-user";
     private static final String PLAIN_PASSWORD = "i18n-plain-passwort";
@@ -447,19 +447,19 @@ class SecurityTest {
                 "Anonymer Export-Zugriff muss geblockt werden (Login-Redirect oder 403), war: " + response.getStatusCode());
     }
 
-    // --- SECURITY Karte 308: Seiten-Zugriffsschutz fail-closed --------------------------------
-    // Vorher gab es fuer diese Luecke keinen Test — und zwar aus einem konkreten Grund: der Guard
-    // hing als f:event preRenderView im gemeinsamen Facelets-Template, war also erst beim RENDERN
-    // der Seite wirksam. Im SpringBootTest-Kontext rendern aber nur Views, die das Template mit
-    // FUEHRENDEM Slash referenzieren (template="/includes/template.xhtml", z.B. access-denied);
-    // alle anderen (template="includes/template.xhtml", z.B. demo/useradmin) liefern 500. Ein
-    // Guard-Test war damit nicht robust moeglich.
+    // --- SECURITY card 308: page access protection fail-closed --------------------------------
+    // Previously there was no test for this gap — and for a concrete reason: the guard
+    // hung as an f:event preRenderView in the shared Facelets template, so it only took effect while
+    // the page was RENDERED. In the SpringBootTest context, however, only views render that
+    // reference the template with a LEADING slash (template="/includes/template.xhtml", e.g. access-denied);
+    // all others (template="includes/template.xhtml", e.g. demo/useradmin) return 500. A
+    // guard test was therefore not robustly possible.
     //
-    // Seit Karte 308 laeuft der Guard als PageAccessGuardFilter in der Spring-Security-Kette, also
-    // VOR dem FacesServlet. Er antwortet ohne jedes Rendering — und ist damit hier pruefbar.
-    // Dieses Modul laeuft in mode=STRICT (application.yml).
+    // Since card 308 the guard runs as the PageAccessGuardFilter in the Spring Security chain, that is
+    // BEFORE the FacesServlet. It answers without any rendering — and is thereby checkable here.
+    // This module runs in mode=STRICT (application.yml).
 
-    /** Ein normaler USER (nur Rolle "user") — bewusst NICHT der admin-Testuser. */
+    /** An ordinary USER (role "user" only) — deliberately NOT the admin test user. */
     private static final String GUARD_USER = "pageguard-plain-user";
     private static final String GUARD_PASSWORD = "pageguard-plain-passwort";
 
@@ -471,8 +471,8 @@ class SecurityTest {
                 .header(HttpHeaders.COOKIE, session.cookie())
                 .retrieve()
                 .toEntity(String.class);
-        // Greift der harte requestMatcher /mandate*.* (hasRole ROOT) aus PlaintextSecurityConfig:
-        // authentifiziert + nicht autorisiert -> 403.
+        // Here the hard requestMatcher /mandate*.* (hasRole ROOT) from PlaintextSecurityConfig applies:
+        // authenticated + not authorized -> 403.
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
                 "ROLE_USER darf die ROOT-Menuesteuerung aller Mandanten nicht aufrufen, war: "
                         + response.getStatusCode());
@@ -492,8 +492,8 @@ class SecurityTest {
 
     @Test
     void h2_auchAdminKommtNichtAnDieRootSeiten() {
-        // Der Testuser hat admin+user, aber nicht root. Beweist, dass die Regel ROLLEN prueft und
-        // nicht bloss "irgendwie eingeloggt".
+        // The test user has admin+user, but not root. Proves that the rule checks ROLES and
+        // not merely "logged in somehow".
         AngemeldeteSession session = meldeTestUserAn();
         ResponseEntity<String> response = lenientClient().get()
                 .uri("/rootentities.html")
@@ -506,16 +506,16 @@ class SecurityTest {
 
     @Test
     void h2_viewOhneMenueeintragWirdImStrictModusVerweigert() {
-        // /demo.html hat keinen Menueeintrag, keinen Alias und keinen Allowlist-Eintrag und ist
-        // auch NICHT hart in der Security-Config verdrahtet — hier greift also ausschliesslich der
-        // fail-closed-Zweig des Guards. Vorher lieferte er an dieser Stelle "return true".
+        // /demo.html has no menu entry, no alias and no allowlist entry and is
+        // also NOT hard-wired in the security config — so here exclusively the
+        // fail-closed branch of the guard applies. Previously it returned "true" at this point.
         //
-        // Karte 523: die Datei demo.xhtml gibt es seit dem 04.08.2026 nicht mehr (Demoseite mit
-        // Google-Charts-Beispieldaten, die ueber plaintext-root-webapp in JEDE App mitgeliefert
-        // wurde und dort ungeschuetzt war). Der Test bleibt gueltig und wird dadurch sogar
-        // schaerfer: der Guard-Filter entscheidet VOR dem FacesServlet und damit unabhaengig
-        // davon, ob hinter dem Pfad ueberhaupt eine View liegt — er darf hier also nicht 404
-        // liefern, sondern muss abweisen.
+        // Card 523: the file demo.xhtml no longer exists since 04.08.2026 (a demo page with
+        // Google Charts sample data that was shipped into EVERY app via plaintext-root-webapp
+        // and was unprotected there). The test stays valid and even becomes
+        // sharper because of it: the guard filter decides BEFORE the FacesServlet and thus independently
+        // of whether there is a view behind the path at all — so it must not return 404
+        // here, it has to reject.
         AngemeldeteSession session = meldeTestUserAn();
         ResponseEntity<String> response = lenientClient().get()
                 .uri("/demo.html")
@@ -532,10 +532,10 @@ class SecurityTest {
 
     @Test
     void h3_postbackAufGesperrteSeiteWirdVorDemFacesServletAbgewiesen() {
-        // Kernpunkt von H3: der alte Guard lief in RENDER_RESPONSE (Phase 6), Action-Methoden in
-        // INVOKE_APPLICATION (Phase 5) — ein Postback auf eine gesperrte Seite hatte die Action
-        // also schon ausgefuehrt. Mit gueltigem _csrf-Token ist ausgeschlossen, dass die 403 aus
-        // der CSRF-Validierung kommt: derselbe Token liefert auf /login.xhtml eine 200 (siehe
+        // The core point of H3: the old guard ran in RENDER_RESPONSE (phase 6), action methods in
+        // INVOKE_APPLICATION (phase 5) — so a postback to a locked page had already executed the
+        // action. With a valid _csrf token it is ruled out that the 403 comes from
+        // the CSRF validation: the same token returns a 200 on /login.xhtml (see
         // authentifizierterPostAufXhtmlMitGueltigemCsrfTokenWirdAkzeptiert).
         AngemeldeteSession session = meldeTestUserAn();
         ResponseEntity<String> response = lenientClient().post()
@@ -552,10 +552,10 @@ class SecurityTest {
 
     @Test
     void positiv_systemUndAllowlistSeitenBleibenErreichbar() {
-        // Gegenprobe zu fail-closed: der Guard darf legitime Seiten nicht sperren.
-        // /access-denied.html ist Systemseite, /myuser.html steht auf der Framework-Allowlist
-        // (in der Topbar fuer JEDEN User verlinkt), /login-totp.html ebenfalls (zweiter
-        // Anmeldeschritt, dort ist der User noch nicht voll authentifiziert).
+        // Counter-check to fail-closed: the guard must not lock legitimate pages.
+        // /access-denied.html is a system page, /myuser.html is on the framework allowlist
+        // (linked in the topbar for EVERY user), /login-totp.html likewise (the second
+        // login step, where the user is not yet fully authenticated).
         AngemeldeteSession session = meldeAn(GUARD_USER, GUARD_PASSWORD, "user");
         for (String pfad : new String[]{"/access-denied.html", "/myuser.html", "/login-totp.html"}) {
             ResponseEntity<String> response = lenientClient().get()
@@ -573,9 +573,9 @@ class SecurityTest {
 
     @Test
     void positiv_jsfRessourcenBleibenErreichbar() {
-        // Der Filter greift auf *.xhtml — JSF-Ressourcen enden ebenfalls auf .xhtml
-        // (/jakarta.faces.resource/...). Ohne die Ausnahme waere die gesamte PrimeFaces-Oberflaeche
-        // im STRICT-Modus ohne CSS/JS.
+        // The filter applies to *.xhtml — JSF resources also end in .xhtml
+        // (/jakarta.faces.resource/...). Without the exemption the whole PrimeFaces interface would be
+        // without CSS/JS in STRICT mode.
         AngemeldeteSession session = meldeTestUserAn();
         ResponseEntity<String> response = lenientClient().get()
                 .uri("/jakarta.faces.resource/primeicons/primeicons.css.xhtml?ln=primefaces")
@@ -589,19 +589,19 @@ class SecurityTest {
                 "JSF-Ressourcen duerfen nicht auf access-denied umgeleitet werden, war: " + location);
     }
 
-    // ANMERKUNG zum Escaping-Teil von Karte 304: ein Rendering-Regressionstest auf
-    // useradmin.xhtml ("Payload in obj.startpage -> Seite enthaelt &lt;script&gt;") ist in
-    // DIESEM Testkontext nicht moeglich. Der Webapp-Root des SpringBootTest ist nur
-    // target/classes/META-INF/resources dieses Moduls; das gemeinsame Facelets-Template liegt
-    // in plaintext-root-template.jar und ist daher nicht auflösbar:
+    // NOTE on the escaping part of card 304: a rendering regression test on
+    // useradmin.xhtml ("payload in obj.startpage -> page contains &lt;script&gt;") is not
+    // possible in THIS test context. The webapp root of the SpringBootTest is only
+    // target/classes/META-INF/resources of this module; the shared Facelets template lies
+    // in plaintext-root-template.jar and is therefore not resolvable:
     //   "useradmin.xhtml @5,89 <ui:composition template="includes/template.xhtml">
-    //    Invalid path : includes/template.xhtml"  -> HTTP 500, unabhaengig vom Escaping.
-    // Deshalb rendern hier bewusst nur die template-freien Seiten login.xhtml/access-denied.xhtml.
-    // Die Escaping-Leitplanke sitzt stattdessen als repo-weiter Quellcode-Scan in
-    // EscapeFalseInvariantTest (ch.plaintext.boot.web); der Beweis am gerenderten HTML gehoert
-    // in den Playwright-Lauf gegen die deployte App.
+    //    Invalid path : includes/template.xhtml"  -> HTTP 500, independently of the escaping.
+    // That is why only the template-free pages login.xhtml/access-denied.xhtml render here deliberately.
+    // The escaping guardrail sits instead as a repository-wide source scan in
+    // EscapeFalseInvariantTest (ch.plaintext.boot.web); the proof on the rendered HTML belongs
+    // in the Playwright run against the deployed app.
 
-    /** POST /api/i18n/import als multipart-Upload mit CSRF-Token im Header. */
+    /** POST /api/i18n/import as a multipart upload with the CSRF token in the header. */
     private ResponseEntity<String> importiere(AngemeldeteSession session, String csv) {
         String boundary = "----i18nImportBoundary304";
         String body = "--" + boundary + "\r\n"
@@ -628,7 +628,7 @@ class SecurityTest {
     private record JsfSeite(String csrfToken, String viewState) {
     }
 
-    /** Lädt /login.xhtml und extrahiert Session-Cookie + eingebettetes _csrf-Token. */
+    /** Loads /login.xhtml and extracts the session cookie + the embedded _csrf token. */
     private LoginSeite holeLoginSeite() {
         ResponseEntity<String> get = lenientClient().get()
                 .uri("/login.xhtml")
@@ -647,18 +647,18 @@ class SecurityTest {
     }
 
     /**
-     * Legt (einmalig) einen Test-User an und meldet ihn per Form-Login an.
-     * Deckt damit auch Akzeptanzkriterium "Login funktioniert weiterhin" ab —
-     * der Login-POST selbst durchläuft die CSRF-Validierung.
+     * Creates a test user (once) and logs them in via form login.
+     * That also covers the acceptance criterion "login still works" —
+     * the login POST itself runs through the CSRF validation.
      */
     private AngemeldeteSession meldeTestUserAn() {
         return meldeAn(TEST_USER, TEST_PASSWORD, "admin", "user");
     }
 
     /**
-     * Legt (einmalig) einen Benutzer mit den angegebenen Rollen an und meldet ihn per Form-Login
-     * an. Wird von {@link #meldeTestUserAn()} (admin) und von den i18n-Autorisierungstests
-     * (nur {@code user}) genutzt.
+     * Creates (once) a user with the given roles and logs them in via form login.
+     * Used by {@link #meldeTestUserAn()} (admin) and by the i18n authorization tests
+     * (only {@code user}).
      */
     private AngemeldeteSession meldeAn(String username, String passwort, String... rollen) {
         if (userRepository.findByUsername(username) == null) {
@@ -685,12 +685,12 @@ class SecurityTest {
         assertNotNull(location);
         assertFalse(location.contains("error"), "Login darf nicht fehlschlagen, Redirect war: " + location);
 
-        // Session-Fixation-Schutz rotiert die Session-ID beim Login
+        // Session fixation protection rotates the session id on login
         String cookie = extrahiereSessionCookie(login, loginSeite.session());
 
-        // Nach Login das (rotierte) CSRF-Token aus login.xhtml holen — bewusst NICHT aus
-        // index.xhtml (Dashboard kann im IT 500 werfen). Das Token ist session-scoped und
-        // gilt für POSTs auf jede beliebige .xhtml derselben Session.
+        // After the login fetch the (rotated) CSRF token from login.xhtml — deliberately NOT from
+        // index.xhtml (the dashboard can throw a 500 in the IT). The token is session-scoped and
+        // is valid for POSTs to any .xhtml of the same session.
         ResponseEntity<String> tokenSeite = lenientClient().get()
                 .uri("/login.xhtml")
                 .header(HttpHeaders.COOKIE, cookie)
@@ -705,8 +705,8 @@ class SecurityTest {
     }
 
     /**
-     * Lädt eine JSF-Seite mit der angegebenen Session und extrahiert _csrf-Token + ViewState.
-     * Für den AJAX-Postback-Test, der einen echten ViewState braucht.
+     * Loads a JSF page with the given session and extracts the _csrf token + ViewState.
+     * For the AJAX postback test, which needs a real ViewState.
      */
     private JsfSeite holeJsfSeite(String cookie, String pfad) {
         ResponseEntity<String> get = lenientClient().get()
@@ -724,7 +724,7 @@ class SecurityTest {
         return new JsfSeite(token.group(1), viewState.group(1));
     }
 
-    /** JSESSIONID aus Set-Cookie extrahieren; fällt auf den bisherigen Cookie zurück. */
+    /** Extracts the JSESSIONID from Set-Cookie; falls back to the previous cookie. */
     private String extrahiereSessionCookie(ResponseEntity<String> response, String fallback) {
         java.util.List<String> setCookies = response.getHeaders().getOrEmpty(HttpHeaders.SET_COOKIE);
         for (String setCookie : setCookies) {

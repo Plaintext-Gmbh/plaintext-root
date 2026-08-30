@@ -75,12 +75,12 @@ class SettingsBackingBeanTest {
     // --- select / clearSelection ---
 
     /**
-     * Karte 968 (Sonar {@code java:S2699}): Hier stand nur der Aufruf mit dem Kommentar „just
-     * verifies it doesn't throw". {@code select()} ist ein leerer Aufhaenger fuer die Oberflaeche —
-     * dass er nicht wirft, kann er gar nicht verletzen.
+     * Card 968 (Sonar {@code java:S2699}): all that stood here was the call with the comment "just
+     * verifies it doesn't throw". {@code select()} is an empty hook for the UI —
+     * it cannot possibly violate not throwing.
      *
-     * <p>Die Aussage, die tatsaechlich zaehlt: er darf die Auswahl <b>nicht antasten</b>. Legt
-     * jemand spaeter Logik hinein, die {@code selected} umsetzt oder loescht, faellt das hier auf.
+     * <p>The statement that actually counts: it must <b>not touch</b> the selection. If someone
+     * later puts logic in it that changes or clears {@code selected}, it shows up here.
      */
     @Test
     void selectLaesstDieAuswahlUnberuehrt() {
@@ -175,9 +175,9 @@ class SettingsBackingBeanTest {
     }
 
     /**
-     * Karte 968 (Sonar {@code java:S2699}): „should not throw" war zu wenig. Der Schutz vor der
-     * NPE ist nur die halbe Aussage — die andere ist, dass der Wert dann auch <b>nirgendwo
-     * anders</b> landet, etwa auf der zuletzt gewaehlten Einstellung.
+     * Card 968 (Sonar {@code java:S2699}): "should not throw" was too little. Guarding against the
+     * NPE is only half the statement — the other half is that the value then also ends up
+     * <b>nowhere else</b>, for instance on the most recently selected setting.
      */
     @Test
     void setBooleanValueSchreibtNichtsOhneAuswahl() {
@@ -257,7 +257,7 @@ class SettingsBackingBeanTest {
         assertThat(s.getValue()).isEmpty();
     }
 
-    /** Gegenstueck zu {@link #setBooleanValueSchreibtNichtsOhneAuswahl()} fuer das Datum. */
+    /** Counterpart to {@link #setBooleanValueSchreibtNichtsOhneAuswahl()} for the date. */
     @Test
     void setDateValueSchreibtNichtsOhneAuswahl() {
         Setting vorher = new Setting();

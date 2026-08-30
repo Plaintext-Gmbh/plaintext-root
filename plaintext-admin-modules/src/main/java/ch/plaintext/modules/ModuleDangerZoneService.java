@@ -15,19 +15,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * „Daten leeren" für ein Modul (Task #016 Phase 2, PR 4) — mit den beiden von Daniel verlangten
- * Pflicht-Schutznetzen: (1) Auto-Export VOR jedem Löschzugriff, bricht die ganze Aktion ab, wenn
- * der Export fehlschlägt; (2) serverseitig re-validierte Namens-Bestätigung (ein deaktivierter
- * Client-Button reicht nicht — dieser Service prüft unabhängig noch einmal).
+ * "Clear data" for a module (Task #016 phase 2, PR 4) — with the two mandatory safety nets
+ * demanded by Daniel: (1) auto export BEFORE any delete access, aborts the whole action if
+ * the export fails; (2) server-side re-validated name confirmation (a disabled client button
+ * is not enough — this service checks once more independently).
  *
- * <p>Bewusst nur „Daten leeren" (DELETE aller Zeilen je Entity), <b>kein</b> {@code DROP TABLE}:
- * Flyway würde die zugehörige Migration weiterhin als „applied" führen, die Tabelle also nie neu
- * anlegen — ein DROP wäre nur mit einer Repair-Aktion rückgängig zu machen.</p>
+ * <p>Deliberately only "clear data" (DELETE of all rows per entity), <b>no</b> {@code DROP TABLE}:
+ * Flyway would still list the corresponding migration as "applied" and would therefore never
+ * recreate the table — a DROP could only be undone with a repair action.</p>
  *
- * <p>Nutzt bewusst {@link JpaRepository#deleteAll()} über die von {@link EntityRegistryService}
- * bereits aufgelöste Repository-Bean, statt roher {@code TRUNCATE}/{@code DELETE}-SQL-Statements
- * — bleibt damit im etablierten Muster dieses Moduls (nur JPA, keine JdbcTemplate/EntityManager-
- * Zugriffe im Projekt) und ist transaktional/Cascade-sicher wie jede andere Lösch-Operation.</p>
+ * <p>Deliberately uses {@link JpaRepository#deleteAll()} via the repository bean already resolved
+ * by {@link EntityRegistryService}, instead of raw {@code TRUNCATE}/{@code DELETE} SQL statements
+ * — this stays within the established pattern of this module (JPA only, no JdbcTemplate/
+ * EntityManager access in the project) and is transactional/cascade-safe like any other delete
+ * operation.</p>
  */
 @Service
 @Slf4j
@@ -38,13 +39,13 @@ public class ModuleDangerZoneService {
     private final ModuleDataService moduleDataService;
     private final EntityRegistryService registryService;
 
-    /** Ergebnis: das vor dem Löschen erzeugte Backup-JSON, plus gelöschte Zeilen je Entity. */
+    /** Result: the backup JSON created before the deletion, plus deleted rows per entity. */
     public record ClearResult(String exportJson, Map<String, Integer> geloeschtProEntity) {
     }
 
     /**
-     * Leert alle Tabellen eines Moduls. {@code bestaetigungsName} muss exakt dem Anzeigenamen des
-     * Moduls entsprechen (case-sensitiv) — sonst wird abgebrochen, ohne irgendetwas anzufassen.
+     * Clears all tables of a module. {@code bestaetigungsName} has to match the module's display
+     * name exactly (case-sensitive) — otherwise it aborts without touching anything.
      */
     @Transactional
     public ClearResult clearData(String moduleId, String bestaetigungsName) {
@@ -55,8 +56,8 @@ public class ModuleDangerZoneService {
                     "Bestätigung fehlgeschlagen: Modulname stimmt nicht überein.");
         }
 
-        // Schutznetz 1: Auto-Export ZUERST — schlägt das fehl, bleibt die Datenbank unangetastet
-        // (export() wirft bei einem Fehler, bevor irgendeine Repository-Methode aufgerufen wurde).
+        // Safety net 1: auto export FIRST — if that fails, the database stays untouched
+        // (export() throws on an error before any repository method has been called).
         String exportJson = moduleDataService.export(moduleId);
 
         Map<String, Integer> geloescht = new LinkedHashMap<>();

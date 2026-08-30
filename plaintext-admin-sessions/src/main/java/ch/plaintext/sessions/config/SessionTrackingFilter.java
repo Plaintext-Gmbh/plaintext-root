@@ -21,14 +21,14 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /**
- * Filter, der Sitzungen mitschreibt. Das Schreiben in die Datenbank laeuft ausserhalb des
- * Request-Threads ({@link SessionAuditWriter}); alles Thread-Gebundene wird vorher hier gelesen.
+ * Filter that records sessions. Writing to the database runs outside the
+ * request thread ({@link SessionAuditWriter}); everything thread-bound is read here beforehand.
  * Updates session audit trail on every request to keep track of active sessions.
  *
- * <p>Karte 627: Das <em>Aufzeichnen</em> in {@code USER_SESSION} lässt sich über
- * Root&nbsp;→&nbsp;Setup je Mandant abschalten. Die flüchtige Registrierung in der
- * {@link HttpSessionRegistry} bleibt davon bewusst unberührt — sie ist die Grundlage dafür,
- * eine Sitzung zwangsweise zu beenden, und ist keine Aufzeichnung.</p>
+ * <p>Card 627: the <em>recording</em> into {@code USER_SESSION} can be switched off per tenant
+ * via Root&nbsp;→&nbsp;Setup. The transient registration in the
+ * {@link HttpSessionRegistry} deliberately stays unaffected by that — it is the basis for
+ * forcibly terminating a session, and is not a recording.</p>
  */
 @Component
 @Order(100)
@@ -39,9 +39,9 @@ public class SessionTrackingFilter implements Filter {
     private final PlaintextSecurity security;
     private final HttpSessionRegistry sessionRegistry;
     /**
-     * Optional: Das Modul {@code plaintext-admin-settings} ist nicht in jeder Anwendung eingebunden
-     * (dieses Modul hängt nicht davon ab). Fehlt die Bean, wird aufgezeichnet wie vor Karte 627 —
-     * ein fehlender Schalter darf keine Anwendung am Starten hindern und nichts still abschalten.
+     * Optional: the module {@code plaintext-admin-settings} is not wired into every application
+     * (this module does not depend on it). Without the bean, recording happens as before card 627 —
+     * a missing switch must not keep an application from starting, nor silently turn it off.
      */
     private final ObjectProvider<ISetupConfigService> setupConfigService;
 
@@ -67,23 +67,23 @@ public class SessionTrackingFilter implements Filter {
     }
 
     /**
-     * Liest alles Thread- und Request-Gebundene <b>hier</b>, im Request-Thread, und reicht nur den
-     * DB-Schreibvorgang an {@link SessionAuditWriter} weiter.
+     * Reads everything thread- and request-bound <b>here</b>, on the request thread, and hands only
+     * the database write on to {@link SessionAuditWriter}.
      *
-     * <p><b>Karte 968 (Sonar {@code java:S6809}).</b> Vorher trug diese Methode selbst
-     * {@code @Async} und wurde per {@code this} gerufen — der Selbstaufruf geht am Spring-Proxy
-     * vorbei, die Annotation war wirkungslos, alles lief auf dem Request-Thread. Der Kommentar
-     * daneben behauptete das Gegenteil.
+     * <p><b>Card 968 (Sonar {@code java:S6809}).</b> Previously this method itself carried
+     * {@code @Async} and was called via {@code this} — the self-invocation bypasses the Spring
+     * proxy, the annotation had no effect, everything ran on the request thread. The comment
+     * next to it claimed the opposite.
      *
-     * <p>Der naheliegende Weg — die Bean sich selbst injizieren — waere hier <b>falsch</b>
-     * gewesen: {@code SecurityContextHolder}, {@code HttpServletRequest} und
-     * {@link PlaintextSecurity} haengen am Request-Thread. Auf einem Pool-Thread waere die
-     * Anmeldung nicht mehr sichtbar gewesen und die Aufzeichnung haette still aufgehoert. Der
-     * Selbstaufruf war also versehentlich tragend; genau das macht diesen Befund gefaehrlicher
-     * als die 71 uebrigen S6809-Stellen, an denen die aeussere Methode dieselbe Klammer schon
-     * mitbringt.
+     * <p>The obvious route — injecting the bean into itself — would have been <b>wrong</b>
+     * here: {@code SecurityContextHolder}, {@code HttpServletRequest} and
+     * {@link PlaintextSecurity} are bound to the request thread. On a pool thread the
+     * login would no longer have been visible and the recording would have stopped silently. So
+     * the self-invocation was load-bearing by accident; that is exactly what makes this finding
+     * more dangerous than the 71 remaining S6809 sites, where the outer method already brings
+     * the same wrapper along.
      *
-     * <p>Auch {@link #aufzeichnungAktiv()} wird bewusst hier ausgewertet: es fragt
+     * <p>{@link #aufzeichnungAktiv()} is deliberately evaluated here as well: it queries
      * {@code security.getMandat()}.
      */
     private void sammleUndUebergib(HttpServletRequest request) {
@@ -105,12 +105,12 @@ public class SessionTrackingFilter implements Filter {
             }
             String userAgent = request.getHeader("User-Agent");
 
-            // Bleibt synchron: eine Eintragung in eine Map im Speicher, und die Grundlage dafuer,
-            // eine Sitzung zwangsweise zu beenden. Sie darf nicht hinterherhinken.
+            // Stays synchronous: an entry in an in-memory map, and the basis for forcibly
+            // terminating a session. It must not lag behind.
             sessionRegistry.registerSession(sessionId, session);
 
-            // Karte 627: genau eine Auswertung des Schalters, unmittelbar vor dem einzigen
-            // Schreibpfad - nicht auf mehrere Aufrufstellen verteilt.
+            // Card 627: exactly one evaluation of the switch, immediately before the single
+            // write path - not spread across several call sites.
             if (aufzeichnungAktiv()) {
                 sessionAuditWriter.schreibe(userId, sessionId, authentication, userAgent);
             }
@@ -121,10 +121,10 @@ public class SessionTrackingFilter implements Filter {
     }
 
     /**
-     * Karte 627: Schalter aus Root→Setup, je Request gelesen (Umlegen wirkt sofort, ohne Neustart).
-     * Im Zweifel <b>true</b> — fehlendes Settings-Modul, fehlende Konfiguration oder ein Fehler beim
-     * Lesen dürfen die Aufzeichnung nicht stillschweigend beenden; das wäre ein Datenverlust, den
-     * niemand bemerkt.
+     * Card 627: switch from Root→Setup, read per request (flipping it takes effect at once, without
+     * a restart). <b>true</b> when in doubt — a missing settings module, a missing configuration or
+     * an error while reading must not silently end the recording; that would be a data loss nobody
+     * notices.
      */
     private boolean aufzeichnungAktiv() {
         ISetupConfigService service = setupConfigService.getIfAvailable();

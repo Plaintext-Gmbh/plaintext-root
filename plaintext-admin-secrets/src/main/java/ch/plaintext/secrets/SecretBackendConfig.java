@@ -13,8 +13,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Konfiguration des aktiven Secret-Backends (pro Mandant). {@link #configEncrypted} hält das
- * AES-GCM-verschlüsselte Zugriffstoken/-JSON (Key = Env {@code PLAINTEXT_SECRET_KEY}).
+ * Configuration of the active secret backend (per tenant). {@link #configEncrypted} holds the
+ * AES-GCM-encrypted access token/JSON (key = env {@code PLAINTEXT_SECRET_KEY}).
  */
 @Entity
 @Table(name = "secret_backend_config")
@@ -26,7 +26,7 @@ public class SecretBackendConfig extends SuperModel {
     @Column(name = "backend_type", length = 32, nullable = false)
     private SecretBackendType backendType;
 
-    /** AES-GCM base64: Backend-Zugriffstoken/URL/JSON. NIE im UI anzeigen. */
+    /** AES-GCM base64: backend access token/URL/JSON. NEVER display in the UI. */
     @Column(name = "config_encrypted", length = 8000)
     private String configEncrypted;
 

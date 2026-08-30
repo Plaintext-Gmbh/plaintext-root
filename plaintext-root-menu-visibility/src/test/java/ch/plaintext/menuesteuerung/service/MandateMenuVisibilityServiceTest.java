@@ -144,11 +144,11 @@ class MandateMenuVisibilityServiceTest {
         @Test
         @DisplayName("Mismatch: near-miss title to a hidden menu stays visible (exact-match fail-open)")
         void shouldStayVisibleOnNearMissTitle() {
-            // Dokumentiert die Ursache von Befund 1: Der Abgleich ist ein EXAKTER String-Vergleich.
-            // "HiddenMenu1" ist ausgeblendet, aber jeder Near-Miss (Tippfehler, falsche Gross-/
-            // Kleinschreibung, fehlende Hierarchie) matcht nicht und bleibt im Blacklist-Modus
-            // sichtbar. Eine Dashboard-Kachel mit solch fehlendem menuTitle würde fail-open
-            // sichtbar bleiben – genau das macht der TileVisibilityValidator beim Start erkennbar.
+            // Documents the cause of finding 1: the comparison is an EXACT string match.
+            // "HiddenMenu1" is hidden, but every near miss (typo, wrong case, missing hierarchy)
+            // does not match and stays visible in blacklist mode. A dashboard tile with such a
+            // mismatched menuTitle would stay visible fail-open — which is exactly what the
+            // TileVisibilityValidator makes detectable at startup.
             assertFalse(service.isMenuVisibleForMandate("HiddenMenu1", "test-mandate"),
                 "Exakter Treffer wird korrekt ausgeblendet");
             assertTrue(service.isMenuVisibleForMandate("HiddenMenu1 ", "test-mandate"),
@@ -538,10 +538,11 @@ class MandateMenuVisibilityServiceTest {
             Thread modificationThread = new Thread(() ->
                     testConfig.getHiddenMenus().add("Menu3"));
 
-            // assertTrue(true) stand hier und war dieselbe Krankheit wie der Fall darunter, nur
-            // von Sonar nicht erfasst: eine Zusicherung, die keine ist. Vor allem verschluckte
-            // sie die Ausnahme aus dem Pruef-Thread - eine ConcurrentModificationException aus
-            // isMenuVisibleForMandate waere im Thread gestorben und der Test trotzdem gruen.
+            // assertTrue(true) used to be here, and it was the same disease as the case below,
+            // only not caught by Sonar: an assertion that asserts nothing. Above all it swallowed
+            // the exception from the checking thread - a ConcurrentModificationException out of
+            // isMenuVisibleForMandate would have died inside the thread and the test would still
+            // have been green.
             AtomicReference<Boolean> ergebnis = new AtomicReference<>();
             AtomicReference<Throwable> fehler = new AtomicReference<>();
             Thread checkThread = new Thread(() ->
@@ -570,13 +571,13 @@ class MandateMenuVisibilityServiceTest {
                 testConfig.setWhitelistMode(!oldMode);
             }
 
-            // Karte 968 (Sonar java:S5845): hier stand assertNotNull(finalVisible) auf einem
-            // primitiven boolean. Der kann nie null sein - der Test konnte nicht fehlschlagen und
-            // haette auch eine vertauschte Sichtbarkeit durchgewinkt.
+            // Card 968 (Sonar java:S5845): assertNotNull(finalVisible) used to be here, on a
+            // primitive boolean. That can never be null - the test could not fail and would have
+            // waved through inverted visibility as well.
             //
-            // 100 Umschaltungen sind eine gerade Anzahl, der Modus steht also wieder auf false
-            // (Blacklist). Menu1 steht in hiddenMenus, ist damit unsichtbar. Und eine weitere
-            // Umschaltung muss die Aussage umkehren - sonst wirkt der Modus gar nicht.
+            // 100 toggles is an even number, so the mode is back to false (blacklist). Menu1 is in
+            // hiddenMenus and therefore invisible. And one more toggle has to reverse that
+            // statement - otherwise the mode has no effect at all.
             assertFalse(service.isMenuVisibleForMandate("Menu1", "test-mandate"),
                     "Blacklist-Modus: ein gelistetes Menue ist unsichtbar");
 

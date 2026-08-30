@@ -44,8 +44,8 @@ public class AdminApiTokenBackingBean implements Serializable {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     /**
-     * preRenderView-Listener (session-scoped statt @ViewScoped): lädt die Tokens FRISCH bei jedem
-     * Seitenaufruf (GET). Der isPostback-Guard verhindert das Neuladen bei jedem Ajax-Postback.
+     * preRenderView listener (session-scoped instead of @ViewScoped): loads the tokens FRESH on
+     * every page call (GET). The isPostback guard prevents a reload on every Ajax postback.
      */
     public void onLoad() {
         FacesContext ctx = FacesContext.getCurrentInstance();

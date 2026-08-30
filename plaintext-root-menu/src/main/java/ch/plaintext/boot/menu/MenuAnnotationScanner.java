@@ -29,15 +29,15 @@ public class MenuAnnotationScanner {
     private final MenuAccessPolicy accessPolicy;
 
     /**
-     * Umgebung der Anwendung — optional. Ist sie gesetzt, wertet der Scanner Spring-Bedingungen
-     * ({@code @Conditional}, {@code @ConditionalOnProperty}, {@code @Profile}) an den
-     * {@code @MenuAnnotation}-Klassen gegen die echte Konfiguration aus; ohne sie sieht die
-     * Bedingung nur System-Properties und Umgebungsvariablen (Spring-Standard).
+     * The application environment — optional. When it is set, the scanner evaluates Spring
+     * conditions ({@code @Conditional}, {@code @ConditionalOnProperty}, {@code @Profile}) on the
+     * {@code @MenuAnnotation} classes against the real configuration; without it the condition
+     * only sees system properties and environment variables (the Spring default).
      *
-     * <p>Auftrag Daniel, 29.08.2026: Der Menuepunkt „Swagger" stand in jeder App im Root-Menue,
-     * obwohl springdoc in PROD abgeschaltet ist — der Klick lief auf 404 und von dort auf das
-     * Dashboard. Mit {@code @ConditionalOnProperty} an der Menueklasse verschwindet er, wenn es
-     * nichts zu zeigen gibt.</p>
+     * <p>Task from Daniel, 29.08.2026: the menu item "Swagger" appeared in the root menu of every
+     * app even though springdoc is switched off in PROD — the click ran into a 404 and from there
+     * on to the dashboard. With {@code @ConditionalOnProperty} on the menu class it disappears
+     * when there is nothing to show.</p>
      */
     private Environment environment;
 
@@ -56,10 +56,10 @@ public class MenuAnnotationScanner {
     }
 
     /**
-     * Umgebung fuer die Auswertung von {@code @Conditional}-Annotationen an Menueklassen setzen.
+     * Sets the environment for evaluating {@code @Conditional} annotations on menu classes.
      *
-     * @param umgebung die Spring-Umgebung, darf {@code null} sein
-     * @return dieser Scanner (fluent)
+     * @param umgebung the Spring environment, may be {@code null}
+     * @return this scanner (fluent)
      */
     public MenuAnnotationScanner mitUmgebung(Environment umgebung) {
         this.environment = umgebung;
@@ -91,9 +91,9 @@ public class MenuAnnotationScanner {
         ClassPathScanningCandidateComponentProvider provider =
             new ClassPathScanningCandidateComponentProvider(false);
         if (environment != null) {
-            // Der Provider prueft @Conditional selbst (isConditionMatch) — aber nur gegen die
-            // Umgebung, die er kennt. Ohne diese Zeile waere das eine StandardEnvironment ohne
-            // application.yml, und @ConditionalOnProperty saehe die Konfiguration nie.
+            // The provider checks @Conditional itself (isConditionMatch) — but only against the
+            // environment it knows. Without this line that would be a StandardEnvironment without
+            // application.yml, and @ConditionalOnProperty would never see the configuration.
             provider.setEnvironment(environment);
         }
         provider.addIncludeFilter(new AnnotationTypeFilter(MenuAnnotation.class));

@@ -1,45 +1,45 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-#  Woodpecker-Workflow 1 von 3: BUILD & TEST
+#  Woodpecker workflow 1 of 3: BUILD & TEST
 #
-#  Entspricht dem Job `ci` ("Build & Test") aus
+#  Corresponds to the job `ci` ("Build & Test") from
 #  Plaintext-Gmbh/plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml.
 #
-#  Laeuft NUR, wenn `.ci-engine` im Repo-Root das Wort `woodpecker` enthaelt —
-#  siehe .woodpecker/waechter.sh und docs/CI-UMSCHALTEN.md.
+#  Runs ONLY if `.ci-engine` in the repo root contains the word `woodpecker` —
+#  see .woodpecker/waechter.sh and docs/CI.md.
 #
-#  DREI Workflows, nicht vier wie in iot/app/guild/schuetu: `verify-dev.yml` und
-#  `verify-prod.yml` gibt es hier bewusst nicht. Begruendung in docs/CI-UMSCHALTEN.md,
-#  Abschnitt "Was root anders macht" — kurz: root faehrt `release-only`, und die
-#  GitHub-Pipeline ueberspringt genau dafuer beide Verify-Jobs
-#  (`inputs.deploy-target != 'release-only'` bzw. `== 'release-all'`).
+#  THREE workflows, not four as in iot/app/guild/schuetu: `verify-dev.yml` and
+#  `verify-prod.yml` are deliberately absent here. Rationale in docs/CI.md,
+#  section "Was root anders macht" — in short: root runs `release-only`, and the
+#  GitHub pipeline skips both verify jobs for exactly that reason
+#  (`inputs.deploy-target != 'release-only'` resp. `== 'release-all'`).
 # ═══════════════════════════════════════════════════════════════════════════════
 
 when:
-  # KEIN `push` auf master. Das ist Absicht und die Entsprechung von M1 ("build once"):
-  # auf master baut der DEPLOY-Workflow (deploy.yml), und der fuehrt die Unit-Tests
-  # ueber MVN_TEST_FLAG=-DskipITs selbst mit. In der GitHub-Pipeline steht dafuer
-  # `if: inputs.deploy-target == 'ci-only' || inputs.sonar-enabled` am ci-Job — auf
-  # einem release-only-Lauf ist er uebersprungen. Wer hier `push: master` ergaenzt,
-  # baut jeden Merge zweimal und belegt bei WOODPECKER_MAX_WORKFLOWS=2 die halbe
-  # Kapazitaet des einzigen Agenten mit Doppelarbeit.
+  # NO `push` on master. That is deliberate and the counterpart of M1 ("build once"):
+  # on master the DEPLOY workflow (deploy.yml) builds, and it runs the unit tests
+  # itself via MVN_TEST_FLAG=-DskipITs. The GitHub pipeline expresses this with
+  # `if: inputs.deploy-target == 'ci-only' || inputs.sonar-enabled` on the ci job — on
+  # a release-only run it is skipped. Whoever adds `push: master` here
+  # builds every merge twice and, with WOODPECKER_MAX_WORKFLOWS=2, ties up half the
+  # capacity of the single agent with duplicated work.
   - event: pull_request
-  # `manual` = der "Run pipeline"-Knopf im Woodpecker-UI. Ohne diesen Eintrag
-  # verwirft Woodpecker den Lauf mit "filtered out all steps" (am 30.08.2026 im
-  # schuetu-Probelauf so passiert).
+  # `manual` = the "Run pipeline" button in the Woodpecker UI. Without this entry
+  # Woodpecker discards the run with "filtered out all steps" (as happened in the
+  # schuetu trial run on 30.08.2026).
   - event: manual
-  # Nightly. Der Cron-Job wird NICHT hier definiert, sondern in der Woodpecker-
-  # Oberflaeche unter Repo -> Settings -> Crons angelegt; `cron:` filtert auf seinen
-  # NAMEN. Es muss also ein Cron namens `nightly` existieren, sonst laeuft dieser
-  # Zweig nie. Siehe docs/CI-UMSCHALTEN.md, Abschnitt "Was in Woodpecker
+  # Nightly. The cron job is NOT defined here but created in the Woodpecker
+  # UI under Repo -> Settings -> Crons; `cron:` filters on its NAME. So a cron
+  # named `nightly` must exist, otherwise this branch never runs.
+  # See docs/ci/WOODPECKER_SETUP.md, section 3 (wiring a repository
   # eingerichtet werden muss".
   - event: cron
     cron: nightly
 
-# VOLLER KLON MIT TAGS. Der Standard-Klon von Woodpecker ist flach; `git describe --tags`
-# in init_versions (tui-build-logic.sh) faende dann keinen Tag und meldete 0.0.0.
-# Fuer Build & Test ist das nur kosmetisch, fuer deploy.yml waere es fatal — der Klon
-# ist in allen Dateien bewusst gleich konfiguriert, damit sich niemand darauf
-# verlaesst, dass "der andere Workflow es schon richtig macht".
+# FULL CLONE WITH TAGS. Woodpecker's default clone is shallow; `git describe --tags`
+# in init_versions (tui-build-logic.sh) would then find no tag and report 0.0.0.
+# For Build & Test that is merely cosmetic, for deploy.yml it would be fatal — the clone
+# is deliberately configured identically in every file, so that nobody relies on
+# "the other workflow already getting it right".
 clone:
   git:
     image: woodpeckerci/plugin-git
@@ -49,19 +49,19 @@ clone:
       tags: true
 
 services:
-  # Woodpecker haengt Service-Container an das Netz des Workflows; sie sind unter
-  # ihrem NAMEN als Hostname erreichbar (hier: `postgres`), auf dem regulaeren Port 5432.
+  # Woodpecker attaches service containers to the workflow's network; they are reachable
+  # under their NAME as hostname (here: `postgres`), on the regular port 5432.
   #
-  # DAS IST DER PUNKT, AN DEM WOODPECKER ES EINFACHER HAT ALS GITHUB ACTIONS: die
-  # GitHub-Pipeline startet Postgres von Hand per `docker run --network host` und braucht
-  # dafuer einen je Projekt reservierten Port (root: 5441, Deploy-Job 5541). Auf 5434
-  # zurueckzustellen ist dort ausdruecklich verboten, weil die UGREEN-Photo-App den Port
-  # dauerhaft belegt. Hier faellt die ganze Portvergabe ersatzlos weg: jeder Workflow hat
-  # sein eigenes Netz, zwei gleichzeitige Laeufe koennen sich nicht am Port treffen, und
-  # der Container verschwindet mit dem Lauf.
+  # THIS IS THE POINT WHERE WOODPECKER HAS IT EASIER THAN GITHUB ACTIONS: the
+  # GitHub pipeline starts Postgres by hand via `docker run --network host` and needs
+  # a per-project reserved port for it (root: 5441, deploy job 5541). Falling back to
+  # 5434 is expressly forbidden there, because the UGREEN photo app occupies that port
+  # permanently. Here the whole port allocation simply disappears: every workflow has
+  # its own network, two concurrent runs cannot collide on a port, and
+  # the container vanishes with the run.
   #
-  # WEGWERF-TESTDATENBANK — kein Geheimnis (Karte 812). Sie existiert nur fuer die Dauer
-  # dieses Laufs, ist von aussen nicht erreichbar und traegt keine echten Daten.
+  # THROWAWAY TEST DATABASE — not a secret (card 812). It exists only for the duration
+  # of this run, is unreachable from outside and holds no real data.
   postgres:
     image: postgres:18-alpine
     environment:
@@ -72,49 +72,49 @@ services:
 steps:
   build-und-test:
     image: maven:3.9-eclipse-temurin-25
-    # KEIN Docker-Socket. plaintext-app braucht ihn, weil dort Testcontainers-Tests im
-    # normalen Surefire-Lauf stehen — in plaintext-root gibt es die NICHT, und zwar
-    # absichtlich nicht: Karte 451 (Entscheidung Daniels vom 02.08.2026) hat
-    # Testcontainers hier durch io.zonky.test:embedded-postgres ersetzt, GENAU um den
-    # als root gemounteten /var/run/docker.sock loszuwerden. Nachgezaehlt am 30.08.2026:
-    # `grep -ril testcontainers` trifft nur noch Kommentare in den beiden poms, den
-    # Klassenkommentar von EmbeddedPg und .github/workflows/playwright.yaml — keine
-    # einzige Java-Klasse importiert die Bibliothek. Wer hier je einen Socket-Mount
-    # ergaenzt, macht die Karte rueckgaengig.
+    # NO Docker socket. plaintext-app needs one because it has Testcontainers tests in
+    # its normal Surefire run — plaintext-root does NOT have those, and deliberately
+    # so: card 451 (Daniel's decision of 02.08.2026) replaced Testcontainers here
+    # with io.zonky.test:embedded-postgres, PRECISELY to get rid of the
+    # /var/run/docker.sock mounted as root. Recounted on 30.08.2026:
+    # `grep -ril testcontainers` only hits comments in the two poms, the
+    # class comment of EmbeddedPg and .github/workflows/playwright.yaml — not a
+    # single Java class imports the library. Whoever ever adds a socket mount here
+    # reverts that card.
     environment:
-      # Den Maven-Cache haengt der Agent global als Volume ein (woodpecker-m2 -> /root/.m2),
-      # deshalb hier kein eigener Mount. Der Build-Cache der maven-build-cache-extension
-      # liegt darin unter ~/.m2/build-cache und ueberlebt damit den Lauf.
+      # The agent mounts the Maven cache globally as a volume (woodpecker-m2 -> /root/.m2),
+      # hence no separate mount here. The build cache of the maven-build-cache-extension
+      # lives inside it under ~/.m2/build-cache and therefore survives the run.
       #
-      # DIESE DREI ZEILEN SIND IN ROOT NICHT OPTIONAL. EmbeddedPg (plaintext-root-webapp,
-      # src/test) startet nur DANN einen eigenen eingebetteten Server, wenn
-      # SPRING_DATASOURCE_URL FEHLT — und `initdb` verweigert den Dienst als root
-      # (gemessen 02.08.2026, PR #22). Der Step-Container laeuft als root. Ohne diese
-      # Variablen faellt also jede der rund zehn Testklassen um, die EmbeddedPg nutzen
-      # (RepositoryTest, MultiTenancyTest, SecurityTest, FlywayMigrationTest,
-      # SchlankerKontextTest, ...), mit einer Meldung ueber initdb, die wie ein
-      # Umgebungsproblem des Agenten aussieht und keines ist.
+      # THESE THREE LINES ARE NOT OPTIONAL IN ROOT. EmbeddedPg (plaintext-root-webapp,
+      # src/test) only starts an embedded server of its own when
+      # SPRING_DATASOURCE_URL IS MISSING — and `initdb` refuses to run as root
+      # (measured 02.08.2026, PR #22). The step container runs as root. Without these
+      # variables every single one of the roughly ten test classes that use EmbeddedPg
+      # falls over (RepositoryTest, MultiTenancyTest, SecurityTest, FlywayMigrationTest,
+      # SchlankerKontextTest, ...), with a message about initdb that looks like an
+      # environment problem of the agent and is none.
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plaintext_root
       SPRING_DATASOURCE_USERNAME: plaintext
       SPRING_DATASOURCE_PASSWORD: plaintext
-      # Ressourcen-Leitplanke, wortgleich aus der GitHub-Pipeline uebernommen. Die NAS-Box
-      # hat 6 Kerne / 62 GB; ohne Cap dimensioniert jede JVM ihren Heap nach HOST-RAM
-      # (MaxRAMPercentage 25 % von 62 GB), und zwar pro Maven-JVM UND pro Surefire-Fork.
-      # JAVA_TOOL_OPTIONS wird — anders als MAVEN_OPTS — auch von den Forks geerbt.
-      # In root wiegt das schwerer als in den Apps: 24 Module, und plaintext-root-webapp
-      # hat ZWEI Surefire-Ausfuehrungen (die zweite, `kontext-ohne-abwaehlbare-module`,
-      # startet einen eigenen Spring-Kontext gegen dieselbe Datenbank).
+      # Resource guardrail, taken over word for word from the GitHub pipeline. The NAS box
+      # has 6 cores / 62 GB; without a cap every JVM sizes its heap by HOST RAM
+      # (MaxRAMPercentage 25 % of 62 GB), and does so per Maven JVM AND per Surefire fork.
+      # JAVA_TOOL_OPTIONS is — unlike MAVEN_OPTS — inherited by the forks as well.
+      # In root this weighs more heavily than in the apps: 24 modules, and plaintext-root-webapp
+      # has TWO Surefire executions (the second, `kontext-ohne-abwaehlbare-module`,
+      # starts a Spring context of its own against the same database).
       MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
       JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
     commands:
       - . .woodpecker/waechter.sh
 
-      # Warten, bis Postgres horcht. Woodpecker startet Services und Steps GLEICHZEITIG und
-      # kennt kein `--health-cmd`-Gate; ohne diese Schleife faellt der Lauf zwei Minuten
-      # spaeter in den Tests mit einer PSQLException um, und die sieht aus wie ein Testfehler.
-      # `bash -c` statt der Step-Shell: das Image ist Ubuntu-basiert und hat bash, die
-      # Step-Shell ist /bin/sh (dash) und kennt /dev/tcp nicht. psql waere die andere
-      # Moeglichkeit, kostet aber ein apt-get je Lauf.
+      # Wait until Postgres listens. Woodpecker starts services and steps AT THE SAME TIME
+      # and knows no `--health-cmd` gate; without this loop the run falls over two minutes
+      # later in the tests with a PSQLException, and that looks like a test failure.
+      # `bash -c` instead of the step shell: the image is Ubuntu-based and has bash, the
+      # step shell is /bin/sh (dash) and does not know /dev/tcp. psql would be the other
+      # option, but costs an apt-get per run.
       - >-
         bash -c 'for i in $(seq 1 60); do
           (echo > /dev/tcp/postgres/5432) 2>/dev/null && { echo "postgres bereit nach $i Versuchen"; exit 0; };
@@ -126,30 +126,30 @@ steps:
         echo "  (WOODPECKER_BACKEND_DOCKER_NETWORK / Agent-Konfiguration pruefen)." >&2;
         exit 1'
 
-      # Wortgleich zum ci-Job der GitHub-Pipeline, inklusive der Fallunterscheidung am
-      # Quality-Gate-Waechter:
-      #   * planmaessige Laeufe (hier: cron)  -> der Waechter LAEUFT MIT und faerbt einen
-      #     roten Gate-Stand sichtbar rot. Bis zum 29.08.2026 war er ueberall ausgeschlossen,
-      #     ein rotes Gate war damit in KEINEM CI-Lauf sichtbar.
-      #   * PR- und manuelle Laeufe -> ausgeschlossen, damit ein Hotfix trotz rotem Gate
-      #     durchgeht. Der Waechter liest den statischen Wochenstand, nicht den PR-Code.
-      # -DskipITs: Integrationstests brauchen eine laufende App bzw. Playwright-Browser.
+      # Word for word the ci job of the GitHub pipeline, including the case distinction at
+      # the quality gate guard:
+      #   * scheduled runs (here: cron)  -> the guard RUNS ALONG and colours a
+      #     red gate state visibly red. Until 29.08.2026 it was excluded everywhere,
+      #     so a red gate was visible in NO CI run at all.
+      #   * PR and manual runs -> excluded, so that a hotfix gets through despite a red
+      #     gate. The guard reads the static weekly state, not the PR code.
+      # -DskipITs: integration tests need a running app resp. Playwright browsers.
       #
-      # ZWEI GATES, DIE HIER SCHARF SIND UND IN DEN CONSUMERN NICHT:
-      #   1. JaCoCo. root setzt <jacoco.halt-on-failure>true</jacoco.halt-on-failure> bei
-      #      <jacoco.coverage.minimum>0.40</jacoco.coverage.minimum> (Zustandsbericht
-      #      29.08.2026, Massnahme 13); app/guild/iot/schuetu erben die Ausfuehrung und
-      #      schalten sie ab. Ein Modul unter 40 % laesst diesen Step also ROT werden — das
-      #      ist der Sinn der Sache und kein Pipeline-Fehler. Wer es "reparieren" will,
-      #      hebt nicht den Schalter, sondern staffelt <jacoco.coverage.minimum> im
-      #      betroffenen Modul (mit Begruendung und Datum, nie 0).
-      #   2. Die geteilten Arch-Regeln aus plaintext-root-archtests — root liefert sie
-      #      selbst mit und ist damit sein eigener erster Konsument.
+      # TWO GATES THAT ARE ARMED HERE AND NOT IN THE CONSUMERS:
+      #   1. JaCoCo. root sets <jacoco.halt-on-failure>true</jacoco.halt-on-failure> with
+      #      <jacoco.coverage.minimum>0.40</jacoco.coverage.minimum> (status report
+      #      29.08.2026, measure 13); app/guild/iot/schuetu inherit the execution and
+      #      switch it off. A module below 40 % therefore turns this step RED — that
+      #      is the whole point of it and not a pipeline error. Whoever wants to "repair"
+      #      it does not flip the switch but grades <jacoco.coverage.minimum> in the
+      #      affected module (with a rationale and a date, never 0).
+      #   2. The shared arch rules from plaintext-root-archtests — root ships them
+      #      itself and is thus its own first consumer.
       #
-      # NICHT ANFASSEN: kein `-Dspring-boot.repackage.*`, kein Ausschalten des
-      # exec-Classifiers, und kein `-Droot.dual.publish=false`. Der Dual-Publish steht in
-      # .mvn/maven.config und gilt fuer beide CI-Motoren; hier im install-Lauf kostet er
-      # nichts, weil die deploy-Phase gar nicht erreicht wird.
+      # DO NOT TOUCH: no `-Dspring-boot.repackage.*`, no switching off of the
+      # exec classifier, and no `-Droot.dual.publish=false`. The dual publish lives in
+      # .mvn/maven.config and applies to both CI engines; here in the install run it costs
+      # nothing, because the deploy phase is never reached at all.
       - >-
         if [ "$CI_PIPELINE_EVENT" = "cron" ]; then
           echo "Cron-Lauf: Quality-Gate-Waechter laeuft MIT.";
@@ -161,16 +161,16 @@ steps:
 
   coverage-uebersicht:
     image: maven:3.9-eclipse-temurin-25
-    # `status: [success, failure]` = das Gegenstueck zu `if: always()`. Die Coverage-Zahlen
-    # sind gerade nach einem roten Lauf interessant — und in root ist ein roter Lauf
-    # ueberdurchschnittlich oft genau ein JaCoCo-Gate-Verstoss, dessen Modul man hier sieht.
+    # `status: [success, failure]` = the counterpart of `if: always()`. The coverage figures
+    # are interesting precisely after a red run — and in root a red run is
+    # more often than not exactly a JaCoCo gate violation, whose module is visible here.
     when:
       - status: [success, failure]
     commands:
       - . .woodpecker/waechter.sh
       - mvn jacoco:report -B || echo "jacoco:report fehlgeschlagen — Uebersicht bleibt leer."
-      # Woodpecker kennt kein $GITHUB_STEP_SUMMARY. Die Tabelle geht deshalb ins Step-Log;
-      # das ist der ehrliche Ersatz, keine gleichwertige Funktion (siehe docs/CI-UMSCHALTEN.md,
+      # Woodpecker has no $GITHUB_STEP_SUMMARY. The table therefore goes into the step log;
+      # that is the honest substitute, not an equivalent feature (see docs/CI.md,
       # "Was Woodpecker nicht kann").
       - >-
         bash -c 'echo "── Code Coverage — plaintext-root (Gate: 40 %, scharf) ──";

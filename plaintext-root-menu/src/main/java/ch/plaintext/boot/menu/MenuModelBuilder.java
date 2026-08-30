@@ -99,12 +99,12 @@ public class MenuModelBuilder {
         visibleItems = new ArrayList<>(visibleItems);
         visibleItems.sort(Comparator.comparingInt(MenuItemImpl::getOrder));
 
-        // Menü-Titel gegen Duplikate absichern: Die Hierarchie wird unten ausschliesslich per
-        // Titel als Map-Key aufgebaut. Zwei Items mit gleichem Titel würden sich in submenuMap/
-        // itemMap still überschreiben und die Hierarchie zerstören - im schlimmsten Fall wird
-        // dasselbe Submenu-Objekt mehrfach eingehängt (verschachteltes Submenu/ELException, das
-        // jede eingeloggte Seite crasht). Deshalb wird pro Titel deterministisch das erste
-        // Vorkommen (niedrigste order) behalten und jedes weitere Duplikat mit WARN verworfen.
+        // Guard the menu titles against duplicates: the hierarchy below is built exclusively
+        // with the title as the map key. Two items with the same title would silently overwrite
+        // each other in submenuMap/itemMap and destroy the hierarchy - in the worst case the same
+        // submenu object gets attached more than once (nested submenu/ELException that crashes
+        // every logged-in page). Therefore the first occurrence per title (lowest order) is kept
+        // deterministically and every further duplicate is discarded with a WARN.
         visibleItems = deduplicateByTitle(visibleItems);
 
         // Build hierarchy using two-pass algorithm
@@ -160,8 +160,8 @@ public class MenuModelBuilder {
             }
         }
 
-        // Laeuft bei jedem Seitenaufruf jedes Benutzers (MenuBean ist view-scoped) — debug wie die
-        // Einzelschritte darueber, sonst verdeckt es echte INFO-Meldungen im Betriebslog.
+        // Runs on every page request of every user (MenuBean is view-scoped) — debug like the
+        // individual steps above, otherwise it hides real INFO messages in the operations log.
         log.debug("Built menu model with {} top-level elements", menuModel.getElements().size());
         return menuModel;
     }
@@ -172,32 +172,31 @@ public class MenuModelBuilder {
     }
 
     /**
-     * Meldet ein Kind, das ohne Elterncontainer dasteht — und unterscheidet dabei die beiden
-     * Faelle, die vorher beide als WARN herausgingen (Karte 521).
+     * Reports a child that stands there without a parent container — distinguishing the two
+     * cases that previously both went out as WARN (Card 521).
      *
-     * <p><b>Elternmenue existiert, ist aber nicht sichtbar.</b> Das ist der <i>Normalbetrieb</i>,
-     * kein Fehler: Ein Kind darf breiter erreichbar sein als sein Elternmenue. Beispiele aus dem
-     * Framework: {@code API Token} und {@code Benachrichtigungen} deklarieren
-     * {@code roles={"USER","ADMIN","ROOT"}}, haengen aber unter {@code Admin} (nur ADMIN) bzw.
-     * {@code Root} (nur ROOT) — fuer einen normalen Benutzer ist das Elternmenue also unsichtbar
-     * und das Kind sichtbar. Dasselbe entsteht, wenn ein Modul deaktiviert oder ein Menue fuer
-     * einen Mandanten ausgeblendet ist, das Kind aber nicht. In einem hierarchischen Menue laesst
-     * sich ein solches Kind nicht darstellen; Ueberspringen ist richtig — nur ist es eben nichts,
-     * wovor man warnen muesste.
+     * <p><b>The parent menu exists but is not visible.</b> That is <i>normal operation</i>, not an
+     * error: a child may be reachable more broadly than its parent menu. Examples from the
+     * framework: {@code API Token} and {@code Benachrichtigungen} declare
+     * {@code roles={"USER","ADMIN","ROOT"}} but hang under {@code Admin} (ADMIN only) resp.
+     * {@code Root} (ROOT only) — so for a normal user the parent menu is invisible while the child
+     * is visible. The same arises when a module is disabled or a menu is hidden for a tenant while
+     * the child is not. Such a child cannot be rendered in a hierarchical menu; skipping it is
+     * right — it is simply nothing one would have to warn about.
      *
-     * <p><b>Elternmenue existiert nirgends.</b> Das ist ein echter Konfigurationsfehler (Tippfehler
-     * im {@code parent}, entferntes Elternmenue) und bleibt WARN — die Seite ist dann fuer
-     * <i>niemanden</i> ueber das Menue erreichbar.
+     * <p><b>The parent menu exists nowhere.</b> That is a genuine configuration error (typo in
+     * {@code parent}, removed parent menu) and stays a WARN — the page is then reachable via the
+     * menu for <i>nobody</i>.
      *
-     * <p><b>Warum das zaehlt:</b> In plaintext-app erzeugten acht Eintraege des ersten Falls
-     * <b>1218 WARN-Zeilen pro Tag — 79 % aller Warnungen der Anwendung</b> (Karte 521, gemessen in
-     * Graylog ueber 24 h). Eine Warnung, die immer dasteht, wird nicht mehr gelesen; echte
-     * Warnungen gehen darin unter.
+     * <p><b>Why this matters:</b> in plaintext-app eight entries of the first case produced
+     * <b>1218 WARN lines per day — 79 % of all warnings of the application</b> (Card 521, measured
+     * in Graylog over 24 h). A warning that is always there stops being read; real warnings drown
+     * in it.
      *
-     * @param parent       Titel des gesuchten Elternmenues
-     * @param item         das Kind, das nicht eingehaengt werden konnte
-     * @param allMenuItems <b>alle</b> registrierten Menuepunkte, auch die unsichtbaren — nur so
-     *                     laesst sich "unsichtbar" von "gibt es nicht" unterscheiden
+     * @param parent       title of the parent menu being looked for
+     * @param item         the child that could not be attached
+     * @param allMenuItems <b>all</b> registered menu items, including the invisible ones — only
+     *                     that way can "invisible" be told apart from "does not exist"
      */
     private void meldeFehlendesElternmenue(String parent, MenuItemImpl item,
                                            List<MenuItemImpl> allMenuItems) {

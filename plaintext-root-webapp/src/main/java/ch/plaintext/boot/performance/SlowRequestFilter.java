@@ -21,42 +21,42 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Protokolliert Requests, die laenger dauern als eine konfigurierte Schwelle (Karte 430).
+ * Logs requests that take longer than a configured threshold (card 430).
  *
- * <p><b>Warum es diesen Filter gibt.</b> „Die Anwendung ist langsam" liess sich bisher nicht
- * nachweisen: Der einzige Filter, der Wiki-Wege protokolliert, greift nur bei {@code .html}-URLs,
- * und ein Ajax-Postback auf {@code /wiki.xhtml} tauchte in keinem Log auf. Es gab schlicht keine
- * Stelle, an der die Dauer eines Requests festgehalten wird — eine Meldung wie „das Rädchen dreht
- * lange" war damit grundsätzlich nicht überprüfbar.
+ * <p><b>Why this filter exists.</b> "The application is slow" could not be proven so far:
+ * the only filter that logs wiki paths applies to {@code .html} URLs only,
+ * and an Ajax postback on {@code /wiki.xhtml} showed up in no log at all. There simply was no
+ * place where the duration of a request is recorded — a report such as "the spinner keeps
+ * turning for a long time" was therefore fundamentally unverifiable.
  *
- * <p><b>Warum kein Ausbau des {@link TimingAspect}.</b> Der misst per AOP einzelne
- * <i>Methodenaufrufe</i> und kennt weder HTTP-Pfad noch -Methode. Ein Request durchläuft Dutzende
- * Methoden; aus ihren Einzelzeiten lässt sich die Dauer des Requests nicht rekonstruieren, und ein
- * Pfad kommt darin gar nicht vor. Die Frage „wie lange dauerte der POST auf /wiki.xhtml" kann er
- * deshalb nicht beantworten. Beide ergänzen sich: der Aspect sagt <i>welche Methode</i>, der
- * Filter <i>welcher Request</i>.
+ * <p><b>Why not an extension of the {@link TimingAspect}.</b> That one measures individual
+ * <i>method calls</i> via AOP and knows neither the HTTP path nor the HTTP method. A request runs
+ * through dozens of methods; the duration of the request cannot be reconstructed from their
+ * individual times, and a path does not appear in them at all. The question "how long did the POST
+ * on /wiki.xhtml take" is therefore one it cannot answer. The two complement each other: the aspect
+ * says <i>which method</i>, the filter <i>which request</i>.
  *
- * <p><b>Was NICHT ins Log geht:</b> kein Query-String, kein Request-Body, keine Parameter, keine
- * Session-Kennung, kein Benutzername. Ein Timing-Log, das nebenbei Inhalte mitschreibt, wäre ein
- * Datenleck — und ausgerechnet die Wiki-Pfade führen Titel und Tokens in der Query.
+ * <p><b>What does NOT go into the log:</b> no query string, no request body, no parameters, no
+ * session identifier, no user name. A timing log that writes down content along the way would be a
+ * data leak — and of all things the wiki paths carry titles and tokens in the query.
  *
- * <p><b>Drosselung:</b> Je Pfad höchstens eine Meldung pro {@code meldeabstand}. Unterdrückte
- * Treffer werden gezählt und bei der nächsten Meldung mit ausgewiesen, damit die Drosselung nichts
- * verschweigt. Ohne sie schriebe eine dauerhaft langsame Anwendung bei jedem Request eine Zeile.
+ * <p><b>Throttling:</b> at most one message per path per {@code meldeabstand}. Suppressed
+ * hits are counted and reported along with the next message, so that the throttling hides
+ * nothing. Without it a permanently slow application would write a line on every request.
  *
- * <p>Die Messung fliesst zusätzlich in den {@link PerformanceService} und erscheint damit in der
- * bestehenden Performance-Ansicht — auch unterhalb der Schwelle, wo nichts protokolliert wird.
+ * <p>The measurement additionally flows into the {@link PerformanceService} and thereby appears in
+ * the existing performance view — also below the threshold, where nothing is logged.
  *
  * @author plaintext.ch
  */
 @Slf4j
 @RequiredArgsConstructor
-// Karte 497 (Auflage aus dem Review zu Karte 430): NICHT +10 — dort registriert
-// RateLimitFilterConfig aus Sicherheitsgruenden (Karte 303) den ForwardedHeaderFilter.
-// Zwei Filter auf demselben Order-Wert haben in Spring KEINE definierte Reihenfolge.
-// +9 statt +11, weil dieser Filter nur die Zeit misst und Methode/Pfad protokolliert —
-// er braucht die korrigierten Forwarded-Header nicht, soll aber moeglichst viel von der
-// Kette umfassen.
+// Card 497 (requirement from the review of card 430): NOT +10 — there
+// RateLimitFilterConfig registers the ForwardedHeaderFilter for security reasons (card 303).
+// Two filters on the same order value have NO defined order in Spring.
+// +9 instead of +11, because this filter only measures the time and logs method/path —
+// it does not need the corrected forwarded headers, but should cover as much of the
+// chain as possible.
 @Order(Ordered.HIGHEST_PRECEDENCE + 9)
 public class SlowRequestFilter implements Filter {
 
@@ -64,10 +64,10 @@ public class SlowRequestFilter implements Filter {
 
     private final PerformanceService performanceService;
 
-    /** Zeitpunkt der letzten Meldung je Pfad (Millisekunden). */
+    /** Time of the last message per path (milliseconds). */
     private final ConcurrentMap<String, AtomicLong> letzteMeldung = new ConcurrentHashMap<>();
 
-    /** Seit der letzten Meldung unterdrueckte Treffer je Pfad. */
+    /** Hits suppressed per path since the last message. */
     private final ConcurrentMap<String, AtomicInteger> unterdrueckt = new ConcurrentHashMap<>();
 
     @Override
@@ -85,15 +85,15 @@ public class SlowRequestFilter implements Filter {
             try {
                 bewerte(http, dauerMs);
             } catch (Exception e) {
-                // Die Messung darf den Request NIE beeintraechtigen: Sie laeuft im finally, also
-                // auch im Fehlerfall. Eine Ausnahme hier wuerde die urspruengliche verdecken.
+                // The measurement must NEVER affect the request: it runs in the finally block, hence
+                // also in the error case. An exception here would mask the original one.
                 log.debug("Langsam-Erkennung uebersprungen", e);
             }
         }
     }
 
     private void bewerte(HttpServletRequest http, long dauerMs) {
-        // Nur Methode und Pfad — bewusst OHNE Query-String (siehe Klassenkommentar).
+        // Method and path only — deliberately WITHOUT the query string (see the class comment).
         String pfad = http.getRequestURI();
         String methode = http.getMethod();
         performanceService.record(methode + " " + pfad, dauerMs * 1_000_000L);
@@ -117,9 +117,9 @@ public class SlowRequestFilter implements Filter {
     }
 
     /**
-     * Darf fuer diesen Pfad jetzt gemeldet werden? Beim ersten Mal ja; danach erst wieder nach
-     * Ablauf des Meldeabstands. Ist die Pfad-Obergrenze erreicht, wird gemeldet ohne zu drosseln —
-     * lieber ein paar Zeilen zu viel als eine unbegrenzt wachsende Map.
+     * May a message be emitted for this path right now? The first time yes; after that only once the
+     * reporting interval has elapsed. If the path limit is reached, a message is emitted without
+     * throttling — better a few lines too many than a map growing without bound.
      */
     private boolean darfMelden(String pfad) {
         long jetzt = System.currentTimeMillis();

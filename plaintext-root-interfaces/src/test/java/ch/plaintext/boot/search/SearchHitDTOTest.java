@@ -11,8 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit-Tests fuer die wiederverwendbare {@link SearchHitDTO}: All-Args-/No-Args-Konstruktor,
- * Getter/Setter, sowie die Lombok-generierten {@code equals}/{@code hashCode}/{@code toString}.
+ * Unit tests for the reusable {@link SearchHitDTO}: all-args and no-args constructor,
+ * getters/setters, plus the Lombok-generated {@code equals}/{@code hashCode}/{@code toString}.
  */
 class SearchHitDTOTest {
 

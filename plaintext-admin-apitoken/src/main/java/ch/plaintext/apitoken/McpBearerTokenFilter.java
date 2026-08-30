@@ -30,58 +30,60 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Kanonischer Bearer-Token-Filter für MCP-/Token-REST-Endpoints ({@code /mcp/*} u.ä.).
+ * Canonical bearer token filter for MCP/token REST endpoints ({@code /mcp/*} and the like).
  *
- * <p>Zentralisiert die bisher in plaintext-app, plaintext-iot und plaintext-schuetu divergent
- * kopierten {@code McpBearerTokenFilter}-Implementierungen. Die Endpoints sind in der
- * Spring-Security-Chain als {@code permitAll} eingetragen (siehe
- * {@code plaintext.security.permitAllPatterns}), damit der Request bis zum Servlet durchkommt;
- * die eigentliche Authentisierung übernimmt DIESER Filter. Er wird per
- * {@link org.springframework.boot.web.servlet.FilterRegistrationBean} (siehe
- * {@link McpBearerTokenFilterConfig}, Property-gesteuert) registriert, validiert den
- * {@code Bearer}-Token und liefert bei fehlendem/ungültigem Token 401 JSON, ohne die
- * Filterkette fortzusetzen.</p>
+ * <p>Centralizes the {@code McpBearerTokenFilter} implementations that were previously copied —
+ * and had diverged — in plaintext-app, plaintext-iot and plaintext-schuetu. The endpoints are
+ * registered as {@code permitAll} in the Spring Security chain (see
+ * {@code plaintext.security.permitAllPatterns}) so that the request gets through to the servlet;
+ * the actual authentication is performed by THIS filter. It is registered via
+ * {@link org.springframework.boot.web.servlet.FilterRegistrationBean} (see
+ * {@link McpBearerTokenFilterConfig}, property-driven), validates the
+ * {@code Bearer} token and returns 401 JSON for a missing/invalid token without continuing the
+ * filter chain.</p>
  *
- * <p><b>Validierungs-Strategien</b> (konfigurierbar, siehe {@link McpBearerTokenFilterProperties}):</p>
+ * <p><b>Validation strategies</b> (configurable, see {@link McpBearerTokenFilterProperties}):</p>
  * <ul>
- *   <li>{@link #jwtOnly(JwtTokenService, McpUserRoles)} — reine JWT-Signatur/Expiry-Prüfung ohne
- *       DB-Zugriff. Historisch der Workaround für den Hikari-Connection-Leak des damals noch
- *       {@code @Transactional} annotierten {@link ApiTokenService#validateToken(String)}.
- *       Trade-off: Token-Revocation greift serverseitig erst mit dem JWT-Expiry.</li>
- *   <li>{@link #withRevocationCheck(IApiTokenService, McpUserRoles)} — vollständige Validierung
- *       inkl. DB-Revocation-Check. Seit dem Leak-Fix in {@link ApiTokenService#validateToken(String)}
- *       (nicht mehr {@code @Transactional}, root ≥ 1.246.0) auch aus Servlet-Filtern leak-frei
- *       aufrufbar und daher die empfohlene Strategie.</li>
+ *   <li>{@link #jwtOnly(JwtTokenService, McpUserRoles)} — pure JWT signature/expiry check without
+ *       DB access. Historically the workaround for the Hikari connection leak of
+ *       {@link ApiTokenService#validateToken(String)}, which back then was still annotated
+ *       {@code @Transactional}.
+ *       Trade-off: server-side token revocation only takes effect at the JWT expiry.</li>
+ *   <li>{@link #withRevocationCheck(IApiTokenService, McpUserRoles)} — full validation
+ *       including a DB revocation check. Since the leak fix in {@link ApiTokenService#validateToken(String)}
+ *       (no longer {@code @Transactional}, root ≥ 1.246.0) it can be called leak-free from servlet
+ *       filters as well and is therefore the recommended strategy.</li>
  * </ul>
  *
- * <p><b>SecurityContext-Hygiene:</b> Der Filter mutiert NIE das bestehende
- * {@link SecurityContext}-Objekt in-place. Wird der Request mit einem HTTP-Session-Cookie
- * geschickt (z.B. SPAs, die eine Token-REST-API MIT dem Session-Cookie des eingeloggten Users
- * pollen), hält {@code HttpSessionSecurityContextRepository} genau diese Context-Referenz — ein
- * {@code getContext().setAuthentication(...)} würde die Session-Authentication in-place auf das
- * reduzierte Token-Set überschreiben und dem User seine echten Rollen klauen. Daher wird ein
- * frischer Context gesetzt und im {@code finally} der ursprüngliche wiederhergestellt; so bleibt
- * auch auf gepoolten Tomcat-Threads keine Token-Authentication zurück.</p>
+ * <p><b>SecurityContext hygiene:</b> The filter NEVER mutates the existing
+ * {@link SecurityContext} object in place. If the request is sent with an HTTP session cookie
+ * (e.g. SPAs that poll a token REST API WITH the session cookie of the logged-in user),
+ * {@code HttpSessionSecurityContextRepository} holds exactly that context reference — a
+ * {@code getContext().setAuthentication(...)} would overwrite the session authentication in place
+ * with the reduced token set and rob the user of their real roles. A fresh context is therefore
+ * set and the original one restored in the {@code finally}; that way no token authentication is
+ * left behind on pooled Tomcat threads either.</p>
  *
- * <p><b>Rollen:</b> Das MCP-JWT trägt bewusst KEINE Rollen. Damit
- * {@code PlaintextSecurity#getAllowedMandate()} ROOT erkennt, lädt der Filter die echten Rollen
- * des Token-Users leak-frei per {@link McpUserRoles} und legt sie als
- * {@code ROLE_*}/{@code PROPERTY_*}-Authorities ab.</p>
+ * <p><b>Roles:</b> The MCP JWT deliberately carries NO roles. So that
+ * {@code PlaintextSecurity#getAllowedMandate()} recognizes ROOT, the filter loads the real roles
+ * of the token user leak-free via {@link McpUserRoles} and stores them as
+ * {@code ROLE_*}/{@code PROPERTY_*} authorities.</p>
  *
- * <p><b>Scope:</b> Trägt das Token einen {@code scope}-Claim ({@code READ}/{@code WRITE}/
- * {@code ADMIN}, siehe {@link JwtTokenService#generateToken(Long, String, String, String, int, String)}),
- * vergibt der Filter KUMULATIVE {@code SCOPE_*}-Authorities (ADMIN erhält auch SCOPE_WRITE +
- * SCOPE_READ, WRITE auch SCOPE_READ) — Downstream-Apps prüfen dann per {@code @PreAuthorize
- * ("hasAuthority('SCOPE_WRITE')")} o.ä., ohne hasAnyAuthority-Ketten. <b>Fehlt der Claim, gilt seit
- * Karte 312 nur noch {@code READ}</b> (fail-closed). Zuvor galt {@code ADMIN} als „sanfte Migration" —
- * da die Token-Ausstellung damals gar keinen Scope vergab, war damit faktisch jeder API-Token ein
- * Vollzugriffs-Token. Wer scope-lose Alt-Tokens noch produktiv im Einsatz hat, kann das alte Verhalten
- * über {@code plaintext.mcp.bearer-filter.legacy-scope-admin=true} befristet zurückholen.</p>
+ * <p><b>Scope:</b> If the token carries a {@code scope} claim ({@code READ}/{@code WRITE}/
+ * {@code ADMIN}, see {@link JwtTokenService#generateToken(Long, String, String, String, int, String)}),
+ * the filter grants CUMULATIVE {@code SCOPE_*} authorities (ADMIN also gets SCOPE_WRITE +
+ * SCOPE_READ, WRITE also SCOPE_READ) — downstream apps then check via {@code @PreAuthorize
+ * ("hasAuthority('SCOPE_WRITE')")} or similar, without hasAnyAuthority chains. <b>If the claim is
+ * missing, only {@code READ} applies since card 312</b> (fail-closed). Before that {@code ADMIN}
+ * applied as a "gentle migration" — since token issuance did not assign any scope back then, every
+ * API token was effectively a full-access token. Anyone still running scope-less legacy tokens in
+ * production can restore the old behaviour for a limited time via
+ * {@code plaintext.mcp.bearer-filter.legacy-scope-admin=true}.</p>
  *
- * <p><b>Revocation:</b> Trägt das Token einen {@code jti}-Claim UND ist ein {@link JtiRevocationChecker}
- * verfügbar (optionaler Collaborator, siehe {@link McpBearerTokenFilterConfig}), wird die Anfrage bei
- * gesperrtem Token wie ein ungültiges Token mit 401 abgelehnt. Ohne Checker (Default) oder ohne
- * {@code jti}-Claim (Alt-Token) findet keine Revocation-Prüfung statt.</p>
+ * <p><b>Revocation:</b> If the token carries a {@code jti} claim AND a {@link JtiRevocationChecker}
+ * is available (optional collaborator, see {@link McpBearerTokenFilterConfig}), a request with a
+ * revoked token is rejected with 401 just like an invalid token. Without a checker (default) or
+ * without a {@code jti} claim (legacy token) no revocation check takes place.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -92,19 +94,19 @@ public class McpBearerTokenFilter implements Filter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     /**
-     * Präfix der Authority, die den Mandanten <b>des vorgelegten Tokens</b> trägt (Karte 670).
+     * Prefix of the authority that carries the tenant <b>of the presented token</b> (card 670).
      *
-     * <p>Es gibt bereits {@code PROPERTY_MANDAT_*} — davon liegen im Kontext aber regelmässig
-     * <b>zwei</b>: eine aus dem Token-Claim und eine aus den Benutzerrollen in
-     * {@code my_user_entity.roles}, wo derselbe Mandant in PROD grossgeschrieben gespeichert ist
-     * ({@code PROPERTY_MANDAT_PLAINTEXT} neben {@code PROPERTY_MANDAT_plaintext}). Wer aus dieser
-     * Menge „den" Mandanten zieht, bekommt je nach Hash-Reihenfolge mal den einen und mal den
-     * anderen — gemessen am 11.08.2026 mit demselben Token zweimal verschieden, wodurch 28
-     * Token-Zeilen zeitweise weder auflistbar noch widerrufbar waren.
+     * <p>{@code PROPERTY_MANDAT_*} already exists — but regularly <b>two</b> of them are in the
+     * context: one from the token claim and one from the user roles in
+     * {@code my_user_entity.roles}, where in PROD the same tenant is stored in upper case
+     * ({@code PROPERTY_MANDAT_PLAINTEXT} next to {@code PROPERTY_MANDAT_plaintext}). Whoever pulls
+     * "the" tenant out of that set gets sometimes one and sometimes the other, depending on the
+     * hash order — measured on 11.08.2026 as two different results for the same token, which left
+     * 28 token rows temporarily neither listable nor revocable.
      *
-     * <p>Diese Authority kommt aus genau einer Quelle und deshalb genau einmal vor. Die
-     * bestehenden {@code PROPERTY_MANDAT_*} bleiben unangetastet — {@code getAllowedMandate()} und
-     * die Rollenprüfung hängen daran.
+     * <p>This authority comes from exactly one source and therefore occurs exactly once. The
+     * existing {@code PROPERTY_MANDAT_*} remain untouched — {@code getAllowedMandate()} and the
+     * role check depend on them.
      */
     static final String TOKEN_MANDAT_PREFIX = "PROPERTY_TOKEN_MANDAT_";
 
@@ -113,19 +115,19 @@ public class McpBearerTokenFilter implements Filter {
     private final JtiRevocationChecker revocationChecker;
 
     /**
-     * Alt-Verhalten für Tokens ohne {@code scope}-Claim (Karte 312, H-7): {@code true} deutet einen
-     * fehlenden Scope weiterhin als {@code ADMIN}, {@code false} (Default) vergibt nur {@code READ}.
-     * Wird aus {@code plaintext.mcp.bearer-filter.legacy-scope-admin} gesetzt; als Setter statt
-     * Konstruktor-Parameter, damit die bestehenden Factories/Konstruktoren unverändert bleiben.
+     * Legacy behaviour for tokens without a {@code scope} claim (card 312, H-7): {@code true} still
+     * interprets a missing scope as {@code ADMIN}, {@code false} (default) grants only {@code READ}.
+     * Set from {@code plaintext.mcp.bearer-filter.legacy-scope-admin}; as a setter instead of a
+     * constructor parameter, so that the existing factories/constructors remain unchanged.
      */
     @Setter
     private boolean legacyScopeAdmin = false;
 
     /**
-     * @param tokenValidator    Validierungs-Strategie für den rohen Bearer-Token (ohne Prefix)
-     * @param mcpUserRoles      leak-freier Rollen-Lookup für den Token-User
-     * @param revocationChecker optionale jti-Blocklist-Prüfung (nie {@code null} — no-op-Default
-     *                          über die statischen Factories, wenn keine App-Bean vorhanden ist)
+     * @param tokenValidator    validation strategy for the raw bearer token (without prefix)
+     * @param mcpUserRoles      leak-free role lookup for the token user
+     * @param revocationChecker optional jti blocklist check (never {@code null} — no-op default
+     *                          via the static factories when no app bean is present)
      */
     public McpBearerTokenFilter(TokenValidator tokenValidator, McpUserRoles mcpUserRoles, JtiRevocationChecker revocationChecker) {
         this.tokenValidator = Objects.requireNonNull(tokenValidator, "tokenValidator");
@@ -134,14 +136,14 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * JWT-only Validierung (Signatur + Expiry, KEIN DB-Zugriff, keine Revocation vor Expiry) —
-     * das bisherige Verhalten der app-/schuetu-Kopien, ohne jti-Blocklist-Prüfung.
+     * JWT-only validation (signature + expiry, NO DB access, no revocation before expiry) —
+     * the previous behaviour of the app/schuetu copies, without a jti blocklist check.
      */
     public static McpBearerTokenFilter jwtOnly(JwtTokenService jwtTokenService, McpUserRoles mcpUserRoles) {
         return jwtOnly(jwtTokenService, mcpUserRoles, jti -> false);
     }
 
-    /** Wie {@link #jwtOnly(JwtTokenService, McpUserRoles)}, zusätzlich mit jti-Blocklist-Prüfung. */
+    /** Like {@link #jwtOnly(JwtTokenService, McpUserRoles)}, additionally with a jti blocklist check. */
     public static McpBearerTokenFilter jwtOnly(JwtTokenService jwtTokenService, McpUserRoles mcpUserRoles,
                                                 JtiRevocationChecker revocationChecker) {
         Objects.requireNonNull(jwtTokenService, "jwtTokenService");
@@ -152,33 +154,33 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * Vollständige Validierung inkl. DB-Revocation-Check — das bisherige Verhalten der iot-Kopie
-     * und die empfohlene Strategie.
+     * Full validation including a DB revocation check — the previous behaviour of the iot copy
+     * and the recommended strategy.
      * <p>
-     * <b>Nicht mehr „leak-frei seit root ≥ 1.246.0" (Karte 655, 11.08.2026).</b> Der damalige Fix
-     * beseitigte das {@code @Transactional}-Leck; das view-gebundene bleibt: Der OSIV-Filter
-     * umschliesst diese Filterkette, deshalb haelt der JPA-Revocation-Lookup seine DB-Verbindung
-     * bis zum Requestende — bei einer MCP-Sitzung also ueber deren ganze Laufzeit. Gemessen in
-     * plaintext-iot: 15 {@code Apparent connection leak detected} in 7 Tagen mit
-     * {@code ApiTokenService.validateVerifiedToken} im Stack. Einordnung und Begruendung, warum
-     * das (noch) nicht umgebaut wird, im Javadoc von {@link ApiTokenService#validateToken}. Ohne jti-Blocklist-Prüfung
-     * (die Hash-Allowlist in {@link ApiTokenService} deckt Revocation hier bereits ab; von dieser
-     * Strategie geminzte Tokens tragen aktuell keinen scope/jti-Claim).
+     * <b>No longer "leak-free since root ≥ 1.246.0" (card 655, 11.08.2026).</b> That fix removed
+     * the {@code @Transactional} leak; the view-bound one remains: the OSIV filter wraps this
+     * filter chain, which is why the JPA revocation lookup holds its DB connection until the end
+     * of the request — with an MCP session therefore for its entire lifetime. Measured in
+     * plaintext-iot: 15 {@code Apparent connection leak detected} in 7 days with
+     * {@code ApiTokenService.validateVerifiedToken} on the stack. Assessment and the reasoning why
+     * this is not (yet) reworked are in the Javadoc of {@link ApiTokenService#validateToken}. Without a jti blocklist check
+     * (the hash allowlist in {@link ApiTokenService} already covers revocation here; tokens minted
+     * by this strategy currently carry no scope/jti claim).
      */
     public static McpBearerTokenFilter withRevocationCheck(IApiTokenService apiTokenService, McpUserRoles mcpUserRoles) {
         return withRevocationCheck(apiTokenService, mcpUserRoles, jti -> false);
     }
 
-    /** Wie {@link #withRevocationCheck(IApiTokenService, McpUserRoles)}, zusätzlich mit jti-Blocklist-Prüfung. */
+    /** Like {@link #withRevocationCheck(IApiTokenService, McpUserRoles)}, additionally with a jti blocklist check. */
     public static McpBearerTokenFilter withRevocationCheck(IApiTokenService apiTokenService, McpUserRoles mcpUserRoles,
                                                              JtiRevocationChecker revocationChecker) {
         Objects.requireNonNull(apiTokenService, "apiTokenService");
         return new McpBearerTokenFilter(
                 token -> apiTokenService.validateToken(token)
-                        // scope MUSS durchgereicht werden (Karte 349): sonst käme jedes Token in dieser
-                        // Strategie ohne Claim an und der fail-closed-Default degradierte es auf READ —
-                        // ein Umstellen auf validation: DATABASE würde damit alle EINTRAGEN-Flows
-                        // (Zeiterfassung-Uhr, Juriwagen) stillschweigend auf Lesezugriff kappen.
+                        // scope MUST be passed through (card 349): otherwise every token in this
+                        // strategy would arrive without a claim and the fail-closed default would
+                        // degrade it to READ — switching to validation: DATABASE would then silently
+                        // cut all EINTRAGEN flows (Zeiterfassung-Uhr, Juriwagen) down to read access.
                         .map(r -> new ValidatedToken(r.userId(), r.mandat(), r.email(), r.scope(), null)),
                 mcpUserRoles, revocationChecker);
     }
@@ -214,21 +216,21 @@ public class McpBearerTokenFilter implements Filter {
         authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
         authorities.add(new SimpleGrantedAuthority("PROPERTY_MYUSERID_" + validation.userId()));
         authorities.add(new SimpleGrantedAuthority("PROPERTY_MANDAT_" + validation.mandat()));
-        // Eindeutige Zweitfassung desselben Werts — siehe TOKEN_MANDAT_PREFIX. Sie ist die einzige
-        // Mandanten-Authority, die garantiert nur einmal vorkommt.
+        // Unambiguous second copy of the same value — see TOKEN_MANDAT_PREFIX. It is the only
+        // tenant authority that is guaranteed to occur exactly once.
         authorities.add(new SimpleGrantedAuthority(TOKEN_MANDAT_PREFIX + validation.mandat()));
         addScopeAuthorities(authorities, validation.scope());
-        // Echte Rollen des Users (ROOT/ADMIN/PROPERTY_MANDAT_* etc.) — damit getAllowedMandate() stimmt.
+        // Real roles of the user (ROOT/ADMIN/PROPERTY_MANDAT_* etc.) — so that getAllowedMandate() is correct.
         for (String role : mcpUserRoles.rolesForUser(validation.userId())) {
             if (role == null || role.isBlank()) {
                 continue;
             }
             String r = role.toUpperCase();
-            // PROPERTY_TOKEN_MANDAT_* ist reserviert und kommt AUSSCHLIESSLICH aus dem Token
-            // (Karte 670). Käme sie auch aus der Rollenspalte, läge wieder mehr als eine im
-            // Kontext — und schlimmer: Ein Eintrag in `my_user_entity.roles` könnte den Mandanten
-            // des Tokens überstimmen und damit die Mandantengrenze verschieben. Deshalb hier
-            // verworfen statt übernommen.
+            // PROPERTY_TOKEN_MANDAT_* is reserved and comes EXCLUSIVELY from the token
+            // (card 670). If it could also come from the roles column, more than one would be in
+            // the context again — and worse: an entry in `my_user_entity.roles` could override the
+            // tenant of the token and thereby shift the tenant boundary. It is therefore discarded
+            // here instead of being adopted.
             if (r.startsWith(TOKEN_MANDAT_PREFIX)) {
                 log.warn("Rolle {} des Benutzers {} ignoriert: {}* ist fuer den Token-Mandanten reserviert",
                         role, validation.userId(), TOKEN_MANDAT_PREFIX);
@@ -238,9 +240,9 @@ public class McpBearerTokenFilter implements Filter {
         }
         var auth = new UsernamePasswordAuthenticationToken(validation.email(), null, authorities);
 
-        // WICHTIG: NICHT das bestehende SecurityContext-Objekt mutieren (Session-Kontext-Schutz,
-        // siehe Klassen-Javadoc). Frischen Context setzen, im finally den vorherigen restaurieren —
-        // das räumt zugleich die Token-Authentication defensiv vom gepoolten Thread.
+        // IMPORTANT: do NOT mutate the existing SecurityContext object (session context protection,
+        // see class Javadoc). Set a fresh context, restore the previous one in the finally —
+        // that also defensively clears the token authentication off the pooled thread.
         SecurityContext previous = SecurityContextHolder.getContext();
         SecurityContext bearerContext = SecurityContextHolder.createEmptyContext();
         bearerContext.setAuthentication(auth);
@@ -253,34 +255,34 @@ public class McpBearerTokenFilter implements Filter {
             if (e == null) {
                 throw ex;
             }
-            // SECURITY/API-VERTRAG (Karte 652): Ein Bearer-Client, dem ein Recht fehlt, bekam bisher
-            // HTTP 302 auf /login.html — HTML fuer ein Geraet, das JSON erwartet. Gemessen an
-            // schuetu INT am 11.08.2026: READ-Token gegen
-            // @PreAuthorize("hasAuthority('SCOPE_WRITE')") -> 302; mit `curl -L` wird daraus
-            // HTTP 200 mit 14 534 Bytes Anmeldeseite, also ein Erfolg im aufrufenden Skript.
+            // SECURITY/API CONTRACT (card 652): a bearer client lacking a permission used to get
+            // HTTP 302 to /login.html — HTML for a device that expects JSON. Measured on
+            // schuetu INT on 11.08.2026: READ token against
+            // @PreAuthorize("hasAuthority('SCOPE_WRITE')") -> 302; with `curl -L` that turns into
+            // HTTP 200 with 14 534 bytes of login page, i.e. a success in the calling script.
             //
-            // WARUM DER FANG-TYP BREITER IST ALS DIE ERWARTETE EXCEPTION (Karte 652, gemessen am
-            // 11.08.2026): Der erste Anlauf fing hier ausschliesslich AccessDeniedException — und
-            // wurde nie ausgefuehrt. Grund ist nicht die Position dieses Filters, sondern die
-            // VERPACKUNG: Die AuthorizationDeniedException aus @PreAuthorize wird vom
-            // DispatcherServlet in eine jakarta.servlet.ServletException gehuellt, bevor sie die
-            // Filterkette erreicht. Ein Integrationstest ueber die echte Kette hat das sichtbar
-            // gemacht (BearerAccessDeniedChainTest): "Filter sieht Exception
-            // jakarta.servlet.ServletException". Der Spring-eigene ExceptionTranslationFilter macht
-            // deshalb dasselbe wie diese Methode — er durchsucht die Ursachenkette.
+            // WHY THE CATCH TYPE IS BROADER THAN THE EXPECTED EXCEPTION (card 652, measured on
+            // 11.08.2026): the first attempt caught AccessDeniedException here exclusively — and
+            // was never executed. The reason is not the position of this filter, but the
+            // WRAPPING: the AuthorizationDeniedException from @PreAuthorize is wrapped by the
+            // DispatcherServlet into a jakarta.servlet.ServletException before it reaches the
+            // filter chain. An integration test over the real chain made that visible
+            // (BearerAccessDeniedChainTest): "filter sees exception
+            // jakarta.servlet.ServletException". Spring's own ExceptionTranslationFilter therefore
+            // does the same as this method — it searches the cause chain.
             //
-            // Ohne das Auspacken lief die Exception weiter nach aussen zum
-            // ExceptionTranslationFilter; dort war der SecurityContext durch das finally unten
-            // schon wieder anonym, und der LoginUrlAuthenticationEntryPoint machte aus der
-            // Rechteverweigerung eine Umleitung auf /login.html. Ein Geraet bekam HTML statt JSON,
-            // ein Skript mit `curl -L` sogar HTTP 200 — eine fehlende Berechtigung als Erfolg.
+            // Without that unwrapping the exception travelled further outwards to the
+            // ExceptionTranslationFilter; there the SecurityContext had already been made anonymous
+            // again by the finally below, and the LoginUrlAuthenticationEntryPoint turned the
+            // denied permission into a redirect to /login.html. A device got HTML instead of JSON,
+            // a script with `curl -L` even HTTP 200 — a missing permission reported as success.
             //
-            // Der Fall wird hier abgeschlossen, wo er entstanden ist: dieselbe JSON-Form wie das 401
-            // oben, und nur fuer die url-patterns dieses Filters — JSF-/Browser-Pfade kommen hier
-            // nie vorbei und leiten weiterhin auf /login.html um.
+            // The case is concluded here, where it arose: the same JSON shape as the 401
+            // above, and only for the url-patterns of this filter — JSF/browser paths never come
+            // through here and still redirect to /login.html.
             if (httpResponse.isCommitted()) {
-                // Antwort laeuft bereits (z.B. eine SSE-Verbindung unter /mcp): Ein nachgeschobener
-                // JSON-Rumpf wuerde den Datenstrom zerstoeren. Dann lieber die Exception weiterreichen.
+                // The response is already under way (e.g. an SSE connection under /mcp): appending a
+                // JSON body would destroy the data stream. Better to pass the exception on instead.
                 throw e;
             }
             log.warn("MCP request abgewiesen (Recht fehlt): {} {} — userId={}, scope={} → 403 JSON",
@@ -293,17 +295,17 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * Sucht in der Ursachenkette nach einer {@link AccessDeniedException} (Karte 652).
+     * Searches the cause chain for an {@link AccessDeniedException} (card 652).
      *
-     * <p>Die Exception aus {@code @PreAuthorize} erreicht einen Servlet-Filter nicht in ihrer
-     * eigenen Gestalt, sondern in eine {@link ServletException} gehuellt. Genau daran ging der
-     * erste Anlauf vorbei. Spring Securitys eigener {@code ExceptionTranslationFilter} loest das
-     * ebenso, ueber seinen {@code ThrowableAnalyzer}.</p>
+     * <p>The exception from {@code @PreAuthorize} does not reach a servlet filter in its own
+     * shape, but wrapped in a {@link ServletException}. That is exactly what the first attempt
+     * missed. Spring Security's own {@code ExceptionTranslationFilter} solves it the same way,
+     * via its {@code ThrowableAnalyzer}.</p>
      *
-     * <p>Die Kette wird mit einer Tiefengrenze durchlaufen: Eine Exception, die sich selbst als
-     * Ursache traegt (kommt bei manchen Wrappern vor), wuerde sonst zur Endlosschleife.</p>
+     * <p>The chain is traversed with a depth limit: an exception that carries itself as its cause
+     * (occurs with some wrappers) would otherwise lead to an endless loop.</p>
      *
-     * @return die gefundene Exception oder {@code null}, wenn keine in der Kette steckt
+     * @return the exception found, or {@code null} if none is contained in the chain
      */
     public static AccessDeniedException findeAccessDenied(Throwable ex) {
         Throwable aktuell = ex;
@@ -327,9 +329,9 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * Gegenstueck zu {@link #unauthorized(HttpServletResponse)} fuer den Fall „Token gueltig, Recht
-     * fehlt" (Karte 652). Bewusst ohne Angabe, welcher Scope gefehlt hat: Der Client kann daran
-     * nichts aendern, und die Endpunkt-Rechtematrix gehoert nicht in eine Fehlerantwort.
+     * Counterpart to {@link #unauthorized(HttpServletResponse)} for the case "token valid, permission
+     * missing" (card 652). Deliberately without stating which scope was missing: the client cannot
+     * change anything about it, and the endpoint permission matrix does not belong in an error response.
      */
     private void forbidden(HttpServletResponse response) throws IOException {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -338,22 +340,23 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * Vergibt kumulative {@code SCOPE_*}-Authorities: SCOPE_READ immer, SCOPE_WRITE <b>und</b>
-     * SCOPE_EINTRAGEN zusätzlich bei WRITE/EINTRAGEN/ADMIN, SCOPE_ADMIN zusätzlich bei ADMIN. Ein
-     * nicht erkannter Claim-Wert bekommt NUR SCOPE_READ (least privilege).
+     * Grants cumulative {@code SCOPE_*} authorities: SCOPE_READ always, SCOPE_WRITE <b>and</b>
+     * SCOPE_EINTRAGEN additionally for WRITE/EINTRAGEN/ADMIN, SCOPE_ADMIN additionally for ADMIN. An
+     * unrecognized claim value gets ONLY SCOPE_READ (least privilege).
      *
-     * <p><b>Übergangsfenster (Karte 545):</b> {@code WRITE} ist der neue Name des bisherigen Scopes
-     * {@code EINTRAGEN} (Entscheid Daniel, 05.08.2026). Beide Claim-Werte sind gültig und vergeben
-     * <em>dieselben</em> Authorities — sonst prüfte die eine Hälfte des Codes gegen SCOPE_EINTRAGEN
-     * und die andere gegen SCOPE_WRITE, und ein Token bestünde nur die halbe Strecke. Der Altname
-     * fällt erst, wenn alle Downstream-{@code @PreAuthorize}-Ausdrücke auf {@code SCOPE_WRITE}
-     * stehen (Stufe 3 der Karte).</p>
+     * <p><b>Transition window (card 545):</b> {@code WRITE} is the new name of the previous scope
+     * {@code EINTRAGEN} (decision by Daniel, 05.08.2026). Both claim values are valid and grant
+     * the <em>same</em> authorities — otherwise one half of the code would check against
+     * SCOPE_EINTRAGEN and the other against SCOPE_WRITE, and a token would only make it half the
+     * way. The old name is only dropped once all downstream {@code @PreAuthorize} expressions use
+     * {@code SCOPE_WRITE} (stage 3 of the card).</p>
      *
-     * <p><b>Fehlender/leerer Claim ⇒ {@code READ} (Karte 312, H-7).</b> Vorher galt hier {@code ADMIN}
-     * als „sanfte Migration" — in Kombination damit, dass die Token-Ausstellung gar keinen Scope
-     * vergab, war dadurch faktisch <em>jeder</em> API-Token ein Vollzugriffs-Token. Wer das Alt-
-     * Verhalten befristet braucht, setzt {@code plaintext.mcp.bearer-filter.legacy-scope-admin=true}
-     * (siehe {@link McpBearerTokenFilterProperties#isLegacyScopeAdmin()}).</p>
+     * <p><b>Missing/empty claim ⇒ {@code READ} (card 312, H-7).</b> Previously {@code ADMIN} applied
+     * here as a "gentle migration" — combined with the fact that token issuance did not assign any
+     * scope at all, that made <em>every</em> API token a full-access token in practice. Anyone who
+     * needs the legacy behaviour for a limited time sets
+     * {@code plaintext.mcp.bearer-filter.legacy-scope-admin=true}
+     * (see {@link McpBearerTokenFilterProperties#isLegacyScopeAdmin()}).</p>
      */
     private void addScopeAuthorities(Set<GrantedAuthority> authorities, String scope) {
         String fallback = legacyScopeAdmin ? "ADMIN" : "READ";
@@ -369,8 +372,8 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * Validierungs-Strategie: roher Bearer-Token (ohne {@code "Bearer "}-Prefix) rein,
-     * validierter Principal raus — oder {@link Optional#empty()} bei ungültigem Token.
+     * Validation strategy: raw bearer token (without the {@code "Bearer "} prefix) in,
+     * validated principal out — or {@link Optional#empty()} for an invalid token.
      */
     @FunctionalInterface
     public interface TokenValidator {
@@ -378,15 +381,15 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
-     * Minimaler validierter Principal, den der Filter für Authentication + Authorities braucht.
+     * Minimal validated principal that the filter needs for authentication + authorities.
      *
-     * @param userId Benutzer-ID aus dem Token
-     * @param mandat Mandat aus dem Token
-     * @param email  E-Mail des Token-Users (wird Principal-Name)
-     * @param scope  {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, oder {@code null} (Alt-Token ohne
-     *               scope-Claim; dann greift der fail-closed-Default)
-     * @param jti    Token-ID für die Revocation-Prüfung, oder {@code null} (Alt-Token bzw.
-     *               DATABASE-Strategie, die eigene Hash-basierte Revocation nutzt)
+     * @param userId user ID from the token
+     * @param mandat mandat identifier from the token
+     * @param email  e-mail of the token user (becomes the principal name)
+     * @param scope  {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, or {@code null} (legacy token
+     *               without a scope claim; then the fail-closed default applies)
+     * @param jti    token ID for the revocation check, or {@code null} (legacy token, or the
+     *               DATABASE strategy, which uses its own hash-based revocation)
      */
     public record ValidatedToken(Long userId, String mandat, String email, String scope, String jti) {}
 }

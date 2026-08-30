@@ -42,7 +42,7 @@ class SetupConfigServiceTest {
         assertThat(service.isTotpEnabledAnywhere()).isFalse();
     }
 
-    // Karte 306: Root-Bootstrap-Default fuer frische Installationen ist AUS.
+    // Card 306: the root bootstrap default for fresh installations is OFF.
     @Test
     void isRootUserEnabledFalseWhenNoConfigExists() {
         when(repository.findByMandat("default")).thenReturn(Optional.empty());
@@ -54,15 +54,15 @@ class SetupConfigServiceTest {
     void isRootUserEnabledReflectsPersistedValueForExistingInstall() {
         SetupConfig config = new SetupConfig();
         config.setMandat("default");
-        config.setRootUserEnabled(true); // Bestandsinstallation hat den Root-User bewusst aktiv
+        config.setRootUserEnabled(true); // existing installation deliberately has the root user active
         when(repository.findByMandat("default")).thenReturn(Optional.of(config));
 
         assertThat(service.isRootUserEnabled("default")).isTrue();
     }
 
-    // Karte 627: Die Richtung des Defaults ist der Kern — ohne Konfiguration wird aufgezeichnet.
-    // Ein umgekehrter Default wuerde bei jedem Mandanten ohne SETUP_CONFIG-Row still abschalten,
-    // und niemand wuerde es bemerken, weil nichts fehlschlaegt.
+    // Card 627: the direction of the default is the core of it — without a configuration, recording
+    // happens. A reversed default would silently switch it off for every tenant without a
+    // SETUP_CONFIG row, and nobody would notice, because nothing fails.
     @Test
     void isSessionTrackingEnabledTrueWhenNoConfigExists() {
         when(repository.findByMandat("default")).thenReturn(Optional.empty());
@@ -82,7 +82,7 @@ class SetupConfigServiceTest {
 
     @Test
     void neueSetupConfigZeichnetAuf() {
-        // Der Entity-Default entscheidet fuer frisch angelegte Konfigurationen (getOrCreate).
+        // The entity default decides for freshly created configurations (getOrCreate).
         assertThat(new SetupConfig().isSessionTrackingEnabled()).isTrue();
     }
 }

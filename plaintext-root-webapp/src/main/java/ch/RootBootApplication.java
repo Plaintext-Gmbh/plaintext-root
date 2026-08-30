@@ -12,11 +12,11 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
-// @EnableMethodSecurity aktiviert die Auswertung von @PreAuthorize/@PostAuthorize. Ohne sie werden
-// diese Annotationen STILL ignoriert — die Schranke steht im Code und laesst jeden durch. Der Bestand
-// hat diese Entscheidung zweimal schriftlich getroffen, solange der Schalter fehlte
-// (PlaintextSecurityImpl:501 "wuerde also still wirkungslos annotiert", I18nExportController:49
-// "die Annotation waere eine stille Attrappe") und deshalb im Rumpf geprueft. Karte 546.
+// @EnableMethodSecurity activates the evaluation of @PreAuthorize/@PostAuthorize. Without it those
+// annotations are SILENTLY ignored — the barrier stands in the code and lets everybody through. The
+// existing code made this decision twice in writing while the switch was missing
+// (PlaintextSecurityImpl:501 "would therefore be annotated silently without effect", I18nExportController:49
+// "the annotation would be a silent dummy") and therefore checked in the method body. Card 546.
 @SpringBootApplication
 @ComponentScan(basePackages = {"ch.plaintext"})
 @EntityScan(basePackages = {"ch.plaintext"})

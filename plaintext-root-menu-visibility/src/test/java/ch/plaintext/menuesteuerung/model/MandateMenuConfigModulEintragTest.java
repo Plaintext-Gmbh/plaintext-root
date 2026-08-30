@@ -15,11 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die zweite Form von Listen-Eintraegen: {@code modul:<moduleId>} schaltet ein ganzes Modul.
+ * The second form of list entries: {@code modul:<moduleId>} switches a whole module.
  *
- * <p>Der Schwerpunkt dieser Tests ist die <b>Verlustfreiheit</b>: kein gespeicherter Eintrag darf
- * durch die Neuerung seine Bedeutung aendern. Deshalb ist ausschliesslich die ausdrueckliche
- * Praefix-Form ein Modul-Eintrag — eine nackte {@code moduleId} bleibt ein Menue-Titel.</p>
+ * <p>The focus of these tests is <b>losslessness</b>: no stored entry may change its meaning
+ * because of the new feature. That is why only the explicit prefix form is a module entry — a bare
+ * {@code moduleId} stays a menu title.</p>
  */
 @DisplayName("MandateMenuConfig: Modul-Eintraege")
 class MandateMenuConfigModulEintragTest {
@@ -58,9 +58,9 @@ class MandateMenuConfigModulEintragTest {
     void titelEintragWirktUnveraendert() {
         MandateMenuConfig config = config(false, "Wiki");
 
-        // Der Titel-Eintrag trifft genau seinen Menuepunkt ...
+        // The title entry hits exactly its own menu item ...
         assertTrue(config.isListed("Wiki", List.of("wiki")));
-        // ... aber NICHT die Untermenues des Moduls.
+        // ... but NOT the submenus of the module.
         assertFalse(config.isListed("Wiki | Projekte", List.of("wiki")),
                 "Ein Titel-Eintrag darf kein ganzes Modul schalten");
     }

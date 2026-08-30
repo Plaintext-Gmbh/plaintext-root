@@ -18,18 +18,18 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit-Tests für {@link SearchService}: Gruppierung, Sichtbarkeits-Filter, leere/kurze Query,
- * Provider-Fehler → leer, Score-Sortierung/Cap und die {@code isMenuScoped}-Ausnahme.
+ * Unit tests for {@link SearchService}: grouping, visibility filter, empty/short query,
+ * provider error → empty, score sorting/cap and the {@code isMenuScoped} exception.
  */
 class SearchServiceTest {
 
-    // ── Test-Fixtures ────────────────────────────────────────────────────────
+    // ── Test fixtures ────────────────────────────────────────────────────────
 
     private static SearchHit hit(String title, int score) {
         return new SearchHitDTO(title, "sub", title + ".html", "pi pi-star", score);
     }
 
-    /** Einfacher Provider, der eine feste Trefferliste liefert. */
+    /** Simple provider that returns a fixed list of hits. */
     private static SearchProvider provider(String id, String moduleTitle, boolean menuScoped, List<SearchHit> hits) {
         return new SearchProvider() {
             @Override public String providerId() { return id; }
@@ -57,7 +57,7 @@ class SearchServiceTest {
         return item;
     }
 
-    // ── Query-Validierung ────────────────────────────────────────────────────
+    // ── Query validation ─────────────────────────────────────────────────────
 
     @Test
     void nullQueryLiefertLeer() {
@@ -69,13 +69,13 @@ class SearchServiceTest {
     void zuKurzeQueryLiefertLeer() {
         SearchProvider p = provider("m", "Modul", true, List.of(hit("Treffer", 10)));
         SearchService svc = new SearchService(List.of(p), menuWith("Modul"));
-        // 1 Zeichen < MIN_QUERY_LENGTH
+        // 1 character < MIN_QUERY_LENGTH
         assertTrue(svc.search("a").isEmpty());
-        // getrimmtes Leerzeichen zählt nicht
+        // a trimmed blank does not count
         assertTrue(svc.search("  x  ").isEmpty(), "1 Zeichen nach Trim ist zu kurz");
     }
 
-    // ── Sichtbarkeits-Filter (Menü-Kopplung) ─────────────────────────────────
+    // ── Visibility filter (menu coupling) ────────────────────────────────────
 
     @Test
     void menuScopedProviderNurBeiSichtbaremMenu() {
@@ -91,7 +91,7 @@ class SearchServiceTest {
 
     @Test
     void vollTitelMenuMatchtLetztesSegment() {
-        // Menü ist als "Root | Mandate" registriert; Provider trägt Titel "Mandate".
+        // The menu is registered as "Root | Mandate"; the provider carries the title "Mandate".
         SearchProvider p = provider("m", "Mandate", true, List.of(hit("Mandat X", 5)));
         MenuRegistry registry = mock(MenuRegistry.class);
         MenuRegistry.MenuItem item = mock(MenuRegistry.MenuItem.class);
@@ -106,7 +106,7 @@ class SearchServiceTest {
 
     @Test
     void nichtMenuScopedProviderUmgehtSichtbarkeitsFilter() {
-        // moduleTitle "Navigation" ist NICHT in der Menü-Liste – trotzdem sichtbar, weil isMenuScoped=false.
+        // moduleTitle "Navigation" is NOT in the menu list - visible nevertheless, because isMenuScoped=false.
         SearchProvider crossCutting = provider("menu", "Navigation", false, List.of(hit("Seite", 10)));
         SearchService svc = new SearchService(List.of(crossCutting), menuWith("Korrespondenz"));
 
@@ -115,7 +115,7 @@ class SearchServiceTest {
         assertEquals("Navigation", groups.get(0).module());
     }
 
-    // ── Gruppierung, Sortierung, Cap ─────────────────────────────────────────
+    // ── Grouping, sorting, cap ───────────────────────────────────────────────
 
     @Test
     void trefferWerdenNachModulGruppiert() {
@@ -127,7 +127,7 @@ class SearchServiceTest {
         assertEquals(2, groups.size());
         SearchResultGroup ga = groups.stream().filter(g -> g.module().equals("Modul A")).findFirst().orElseThrow();
         assertEquals(2, ga.hits().size());
-        // nach Score absteigend sortiert: A2 (20) vor A1 (10)
+        // sorted by score in descending order: A2 (20) before A1 (10)
         assertEquals("A2", ga.hits().get(0).getTitle());
     }
 
@@ -142,11 +142,11 @@ class SearchServiceTest {
 
         SearchResultGroup g = svc.search("tt").get(0);
         assertEquals(SearchService.MAX_HITS_PER_MODULE, g.hits().size());
-        // höchster Score zuerst
+        // highest score first
         assertEquals("T19", g.hits().get(0).getTitle());
     }
 
-    // ── Robustheit ───────────────────────────────────────────────────────────
+    // ── Robustness ───────────────────────────────────────────────────────────
 
     @Test
     void fehlerhafterProviderLiefertLeerUndBlockiertNicht() {
@@ -162,7 +162,7 @@ class SearchServiceTest {
         SearchService svc = new SearchService(List.of(kaputt, ok), menuWith("Kaputt", "Heil"));
         List<SearchResultGroup> groups = svc.search("gg");
 
-        // Kaputter Provider taucht nicht auf, der gesunde schon.
+        // The broken provider does not show up, the healthy one does.
         assertEquals(1, groups.size());
         assertEquals("Heil", groups.get(0).module());
     }
@@ -188,7 +188,7 @@ class SearchServiceTest {
 
     @Test
     void leereMenuRegistryDeaktiviertFilterNichtDenService() {
-        // Wenn keine Menü-Titel bekannt sind (fail-open), werden menu-scoped Provider trotzdem abgefragt.
+        // When no menu titles are known (fail-open), menu-scoped providers are queried nevertheless.
         SearchProvider p = provider("m", "Modul", true, List.of(hit("Treffer", 10)));
         MenuRegistry registry = mock(MenuRegistry.class);
         when(registry.getAllMenuItems()).thenReturn(List.of());
@@ -201,15 +201,15 @@ class SearchServiceTest {
 
     @Test
     void nullProviderListeWirdToleriert() {
-        // Konstruktor darf mit null-Providerliste umgehen (→ leere Liste).
+        // The constructor has to cope with a null provider list (→ empty list).
         SearchService svc = new SearchService(null, menuWith("Modul"));
         assertTrue(svc.search("xx").isEmpty());
     }
 
     @Test
     void vollTitelMatchtWennModulTitelNichtDirektInListe() {
-        // Menue nur als Voll-Titel "Extras | Kalender" registriert (getTitle liefert null),
-        // Provider-Modultitel ist "Kalender" → matcht ueber das letzte Segment.
+        // The menu is registered only as the full title "Extras | Kalender" (getTitle returns null),
+        // the provider module title is "Kalender" → matches via the last segment.
         SearchProvider p = provider("cal", "Kalender", true, List.of(hit("Termin", 10)));
         MenuRegistry registry = mock(MenuRegistry.class);
         MenuRegistry.MenuItem item = mock(MenuRegistry.MenuItem.class);
@@ -231,7 +231,7 @@ class SearchServiceTest {
         when(registry.getAllMenuItems()).thenReturn(null);
 
         SearchService svc = new SearchService(List.of(p), registry);
-        // null-Items → keine Sichtbarkeitsinfo → fail-open, Provider wird abgefragt.
+        // null items → no visibility information → fail-open, the provider is queried.
         assertEquals(1, svc.search("tr").size());
     }
 
@@ -242,13 +242,13 @@ class SearchServiceTest {
         when(registry.getAllMenuItems()).thenThrow(new RuntimeException("menu weg"));
 
         SearchService svc = new SearchService(List.of(p), registry);
-        // Registry-Fehler → leere Titel-Menge → fail-open.
+        // registry error → empty title set → fail-open.
         assertEquals(1, svc.search("tr").size());
     }
 
     @Test
     void isMenuScopedFehlerWirdAlsGekoppeltBehandelt() {
-        // isMenuScoped() wirft → als menu-scoped (true) behandelt; Modul unsichtbar → uebersprungen.
+        // isMenuScoped() throws → treated as menu-scoped (true); module invisible → skipped.
         SearchProvider p = new SearchProvider() {
             @Override public String providerId() { return "x"; }
             @Override public String moduleTitle() { return "Unsichtbar"; }
@@ -279,14 +279,14 @@ class SearchServiceTest {
 
     @Test
     void providerIdFehlerImDiagnosePfadWirdGekapselt() {
-        // Menu-scoped, unsichtbares Modul → Diagnose-Log ruft providerId(), das hier wirft.
+        // Menu-scoped, invisible module → the diagnostic log calls providerId(), which throws here.
         SearchProvider p = new SearchProvider() {
             @Override public String providerId() { throw new RuntimeException("id kaputt"); }
             @Override public String moduleTitle() { return "Unsichtbar"; }
             @Override public List<SearchHit> search(String query, int limit) { return List.of(hit("T", 1)); }
         };
         SearchService svc = new SearchService(List.of(p), menuWith("Sichtbar"));
-        // Darf nicht werfen und der Provider bleibt aussen vor.
+        // Must not throw, and the provider stays out.
         assertTrue(svc.search("xx").isEmpty());
     }
 
@@ -298,7 +298,7 @@ class SearchServiceTest {
         }
         SearchProvider p = provider("m", "Modul", true, List.of(hit("Treffer", 1)));
         SearchService svc = new SearchService(List.of(p), menuWith("Modul"));
-        // darf nicht werfen
+        // must not throw
         assertNotNull(svc.search(sb.toString()));
     }
 }

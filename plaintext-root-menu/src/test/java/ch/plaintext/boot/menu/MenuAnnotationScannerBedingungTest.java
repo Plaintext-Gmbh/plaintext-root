@@ -13,9 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Auftrag Daniel, 29.08.2026: {@code @Conditional}-Annotationen an {@code @MenuAnnotation}-Klassen
- * gelten — gegen die Umgebung der Anwendung. Das ist der Mechanismus, mit dem der Menuepunkt
- * „Swagger" verschwindet, wenn springdoc abgeschaltet ist.
+ * Task from Daniel, 29.08.2026: {@code @Conditional} annotations on {@code @MenuAnnotation}
+ * classes apply — against the environment of the application. That is the mechanism by which the
+ * menu item "Swagger" disappears when springdoc is switched off.
  */
 @DisplayName("MenuAnnotationScanner: bedingte Menuepunkte")
 class MenuAnnotationScannerBedingungTest {

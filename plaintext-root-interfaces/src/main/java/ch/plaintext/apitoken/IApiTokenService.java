@@ -86,17 +86,17 @@ public interface IApiTokenService {
      * @param email     the email address associated with the token
      * @param tokenName the user-defined name of the token
      * @param expiresAt the expiration time of the token
-     * @param scope     Berechtigungs-Scope aus dem {@code scope}-Claim ({@code READ}/{@code EINTRAGEN}/
-     *                  {@code ADMIN}/{@code SESSION}), oder {@code null} bei Alt-Tokens ohne Claim.
-     *                  <b>Karte 309:</b> bis hierher wurde der Claim von {@code JwtValidationResult} zwar
-     *                  gelesen, aber nicht durchgereicht — Aufrufer ausserhalb des MCP-Filters (z.B.
-     *                  {@code TokenLoginController}) konnten die Scope-Beschraenkung deshalb gar nicht
-     *                  auswerten und vergaben pauschal die vollen DB-Rollen des Token-Besitzers.
+     * @param scope     permission scope from the {@code scope} claim ({@code READ}/{@code EINTRAGEN}/
+     *                  {@code ADMIN}/{@code SESSION}), or {@code null} for legacy tokens without the claim.
+     *                  <b>Card 309:</b> up to this point the claim was read by {@code JwtValidationResult}
+     *                  but never passed on — callers outside the MCP filter (for example
+     *                  {@code TokenLoginController}) therefore had no way to evaluate the scope
+     *                  restriction and blanket-granted the full DB roles of the token owner.
      */
     record ApiTokenValidationResult(Long userId, String mandat, String email, String tokenName, Instant expiresAt,
                                     String scope) {
 
-        /** Bequemlichkeits-Konstruktor fuer Aufrufer ohne Scope-Information (Alt-Verhalten). */
+        /** Convenience constructor for callers without scope information (legacy behavior). */
         public ApiTokenValidationResult(Long userId, String mandat, String email, String tokenName, Instant expiresAt) {
             this(userId, mandat, email, tokenName, expiresAt, null);
         }

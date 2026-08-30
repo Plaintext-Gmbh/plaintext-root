@@ -19,22 +19,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Stellt sicher, dass jedes h:form in allen Modulen des Repos ein _csrf-Hidden-Input besitzt.
+ * Makes sure that every h:form in all modules of the repository has a _csrf hidden input.
  * <p>
- * Seit dem Entfernen der CSRF-Ignore-Patterns {@code /**&#47;*.xhtml} und {@code /**&#47;*.html}
- * aus {@code PlaintextSecurityConfig.DEFAULT_CSRF_IGNORE} validiert Spring Security jeden
- * JSF-POST. Ein h:form ohne {@code <input type="hidden" name="_csrf" value="#{_csrf.token}"/>}
- * schlägt dann beim Submit (auch PrimeFaces-AJAX) mit HTTP 403 fehl.
+ * Since the removal of the CSRF ignore patterns {@code /**&#47;*.xhtml} and {@code /**&#47;*.html}
+ * from {@code PlaintextSecurityConfig.DEFAULT_CSRF_IGNORE}, Spring Security validates every
+ * JSF POST. An h:form without {@code <input type="hidden" name="_csrf" value="#{_csrf.token}"/>}
+ * then fails on submit (PrimeFaces AJAX included) with HTTP 403.
  * <p>
- * Analog zum CsrfFormInvariantTest in plaintext-iot, aber repo-weit: Es werden dynamisch alle
- * Module gescannt, die ein src/main/resources/META-INF/resources-Verzeichnis besitzen.
+ * Analogous to the CsrfFormInvariantTest in plaintext-iot, but repository-wide: all
+ * modules that have a src/main/resources/META-INF/resources directory are scanned dynamically.
  */
 class CsrfFormInvariantTest {
 
     private static final Pattern FORM_START = Pattern.compile("<h:form[^>]*>");
     private static final Pattern CSRF_INPUT = Pattern.compile("name=[\"']_csrf[\"']");
 
-    /** Modul, an dem das Repo-Root erkannt wird. */
+    /** Module by which the repository root is recognized. */
     private static final String ANKER_MODUL = "plaintext-root-webapp";
 
     private static final String RESOURCES_PFAD = "src/main/resources/META-INF/resources";
@@ -66,7 +66,7 @@ class CsrfFormInvariantTest {
         }
     }
 
-    /** Alle Modul-Verzeichnisse mit JSF-Resources (direkt unterhalb des Repo-Roots). */
+    /** All module directories with JSF resources (directly below the repository root). */
     private List<Path> findeResourceVerzeichnisse(Path repoRoot) throws IOException {
         List<Path> ergebnis = new ArrayList<>();
         try (Stream<Path> module = Files.list(repoRoot)) {
@@ -90,7 +90,7 @@ class CsrfFormInvariantTest {
         Matcher formMatcher = FORM_START.matcher(inhalt);
         while (formMatcher.find()) {
             int formStart = formMatcher.end();
-            // Suche endendes </h:form> ab der Form-Öffnung
+            // Search for the closing </h:form> starting from the form opening
             int formEnd = inhalt.indexOf("</h:form>", formStart);
             if (formEnd < 0) formEnd = inhalt.length();
             String formBody = inhalt.substring(formStart, formEnd);
@@ -104,16 +104,16 @@ class CsrfFormInvariantTest {
     }
 
     /**
-     * Findet das Repo-Root unabhängig vom user.dir-Kontext (Maven aus Modul oder Repo-Root, IDE):
-     * läuft von der Test-Class-Location (target/test-classes) bzw. von user.dir aufwärts,
-     * bis ein Verzeichnis das Anker-Modul enthält.
+     * Finds the repository root independently of the user.dir context (Maven from a module or from the
+     * repository root, IDE): walks upwards from the test class location (target/test-classes) resp.
+     * from user.dir until a directory contains the anchor module.
      */
     private Path findeRepoRoot() {
         List<Path> startpunkte = new ArrayList<>();
         try {
             startpunkte.add(Path.of(getClass().getProtectionDomain().getCodeSource().getLocation().toURI()));
         } catch (URISyntaxException | RuntimeException _) {
-            // z.B. exotischer ClassLoader — dann greift der user.dir-Fallback
+            // e.g. an exotic class loader — then the user.dir fallback applies
         }
         startpunkte.add(Path.of(System.getProperty("user.dir")));
 

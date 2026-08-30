@@ -8,28 +8,27 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertySource;
 
 /**
- * {@link PropertySource}, die AN ERSTER STELLE im Environment liegt und
- * {@code vault:}-Werte transparent aus Vaultwarden aufloest (analog zu Spring
- * Cloud Vault).
+ * {@link PropertySource} that sits IN FIRST POSITION in the environment and
+ * transparently resolves {@code vault:} values from Vaultwarden (analogous to
+ * Spring Cloud Vault).
  *
- * <p>{@link #getProperty(String)} fragt die uebrigen Property-Sources nach dem
- * Roh-Wert (die eigene Source wird per Identitaet uebersprungen). Beginnt der
- * Roh-Wert mit {@code vault:}, wird er aufgeloest; sonst wird {@code null}
- * geliefert, sodass der normale Resolver-Durchlauf zur echten Source
- * weiterlaeuft (Durchfall).</p>
+ * <p>{@link #getProperty(String)} asks the remaining property sources for the raw
+ * value (its own source is skipped by identity). If the raw value starts with
+ * {@code vault:}, it is resolved; otherwise {@code null} is returned so that the
+ * normal resolver pass carries on to the real source (fall-through).</p>
  *
- * <p><b>Re-Entranz-Schutz:</b> Ein {@link ThreadLocal}-Guard verhindert, dass die
- * Lazy-Initialisierung des Vault-Clients (die per {@link Binder} selbst wieder
- * {@code plaintext.vault.*} aus dem Environment liest und damit erneut durch
- * diese Source laeuft) in eine Endlosrekursion kippt: waehrend eine Aufloesung
- * laeuft, liefert diese Source fuer verschachtelte Zugriffe sofort {@code null}.</p>
+ * <p><b>Re-entrancy protection:</b> a {@link ThreadLocal} guard keeps the lazy
+ * initialization of the vault client (which itself reads {@code plaintext.vault.*}
+ * from the environment via {@link Binder} and therefore runs through this source
+ * again) from tipping over into endless recursion: while a resolution is running,
+ * this source immediately returns {@code null} for nested accesses.</p>
  */
 class VaultwardenPropertySource extends PropertySource<Object> {
 
-    /** Name dieser Source im Environment. */
+    /** Name of this source in the environment. */
     static final String SOURCE_NAME = "vaultwardenSecrets";
 
-    /** Guard gegen Re-Entranz waehrend der Lazy-Client-Initialisierung / Aufloesung. */
+    /** Guard against re-entrancy during the lazy client initialization / resolution. */
     private static final ThreadLocal<Boolean> RESOLVING = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     private final ConfigurableEnvironment environment;
@@ -39,7 +38,7 @@ class VaultwardenPropertySource extends PropertySource<Object> {
         this(environment, new VaultwardenValueResolver(() -> buildService(environment)));
     }
 
-    /** Test-Konstruktor mit injizierbarem Resolver (gemockter Service). */
+    /** Test constructor with an injectable resolver (mocked service). */
     VaultwardenPropertySource(ConfigurableEnvironment environment, VaultwardenValueResolver resolver) {
         super(SOURCE_NAME);
         this.environment = environment;
@@ -49,15 +48,15 @@ class VaultwardenPropertySource extends PropertySource<Object> {
     @Override
     public Object getProperty(String name) {
         if (name == null || Boolean.TRUE.equals(RESOLVING.get())) {
-            // Re-Entranz (z.B. Binder-Zugriff waehrend der Client-Init): nicht erneut auf-
-            // loesen, Roh-Wert soll aus den echten Sources kommen.
+            // Re-entrancy (e.g. a Binder access during the client init): do not resolve
+            // again, the raw value is supposed to come from the real sources.
             return null;
         }
         RESOLVING.set(Boolean.TRUE);
         try {
             Object raw = rawFromOtherSources(name);
             if (!VaultwardenValueResolver.isVaultReference(raw)) {
-                return null; // Durchfall: normaler Wert -> echte Source uebernimmt
+                return null; // Fall-through: an ordinary value -> the real source takes over
             }
             return resolver.resolve(name, (String) raw);
         } finally {
@@ -66,17 +65,16 @@ class VaultwardenPropertySource extends PropertySource<Object> {
     }
 
     /**
-     * Diese Source fuehrt keine eigenen Keys ein — sie transformiert nur Werte von
-     * Keys, die bereits in anderen Sources existieren. Ein {@code contains}-Check
-     * darf daher KEINEN Vault-Login ausloesen: die Existenz beantwortet die echte
-     * Source.
+     * This source introduces no keys of its own — it only transforms values of keys
+     * that already exist in other sources. A {@code contains} check must therefore
+     * NOT trigger a vault login: existence is answered by the real source.
      */
     @Override
     public boolean containsProperty(String name) {
         return false;
     }
 
-    /** Roh-Wert des Properties aus allen uebrigen Sources (eigene per Identitaet uebersprungen). */
+    /** Raw value of the property from all remaining sources (its own skipped by identity). */
     private Object rawFromOtherSources(String name) {
         for (PropertySource<?> source : environment.getPropertySources()) {
             if (source == this) {
@@ -91,10 +89,10 @@ class VaultwardenPropertySource extends PropertySource<Object> {
     }
 
     /**
-     * Baut den {@link VaultwardenSecretService} Spring-frei aus den
-     * {@code plaintext.vault.*}-Werten des Environments (relaxed binding via
-     * {@link Binder}). Wird nur waehrend einer laufenden Aufloesung aufgerufen
-     * (Guard aktiv), daher liest der Binder die Roh-Werte aus den echten Sources.
+     * Builds the {@link VaultwardenSecretService} free of Spring from the
+     * {@code plaintext.vault.*} values of the environment (relaxed binding via
+     * {@link Binder}). Only called during a running resolution (guard active), so
+     * the binder reads the raw values from the real sources.
      */
     static VaultwardenSecretService buildService(ConfigurableEnvironment environment) {
         VaultwardenProperties props = Binder.get(environment)

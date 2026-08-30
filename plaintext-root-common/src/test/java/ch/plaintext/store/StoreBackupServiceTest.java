@@ -15,8 +15,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Die Schutzschicht — jeder Test haelt einen Fehler fest, der real eingetreten ist
- * oder durch die bisherige 14-fache Einzelverdrahtung eintreten konnte.
+ * The guard layer — every test pins down a failure that really occurred
+ * or that the previous 14-fold individual wiring could have caused.
  */
 class StoreBackupServiceTest {
 
@@ -27,11 +27,11 @@ class StoreBackupServiceTest {
         store = new RecordingStore();
     }
 
-    // ── Empty-Guard ────────────────────────────────────────────────────────
+    // ── Empty guard ────────────────────────────────────────────────────────
 
     /**
-     * Prod 07.08.2026: Nach dem abgebrochenen Ingest schrieb der Outgoing-Push die leere
-     * Applikationsliste nach Confluence und ueberschrieb damit die Quelle.
+     * Prod 07.08.2026: after the aborted ingest the outgoing push wrote the empty
+     * application list to Confluence and thereby overwrote the source.
      */
     @Test
     void emptyCollectionIsNeverWritten() {
@@ -44,7 +44,7 @@ class StoreBackupServiceTest {
         assertEquals(0, store.saveCount);
     }
 
-    // ── Restore-Gate ───────────────────────────────────────────────────────
+    // ── Restore gate ───────────────────────────────────────────────────────
 
     @Test
     void backupIsBlockedBeforeRestore() {
@@ -67,7 +67,7 @@ class StoreBackupServiceTest {
         assertEquals(1, store.saveCount);
     }
 
-    /** Scheitert der Restore, bleibt das Gate zu — sonst schreibt ein Teilzustand die Ablage. */
+    /** If the restore fails, the gate stays shut — otherwise a partial state writes the store. */
     @Test
     void failedRestoreKeepsGateClosed() {
         TestCollection c = new TestCollection("Kaputt", rows("a"));
@@ -80,9 +80,9 @@ class StoreBackupServiceTest {
         assertEquals(0, store.saveCount);
     }
 
-    // ── Content-Hash ───────────────────────────────────────────────────────
+    // ── Content hash ───────────────────────────────────────────────────────
 
-    /** MyUser stand bei ueber 12'000 Fassungen, fast alle inhaltsgleich. */
+    /** MyUser stood at over 12'000 revisions, nearly all with identical content. */
     @Test
     void unchangedContentIsWrittenOnlyOnce() {
         TestCollection c = new TestCollection("Daten", rows("a", "b"));
@@ -121,7 +121,7 @@ class StoreBackupServiceTest {
         assertEquals(2, store.saveCount);
     }
 
-    // ── Reihenfolge und Kapselung ──────────────────────────────────────────
+    // ── Ordering and encapsulation ─────────────────────────────────────────
 
     @Test
     void restoreFollowsStoreOrder() {
@@ -136,7 +136,7 @@ class StoreBackupServiceTest {
         assertEquals(List.of("Frueh", "Spaet"), store.loadOrder);
     }
 
-    /** Eine defekte Sammlung darf die uebrigen nicht verhindern. */
+    /** A broken collection must not prevent the others. */
     @Test
     void brokenCollectionDoesNotStopTheOthers() {
         TestCollection kaputt = new TestCollection("Kaputt", rows("a"));
@@ -162,7 +162,7 @@ class StoreBackupServiceTest {
         assertFalse(service.isRestoreCompleted("Manuell"));
     }
 
-    /** Ein Store, der beim Speichern wirft, darf den Aufrufer nicht mitreissen. */
+    /** A store that throws while saving must not drag the caller down with it. */
     @Test
     void throwingStoreIsContained() {
         store.failSave = true;
@@ -173,7 +173,7 @@ class StoreBackupServiceTest {
         assertDoesNotThrow(() -> assertFalse(service.backup(c, false)));
     }
 
-    /** Nach einem gescheiterten Schreibversuch darf der Hash nicht als gesichert gelten. */
+    /** After a failed write attempt the hash must not count as backed up. */
     @Test
     void failedSaveDoesNotMarkContentAsStored() {
         store.failSave = true;
@@ -188,7 +188,7 @@ class StoreBackupServiceTest {
         assertEquals(1, store.saveCount);
     }
 
-    // ── Hilfen ─────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────
 
     private static List<Map<String, String>> rows(String... keys) {
         List<Map<String, String>> result = new ArrayList<>();

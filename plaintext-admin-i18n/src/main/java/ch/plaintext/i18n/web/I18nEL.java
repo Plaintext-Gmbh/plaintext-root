@@ -29,15 +29,15 @@ import org.springframework.beans.factory.annotation.Autowired;
  *   value="#{i18n.t('Speichern')}"
  * </pre>
  *
- * <p><b>Kopplung an {@link UserPreferencesBackingBean} (plaintext-root-common).</b> Die Sprache des
- * Benutzers liegt in dessen session-scoped Einstellungen. Bis zum Zustandsbericht 29.08.2026 holte
- * diese Klasse sie per Reflection ({@code getClass().getMethod("getLanguage")}) aus einem
- * {@code Object}-Feld — bei <em>jedem</em> {@code i18n.t()}-Aufruf, also hunderte Male pro
- * Seitenaufbau, mit der Begruendung, eine Modulabhaengigkeit zu vermeiden. Die gab es nicht:
- * plaintext-admin-i18n haengt an plaintext-root-common, wo die Bean wohnt. Jetzt wird der
- * Scoped-Proxy ({@code ScopedProxyMode.TARGET_CLASS}) typsicher injiziert; ausserhalb einer
- * HTTP-Session (Cron, REST, Tests ohne Web-Kontext) wirft der Proxy beim Zugriff, das faengt
- * {@link #resolveUserLanguage()} ab und faellt auf Deutsch zurueck.
+ * <p><b>Coupling to {@link UserPreferencesBackingBean} (plaintext-root-common).</b> The user's
+ * language lives in their session-scoped settings. Until the status report of 29.08.2026 this
+ * class fetched it by reflection ({@code getClass().getMethod("getLanguage")}) from an
+ * {@code Object} field — on <em>every</em> {@code i18n.t()} call, that is hundreds of times per
+ * page build, justified by avoiding a module dependency. There was none:
+ * plaintext-admin-i18n depends on plaintext-root-common, where the bean lives. Now the
+ * scoped proxy ({@code ScopedProxyMode.TARGET_CLASS}) is injected type-safely; outside an
+ * HTTP session (cron, REST, tests without a web context) the proxy throws on access, which
+ * {@link #resolveUserLanguage()} catches before falling back to German.
  *
  * @author plaintext.ch
  * @since 1.67.0
@@ -47,16 +47,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Slf4j
 public class I18nEL {
 
-    /** Sprachcode, auf den alles zurueckfaellt — die Vorgabetexte in den Views sind deutsch. */
+    /** Language code that everything falls back to — the default texts in the views are German. */
     static final String DEFAULT_LANGUAGE = "de";
 
     @Autowired(required = false)
     private I18nProvider i18nProvider;
 
     /**
-     * Session-scoped Einstellungen des Benutzers, als Scoped-Proxy. {@code required = false}, weil
-     * Kontexte ohne die Bean (Modultests, Konsolen-Laeufe) diese Klasse trotzdem laden duerfen —
-     * dann bleibt es bei Deutsch.
+     * The user's session-scoped settings, as a scoped proxy. {@code required = false}, because
+     * contexts without the bean (module tests, console runs) may still load this class —
+     * German is then kept.
      */
     @Autowired(required = false)
     private UserPreferencesBackingBean userPreferences;
@@ -111,8 +111,8 @@ public class I18nEL {
     }
 
     /**
-     * Sprache des angemeldeten Benutzers aus {@link UserPreferencesBackingBean}; Deutsch, wenn keine
-     * Bean, keine Session oder keine Sprache gesetzt ist.
+     * Language of the logged-in user from {@link UserPreferencesBackingBean}; German when there is no
+     * bean, no session or no language set.
      */
     String resolveUserLanguage() {
         if (userPreferences == null) {
@@ -124,8 +124,8 @@ public class I18nEL {
                 return language;
             }
         } catch (RuntimeException e) {
-            // Scoped-Proxy ohne aktive Session (BeanCreationException/ScopeNotActiveException) oder
-            // Einstellungen noch nicht geladen — kein Fehler, nur keine Sprachwahl.
+            // Scoped proxy without an active session (BeanCreationException/ScopeNotActiveException) or
+            // settings not loaded yet — not an error, just no language choice.
             log.debug("Could not resolve user language from UserPreferencesBackingBean: {}", e.toString());
         }
         return DEFAULT_LANGUAGE;

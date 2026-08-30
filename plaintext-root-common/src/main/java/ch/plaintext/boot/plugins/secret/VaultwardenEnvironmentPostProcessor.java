@@ -12,67 +12,67 @@ import org.springframework.core.env.MutablePropertySources;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * {@code vault:}-Property-Resolver — macht Secrets aus vault.example.org
- * (Vaultwarden) transparent ueber {@code @Value} / {@code @ConfigurationProperties}
- * verfuegbar, analog zu Spring Cloud Vault.
+ * {@code vault:} property resolver — makes secrets from vault.example.org
+ * (Vaultwarden) transparently available through {@code @Value} /
+ * {@code @ConfigurationProperties}, analogous to Spring Cloud Vault.
  *
- * <p>Registriert wird dieser {@link EnvironmentPostProcessor} ueber
- * {@code META-INF/spring.factories} (Schluessel
- * {@code org.springframework.boot.env.EnvironmentPostProcessor}). Er haengt eine
- * {@link VaultwardenPropertySource} AN ERSTER STELLE ins Environment. Jeder
- * Property-Wert — egal aus welcher Source (application.yml, Env, ...) — mit dem
- * Prefix {@code vault:} wird beim Zugriff transparent durch das entsprechende
- * Tresor-Secret ersetzt.</p>
+ * <p>This {@link EnvironmentPostProcessor} is registered through
+ * {@code META-INF/spring.factories} (key
+ * {@code org.springframework.boot.env.EnvironmentPostProcessor}). It hangs a
+ * {@link VaultwardenPropertySource} into the environment IN FIRST POSITION. Every
+ * property value — no matter which source it comes from (application.yml, env, ...) —
+ * that carries the prefix {@code vault:} is transparently replaced by the
+ * corresponding vault secret on access.</p>
  *
- * <h2>Drei Syntaxformen</h2>
+ * <h2>Three syntax forms</h2>
  * <ul>
- *   <li>{@code vault:<item>} &rarr; Passwort des Login-Items</li>
- *   <li>{@code vault:<item>#username} &rarr; Benutzername des Items</li>
- *   <li>{@code vault:<item>#field:<feldname>} &rarr; benutzerdefiniertes Feld</li>
+ *   <li>{@code vault:<item>} &rarr; password of the login item</li>
+ *   <li>{@code vault:<item>#username} &rarr; user name of the item</li>
+ *   <li>{@code vault:<item>#field:<feldname>} &rarr; custom field</li>
  * </ul>
  *
- * <h2>Namens-Konvention</h2>
- * <p>Items heissen IMMER {@code <app>.<key>} (z.B. {@code app.jira-bit-admin},
- * {@code app.sciforma}, {@code guild.paperless-token}). Passt der Item-Name nicht
- * auf {@code ^[a-z0-9-]+\.[a-z0-9-]+}, wird eine WARN geloggt — aufgeloest wird
- * trotzdem.</p>
+ * <h2>Naming convention</h2>
+ * <p>Items are ALWAYS named {@code <app>.<key>} (e.g. {@code app.jira-bit-admin},
+ * {@code app.sciforma}, {@code guild.paperless-token}). If the item name does not
+ * match {@code ^[a-z0-9-]+\.[a-z0-9-]+}, a WARN is logged — it is resolved
+ * nonetheless.</p>
  *
- * <h2>Beispiel (app.env)</h2>
+ * <h2>Example (app.env)</h2>
  * <pre>
- * # Bootstrap des Vault-Clients (NIE in git/Code):
+ * # Bootstrap of the vault client (NEVER in git/code):
  * PLAINTEXT_VAULT_ENABLED=true
  * PLAINTEXT_VAULT_EMAIL=service@example.org
  * PLAINTEXT_VAULT_MASTER_PASSWORD=...
  * PLAINTEXT_VAULT_URL=https://vault.example.org
  *
- * # Secrets als vault:-Referenzen (Item-Name = app.key):
+ * # Secrets as vault: references (item name = app.key):
  * PLAINTEXT_BUCHHALTUNG_PAPERLESS_TOKEN=vault:guild.paperless-token
  * ZEIT_JIRA_USER=vault:app.jira-bit-admin#username
  * ZEIT_JIRA_PASSWORD=vault:app.jira-bit-admin
  * ZEIT_SCIFORMA_API_KEY=vault:app.sciforma#field:api-key
  * </pre>
  *
- * <h2>Fehlerverhalten</h2>
- * <p>Ist ein {@code vault:}-Wert nicht aufloesbar (Vault deaktiviert,
- * Login-Fehler oder Item/Feld fehlt), bricht der Boot per
- * {@link VaultwardenPropertyResolutionException} FAIL-FAST ab. Die Meldung nennt
- * nur Property- und Item-Namen — NIEMALS Secret-Werte oder das Master-Passwort.
- * Normale (nicht-{@code vault:}) Werte werden unveraendert durchgereicht.</p>
+ * <h2>Error behaviour</h2>
+ * <p>If a {@code vault:} value cannot be resolved (vault disabled,
+ * login error or item/field missing), the boot aborts FAIL-FAST with a
+ * {@link VaultwardenPropertyResolutionException}. The message names only
+ * property and item names — NEVER secret values or the master password.
+ * Normal (non-{@code vault:}) values are passed through unchanged.</p>
  *
- * <p><b>Der Abbruch gewinnt auch gegen einen Default.</b> Ein
- * {@code @Value("$&#123;plaintext.foo.token:&#125;")} faellt bei einer unaufloesbaren
- * {@code vault:}-Referenz NICHT auf den leeren Default zurueck — der Default greift nur, wenn das
- * Property ueberhaupt fehlt, nicht wenn seine Aufloesung scheitert. Das ist Absicht: ein leerer
- * Wert saehe aus wie eine harmlose Konfigurationsluecke, waehrend die App in Wahrheit ohne ihr
- * Secret liefe. Festgehalten in {@code VaultwardenFailFastVertragTest} (Karte 868).</p>
+ * <p><b>The abort also wins against a default.</b> A
+ * {@code @Value("$&#123;plaintext.foo.token:&#125;")} does NOT fall back to the empty default
+ * on an unresolvable {@code vault:} reference — the default only applies when the property is
+ * missing altogether, not when its resolution fails. That is intentional: an empty value would
+ * look like a harmless configuration gap while in truth the app ran without its secret. Pinned
+ * down in {@code VaultwardenFailFastVertragTest} (Karte 868).</p>
  */
 @Slf4j
 public class VaultwardenEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        // Karte 942: Bootstrap-Geheimnisse aus Dateien lesen, BEVOR irgendetwas den Vault-Client
-        // baut — sonst greift die *_FILE-Angabe zu spaet und der Login scheitert ohne Grund.
+        // Karte 942: read the bootstrap secrets from files BEFORE anything builds the vault
+        // client — otherwise the *_FILE setting takes effect too late and the login fails for no reason.
         VaultwardenSecretFiles.anwenden(environment);
 
         MutablePropertySources sources = environment.getPropertySources();
@@ -83,16 +83,16 @@ public class VaultwardenEnvironmentPostProcessor implements EnvironmentPostProce
         log.debug("Vault-Property-Resolver registriert (Source '{}' an erster Stelle)",
                 VaultwardenPropertySource.SOURCE_NAME);
 
-        // Und JETZT alle vault:-Referenzen einmalig aufloesen und in ihrer Quell-Source ersetzen.
-        // Die lazy Source allein genuegt nicht: Spring Boot haengt spaeter eine eigene Source davor
-        // und reicht den Roh-Wert durch (siehe VaultwardenEagerResolution).
+        // And NOW resolve all vault: references once and replace them in their source.
+        // The lazy source alone is not enough: Spring Boot later hangs a source of its own in front
+        // of it and passes the raw value through (see VaultwardenEagerResolution).
         VaultwardenEagerResolution.resolveAll(environment,
                 new VaultwardenValueResolver(() -> VaultwardenPropertySource.buildService(environment)));
     }
 
     /**
-     * Moeglichst spaet ausfuehren, damit unsere Source nach allen anderen EPPs
-     * wirklich an erster Stelle steht.
+     * Run as late as possible, so that our source really is in first position
+     * after all the other EPPs.
      */
     @Override
     public int getOrder() {

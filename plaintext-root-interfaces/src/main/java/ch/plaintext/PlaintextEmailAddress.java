@@ -7,48 +7,49 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Entscheidet an EINER Stelle, ob eine Zeichenkette als Mailadresse zustellbar ist.
+ * Decides in ONE place whether a string is deliverable as a mail address.
  *
- * <p><b>Warum es das braucht (Karte 596):</b> In dieser Anwendung ist der Benutzername zugleich
- * die Mailadresse — die Selbstregistrierung setzt ihn so
- * ({@code RegistrationService: user.setUsername(token.getEmail())}), der Passwort-Reset verschickt
- * an ihn, und die Benutzerverwaltung erzwingt beim Anlegen die Mailform. <b>Erzwungen wird das aber
- * erst seit dieser Prüfung und nur über die Oberfläche</b>: Im Altbestand stehen Namen wie
- * {@code plafferma}, und maschinelle Schreiber hinterlassen {@code anonymousUser}. Wer den
- * Benutzernamen ungeprüft als Empfänger verwendet, erzeugt genau dort einen stillen Fehlschlag.
+ * <p><b>Why this is needed (Card 596):</b> in this application the username is also the mail
+ * address — self-registration sets it that way
+ * ({@code RegistrationService: user.setUsername(token.getEmail())}), the password reset sends to
+ * it, and user management enforces the mail form when creating an account. <b>That has only been
+ * enforced since this check, however, and only through the user interface</b>: legacy data holds
+ * names such as {@code plafferma}, and machine writers leave {@code anonymousUser} behind. Anyone
+ * using the username as a recipient without checking it produces a silent failure in exactly
+ * those cases.
  *
  * @author info@plaintext.ch
  * @since 07.08.2026
  */
 public final class PlaintextEmailAddress {
 
-    /** Gleicher Ausdruck wie in der Benutzerverwaltung (MyUserBackingBean), damit beide dasselbe akzeptieren. */
+    /** Same expression as in user management (MyUserBackingBean), so that both accept the same values. */
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
     );
 
     private PlaintextEmailAddress() {
-        // Utility-Klasse
+        // Utility class
     }
 
     /**
-     * Ob der Wert als Mailadresse zustellbar ist.
+     * Whether the value is deliverable as a mail address.
      *
-     * @param wert zu prüfender Wert, darf {@code null} sein
-     * @return true, wenn der Wert die Form einer Mailadresse hat
+     * @param wert value to check, may be {@code null}
+     * @return true if the value has the form of a mail address
      */
     public static boolean isDeliverable(String wert) {
         return wert != null && EMAIL_PATTERN.matcher(wert.trim()).matches();
     }
 
     /**
-     * Liefert den Wert als zustellbare Adresse — oder nichts.
+     * Returns the value as a deliverable address — or nothing.
      *
-     * <p>Der {@link Optional}-Rückgabewert ist Absicht: Er zwingt den Aufrufer, den Fall
-     * „nicht zustellbar" zu behandeln, statt eine unbrauchbare Adresse weiterzureichen.
+     * <p>The {@link Optional} return type is deliberate: it forces the caller to handle the
+     * "not deliverable" case instead of passing on an unusable address.
      *
-     * @param wert zu prüfender Wert, darf {@code null} sein
-     * @return die getrimmte Adresse, oder {@link Optional#empty()} wenn nicht zustellbar
+     * @param wert value to check, may be {@code null}
+     * @return the trimmed address, or {@link Optional#empty()} if it is not deliverable
      */
     public static Optional<String> asDeliverable(String wert) {
         return isDeliverable(wert) ? Optional.of(wert.trim()) : Optional.empty();

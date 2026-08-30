@@ -15,16 +15,16 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * AES-256-GCM fuer TOTP-Secrets at rest (Zustandsbericht 29.08.2026).
+ * AES-256-GCM for TOTP secrets at rest (status report 29.08.2026).
  *
- * <p>Format in der Spalte: {@code enc1:} + Base64(IV[12] || Ciphertext || Tag[16]). Werte ohne
- * Praefix sind Altbestand im Klartext und werden unveraendert gelesen; beim naechsten Schreiben
- * werden sie verschluesselt. So braucht es keine Big-Bang-Migration — und ein Deploy ohne
- * Schluessel liest weiterhin alle alten Secrets.</p>
+ * <p>Format in the column: {@code enc1:} + Base64(IV[12] || ciphertext || tag[16]). Values without
+ * the prefix are legacy plaintext and are read unchanged; on the next write
+ * they are encrypted. This way no big-bang migration is needed — and a deployment without
+ * a key still reads all the old secrets.</p>
  *
- * <p>Statischer Halter, weil JPA-{@code AttributeConverter} keine Spring-Beans injiziert
- * bekommen; {@code TotpSecretCryptoInitializer} setzt den Schluessel beim Start aus
- * {@code plaintext.security.totp-encryption-key} (Rueckfall: remember-me-key).</p>
+ * <p>A static holder, because JPA {@code AttributeConverter}s do not get Spring beans
+ * injected; {@code TotpSecretCryptoInitializer} sets the key at startup from
+ * {@code plaintext.security.totp-encryption-key} (fallback: remember-me-key).</p>
  *
  * @author info@plaintext.ch
  * @since 1.636.0
@@ -44,9 +44,9 @@ public final class TotpSecretCrypto {
     }
 
     /**
-     * Schluesselmaterial setzen (beliebige Zeichenkette; wird per SHA-256 auf 32 Byte gebracht).
-     * {@code null}/leer schaltet die Verschluesselung ab — Werte werden dann im Klartext
-     * geschrieben, mit einer einmaligen Warnung.
+     * Sets the key material (any character string; it is reduced to 32 bytes via SHA-256).
+     * {@code null}/empty switches the encryption off — values are then written in plaintext,
+     * with a one-off warning.
      */
     public static void configure(String schluesselMaterial) {
         if (schluesselMaterial == null || schluesselMaterial.isBlank()) {
@@ -65,7 +65,7 @@ public final class TotpSecretCrypto {
         return key != null;
     }
 
-    /** Fuer den Uebergang zwischen Tests. */
+    /** For the transition between tests. */
     static void reset() {
         key = null;
         klartextGewarnt = false;
@@ -102,7 +102,7 @@ public final class TotpSecretCrypto {
 
     public static String decrypt(String gespeichert) {
         if (gespeichert == null || !gespeichert.startsWith(PREFIX)) {
-            return gespeichert;   // Altbestand im Klartext
+            return gespeichert;   // legacy plaintext
         }
         byte[] k = key;
         if (k == null) {

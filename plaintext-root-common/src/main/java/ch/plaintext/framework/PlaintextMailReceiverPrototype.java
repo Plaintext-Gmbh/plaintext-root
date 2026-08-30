@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Verschickt Mails
+ * Sends mails
  *
  * @author Plaintext GmbH
  * @since 1.2.8

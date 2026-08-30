@@ -18,13 +18,13 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 
 /**
- * Registriert den zentralen {@link McpBearerTokenFilter} property-gesteuert (Opt-in via
- * {@code plaintext.mcp.bearer-filter.enabled=true}, siehe {@link McpBearerTokenFilterProperties}).
+ * Registers the central {@link McpBearerTokenFilter} in a property-driven way (opt-in via
+ * {@code plaintext.mcp.bearer-filter.enabled=true}, see {@link McpBearerTokenFilterProperties}).
  *
- * <p>Opt-in deshalb, weil dieses Modul in ALLEN Plaintext-Apps auf dem Classpath liegt — Apps ohne
- * MCP-Endpoint (z.B. plaintext-root selbst) sollen keinen zusätzlichen Filter registriert bekommen.
- * Der Bean-Name {@code mcpBearerTokenFilterRegistration} entspricht dem der bisherigen
- * Consumer-Kopien, damit die Umstellung ein reiner Lösch-Patch ist.</p>
+ * <p>Opt-in because this module is on the classpath of ALL Plaintext apps — apps without an
+ * MCP endpoint (e.g. plaintext-root itself) should not get an additional filter registered.
+ * The bean name {@code mcpBearerTokenFilterRegistration} matches the one used by the previous
+ * consumer copies, so that the migration is a pure deletion patch.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -43,11 +43,11 @@ public class McpBearerTokenFilterConfig {
             McpUserRoles mcpUserRoles,
             ObjectProvider<JtiRevocationChecker> revocationCheckerProvider) {
 
-        // Optional: nur vorhanden, wenn die App (z.B. schuetu) eine eigene Blocklist-Bean registriert.
-        // Ohne Bean = kein Token gilt als revoked, 100% verhaltensgleich zum bisherigen Filter.
-        // getIfAvailable() statt getIfAvailable(Supplier) verwendet, damit ein simples
-        // mock(ObjectProvider.class) in Tests (ohne Stubbing des default-Methoden-Overloads) sauber
-        // auf null zurückfällt, statt sich auf Mockitos Default-Methoden-Handling zu verlassen.
+        // Optional: only present if the app (e.g. schuetu) registers its own blocklist bean.
+        // Without such a bean = no token counts as revoked, 100% behaviourally identical to the previous filter.
+        // getIfAvailable() is used instead of getIfAvailable(Supplier) so that a plain
+        // mock(ObjectProvider.class) in tests (without stubbing the default-method overload) falls back
+        // cleanly to null instead of relying on Mockito's default-method handling.
         JtiRevocationChecker revocationChecker = revocationCheckerProvider.getIfAvailable();
         if (revocationChecker == null) {
             revocationChecker = jti -> false;
@@ -58,11 +58,11 @@ public class McpBearerTokenFilterConfig {
             case DATABASE -> McpBearerTokenFilter.withRevocationCheck(apiTokenService, mcpUserRoles, revocationChecker);
         };
 
-        // Alt-Verhalten fuer scope-lose Tokens (Karte 312): Default false = fail-closed auf READ.
+        // Legacy behaviour for scope-less tokens (card 312): default false = fail-closed to READ.
         filter.setLegacyScopeAdmin(properties.isLegacyScopeAdmin());
 
-        // Leere Pattern-Liste NIE an die Registration durchreichen: FilterRegistrationBean ohne
-        // Patterns mappt auf /* und würde die GANZE App hinter Bearer-Auth legen.
+        // NEVER pass an empty pattern list on to the registration: a FilterRegistrationBean without
+        // patterns maps to /* and would put the WHOLE app behind bearer auth.
         List<String> patterns = properties.getUrlPatterns();
         if (patterns == null || patterns.isEmpty()) {
             patterns = List.of("/mcp/*");

@@ -11,7 +11,7 @@ class ApiTokenHasherTest {
 
     @Test
     void sha256HexProducesKnownVector() {
-        // SHA-256("abc") — offizieller NIST-Testvektor
+        // SHA-256("abc") — official NIST test vector
         assertThat(ApiTokenHasher.sha256Hex("abc"))
                 .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }

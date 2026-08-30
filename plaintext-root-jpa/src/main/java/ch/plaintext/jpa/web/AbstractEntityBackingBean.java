@@ -23,25 +23,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Gemeinsame Basis der generischen Datenverwaltung ({@code rootentities.html} fuer ROOT ueber alle
- * Mandanten, {@code adminentities.html} fuer ADMIN im eigenen Mandanten).
+ * Common base of the generic data management ({@code rootentities.html} for ROOT across all
+ * tenants, {@code adminentities.html} for ADMIN within their own tenant).
  *
- * <p>Zustandsbericht 29.08.2026 (Paket R2): {@link RootEntityBackingBean} und
- * {@link AdminEntityBackingBean} waren zwei Kopien mit 162 identischen Zeilen — Auswahl, Laden,
- * Bearbeiten-Dialog, Speichern, Loeschen, Feldzugriff, Meldungen. Jeder Fix musste zweimal gemacht
- * werden und wurde es nicht immer (der Ajax-Listener der Typ-Auswahl kam am selben Tag in beide).
- * Jetzt steht die Logik einmal hier; die Unterklassen liefern nur noch, was wirklich verschieden
- * ist:
+ * <p>Status report 29.08.2026 (package R2): {@link RootEntityBackingBean} and
+ * {@link AdminEntityBackingBean} were two copies sharing 162 identical lines — selection, loading,
+ * edit dialog, saving, deleting, field access, messages. Every fix had to be made twice and was
+ * not always (the Ajax listener of the type selection landed in both on the same day). The logic
+ * now lives here once; the subclasses only supply what really differs:
  * <ul>
- *   <li>{@link #ladeVerfuegbareEntities()} — alle Entitaeten (Root) bzw. nur mandantenfaehige (Admin);</li>
- *   <li>{@link #ladeEntities(String)} — {@code findAll} (Root) bzw. {@code findByMandat} (Admin);</li>
- *   <li>{@link #vorSpeichern(Object)} — Admin erzwingt serverseitig den eigenen Mandanten (Karte 307);</li>
- *   <li>Rollen/Menue ueber {@code @MenuAnnotation} der Unterklasse; Export/Import nur in Root.</li>
+ *   <li>{@link #ladeVerfuegbareEntities()} — all entities (Root) resp. only tenant-capable ones (Admin);</li>
+ *   <li>{@link #ladeEntities(String)} — {@code findAll} (Root) resp. {@code findByMandat} (Admin);</li>
+ *   <li>{@link #vorSpeichern(Object)} — Admin enforces the own tenant server-side (Karte 307);</li>
+ *   <li>roles/menu via the subclass' {@code @MenuAnnotation}; export/import only in Root.</li>
  * </ul>
- * Die beiden XHTML teilen sich aus demselben Grund {@code /includes/entityverwaltung.xhtml}.
+ * For the same reason the two XHTML pages share {@code /includes/entityverwaltung.xhtml}.
  *
- * <p>Session-scoped, Felder der Dienste {@code transient} (Karte 915); {@code plaintextSecurity}
- * ist ein Scoped-Proxy und bleibt absichtlich nicht-transient wie zuvor.
+ * <p>Session-scoped, the service fields {@code transient} (Karte 915); {@code plaintextSecurity}
+ * is a scoped proxy and deliberately stays non-transient, as it was before.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -69,18 +68,18 @@ public abstract class AbstractEntityBackingBean implements Serializable {
     private Map<String, Object> fieldValues = new HashMap<>();
     private List<String> allMandate = new ArrayList<>();
 
-    /** Welche Entitaetstypen der Benutzer verwalten darf. */
+    /** Which entity types the user is allowed to manage. */
     protected abstract List<EntityDescriptor> ladeVerfuegbareEntities();
 
-    /** Die Datensaetze des gewaehlten Typs — mit oder ohne Mandanten-Einschraenkung. */
+    /** The records of the selected type — with or without a tenant restriction. */
     protected abstract List<?> ladeEntities(String entityName);
 
     /**
-     * Haken unmittelbar vor {@code entityService.save(...)}: die Feldwerte aus dem Dialog sind
-     * bereits in die Entitaet uebernommen. Standard: nichts.
+     * Hook invoked right before {@code entityService.save(...)}: the field values from the dialog
+     * have already been copied into the entity. Default: do nothing.
      */
     protected void vorSpeichern(Object entity) {
-        // Unterklassen (Admin: Mandant erzwingen)
+        // Subclasses (Admin: enforce the tenant)
     }
 
     @PostConstruct
@@ -107,9 +106,9 @@ public abstract class AbstractEntityBackingBean implements Serializable {
     }
 
     /**
-     * Ajax-Listener der Typ-Auswahl (Auftrag Daniel, 29.08.2026). Der neue Wert steht beim Aufruf
-     * bereits in {@code selectedEntityType} (UPDATE_MODEL_VALUES laeuft vor dem Listener); hier
-     * wird nur die Auswahl des alten Typs verworfen und die Liste nachgeladen.
+     * Ajax listener of the type selection (request by Daniel, 29.08.2026). By the time it is called
+     * the new value is already in {@code selectedEntityType} (UPDATE_MODEL_VALUES runs before the
+     * listener); all this does is discard the selection of the old type and reload the list.
      */
     public void entityTypeChanged() {
         log.info("Entity type selected: {}", selectedEntityType != null ? selectedEntityType.getEntityName() : "null");
@@ -121,7 +120,7 @@ public abstract class AbstractEntityBackingBean implements Serializable {
 
     public void loadEntities() {
         if (selectedEntityType == null) {
-            // Neue Liste statt clear(): findAll() kann eine unveraenderliche Liste liefern.
+            // A new list instead of clear(): findAll() may return an immutable list.
             entities = new ArrayList<>();
             return;
         }

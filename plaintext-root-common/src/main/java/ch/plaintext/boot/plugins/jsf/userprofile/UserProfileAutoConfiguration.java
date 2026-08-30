@@ -13,27 +13,27 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 /**
- * Registriert das Benutzerprofil - Theme, Farbwahl, Menuemodus und Sprache.
+ * Registers the user profile - theme, colour choice, menu mode and language.
  *
- * <p><b>Warum eine AutoConfiguration.</b> Die Klassen tragen {@code @Component}
- * bzw. {@code @Service} und wurden damit nur zu Beans, wenn die konsumierende
- * Anwendung {@code ch.plaintext} mitscannt. Wer das nicht tut - und das ist der
- * Normalfall, weil ein solcher Scan auch alles andere aus der Produktlinie
- * einsammelt - bekam die Klassen nicht und hat sie stattdessen kopiert. Genau
- * das ist im Inventar der ESTV passiert; dieselbe Ursache lag der Auslagerung
- * des objstore zugrunde (PR #65).
+ * <p><b>Why an AutoConfiguration.</b> The classes carry {@code @Component}
+ * resp. {@code @Service} and therefore only became beans if the consuming
+ * application scanned {@code ch.plaintext} as well. Whoever does not do that -
+ * and that is the normal case, because such a scan also picks up everything
+ * else from the product line - did not get the classes and copied them
+ * instead. That is exactly what happened in the ESTV inventory; the same cause
+ * was behind moving the objstore out (PR #65).
  *
- * <p>Alle Beans sind {@link ConditionalOnMissingBean}: eine Anwendung, die eine
- * eigene Variante mitbringt, behaelt sie. Das ist der Weg, auf dem eine
- * Anwendung schrittweise umsteigen kann, statt alles auf einmal zu tauschen.
+ * <p>All beans are {@link ConditionalOnMissingBean}: an application that brings
+ * a variant of its own keeps it. That is the path along which an application
+ * can migrate step by step instead of swapping everything at once.
  *
- * <p><b>Was diese Klasse NICHT erledigt.</b> {@code SimpleStorableEntity} und
- * {@code SimpleStorableEntityRepository} aus dem objstore bleiben Sache der
- * Anwendung: Entities gehoeren in deren {@code @EntityScan}, Repositories in
- * deren {@code @EnableJpaRepositories}. Beides aus einer AutoConfiguration
- * heraus zu setzen wuerde Spring Boots eigene Repository-Erkennung abschalten
- * und der Anwendung damit mehr wegnehmen als geben. Konkret braucht eine
- * konsumierende Anwendung:
+ * <p><b>What this class does NOT do.</b> {@code SimpleStorableEntity} and
+ * {@code SimpleStorableEntityRepository} from the objstore remain the
+ * application's business: entities belong in its {@code @EntityScan},
+ * repositories in its {@code @EnableJpaRepositories}. Setting both from within
+ * an AutoConfiguration would switch off Spring Boot's own repository detection
+ * and thereby take more away from the application than it gives. Concretely, a
+ * consuming application needs:
  *
  * <pre>
  * &#64;EntityScan(basePackages = {"...", "ch.plaintext.boot.plugins.objstore"})
@@ -49,9 +49,9 @@ import org.springframework.context.annotation.ScopedProxyMode;
 public class UserProfileAutoConfiguration {
 
     /**
-     * Der Ablageort der Einstellungen. Haengt am objstore und damit an einem
-     * {@code SimpleStorableEntityRepository}, das die Anwendung ueber ihren
-     * {@code @EnableJpaRepositories} beisteuert - siehe Klassenkommentar.
+     * The storage location of the settings. Depends on the objstore and thereby on
+     * a {@code SimpleStorableEntityRepository} that the application contributes
+     * through its {@code @EnableJpaRepositories} - see the class comment.
      */
     @Bean
     @ConditionalOnMissingBean
@@ -61,8 +61,8 @@ public class UserProfileAutoConfiguration {
     }
 
     /**
-     * Anwendungsweit, weil die Farbpalette fuer alle Benutzer dieselbe ist -
-     * eine Instanz je Sitzung waere Verschwendung ohne Gewinn.
+     * Application-wide, because the colour palette is the same for all users -
+     * one instance per session would be waste without a gain.
      */
     @Bean("themeColorProvider")
     @ConditionalOnMissingBean
@@ -72,9 +72,9 @@ public class UserProfileAutoConfiguration {
     }
 
     /**
-     * Sitzungsgebunden: die Bean traegt die Einstellungen des angemeldeten
-     * Benutzers. Der Proxy ist noetig, damit sie sich auch dort injizieren
-     * laesst, wo keine Sitzung im Spiel ist.
+     * Session-scoped: the bean carries the settings of the logged-in user. The
+     * proxy is needed so that it can also be injected where no session is
+     * involved.
      */
     @Bean("userPreferencesBackingBean")
     @ConditionalOnMissingBean
@@ -84,10 +84,10 @@ public class UserProfileAutoConfiguration {
     }
 
     /**
-     * Der generische Ablagedienst des objstore. Er traegt {@code @Service} und
-     * kam bisher nur ueber einen {@code ch.plaintext}-Scan zustande; hier wird
-     * er ausdruecklich registriert, damit Ableitungen wie
-     * {@link UserPrefsSimpleStorage} ihn ohne Scan verwenden koennen.
+     * The generic storage service of the objstore. It carries {@code @Service} and
+     * so far only came about through a {@code ch.plaintext} scan; here it is
+     * registered explicitly, so that subclasses such as
+     * {@link UserPrefsSimpleStorage} can use it without a scan.
      */
     @Bean
     @ConditionalOnMissingBean

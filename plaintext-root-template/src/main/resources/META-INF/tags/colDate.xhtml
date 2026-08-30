@@ -4,22 +4,22 @@
                 xmlns:f="jakarta.faces.core"
                 xmlns:p="http://primefaces.org/ui">
     <!--
-      pt:colDate — Datumsspalte mit EINEM Hausformat.
+      pt:colDate — date column with ONE house format.
 
-      Gemessener Bestand: dd.MM.yyyy HH:mm 27x, dd.MM.yyyy 12x, dazu fuenf Streuvarianten. Ohne
-      Angabe gibt es Datum und Uhrzeit; withTime="false" nur das Datum. Ein eigenes pattern bleibt
-      moeglich, ist dann aber eine sichtbare Ausnahme statt einer stillen.
+      Measured inventory: dd.MM.yyyy HH:mm 27x, dd.MM.yyyy 12x, plus five scattered variants. With
+      nothing specified you get date and time; withTime="false" gives the date only. A custom pattern
+      remains possible, but is then a visible exception instead of a silent one.
 
-      type ist per Vorgabe localDateTime — der Typ der SuperModel-Zeitstempel. Fuer LocalDate:
-      type="localDate" und withTime="false".
+      type defaults to localDateTime — the type of the SuperModel timestamps. For LocalDate:
+      type="localDate" and withTime="false".
 
-      ACHTUNG: Nur fuer echte Datums-/Zeitwerte. Wo die BackingBean bereits einen fertig
-      formatierten String liefert (im Bestand haeufig, z.B. die ApiToken-View-DTOs), gehoert
-      pt:colText hin — ein Konverter auf einem String wirft zur Laufzeit.
+      CAUTION: only for real date/time values. Where the backing bean already delivers a ready
+      formatted string (frequent in the existing code, e.g. the ApiToken view DTOs),
+      pt:colText is what belongs there — a converter on a string throws at runtime.
 
-      Attributnamen wie bei pt:colText bewusst colClass/colRendered — Begruendung dort.
+      Attribute names deliberately colClass/colRendered as in pt:colText — reasoning there.
 
-      PFLICHT: header, value
+      REQUIRED: header, value
       OPTIONAL: width, pattern, type, withTime, colClass, colRendered
     -->
     <p:column headerText="#{header}"

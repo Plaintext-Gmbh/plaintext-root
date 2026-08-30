@@ -6,38 +6,38 @@ package ch.plaintext.secrets;
 import java.util.Optional;
 
 /**
- * Liest ein über die Seite <i>Root → Secrets</i> gepflegtes Secret <b>zur Laufzeit</b> aus, unabhängig
- * davon, in welchem Backend es liegt.
+ * Reads a secret maintained via the <i>Root → Secrets</i> page <b>at runtime</b>, no matter which
+ * backend holds it.
  *
- * <p>Dieses Interface existiert, weil der {@code vault:}-Präfix in Properties das nicht leisten kann.
- * Jener wird von einem {@code EnvironmentPostProcessor} beim Start aufgelöst und liest ausschliesslich
- * Vaultwarden. Für das Backend {@code LOCAL_DB} ist dieser Weg nicht nachrüstbar, und zwar aus zwei
- * unabhängigen Gründen: Beim Start gibt es weder eine verbundene Datenbank noch einen Mandanten, und
- * Secrets sind mandantengebunden. Ein {@code secret:}-Präfix analog zu {@code vault:} kann es deshalb
- * prinzipiell nicht geben — die Auflösung muss im Request-Kontext stattfinden.
+ * <p>This interface exists because the {@code vault:} prefix in properties cannot do that. That
+ * prefix is resolved by an {@code EnvironmentPostProcessor} at startup and reads Vaultwarden and
+ * nothing else. For the {@code LOCAL_DB} backend that route cannot be retrofitted, for two
+ * independent reasons: at startup there is neither a connected database nor a tenant, and secrets
+ * are tenant-bound. A {@code secret:} prefix analogous to {@code vault:} is therefore impossible
+ * in principle — the resolution has to happen in the request context.
  *
- * <p>Der angenehme Nebeneffekt: Eine Änderung in der Secrets-Verwaltung wirkt sofort, während ein
- * {@code vault:}-Property bis zum nächsten Neustart den alten Wert behält.
+ * <p>The pleasant side effect: a change in the secrets management takes effect immediately,
+ * whereas a {@code vault:} property keeps the old value until the next restart.
  *
- * <p><b>Nicht fürs UI.</b> Die Secret-Verwaltung ist bewusst one-way — Werte werden gesetzt, nie
- * angezeigt. Dieses Interface liefert Klartext für technische Verwender (etwa das Einsetzen von
- * Zugangsdaten in ein zum Download erzeugtes Skript) und gehört nicht in eine Anzeige.
+ * <p><b>Not for the UI.</b> The secrets management is deliberately one-way — values are set, never
+ * displayed. This interface returns cleartext for technical consumers (such as inserting
+ * credentials into a script generated for download) and does not belong on a page.
  *
- * <p>Implementiert wird es vom {@code SecretService} in {@code plaintext-admin-secrets}. Verwender
- * sollten die Abhängigkeit <b>optional</b> halten ({@code @Autowired(required = false)}), denn nicht
- * jede Anwendung bindet das Secrets-Modul ein.
+ * <p>It is implemented by the {@code SecretService} in {@code plaintext-admin-secrets}. Consumers
+ * should keep the dependency <b>optional</b> ({@code @Autowired(required = false)}), because not
+ * every application includes the secrets module.
  */
 public interface SecretResolver {
 
     /**
-     * Klartext-Wert des Secrets im aktuellen Mandanten.
+     * Cleartext value of the secret in the current tenant.
      *
-     * @param name Name des Secrets, wie in der Secrets-Verwaltung angezeigt (z.B.
+     * @param name name of the secret as shown in the secrets management (e.g.
      *             {@code zeiterfassung.jira-password})
-     * @return der Wert, oder {@link Optional#empty()}, wenn kein Secret dieses Namens existiert, es
-     *         gelöscht ist oder das hinterlegende Backend gerade nicht erreichbar ist. Ein leeres
-     *         Ergebnis ist <b>kein Fehler</b> — Aufrufer sollen darauf einen Fallback vorsehen
-     *         (typischerweise die bisherige Property) statt zu scheitern.
+     * @return the value, or {@link Optional#empty()} if no secret of that name exists, it has been
+     *         deleted, or the backend holding it is currently unreachable. An empty result is
+     *         <b>not an error</b> — callers should provide a fallback for it (typically the
+     *         previous property) instead of failing.
      */
     Optional<String> resolve(String name);
 }

@@ -12,22 +12,22 @@ import java.util.Map;
  * Interface for services that accept file uploads via the generic /nosec/root/upload endpoint.
  * Implementations are auto-discovered by Spring and listed in the upload services API.
  *
- * <h2>Dieser Vertrag zieht nach plaintext-app um</h2>
- * <p>Der Pfadname legt eine Root-Zustaendigkeit nahe, die es nicht gibt. Der treibende
- * Controller ({@code ch.plaintext.boot.web.nosec.RootUploadController}) liegt in
- * {@code plaintext-app-webapp}, beide Implementierungen ({@code PostkontoUploadTarget},
- * {@code RunningUploadTarget}) liegen in app-Modulen. Kein Modul in plaintext-root nutzt
- * den Typ, und guild, iot und schuetu kennen ihn nicht. Er ist damit App-Fachlichkeit im
- * Framework-Vertragsmodul.</p>
+ * <h2>This contract is moving to plaintext-app</h2>
+ * <p>The path name suggests a root responsibility that does not exist. The driving
+ * controller ({@code ch.plaintext.boot.web.nosec.RootUploadController}) lives in
+ * {@code plaintext-app-webapp}, and both implementations ({@code PostkontoUploadTarget},
+ * {@code RunningUploadTarget}) live in app modules. No module in plaintext-root uses
+ * the type, and guild, iot and schuetu do not know it. It is therefore app domain
+ * logic sitting in the framework's contract module.</p>
  *
- * <p>Der Nachfolger liegt unter demselben voll qualifizierten Namen in
- * {@code plaintext-app-interfaces} — Konsumenten muessen ihre Importe also nicht anfassen.
- * Diese Kopie faellt weg, sobald plaintext-app auf eine root-Version gepinnt ist, die sie
- * nicht mehr enthaelt; bis dahin bleibt sie stehen, damit der Umzug ohne Bruch in zwei
- * Schritten laufen kann.</p>
+ * <p>The successor lives under the same fully qualified name in
+ * {@code plaintext-app-interfaces} — consumers therefore do not have to touch their imports.
+ * This copy goes away as soon as plaintext-app is pinned to a root version that no longer
+ * contains it; until then it stays, so that the move can run in two steps without a
+ * break.</p>
  *
- * @deprecated Umgezogen nach {@code plaintext-app-interfaces} (gleiches Paket, gleicher
- *             Name). Wird nach dem app-Release entfernt, das den eigenen Vertrag mitbringt.
+ * @deprecated Moved to {@code plaintext-app-interfaces} (same package, same name). Will be
+ *             removed after the app release that brings its own contract.
  */
 @Deprecated(since = "1.643.0", forRemoval = true)
 public interface IUploadTarget {

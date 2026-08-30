@@ -71,7 +71,7 @@
             <p>#{i18n.t('Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein')}</p>
         </div>
 
-        <!-- Fehler-Meldung (ungültiger Code / Lockout) -->
+        <!-- Error message (invalid code / lockout) -->
         <div class="error-message" style="display: #{param.error != null ? 'flex' : 'none'}">
             <i class="pi pi-exclamation-circle"></i>
             <span>#{param.error == 'totp_locked'
@@ -80,7 +80,7 @@
         </div>
 
         <form action="#{request.contextPath}/login/totp" method="post" class="login-form" autocomplete="off">
-            <!-- CSRF Token (CSRF-Schutz bleibt aktiv) -->
+            <!-- CSRF token (CSRF protection stays active) -->
             <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
 
             <div class="field">

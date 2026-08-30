@@ -4,8 +4,8 @@
 package ch.plaintext.secrets;
 
 /**
- * Ergebnis des Live-Tests eines Backends: greift es ({@code ok}) und – falls nicht – was fehlt
- * ({@code detail}). Wird im UI im Backend-Bereich angezeigt.
+ * Result of the live test of a backend: does it work ({@code ok}) and – if not – what is missing
+ * ({@code detail}). Displayed in the UI in the backend area.
  */
 public record SecretHealth(boolean ok, String detail) {
     public static SecretHealth up(String detail) {

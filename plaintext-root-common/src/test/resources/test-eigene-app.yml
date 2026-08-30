@@ -1,11 +1,11 @@
-# Stellt im Test eine anwendungseigene application.yml nach.
+# Simulates an application's own application.yml inside the test.
 #
-# Geladen wird sie ueber spring.config.name=test-eigene-app, damit sie NICHT die echte
-# application.yml anderer Tests in diesem Modul verdeckt — das waere derselbe Fehler, den
-# dieser Test aufdecken soll.
+# It is loaded via spring.config.name=test-eigene-app so that it does NOT shadow the real
+# application.yml of the other tests in this module — that would be the very mistake this
+# test is meant to expose.
 #
-# Die Werte sind absichtlich andere als die in plaintext-defaults.yml: Nur so ist am
-# Ergebnis ablesbar, welche Source gewonnen hat.
+# The values are deliberately different from those in plaintext-defaults.yml: only that way
+# does the result show which source won.
 server:
   servlet:
     session:

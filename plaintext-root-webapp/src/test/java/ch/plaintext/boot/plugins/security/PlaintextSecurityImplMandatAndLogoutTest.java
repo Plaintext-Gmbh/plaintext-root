@@ -85,8 +85,8 @@ class PlaintextSecurityImplMandatAndLogoutTest {
 
     @Test
     void setMandat_persistiertSecurityContextInDieSession() {
-        // Regression: in Spring Security 6 wird ein nur im Holder gesetzter Context nicht mehr
-        // automatisch gespeichert -> der Mandant-Wechsel muss explizit in die HTTP-Session.
+        // Regression: in Spring Security 6 a context that is only set in the holder is no longer
+        // saved automatically -> the tenant switch has to go into the HTTP session explicitly.
         List<SimpleGrantedAuthority> authorities = new ArrayList<>(List.of(
                 new SimpleGrantedAuthority("PROPERTY_MYUSERID_1"),
                 new SimpleGrantedAuthority("PROPERTY_MANDAT_home")));
@@ -103,10 +103,10 @@ class PlaintextSecurityImplMandatAndLogoutTest {
         try {
             security.setMandat("prod");
 
-            // Der gewechselte Context muss unter dem Spring-Security-Schluessel in der Session liegen.
+            // The switched context has to lie in the session under the Spring Security key.
             verify(session).setAttribute(
                     eq(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY), any());
-            // ...und der Holder zeigt sofort den neuen Mandanten.
+            // ...and the holder shows the new tenant immediately.
             assertEquals("prod", security.getMandat());
         } finally {
             RequestContextHolder.resetRequestAttributes();

@@ -8,7 +8,6 @@ This document lists all German terms remaining in the codebase (package names, c
 |----------------|-----------------|--------|
 | `plaintext-root-menuesteuerung` | `plaintext-root-menu-visibility` | Renamed |
 | `plaintext-root-rollenzuteilung` | `plaintext-root-role-assignment` | Renamed |
-| `plaintext-admin-wertelisten` | `plaintext-admin-value-lists` | Renamed |
 | `plaintext-admin-anforderungen` | `plaintext-admin-requirements` | Renamed |
 
 ## Java Package Names (kept for backward compatibility)
@@ -17,7 +16,6 @@ This document lists all German terms remaining in the codebase (package names, c
 |---------------|----------------|---------|
 | `ch.plaintext.menuesteuerung` | menu-control / menu-visibility | menu-visibility module |
 | `ch.plaintext.rollenzuteilung` | role-assignment | role-assignment module |
-| `ch.plaintext.wertelisten` | value-lists | value-lists module |
 | `ch.plaintext.anforderungen` | requirements | requirements module |
 
 ## Class Names
@@ -28,11 +26,6 @@ This document lists all German terms remaining in the codebase (package names, c
 | `RollenzuteilungService` | RoleAssignmentService | role-assignment module |
 | `RollenzuteilungBackingBean` | RoleAssignmentBackingBean | role-assignment module |
 | `RollenzuteilungRepository` | RoleAssignmentRepository | role-assignment module |
-| `Werteliste` | ValueList | value-lists module |
-| `WertelisteEntry` | ValueListEntry | value-lists module |
-| `WertelisteId` | ValueListId | value-lists module |
-| `WertelistenService` | ValueListService | value-lists module |
-| `WertelistenBackingBean` | ValueListBackingBean | value-lists module |
 | `Anforderung` | Requirement | requirements module |
 | `AnforderungService` | RequirementService | requirements module |
 | `MandateMenuBackingBean` | MandateMenuBackingBean | menu-visibility module |
@@ -52,14 +45,12 @@ This document lists all German terms remaining in the codebase (package names, c
 
 | German File/Label | English Meaning |
 |------------------|----------------|
-| `wertelisten.xhtml` | Value Lists |
 | `rollenzuteilung.xhtml` | Role Assignment |
 | `anforderungen.xhtml` | Requirements |
 | `anforderungdetail.xhtml` | Requirement Detail |
 | `anforderungssettings.xhtml` | Requirement Settings |
 | `howtos.xhtml` | How-Tos |
 | `howtodetail.xhtml` | How-To Detail |
-| `menuesteuerung.xhtml` | Menu Control |
 
 ## The "Mandat" Term
 
@@ -74,27 +65,15 @@ The term **"Mandat"** (German for "mandate" or "tenant") is used throughout the 
 - **UI**: Mandate selector in topbar, mandate filter in admin pages
 - **Spring Security**: Roles contain mandate info (e.g., `PROPERTY_MANDAT_default`)
 
-### Migration Plan: Mandat → Tenant
 
-Renaming "Mandat" to "Tenant" would be a major refactoring effort:
+## Why these names stay
 
-**Phase 1 - New API (non-breaking)**
-1. Add `getTenant()` as alias for `getMandat()` in `PlaintextSecurity`
-2. Add `tenant` field alias in `SuperModel` (maps to same column)
-3. Add English getters/setters alongside German ones
-4. Deprecate German methods with `@Deprecated`
+Renaming a class here renames it in four other repositories that consume this
+one. The modules were renamed once (2026); the packages, classes and tables were
+not, because the cost falls on the consumers and the benefit is cosmetic. If a
+rename ever happens it belongs in a release of its own, with a deprecation
+window — not folded into a feature.
 
-**Phase 2 - Database Migration**
-1. Create Flyway migration: `ALTER TABLE ... RENAME COLUMN mandat TO tenant`
-2. Update all entity `@Column` annotations
-3. This affects every table extending `SuperModel`
-
-**Phase 3 - Full Code Migration**
-1. Rename all `mandat` variables, parameters, methods
-2. Update Spring Security role patterns
-3. Update XHTML templates
-4. Update REST API parameters
-
-**Estimated Effort**: 3-5 days
-**Risk**: High (touches every module)
-**Recommendation**: Do Phase 1 first (backward-compatible), then Phase 2+3 in a dedicated release.
+> Checked against the code on 30 August 2026. The `wertelisten` module and its
+> table were removed before that date; entries for them have been deleted from
+> this glossary rather than kept as history.

@@ -19,31 +19,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilte Groessen-Leitplanke (Zustandsbericht 29.08.2026, Massnahme 12): keine Java-Datei ueber
- * {@value #MAX_ZEILEN} Zeilen.
+ * Shared size guardrail (status report 29.08.2026, measure 12): no Java file over
+ * {@value #MAX_ZEILEN} lines.
  *
- * <p><b>Warum eine Zeilengrenze und nicht eine Komplexitaetsmetrik.</b> Zeilen sind ein grobes
- * Mass — aber ein unbestechliches, und es kostet keinen zweiten Analysator. Die Grenze zielt nicht
- * auf „schoene" Klassen, sondern auf den einen Effekt, der im Alltag weh tut: eine Datei jenseits
- * von {@value #MAX_ZEILEN} Zeilen passt in keinen Review mehr, sammelt zwangslaeufig mehrere
- * Zustaendigkeiten und wird zum Merge-Konflikt-Magneten. Der Wert ist bewusst hoch angesetzt: er
- * ist eine Reissleine gegen unbegrenztes Wachstum, keine Stilvorgabe. Wer ihn erreicht, hat nicht
- * „zu lang" geschrieben, sondern mindestens zwei Klassen in eine gelegt.
+ * <p><b>Why a line limit and not a complexity metric.</b> Lines are a crude measure — but an
+ * incorruptible one, and it costs no second analyzer. The limit does not aim at "beautiful"
+ * classes, but at the one effect that hurts in everyday work: a file beyond
+ * {@value #MAX_ZEILEN} lines no longer fits into a review, inevitably collects several
+ * responsibilities and turns into a merge-conflict magnet. The value is deliberately set high: it
+ * is a ripcord against unbounded growth, not a style rule. Whoever reaches it has not written
+ * "too long" — they have put at least two classes into one.
  *
- * <p><b>Bestand am 30.08.2026.</b> root ist mit dieser Grenze ohne Ausnahme gruen (groesste Datei:
- * {@code ClaudeAutomationServiceTest} mit 1128 Zeilen). In der Familie reisst sie derzeit genau
- * eine Datei: {@code plaintext-guild-events/…/EventService.java} (2027 Zeilen). Dass root sauber
- * ist, ist der Grund, warum die Schwelle hier stehen darf, statt „auf spaeter" verschoben zu
- * werden — eine Leitplanke, die schon beim Einbau Ausnahmen braucht, wird nie wieder eng.
+ * <p><b>State on 30.08.2026.</b> root is green under this limit without a single exception (largest
+ * file: {@code ClaudeAutomationServiceTest} with 1128 lines). Across the family exactly one file
+ * currently breaks it: {@code plaintext-guild-events/…/EventService.java} (2027 lines). That root
+ * is clean is the reason why the threshold may stand here instead of being postponed "for later" —
+ * a guardrail that already needs exceptions when it is installed never becomes tight again.
  *
- * <p><b>Geprueft werden {@code src/main/java} und {@code src/test/java}</b> jedes Moduls des
- * Reactors ({@link ReactorLayout}). Tests sind ausdruecklich mit drin: eine 2000-Zeilen-Testklasse
- * ist genauso unlesbar wie eine 2000-Zeilen-Produktivklasse, und sie waechst schneller.
+ * <p><b>Checked are {@code src/main/java} and {@code src/test/java}</b> of every module of the
+ * reactor ({@link ReactorLayout}). Tests are explicitly included: a 2000-line test class is just
+ * as unreadable as a 2000-line production class, and it grows faster.
  *
- * <p><b>Ausnahmen:</b> Allowlist des Reactors ({@code plaintext-arch-allowlist.txt}, Regel
- * {@value #ALLOWLIST_REGEL}, Pfad relativ zur Reactor-Wurzel, {@code *}/{@code **} erlaubt,
- * Begruendung Pflicht — {@link ArchAllowlist}). Die Schwelle selbst ist bewusst <em>keine</em>
- * Property: eine Ausnahme mit Begruendung ist nachvollziehbar, ein hochgedrehter Grenzwert nicht.
+ * <p><b>Exceptions:</b> the reactor's allowlist ({@code plaintext-arch-allowlist.txt}, rule
+ * {@value #ALLOWLIST_REGEL}, path relative to the reactor root, {@code *}/{@code **} allowed,
+ * justification mandatory — {@link ArchAllowlist}). The threshold itself is deliberately <em>no</em>
+ * property: an exception with a justification can be traced, a limit turned up cannot.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -52,7 +52,7 @@ class PlaintextGroessenLeitplankeTest {
 
     static final String ALLOWLIST_REGEL = "groesse-max-loc";
 
-    /** Obergrenze in Zeilen je {@code .java}-Datei. */
+    /** Upper limit in lines per {@code .java} file. */
     static final int MAX_ZEILEN = 1500;
 
     private static final List<String> JAVA_SUFFIXES = List.of("src/main/java", "src/test/java");
@@ -65,7 +65,7 @@ class PlaintextGroessenLeitplankeTest {
             roots.addAll(ReactorLayout.sourceRoots(suffix));
         }
         if (roots.isEmpty()) {
-            return; // Reactor ohne Java-Quellen an dieser Stelle -> nichts zu pruefen
+            return; // reactor without Java sources at this point -> nothing to check
         }
         ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
 
@@ -109,11 +109,11 @@ class PlaintextGroessenLeitplankeTest {
         assertTrue(scan(null, 5).isEmpty());
     }
 
-    /** Eine ueberlange Datei: Pfad relativ zu {@code root} und ihre Zeilenzahl. */
+    /** An overlong file: path relative to {@code root} and its line count. */
     record Treffer(String pfad, long zeilen) {
     }
 
-    /** Meldet jede {@code .java}-Datei unter {@code root} mit mehr als {@code grenze} Zeilen. */
+    /** Reports every {@code .java} file below {@code root} with more than {@code grenze} lines. */
     static List<Treffer> scan(Path root, int grenze) throws IOException {
         List<Treffer> treffer = new ArrayList<>();
         if (root == null || !Files.isDirectory(root)) {

@@ -34,44 +34,44 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilter Vollstaendigkeits-Test der i18n-Seed-Dateien: jedes {@code #{i18n.t('…')}} in einem
- * Facelet des Reactors hat in einer Seed-CSV eine Zeile fuer die Leitsprache {@value #LEITSPRACHE};
- * Seed-Zeilen, die kein Facelet des Reactors verwendet, werden als Warnung ausgegeben (kein Fehler).
+ * Shared completeness test for the i18n seed files: every {@code #{i18n.t('…')}} in a facelet of the
+ * reactor has a row for the lead language {@value #LEITSPRACHE} in some seed CSV; seed rows that no
+ * facelet of the reactor uses are printed as a warning (not an error).
  *
- * <p><b>Ausloeser (Zustandsbericht 29.08.2026, §4):</b> Der Mechanismus war da, der Inhalt nicht.
- * root (287 Labels) und schuetu (129) rufen {@code i18n.t()}, aber familienweit gab es keine einzige
- * Seed-CSV — der Importer in {@code I18nService} lief bei jedem Start leer, Uebersetzungen lebten
- * nur in den Datenbanken der Instanzen (und dort standen ausschliesslich {@code X_}-Platzhalter).
- * Ohne Test faellt ein neues Label ohne Uebersetzung nie auf: {@code translate()} legt still einen
- * Platzhalter an, der Benutzer sieht {@code X_Speichern}.
+ * <p><b>Trigger (status report 29.08.2026, §4):</b> the mechanism was there, the content was not.
+ * root (287 labels) and schuetu (129) call {@code i18n.t()}, but across the whole family there was
+ * not a single seed CSV — the importer in {@code I18nService} ran empty on every start, translations
+ * only lived in the databases of the instances (and there only {@code X_} placeholders existed).
+ * Without a test a new label without a translation never shows up: {@code translate()} silently
+ * creates a placeholder and the user sees {@code X_Speichern}.
  *
- * <p><b>Schluessel-Modell.</b> Es gibt keine Property-Keys; der Schluessel IST der deutsche
- * Vorgabetext ({@code i18n.t('Speichern')}), und {@code de} wird nie uebersetzt. Deshalb ist die
- * Leitsprache der Seed nicht {@code de}, sondern die erste Zielsprache {@code en}: eine
- * {@code de}-Zeile waere wirkungslos.
+ * <p><b>Key model.</b> There are no property keys; the key IS the German default text
+ * ({@code i18n.t('Speichern')}), and {@code de} is never translated. That is why the lead language of
+ * the seed is not {@code de} but the first target language {@code en}: a {@code de} row would have no
+ * effect.
  *
- * <p><b>Woher die Seeds kommen.</b> Zwei Quellen, wie beim Importer ({@code classpath*:i18n/*.csv}):
+ * <p><b>Where the seeds come from.</b> Two sources, as with the importer ({@code classpath*:i18n/*.csv}):
  * <ol>
- *   <li><b>Reactor-Seeds</b> — jede {@code <modul>/src/main/resources/i18n/*.csv} des Reactors
- *       ({@link ReactorLayout}). Sie sind die Wahrheit fuer die eigenen Labels; nur fuer sie gibt es
- *       die Warnung „Zeile ohne Verwendung“, und Formfehler in ihnen (zu wenig Spalten, doppelte
- *       Zeile) sind Verstoesse.</li>
- *   <li><b>Fremd-Seeds</b> — {@code i18n/*.csv} aus Jars auf dem Test-Classpath, z. B.
- *       {@code plaintext-root.csv} aus plaintext-admin-i18n, wenn der Test in einem Consumer
- *       (app, guild, iot, schuetu) laeuft. Ihre Labels zaehlen als „von root geliefert“:
- *       {@code i18n.t('Speichern')} in schuetu braucht keine schuetu-Zeile. Gleichnamige Dateien
- *       eines Reactor-Seeds werden nicht als fremd gezaehlt — sonst wuerde in root ein veraltetes
- *       Jar aus {@code ~/.m2} die Quelle ueberdecken.</li>
+ *   <li><b>Reactor seeds</b> — every {@code <modul>/src/main/resources/i18n/*.csv} of the reactor
+ *       ({@link ReactorLayout}). They are the truth for the reactor's own labels; only for them is
+ *       there the warning "row without usage", and format errors in them (too few columns, duplicate
+ *       row) are violations.</li>
+ *   <li><b>Foreign seeds</b> — {@code i18n/*.csv} from jars on the test classpath, e.g.
+ *       {@code plaintext-root.csv} from plaintext-admin-i18n, when the test runs in a consumer
+ *       (app, guild, iot, schuetu). Their labels count as "delivered by root":
+ *       {@code i18n.t('Speichern')} in schuetu needs no schuetu row. Files with the same name as a
+ *       reactor seed are not counted as foreign — otherwise an outdated jar from {@code ~/.m2} would
+ *       mask the source in root.</li>
  * </ol>
  *
- * <p><b>Ausnahmen:</b> {@code <!-- i18n-seed-ok -->} in derselben Zeile nimmt einen einzelnen
- * Aufruf aus; ganze Dateien nimmt die Allowlist des Reactors aus ({@code plaintext-arch-allowlist.txt},
- * Regel {@code i18n-seed}, Begruendung Pflicht — siehe {@link ArchAllowlist}). root fuehrt keine
- * Allowlist.
+ * <p><b>Exceptions:</b> {@code <!-- i18n-seed-ok -->} on the same line exempts a single call; whole
+ * files are exempted by the reactor's allowlist ({@code plaintext-arch-allowlist.txt}, rule
+ * {@code i18n-seed}, justification mandatory — see {@link ArchAllowlist}). root keeps no allowlist.
  *
- * <p>Lese-Logik (CSV-Parser, Facelet-Scan) liegt in {@link I18nSeedLinter} (plaintext-root-common)
- * und ist dieselbe, die der Importer verwendet. Dieser Test liegt in {@code src/main/java} von
- * {@code plaintext-root-archtests} und laeuft im Consumer via Surefire {@code <dependenciesToScan>}.
+ * <p>The reading logic (CSV parser, facelet scan) lives in {@link I18nSeedLinter}
+ * (plaintext-root-common) and is the same one the importer uses. This test lives in
+ * {@code src/main/java} of {@code plaintext-root-archtests} and runs in the consumer via Surefire
+ * {@code <dependenciesToScan>}.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -80,14 +80,14 @@ class PlaintextI18nSeedTest {
 
     static final String ALLOWLIST_REGEL = "i18n-seed";
 
-    /** Sprache, fuer die jede Referenz eine Seed-Zeile braucht — die erste Zielsprache, nicht die Quellsprache de. */
+    /** Language for which every reference needs a seed row — the first target language, not the source language de. */
     static final String LEITSPRACHE = "en";
 
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
     private static final String SEED_SUFFIX = "src/main/resources/i18n";
 
-    /** Muster des Importers ({@code I18nService.SEED_PATTERN}); hier als Literal, damit archtests nicht an admin-i18n haengt. */
+    /** Pattern of the importer ({@code I18nService.SEED_PATTERN}); a literal here so that archtests does not depend on admin-i18n. */
     private static final String SEED_PATTERN = "classpath*:i18n/*.csv";
 
     @Test
@@ -99,13 +99,13 @@ class PlaintextI18nSeedTest {
         ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
         List<String> violations = new ArrayList<>(allowlist.fehler());
 
-        // 1. Referenzen aus allen Facelets des Reactors
+        // 1. references from all facelets of the reactor
         List<LabelReference> references = new ArrayList<>();
         for (Path root : resourceRoots) {
             references.addAll(I18nSeedLinter.scanReferences(root));
         }
 
-        // 2. Seeds: Reactor (Datei) und fremd (Classpath-Jar)
+        // 2. seeds: reactor (file) and foreign (classpath jar)
         Map<Path, Seed> reactorSeeds = reactorSeeds();
         Set<String> reactorSeedNames = new HashSet<>();
         reactorSeeds.keySet().forEach(p -> reactorSeedNames.add(p.getFileName().toString()));
@@ -136,7 +136,7 @@ class PlaintextI18nSeedTest {
             }
         }
 
-        // 3. Fehlende Zeilen: Referenz ohne Leitsprachen-Zeile
+        // 3. missing rows: reference without a lead-language row
         Set<String> referenced = new HashSet<>();
         Map<String, List<String>> fehlend = new LinkedHashMap<>();
         for (LabelReference ref : references) {
@@ -149,7 +149,7 @@ class PlaintextI18nSeedTest {
         fehlend.forEach((label, orte) -> violations.add("'" + label + "' (" + LEITSPRACHE + ") fehlt — verwendet in "
                 + String.join(", ", orte)));
 
-        // 4. Warnung: Reactor-Seed-Zeilen ohne Verwendung
+        // 4. warning: reactor seed rows without usage
         Set<String> unbenutzt = new TreeSet<>(reactorLabels);
         unbenutzt.removeAll(referenced);
         if (!unbenutzt.isEmpty()) {
@@ -177,7 +177,7 @@ class PlaintextI18nSeedTest {
         }
     }
 
-    /** Alle {@code <modul>/src/main/resources/i18n/*.csv} des Reactors, geparst. */
+    /** All {@code <modul>/src/main/resources/i18n/*.csv} of the reactor, parsed. */
     private static Map<Path, Seed> reactorSeeds() {
         Map<Path, Seed> seeds = new LinkedHashMap<>();
         for (Path dir : ReactorLayout.sourceRoots(SEED_SUFFIX)) {
@@ -193,8 +193,8 @@ class PlaintextI18nSeedTest {
     }
 
     /**
-     * {@code i18n/*.csv} von Jars auf dem Test-Classpath (Abhaengigkeiten wie plaintext-admin-i18n),
-     * ohne Dateien, die unter der Reactor-Wurzel liegen oder gleich heissen wie ein Reactor-Seed.
+     * {@code i18n/*.csv} from jars on the test classpath (dependencies such as plaintext-admin-i18n),
+     * without files that lie below the reactor root or that have the same name as a reactor seed.
      */
     private static Map<String, Seed> foreignSeeds(Set<String> reactorSeedNames) {
         Map<String, Seed> seeds = new LinkedHashMap<>();
@@ -226,7 +226,7 @@ class PlaintextI18nSeedTest {
         }
     }
 
-    /** Kurzname der Fremdquelle fuer Meldungen: Jar-Name + Datei. */
+    /** Short name of the foreign source for messages: jar name + file. */
     private static String herkunft(Resource r) {
         String d = r.getDescription();
         int bang = d.indexOf("!/");
@@ -238,7 +238,7 @@ class PlaintextI18nSeedTest {
     }
 
     // ------------------------------------------------------------------------------------------
-    // Fixture-Tests der Scan-/Parse-Logik (laufen ueberall mit, brauchen keinen Reactor)
+    // Fixture tests of the scan/parse logic (run everywhere, need no reactor)
     // ------------------------------------------------------------------------------------------
 
     @Test
@@ -292,7 +292,7 @@ class PlaintextI18nSeedTest {
 
     @Test
     void reactorSeedsUndFremdSeedsErgaenzenSich() {
-        // Sichtbarkeit der Klassifikation: was in diesem Reactor liegt, ist nie "fremd".
+        // Visibility of the classification: whatever lies in this reactor is never "foreign".
         Map<Path, Seed> reactor = reactorSeeds();
         Set<String> names = new LinkedHashSet<>();
         reactor.keySet().forEach(p -> names.add(p.getFileName().toString()));

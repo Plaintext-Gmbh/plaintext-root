@@ -14,56 +14,57 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Wiederverwendbarer Linter gegen drei JSF/Facelets-Fallstricke, die im Zustandsbericht vom
- * 29.08.2026 in plaintext-root belegt sind und dort stille Fehlfunktionen erzeugt haben — kein
- * Stacktrace, die Seite rendert, aber ein Teil davon tut nichts.
+ * Reusable linter against three JSF/Facelets pitfalls that are documented in the status report
+ * of 29.08.2026 for plaintext-root and produced silent malfunctions there — no stack trace, the
+ * page renders, but a part of it does nothing.
  *
  * <ol>
- *   <li><b>{@code <f:metadata>} nach dem ersten {@code <ui:define>}</b> ({@link #RULE_METADATA_NACH_DEFINE}):
- *       Die Seiten bauen auf {@code /includes/template.xhtml} auf, und das Template hat keinen
- *       {@code ui:insert} fuer Metadaten. Ein {@code f:metadata}-Block innerhalb eines
- *       {@code ui:define} landet damit irgendwo im Seitenkoerper — {@code f:viewParam},
- *       {@code f:viewAction} und {@code preRenderView}-Listener sind dort unwirksam bzw. laufen nur
- *       zufaellig, je nachdem wie Mojarra die Metadaten-Facette auswertet. In root standen 20 Seiten
- *       so da. Richtig: der Block gehoert direkt unter das oeffnende {@code <ui:composition ...>},
- *       vor das erste {@code <ui:define>} (Vorlage: {@code menudiagnose.xhtml}).</li>
- *   <li><b>{@code <f:metadata>} innerhalb {@code <h:form>}</b> ({@link #RULE_METADATA_IN_FORM}):
- *       Sonderfall von (1), aber gesondert gemeldet, weil hier zusaetzlich der Listener bei jedem
- *       Ajax-Postback des Formulars mitlaeuft und Daten neu laedt, die der Benutzer gerade
- *       bearbeitet. 16 der 20 root-Faelle sahen so aus.</li>
- *   <li><b>{@code onchange="submit()"} an einer PrimeFaces-Komponente</b> ({@link #RULE_ONCHANGE_SUBMIT}):
- *       PrimeFaces 15 loest ueber dieses Inline-Handler-Attribut keinen Request mehr aus — die
- *       Auswahl blieb wirkungslos (belegt an der Typ-Auswahl der Datenverwaltung
- *       {@code rootentities.xhtml}: keine Tabelle erschien). Richtig ist ein regulaeres
+ *   <li><b>{@code <f:metadata>} after the first {@code <ui:define>}</b> ({@link #RULE_METADATA_NACH_DEFINE}):
+ *       the pages build on {@code /includes/template.xhtml}, and the template has no
+ *       {@code ui:insert} for metadata. An {@code f:metadata} block inside a
+ *       {@code ui:define} therefore ends up somewhere in the page body — {@code f:viewParam},
+ *       {@code f:viewAction} and {@code preRenderView} listeners are ineffective there resp. run
+ *       only by chance, depending on how Mojarra evaluates the metadata facet. In root 20 pages
+ *       looked like that. Correct: the block belongs directly below the opening
+ *       {@code <ui:composition ...>}, before the first {@code <ui:define>} (template:
+ *       {@code menudiagnose.xhtml}).</li>
+ *   <li><b>{@code <f:metadata>} inside {@code <h:form>}</b> ({@link #RULE_METADATA_IN_FORM}):
+ *       a special case of (1), but reported separately, because here the listener additionally
+ *       runs along with every Ajax postback of the form and reloads data that the user is just
+ *       editing. 16 of the 20 root cases looked like this.</li>
+ *   <li><b>{@code onchange="submit()"} on a PrimeFaces component</b> ({@link #RULE_ONCHANGE_SUBMIT}):
+ *       PrimeFaces 15 no longer triggers a request through this inline handler attribute — the
+ *       selection had no effect (documented on the type selection of the data management
+ *       {@code rootentities.xhtml}: no table appeared). The correct way is a regular
  *       {@code <p:ajax listener=... update=.../>}.</li>
  * </ol>
  *
- * <p><b>Ausnahmen:</b> {@code <!-- jsf-view-ok -->} in derselben Zeile wie das gemeldete Tag nimmt
- * genau diesen Treffer begruendet aus (Muster wie {@code mobile-ok} / {@code el-quote-ok}). Ganze
- * Dateien nimmt der geteilte Test ueber die Allowlist des Reactors aus (siehe
- * {@code PlaintextJsfViewLinterTest} in plaintext-root-archtests).
+ * <p><b>Exceptions:</b> {@code <!-- jsf-view-ok -->} on the same line as the reported tag
+ * exempts exactly that hit with a rationale (the same pattern as {@code mobile-ok} /
+ * {@code el-quote-ok}). Whole files are exempted by the shared test through the reactor's
+ * allowlist (see {@code PlaintextJsfViewLinterTest} in plaintext-root-archtests).
  *
- * <p><b>Wiederverwendung ueber Modulgrenzen:</b> wie {@link MobileFormLinter} und
- * {@link FaceletsElLinter} liegt die Klasse in {@code plaintext-root-common} (nur JDK) und ist
- * transitiv auf dem Test-Classpath aller abhaengigen Projekte; der zugehoerige Test kommt als Jar
- * aus plaintext-root-archtests mit.
+ * <p><b>Reuse across module boundaries:</b> like {@link MobileFormLinter} and
+ * {@link FaceletsElLinter} the class lives in {@code plaintext-root-common} (JDK only) and is
+ * transitively on the test classpath of all dependent projects; the accompanying test ships as
+ * a jar from plaintext-root-archtests.
  *
  * @author info@plaintext.ch
  * @since 2026
  */
 public final class JsfViewLinter {
 
-    /** Regel-Kennung: f:metadata steht nach dem ersten ui:define (bzw. in einem ui:define). */
+    /** Rule identifier: f:metadata sits after the first ui:define (resp. inside a ui:define). */
     public static final String RULE_METADATA_NACH_DEFINE = "metadata-nach-ui-define";
-    /** Regel-Kennung: f:metadata steht innerhalb eines h:form. */
+    /** Rule identifier: f:metadata sits inside an h:form. */
     public static final String RULE_METADATA_IN_FORM = "metadata-in-h-form";
-    /** Regel-Kennung: onchange="submit()" / "this.form.submit()" an einer p:-Komponente. */
+    /** Rule identifier: onchange="submit()" / "this.form.submit()" on a p: component. */
     public static final String RULE_ONCHANGE_SUBMIT = "onchange-submit-an-p-komponente";
 
-    /** Opt-out-Marker als Inline-Kommentar in derselben Zeile wie das gemeldete Tag. */
+    /** Opt-out marker as an inline comment on the same line as the reported tag. */
     public static final String EXEMPT_COMMENT = "jsf-view-ok";
 
-    /** XML-Kommentar (auch mehrzeilig) — wird ausgeblendet, damit Beispiele in Kommentaren nicht zaehlen. */
+    /** XML comment (also multi-line) — blanked out so that examples in comments do not count. */
     private static final Pattern COMMENT = Pattern.compile("<!--.*?-->", Pattern.DOTALL);
 
     private static final Pattern METADATA_OPEN = Pattern.compile("<f:metadata\\b", Pattern.CASE_INSENSITIVE);
@@ -72,8 +73,8 @@ public final class JsfViewLinter {
     private static final Pattern FORM_CLOSE = Pattern.compile("</h:form\\s*>", Pattern.CASE_INSENSITIVE);
 
     /**
-     * Oeffnendes {@code <p:xxx ...>}-Tag (auch mehrzeilig), das ein {@code onchange}-Attribut mit
-     * {@code submit()} bzw. {@code this.form.submit()} traegt.
+     * Opening {@code <p:xxx ...>} tag (also multi-line) that carries an {@code onchange} attribute
+     * with {@code submit()} resp. {@code this.form.submit()}.
      */
     private static final Pattern P_ONCHANGE_SUBMIT = Pattern.compile(
             "<p:[A-Za-z]+\\b[^>]*\\bonchange\\s*=\\s*\"\\s*(?:this\\.form\\.)?submit\\(\\)\\s*;?\\s*\"",
@@ -83,14 +84,14 @@ public final class JsfViewLinter {
     }
 
     /**
-     * Ein einzelner Verstoss: Datei, Zeile (1-basiert), Regel-Kennung und eine menschenlesbare
-     * Beschreibung.
+     * A single violation: file, line (1-based), rule identifier and a human-readable
+     * description.
      *
-     * @param file    betroffene XHTML-Datei
-     * @param line    1-basierte Zeilennummer des gemeldeten Tags
-     * @param rule    Regel-Kennung ({@link #RULE_METADATA_NACH_DEFINE}, {@link #RULE_METADATA_IN_FORM},
+     * @param file    affected XHTML file
+     * @param line    1-based line number of the reported tag
+     * @param rule    rule identifier ({@link #RULE_METADATA_NACH_DEFINE}, {@link #RULE_METADATA_IN_FORM},
      *                {@link #RULE_ONCHANGE_SUBMIT})
-     * @param message Beschreibung des Anti-Patterns samt Fix
+     * @param message description of the anti-pattern including the fix
      */
     public record Violation(Path file, int line, String rule, String message) {
         @Override
@@ -100,12 +101,12 @@ public final class JsfViewLinter {
     }
 
     /**
-     * Scannt rekursiv alle {@code *.xhtml} unter {@code resourcesRoot} und liefert alle Verstoesse
-     * gegen die drei Regeln zurueck.
+     * Scans all {@code *.xhtml} below {@code resourcesRoot} recursively and returns all violations
+     * of the three rules.
      *
-     * @param resourcesRoot Wurzelverzeichnis (z. B. {@code .../META-INF/resources}); existiert es
-     *                      nicht, wird eine leere Liste zurueckgegeben
-     * @return Liste der Verstoesse (leer = sauber)
+     * @param resourcesRoot root directory (e.g. {@code .../META-INF/resources}); if it does not
+     *                      exist, an empty list is returned
+     * @return list of violations (empty = clean)
      */
     public static List<Violation> scan(Path resourcesRoot) {
         List<Violation> violations = new ArrayList<>();
@@ -129,14 +130,14 @@ public final class JsfViewLinter {
         } catch (IOException e) {
             throw new UncheckedIOException("Konnte XHTML nicht lesen: " + file, e);
         }
-        // Kommentare ausblenden (Nicht-Newline -> Space): Offsets/Zeilen bleiben identisch zum Original.
+        // Blank out comments (non-newline -> space): offsets/lines stay identical to the original.
         String content = blankSpans(original, COMMENT);
 
         pruefeMetadata(file, original, content, violations);
         pruefeOnchangeSubmit(file, original, content, violations);
     }
 
-    /** Regeln 1 und 2 — beide haengen an der Position des ersten {@code <f:metadata}. */
+    /** Rules 1 and 2 — both hinge on the position of the first {@code <f:metadata}. */
     private static void pruefeMetadata(Path file, String original, String content, List<Violation> violations) {
         Matcher metadata = METADATA_OPEN.matcher(content);
         if (!metadata.find()) {
@@ -145,7 +146,7 @@ public final class JsfViewLinter {
         int pos = metadata.start();
         int lineNo = lineNumberAt(original, pos);
         if (lineContent(original, lineNo).contains(EXEMPT_COMMENT)) {
-            return; // begruendet ausgenommen
+            return; // exempted with a rationale
         }
 
         Matcher define = DEFINE_OPEN.matcher(content);
@@ -167,13 +168,13 @@ public final class JsfViewLinter {
         }
     }
 
-    /** Regel 3 — onchange="submit()" an einer PrimeFaces-Komponente. */
+    /** Rule 3 — onchange="submit()" on a PrimeFaces component. */
     private static void pruefeOnchangeSubmit(Path file, String original, String content, List<Violation> violations) {
         Matcher tag = P_ONCHANGE_SUBMIT.matcher(content);
         while (tag.find()) {
             int lineNo = lineNumberAt(original, tag.start());
             if (lineContent(original, lineNo).contains(EXEMPT_COMMENT)) {
-                continue; // begruendet ausgenommen
+                continue; // exempted with a rationale
             }
             violations.add(new Violation(file, lineNo, RULE_ONCHANGE_SUBMIT,
                     "onchange=\"submit()\" an einer p:-Komponente: PrimeFaces 15 loest darueber keinen Request "
@@ -183,7 +184,7 @@ public final class JsfViewLinter {
         }
     }
 
-    /** Anzahl offener {@code <h:form>} vor {@code offset}: Oeffnungen minus Schliessungen. */
+    /** Number of open {@code <h:form>} before {@code offset}: openings minus closings. */
     private static int formTiefeVor(String content, int offset) {
         int open = 0;
         Matcher m = FORM_OPEN.matcher(content);
@@ -198,7 +199,7 @@ public final class JsfViewLinter {
         return open - close;
     }
 
-    /** Ersetzt jedes {@code pattern}-Vorkommen durch gleich lange Leerzeichen; Newlines bleiben erhalten. */
+    /** Replaces every {@code pattern} occurrence with the same number of spaces; newlines are preserved. */
     private static String blankSpans(String content, Pattern pattern) {
         Matcher m = pattern.matcher(content);
         StringBuilder out = new StringBuilder(content);

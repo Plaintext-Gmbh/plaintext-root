@@ -10,10 +10,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.time.Duration;
 
 /**
- * Einstellungen der Langsam-Erkennung (Karte 430).
+ * Settings of the slowness detection (card 430).
  *
- * <p>Bewusst konfigurierbar statt fest verdrahtet: Was „langsam" heisst, unterscheidet sich je
- * Anwendung und Endpunkt. Ein Dateiupload darf Sekunden brauchen, ein Ajax-Postback nicht.
+ * <p>Deliberately configurable instead of hard-wired: what "slow" means differs per
+ * application and endpoint. A file upload may take seconds, an Ajax postback may not.
  *
  * @author plaintext.ch
  */
@@ -22,23 +22,23 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "plaintext.performance.slow-request")
 public class SlowRequestProperties {
 
-    /** Not-Aus. Bei {@code false} misst der Filter nichts und protokolliert nichts. */
+    /** Emergency off switch. On {@code false} the filter measures nothing and logs nothing. */
     private boolean enabled = true;
 
-    /** Ab dieser Dauer gilt ein Request als langsam und wird auf WARN protokolliert. */
+    /** From this duration on a request counts as slow and is logged at WARN. */
     private Duration schwelle = Duration.ofSeconds(2);
 
     /**
-     * Mindestabstand zwischen zwei WARN-Meldungen **desselben Pfades**. Ist eine Anwendung
-     * dauerhaft langsam, entstuende sonst bei jedem Request eine Zeile — das Log waere unlesbar
-     * und die eigentliche Information ginge unter. Unterdrueckte Treffer werden gezaehlt und beim
-     * naechsten Mal mitgemeldet, damit nichts still verschwindet.
+     * Minimum interval between two WARN messages for **the same path**. If an application is
+     * permanently slow, a line would otherwise be produced on every request — the log would be
+     * unreadable and the actual information would drown. Suppressed hits are counted and reported
+     * with the next message, so that nothing disappears silently.
      */
     private Duration meldeabstand = Duration.ofMinutes(1);
 
     /**
-     * Obergrenze der beobachteten Pfade. Schuetzt gegen unbegrenztes Wachstum, wenn Pfade
-     * variabel sind; darueber hinaus wird nur noch gemeldet, ohne zu drosseln.
+     * Upper limit of the observed paths. Protects against unbounded growth when paths are
+     * variable; beyond that limit messages are only emitted, without throttling.
      */
     private int maxPfade = 500;
 }

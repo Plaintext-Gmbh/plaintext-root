@@ -39,8 +39,8 @@ public class CronController implements Serializable {
     @Autowired
     private PlaintextSecurity plaintextSecurity;
 
-    // required=false + leere Default-Liste: eine Deployment-Variante kann ganz ohne PlaintextCron-Beans
-    // laufen (z. B. root-webapp standalone), ohne dass die Context-Erstellung an einer leeren Collection scheitert.
+    // required=false + empty default list: a deployment variant can run entirely without PlaintextCron
+    // beans (e.g. root-webapp standalone) without context creation failing on an empty collection.
     @Autowired(required = false)
     private List<PlaintextCron> crons = new ArrayList<>();
 
@@ -128,10 +128,10 @@ public class CronController implements Serializable {
                         Optional<CronConfigEntity> adopted = adoptLegacyProxyRow(superCron, mandat);
                         if (adopted.isPresent()) {
                             entity = adopted.get();
-                            // KEIN applyTimeOffset: die uebernommene Zeile traegt ihren eigenen
-                            // Ausdruck, der Versatz steckt dort laengst drin (oder wurde von Hand
-                            // gesetzt). Ihn erneut anzuwenden verschoebe die Zeit bei jedem
-                            // Namenswechsel weiter.
+                            // NO applyTimeOffset: the adopted row carries its own
+                            // expression, the offset has long been baked in there (or was set
+                            // by hand). Applying it again would shift the time further with
+                            // every rename.
                         } else {
                             entity = createCronConfigEntity(superCron);
                             entity.setCronName(superCron.getName());
@@ -164,21 +164,20 @@ public class CronController implements Serializable {
     }
 
     /**
-     * Uebernimmt die Bestandszeile desselben Jobs unter einem alten Proxy-Namen, statt eine neue
-     * mit den Code-Defaults anzulegen.
+     * Adopts the existing row of the same job stored under an old proxy name instead of creating a
+     * new one with the code defaults.
      * <p>
-     * Anlass ist Karte 574: Am 03.08.2026 wechselte der gespeicherte Name vom CGLIB-Proxy-Namen
-     * ({@code X$$SpringCGLIB$$0}) auf den Klassennamen. Weil hier nur exakt gesucht wurde, entstand
-     * fuer jeden Job und Mandanten eine neue Zeile mit Code-Defaults — 99 Zeilen ueber 14 Jobs
-     * verwaisten, und 22 bewusst abgeschaltete Boot-Laeufe waren wieder an. Sichtbar wurde es an
-     * einer Mail-Flut, nicht an einem Fehler: Der Start lief gruen, die Einstellungen galten nur
-     * nicht mehr.
+     * The reason is card 574: on 03.08.2026 the stored name changed from the CGLIB proxy name
+     * ({@code X$$SpringCGLIB$$0}) to the class name. Because the lookup here was exact only, a new
+     * row with code defaults was created for every job and tenant — 99 rows across 14 jobs were
+     * orphaned, and 22 deliberately disabled startup runs were switched on again. It surfaced as a
+     * flood of mail, not as an error: startup was green, the settings simply no longer applied.
      * <p>
-     * Die Zeile wird <em>umbenannt</em> und nicht kopiert. Damit bleiben nicht nur
-     * {@code enabled}/{@code startup}/{@code cronExpression} erhalten, sondern auch Id, Zaehler und
-     * letzter Lauf — und es entsteht keine zweite Karteileiche.
+     * The row is <em>renamed</em>, not copied. That preserves not only
+     * {@code enabled}/{@code startup}/{@code cronExpression} but also the id, the counter and the
+     * last run — and no second dead record is left behind.
      *
-     * @return die uebernommene Zeile (bereits auf den neuen Namen gesetzt), oder leer
+     * @return the adopted row (already set to the new name), or empty
      */
     private Optional<CronConfigEntity> adoptLegacyProxyRow(SuperCron superCron, String mandat) {
         Optional<CronConfigEntity> legacy = cronConfigStore.findLegacyProxyRow(superCron.getName(), mandat);
@@ -207,7 +206,7 @@ public class CronController implements Serializable {
     public void scheduleTheMap() {
         log.info("CronController.scheduleTheMap() starting...");
 
-        // 3) Crons schedulen
+        // 3) Schedule the crons
         scheduler = new Scheduler();
         scheduler.start();
 
@@ -274,8 +273,8 @@ public class CronController implements Serializable {
     }
 
     /**
-     * Applies a time offset to a cron expression to stagger execution across mandanten.
-     * This prevents all mandanten from running the same cron job simultaneously.
+     * Applies a time offset to a cron expression to stagger execution across tenants.
+     * This prevents all tenants from running the same cron job simultaneously.
      *
      * @param expression The original cron expression
      * @param offsetMinutes Number of minutes to offset (typically mandant index * 2)

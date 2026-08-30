@@ -49,18 +49,18 @@ public class MenuItemImpl extends AbstractMenuItem {
     private String badge;
 
     /**
-     * Rollen (GROSS, ohne {@code ROLE_}-Prefix), die die Anwendungs-Konfiguration
-     * ({@code plaintext.menu.module-roles}) fuer das Modul dieses Menuepunkts fordert. Wird vom
-     * {@link ModuleRoleService} einmalig gesetzt; leer heisst „unkonfiguriert" und damit
-     * unveraendertes Verhalten.
+     * Roles (UPPERCASE, without the {@code ROLE_} prefix) that the application configuration
+     * ({@code plaintext.menu.module-roles}) requires for the module of this menu item. Set once by
+     * the {@link ModuleRoleService}; empty means "unconfigured" and therefore unchanged
+     * behaviour.
      */
     private List<String> moduleRoles = new ArrayList<>();
 
     /**
-     * Die Modul-Keys, unter denen dieser Menuepunkt ansprechbar ist (eigene {@code moduleId}, die
-     * {@code moduleId} jedes Elternmenues und die Menu-Root-Id des obersten Elternmenues). Wird vom
-     * {@link ModuleRoleService} einmalig gesetzt — dieselbe Ableitung, die auch die Modul-Rollen
-     * benutzen, damit root (Mandanten-Listen) und admin (Modul-Rollen) dasselbe Vokabular teilen.
+     * The module keys under which this menu item can be addressed (its own {@code moduleId}, the
+     * {@code moduleId} of every parent menu and the menu root id of the topmost parent menu). Set
+     * once by the {@link ModuleRoleService} — the same derivation the module roles use, so that
+     * root (tenant lists) and admin (module roles) share the same vocabulary.
      *
      * @since 1.608.0
      */
@@ -154,16 +154,16 @@ public class MenuItemImpl extends AbstractMenuItem {
     }
 
     /**
-     * Konfigurierbare Modul-Rolle ({@code plaintext.menu.module-roles.<key>=<rolle>}): schaltet ein
-     * ganzes Modul pro Anwendung ein oder aus. Gilt unter beiden Access-Policies und — weil der
-     * {@code PageAccessGuard} ueber {@link #isOn()} geht — auch fuer den Direktaufruf der Seiten.
-     * {@code admin}/{@code root} umgehen die Pruefung (im {@link ModuleRoleService}).
+     * Configurable module role ({@code plaintext.menu.module-roles.<key>=<rolle>}): switches a
+     * whole module on or off per application. Applies under both access policies and — because the
+     * {@code PageAccessGuard} goes through {@link #isOn()} — to direct page access as well.
+     * {@code admin}/{@code root} bypass the check (in the {@link ModuleRoleService}).
      *
-     * <p>Oeffentlich, damit die Diagnose-Ansicht die vier Filter <i>einzeln</i> abfragen kann,
-     * ohne die Logik nachzubauen — eine zweite Kopie wuerde von {@link #isOn()} abdriften.</p>
+     * <p>Public so that the diagnostics view can query the four filters <i>individually</i>
+     * without rebuilding the logic — a second copy would drift away from {@link #isOn()}.</p>
      *
-     * @return {@code true}, wenn keine Modul-Rolle gefordert ist oder der Benutzer sie haelt
-     * @since 1.608.0 oeffentlich
+     * @return {@code true} if no module role is required or the user holds it
+     * @since 1.608.0 public
      */
     public boolean isModuleRoleVisible() {
         ensureModuleMetadataResolved();
@@ -175,8 +175,8 @@ public class MenuItemImpl extends AbstractMenuItem {
     }
 
     /**
-     * Laesst den {@link ModuleRoleService} die Modul-Zugehoerigkeit einmalig aufloesen; danach sind
-     * {@link #moduleRoles} und {@link #moduleKeys} an allen registrierten Menuepunkten gesetzt.
+     * Lets the {@link ModuleRoleService} resolve the module membership once; afterwards
+     * {@link #moduleRoles} and {@link #moduleKeys} are set on all registered menu items.
      */
     private void ensureModuleMetadataResolved() {
         if (moduleRoleService == null && beanFactory != null) {
@@ -194,10 +194,10 @@ public class MenuItemImpl extends AbstractMenuItem {
     /**
      * Role half of the visibility decision, dispatched by access policy.
      *
-     * <p>Oeffentlich fuer die Diagnose-Ansicht (siehe {@link #isModuleRoleVisible()}).</p>
+     * <p>Public for the diagnostics view (see {@link #isModuleRoleVisible()}).</p>
      *
-     * @return {@code true}, wenn die Rollen-Regeln den Benutzer zulassen
-     * @since 1.608.0 oeffentlich
+     * @return {@code true} if the role rules admit the user
+     * @since 1.608.0 public
      */
     public boolean isRoleVisible() {
         if (accessPolicy == MenuAccessPolicy.STRICT) {
@@ -256,10 +256,10 @@ public class MenuItemImpl extends AbstractMenuItem {
      * Module half of the visibility decision (Task #016 Phase 2) — a disabled module hides all
      * its menu items. Applies under both policies.
      *
-     * <p>Oeffentlich fuer die Diagnose-Ansicht (siehe {@link #isModuleRoleVisible()}).</p>
+     * <p>Public for the diagnostics view (see {@link #isModuleRoleVisible()}).</p>
      *
-     * @return {@code true}, wenn das Modul des Menuepunkts aktiviert ist
-     * @since 1.608.0 oeffentlich
+     * @return {@code true} if the module of the menu item is enabled
+     * @since 1.608.0 public
      */
     public boolean isModuleVisible() {
         if (moduleId == null || moduleId.isBlank()) {
@@ -282,10 +282,10 @@ public class MenuItemImpl extends AbstractMenuItem {
     /**
      * Mandate half of the visibility decision — applies under both policies.
      *
-     * <p>Oeffentlich fuer die Diagnose-Ansicht (siehe {@link #isModuleRoleVisible()}).</p>
+     * <p>Public for the diagnostics view (see {@link #isModuleRoleVisible()}).</p>
      *
-     * @return {@code true}, wenn der Menuepunkt fuer den aktuellen Mandanten sichtbar ist
-     * @since 1.608.0 oeffentlich
+     * @return {@code true} if the menu item is visible for the current tenant
+     * @since 1.608.0 public
      */
     public boolean isMandateVisible() {
         if (isRootBranchExemptFromMandate()) {
@@ -320,12 +320,12 @@ public class MenuItemImpl extends AbstractMenuItem {
     }
 
     /**
-     * Fragt den {@link MenuVisibilityProvider}. Ohne aufgeloeste Modul-Keys wird bewusst die alte
-     * Ein-Argument-Form gerufen: Provider-Implementierungen ausserhalb dieses Frameworks (und die
-     * bestehenden Tests) sehen dadurch exakt denselben Aufruf wie bisher.
+     * Asks the {@link MenuVisibilityProvider}. Without resolved module keys the old
+     * single-argument form is called deliberately: provider implementations outside this framework
+     * (and the existing tests) therefore see exactly the same call as before.
      *
-     * @param fullTitle voller Menue-Titel
-     * @return Antwort des Providers
+     * @param fullTitle the full menu title
+     * @return the provider's answer
      */
     private boolean askVisibilityProvider(String fullTitle) {
         ensureModuleMetadataResolved();
@@ -336,23 +336,23 @@ public class MenuItemImpl extends AbstractMenuItem {
     }
 
     /**
-     * Der <b>Root-Zweig ist fuer {@code ROLE_ROOT} vom Mandantenfilter ausgenommen</b> — und nur
-     * der, und nur fuer root.
+     * The <b>root branch is exempt from the tenant filter for {@code ROLE_ROOT}</b> — only that
+     * branch, and only for root.
      *
-     * <p><b>Warum.</b> Der Mandantenfilter kennt keinen Bypass; die Menuesteuerung selbst
-     * ({@code Root | Menüsteuerung}) haengt aber im Root-Zweig. Steht ein Mandant im
-     * Whitelist-Modus und ist dieser Titel nicht in der Liste, sperrt sich root aus der einzigen
-     * Oberflaeche aus, mit der sich die Liste korrigieren liesse — per Menue <i>und</i> per
-     * Direkt-URL, weil der {@code PageAccessGuard} dieselbe {@link #isOn()} auswertet. Erhoben auf
-     * app.plaintext.ch: in 8 von 10 Mandanten war die Menuesteuerung so unerreichbar.</p>
+     * <p><b>Why.</b> The tenant filter has no bypass, yet the menu visibility configuration itself
+     * ({@code Root | Menüsteuerung}) hangs in the root branch. If a tenant is in whitelist mode
+     * and that title is not on the list, root locks itself out of the only screen from which the
+     * list could be corrected — via the menu <i>and</i> via a direct URL, because the
+     * {@code PageAccessGuard} evaluates the same {@link #isOn()}. Surveyed on app.plaintext.ch:
+     * in 8 out of 10 tenants the menu visibility configuration was unreachable this way.</p>
      *
-     * <p><b>Wie eng.</b> Die Ausnahme greift nur, wenn beides zutrifft: der Menuepunkt liegt im
-     * Root-Zweig ({@link #isUnderRootMenu()}: Titel {@code Root} oder Elternmenue {@code Root})
-     * <i>und</i> der Benutzer haelt {@code ROLE_ROOT}. Die drei anderen Filter (Rolle, Modul-Rolle,
-     * Modul aktiviert) bleiben unangetastet, und fuer jeden Nicht-root-Benutzer bleibt auch der
-     * Mandantenfilter unveraendert in Kraft. Ohne {@link SecurityProvider} gibt es keine Ausnahme.</p>
+     * <p><b>How narrow.</b> The exemption only applies when both are true: the menu item lies in
+     * the root branch ({@link #isUnderRootMenu()}: title {@code Root} or parent menu {@code Root})
+     * <i>and</i> the user holds {@code ROLE_ROOT}. The three other filters (role, module role,
+     * module enabled) stay untouched, and for every non-root user the tenant filter also remains
+     * in force unchanged. Without a {@link SecurityProvider} there is no exemption.</p>
      *
-     * @return {@code true}, wenn der Mandantenfilter fuer diesen Menuepunkt uebersprungen wird
+     * @return {@code true} if the tenant filter is skipped for this menu item
      * @since 1.608.0
      */
     public boolean isRootBranchExemptFromMandate() {

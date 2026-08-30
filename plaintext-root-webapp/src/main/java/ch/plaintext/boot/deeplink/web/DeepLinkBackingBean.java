@@ -21,17 +21,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Backing Bean der Root-Uebersicht „Deep-Links" (Karte 345).
+ * Backing bean of the root overview "deep links" (card 345).
  *
- * <p>Gelistet werden die <b>registrierten Ziele</b>, nicht die verschickten Links: der Mechanismus
- * persistiert bewusst nichts (ein Deep-Link ist eine Adresse, kein Token — er verleiht keine
- * Rechte, also gibt es auch nichts zu verwalten oder zu widerrufen). Die Uebersicht beantwortet
- * damit die Frage, die man beim Debuggen wirklich hat: welches Modul haengt unter welchem
- * {@code type}, auf welche View zeigt es, und wie sieht ein Link dafuer aus.
+ * <p>Listed are the <b>registered targets</b>, not the links that were sent: the mechanism
+ * deliberately persists nothing (a deep link is an address, not a token — it grants no
+ * permissions, so there is nothing to administer or revoke either). The overview thereby answers
+ * the question one really has while debugging: which module hangs under which
+ * {@code type}, which view does it point to, and what does a link for it look like.
  *
- * <p>Dazu ein Generator, der zu einem Ziel + Mandat + Id den fertigen Link zum Kopieren baut.
- * Der Generator ist reine Zeichenkettenarbeit und <b>keine</b> Rechtevergabe: wer den erzeugten
- * Link oeffnet, durchlaeuft dieselbe Pruefkette wie jeder andere.
+ * <p>In addition a generator that builds the finished link for a target + tenant + id, ready to
+ * copy. The generator is pure string work and <b>no</b> granting of permissions: whoever opens the
+ * generated link runs through the same chain of checks as everybody else.
  */
 @Slf4j
 @Scope("session")
@@ -62,12 +62,12 @@ public class DeepLinkBackingBean implements Serializable {
     @Getter
     private String erzeugterLink;
 
-    /** Alle registrierten Ziele fuer die Tabelle. */
+    /** All registered targets for the table. */
     public List<DeepLinkTarget> getZiele() {
         return deepLinkService.getTargets();
     }
 
-    /** Typ-Schluessel fuer das Auswahlfeld des Generators. */
+    /** Type keys for the selection field of the generator. */
     public List<String> getTypen() {
         List<String> typen = new ArrayList<>();
         for (DeepLinkTarget ziel : getZiele()) {
@@ -77,15 +77,15 @@ public class DeepLinkBackingBean implements Serializable {
     }
 
     /**
-     * Mandate fuer das Auswahlfeld — bewusst nur die des angemeldeten Benutzers. Bei ROOT sind das
-     * ohnehin alle; ein Auswahlfeld, das mehr anbietet als der Benutzer betreten darf, waere nur
-     * irrefuehrend.
+     * Tenants for the selection field — deliberately only those of the logged-in user. For ROOT that
+     * is all of them anyway; a selection field that offers more than the user is allowed to enter
+     * would only be misleading.
      */
     public List<String> getMandate() {
         return new ArrayList<>(plaintextSecurity.getAllowedMandate());
     }
 
-    /** URL-Muster fuer die Tabellenspalte „Link-Muster". */
+    /** URL pattern for the table column "link pattern". */
     public String musterFuer(DeepLinkTarget ziel) {
         return DeepLinkService.DEEPLINK_PATH + "?type=" + ziel.getType()
                 + "&mandat=<mandat>&id=<" + ziel.getParamName() + ">";

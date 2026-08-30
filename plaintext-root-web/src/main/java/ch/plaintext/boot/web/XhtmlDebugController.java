@@ -23,10 +23,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * SECURITY (Karte 314, Punkt 5): Diagnose-Endpunkt, nur im dev-Profil registriert.
- * Er legt absolute Dateisystempfade und JAR-Namen der laufenden Installation offen und war bis dahin fuer JEDEN
- * eingeloggten Benutzer erreichbar. Zusaetzlich greift in der SecurityConfig
- * {@code /debug/** -> hasRole("ROOT")}.
+ * SECURITY (Card 314, item 5): diagnostic endpoint, registered only in the dev profile.
+ * It exposes absolute file system paths and JAR names of the running installation and used to be
+ * reachable for EVERY logged-in user. On top of that, {@code /debug/** -> hasRole("ROOT")} applies
+ * in the SecurityConfig.
  */
 @Profile("dev")
 @Controller
@@ -346,16 +346,15 @@ public class XhtmlDebugController {
         if (bytes < 1024) return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(1024));
         char pre = "KMGTPE".charAt(exp - 1);
-        // Locale.ROOT: ohne feste Locale nimmt String.format die Plattform-Locale, und auf
-        // einer deutschen Maschine wird aus "1.0 KB" ein "1,0 KB". Das ist eine technische
-        // Groessenangabe in einer Debug-Ausgabe, kein lokalisierter Text - und der Unterschied
-        // faellt erst auf einer Maschine mit anderer Spracheinstellung auf. Vgl. denselben Fall
-        // in SessionAttribute (1.480.0).
+        // Locale.ROOT: without a fixed locale String.format picks up the platform locale, and on
+        // a German machine "1.0 KB" turns into "1,0 KB". This is a technical size figure in a
+        // debug output, not localized text - and the difference only shows up on a machine with
+        // a different language setting. Compare the same case in SessionAttribute (1.480.0).
         return String.format(Locale.ROOT, "%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 
     /**
-     * Scannt ein Verzeichnis rekursiv nach XHTML/HTML/JSF Dateien
+     * Scans a directory recursively for XHTML/HTML/JSF files
      */
     private void scanDirectoryForResources(Path baseDir, Path currentDir, Map<String, List<ResourceInfo>> resourcesByLocation) throws IOException {
         if (!Files.exists(currentDir) || !Files.isDirectory(currentDir)) {

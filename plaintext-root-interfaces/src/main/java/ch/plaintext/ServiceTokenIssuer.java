@@ -6,47 +6,48 @@ package ch.plaintext;
 import java.time.Duration;
 
 /**
- * Stellt <b>Maschinen-Ausweise</b> aus: kurzlebige, signierte Tokens, mit denen sich diese Instanz
- * bei einer fremden Gegenstelle ausweist (Karte 635).
+ * Issues <b>machine credentials</b>: short-lived, signed tokens with which this instance
+ * identifies itself to a foreign counterpart (Card 635).
  *
- * <p>Das Interface liegt in {@code plaintext-root-interfaces}, damit Anwendungsmodule den Ausweis
- * anfordern können, ohne von {@code plaintext-admin-apitoken} abzuhängen — die Implementierung
- * ({@code JwtTokenService}) hält den privaten Signaturschlüssel, und der hat in einem Fachmodul
- * nichts zu suchen. Konsumiert wird sie wie die übrigen Verträge optional, über
- * {@link org.springframework.beans.factory.ObjectProvider}: ein Modul, das ohne Ausweis auskommt,
- * soll auch ohne ihn starten.
+ * <p>The interface lives in {@code plaintext-root-interfaces} so that application modules can
+ * request a credential without depending on {@code plaintext-admin-apitoken} — the implementation
+ * ({@code JwtTokenService}) holds the private signing key, and that has no business being in a
+ * business module. It is consumed optionally like the other contracts, via
+ * {@link org.springframework.beans.factory.ObjectProvider}: a module that gets by without a
+ * credential should also start without one.
  *
- * <p><b>Wozu überhaupt.</b> Der Normalfall zwischen zwei Diensten ist ein geteiltes Geheimnis: Wer
- * den Wert kennt, gilt als berechtigt. Das hat zwei Kosten — der Wert muss gepflegt, verteilt und
- * rotiert werden, und wer ihn <em>vergisst</em>, ist ausgesperrt. Genau das passiert bei jedem
- * Deploy: Der Label-Drucker aus Karte 556 hält eine exklusive Session, guild verliert beim Neustart
- * den Token dazu, und der einzige Ausweg wäre ein Neustart des Geräts. Mit einem Ausweis signiert
- * der Dienst nach dem Neustart einfach neu.
+ * <p><b>What it is for at all.</b> The usual arrangement between two services is a shared secret:
+ * whoever knows the value counts as authorized. That comes at two costs — the value has to be
+ * maintained, distributed and rotated, and whoever <em>forgets</em> it is locked out. That is
+ * exactly what happens on every deploy: the label printer from Card 556 holds an exclusive
+ * session, guild loses the token for it on restart, and the only way out would be to restart the
+ * device. With a credential the service simply signs a new one after the restart.
  *
- * <p><b>Wie die Gegenstelle prüft.</b> Über den öffentlichen Schlüssel dieser Instanz, den sie sich
- * selbst holen kann: {@code /.well-known/jwks.json} (RFC 7517). Der private Schlüssel verlässt die
- * Anwendung nie.
+ * <p><b>How the counterpart verifies it.</b> Via this instance's public key, which it can fetch
+ * for itself: {@code /.well-known/jwks.json} (RFC 7517). The private key never leaves the
+ * application.
  *
- * <p><b>Was ein Ausweis NICHT ist.</b> Kein API-Token. Die Implementierung kennzeichnet ihn so, dass
- * die eigene Token-Prüfung ihn ablehnt — sonst wäre ein Wert, der als HTTP-Header über die Leitung
- * geht, ein vollprivilegierter Zugang zur eigenen API.
+ * <p><b>What a credential is NOT.</b> It is not an API token. The implementation marks it in such
+ * a way that this instance's own token validation rejects it — otherwise a value travelling over
+ * the wire as an HTTP header would be a fully privileged entry into our own API.
  */
 public interface ServiceTokenIssuer {
 
     /**
-     * Signiert einen Ausweis.
+     * Signs a credential.
      *
-     * @param subject     wer sich ausweist, z. B. {@code guild-checkin-desk} (Pflicht) — die
-     *                    Gegenstelle erkennt daran denselben Aufrufer über einen Neustart hinweg
-     * @param audience    für wen der Ausweis gilt, z. B. {@code guild42-label-printer}; leer lässt
-     *                    den {@code aud}-Claim weg, womit der Ausweis überall gilt, wo der Schlüssel
-     *                    bekannt ist — deshalb setzen
-     * @param gueltigkeit Laufzeit ab jetzt; die Implementierung begrenzt sie nach oben und unten
-     * @return signiertes JWT (RS256)
-     * @throws IllegalArgumentException wenn {@code subject} fehlt
-     * @throws IllegalStateException    wenn die Signaturschlüssel noch nicht geladen sind (der Start
-     *                                  wartet ggf. auf den Vault) — <b>kein</b> dauerhafter Fehler,
-     *                                  ein späterer Versuch kann gelingen
+     * @param subject     who is identifying themselves, e.g. {@code guild-checkin-desk}
+     *                    (mandatory) — it lets the counterpart recognize the same caller across a
+     *                    restart
+     * @param audience    who the credential is valid for, e.g. {@code guild42-label-printer};
+     *                    leaving it empty omits the {@code aud} claim, which makes the credential
+     *                    valid everywhere the key is known — so set it
+     * @param gueltigkeit lifetime from now; the implementation caps it at both ends
+     * @return signed JWT (RS256)
+     * @throws IllegalArgumentException if {@code subject} is missing
+     * @throws IllegalStateException    if the signing keys are not loaded yet (startup may still
+     *                                  be waiting for the vault) — <b>not</b> a permanent error, a
+     *                                  later attempt can succeed
      */
     String signServiceToken(String subject, String audience, Duration gueltigkeit);
 }

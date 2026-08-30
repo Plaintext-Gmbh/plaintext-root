@@ -14,94 +14,94 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Wiederverwendbarer Linter gegen Inline-JavaScript in Facelets — die Vorbedingung dafuer, dass
- * die Content-Security-Policy ohne {@code script-src 'unsafe-inline'} auskommt.
+ * Reusable linter against inline JavaScript in facelets — the precondition for the
+ * Content-Security-Policy to get by without {@code script-src 'unsafe-inline'}.
  *
- * <p><b>Warum das eine Regel und keine Geschmacksfrage ist.</b> Solange die Policy
- * {@code 'unsafe-inline'} fuehrt, laeuft jedes eingeschleuste {@code <script>} — die CSP ist dann
- * kein XSS-Schutz, sondern Dekoration. Der Browser unterscheidet nicht zwischen „unser“ und
- * „fremd“; er unterscheidet nur zwischen „aus einer Datei geladen“ und „im Dokument gestanden“.
- * Ein einziger verbliebener Inline-Block irgendwo im Reactor genuegt, um den Schalter nicht
- * umlegen zu koennen.
+ * <p><b>Why this is a rule and not a matter of taste.</b> As long as the policy carries
+ * {@code 'unsafe-inline'}, every injected {@code <script>} runs — the CSP is then not XSS
+ * protection but decoration. The browser does not distinguish between "ours" and "foreign";
+ * it only distinguishes between "loaded from a file" and "stood in the document".
+ * A single remaining inline block anywhere in the reactor is enough to make the switch
+ * unflippable.
  *
- * <p><b>Regel 1 — {@link #RULE_INLINE_SCRIPT}:</b> ein {@code <script>} MIT Rumpf und OHNE
- * {@code src}, ebenso ein {@code <h:outputScript>} mit Rumpf (das rendert genauso einen
- * Inline-Block). Fix: Rumpf in eine {@code .js}-Datei unter
- * {@code src/main/resources/META-INF/resources/<library>/js/} auslagern und per
- * {@code <h:outputScript library="…" name="js/….js"/>} einbinden. Serverseitige Werte gehoeren
- * dann als {@code data-}-Attribut an ein Element, NICHT als EL in den Skriptkoerper.
+ * <p><b>Rule 1 — {@link #RULE_INLINE_SCRIPT}:</b> a {@code <script>} WITH a body and WITHOUT
+ * {@code src}, likewise an {@code <h:outputScript>} with a body (which renders exactly such an
+ * inline block). Fix: move the body into a {@code .js} file below
+ * {@code src/main/resources/META-INF/resources/<library>/js/} and include it via
+ * {@code <h:outputScript library="…" name="js/….js"/>}. Server-side values then belong on an
+ * element as a {@code data-} attribute, NOT as EL inside the script body.
  *
- * <p><b>Regel 2 — {@link #RULE_INLINE_HANDLER}:</b> ein {@code on…}-Attribut an einem
- * NICHT-PrimeFaces-Tag ({@code onclick} an {@code <a>}, {@code onchange} an {@code <select>} …).
- * Fix: {@code addEventListener} in der ausgelagerten Datei, angebunden ueber eine ID oder ein
- * {@code data-}-Attribut.
+ * <p><b>Rule 2 — {@link #RULE_INLINE_HANDLER}:</b> an {@code on…} attribute on a
+ * NON-PrimeFaces tag ({@code onclick} on {@code <a>}, {@code onchange} on {@code <select>} …).
+ * Fix: {@code addEventListener} in the externalized file, wired up through an ID or a
+ * {@code data-} attribute.
  *
- * <p><b>Was BLEIBEN darf und deshalb nicht gemeldet wird:</b> {@code on…} an einer
- * {@code p:}-Komponente. Das sind zum grossen Teil gar keine HTML-Attribute, sondern
- * PrimeFaces-Ereignisse des Ajax-Lebenszyklus ({@code oncomplete}, {@code onstart},
- * {@code onerror} an {@code p:commandButton}); und wo PrimeFaces tatsaechlich einen
- * HTML-Handler erzeugen wuerde ({@code onclick} an {@code p:commandButton}), zieht der
- * CSP-Modus ({@code joinfaces.primefaces.csp=true}) ihn selbst aus dem Markup heraus und
- * registriert ihn ueber {@code PrimeFaces.csp}. Diese Faelle stehen dem scharfen Header also
- * nicht im Weg.
+ * <p><b>What MAY stay and is therefore not reported:</b> {@code on…} on a
+ * {@code p:} component. Those are largely not HTML attributes at all but
+ * PrimeFaces events of the Ajax lifecycle ({@code oncomplete}, {@code onstart},
+ * {@code onerror} on {@code p:commandButton}); and where PrimeFaces really would produce an
+ * HTML handler ({@code onclick} on {@code p:commandButton}), the CSP mode
+ * ({@code joinfaces.primefaces.csp=true}) pulls it out of the markup itself and registers it
+ * through {@code PrimeFaces.csp}. These cases therefore do not stand in the way of the strict
+ * header.
  *
- * <p><b>Was vor der Auswertung ausgeblendet wird</b> (auf Leerzeichen gesetzt, Zeilennummern
- * bleiben dadurch stabil): XML-Kommentare — sonst zaehlt ein Beispiel im Kommentar als Verstoss,
- * und genau solche Beispiele stehen im Bestand (etwa {@code <img src=x onerror=…>} als
- * Erlaeuterung einer Sicherheitsluecke) — sowie die Ruempfe von {@code <script>} und
- * {@code <style>}, damit JavaScript-Eigenschaften wie {@code xhr.onreadystatechange = …} nicht
- * als Attribut durchgehen.
+ * <p><b>What is blanked out before the evaluation</b> (set to spaces, so that line numbers
+ * stay stable): XML comments — otherwise an example inside a comment counts as a violation,
+ * and exactly such examples exist in the code base (e.g. {@code <img src=x onerror=…>} as an
+ * illustration of a security hole) — as well as the bodies of {@code <script>} and
+ * {@code <style>}, so that JavaScript properties such as {@code xhr.onreadystatechange = …} do
+ * not pass as an attribute.
  *
- * <p><b>Ausnahmen:</b> {@code <!-- inline-js-ok -->} in derselben Zeile nimmt genau diesen Treffer
- * begruendet aus (Muster wie {@code jsf-view-ok} / {@code mobile-ok}). Ganze Dateien nimmt der
- * geteilte Test ueber die Allowlist des Reactors aus (siehe {@code PlaintextInlineJsVertragTest}
- * in plaintext-root-archtests).
+ * <p><b>Exceptions:</b> {@code <!-- inline-js-ok -->} on the same line exempts exactly that hit
+ * with a rationale (the same pattern as {@code jsf-view-ok} / {@code mobile-ok}). Whole files
+ * are exempted by the shared test through the reactor's allowlist (see
+ * {@code PlaintextInlineJsVertragTest} in plaintext-root-archtests).
  *
- * <p><b>Wiederverwendung ueber Modulgrenzen:</b> wie {@link JsfViewLinter} und
- * {@link MobileFormLinter} liegt die Klasse in {@code plaintext-root-common} (nur JDK) und ist
- * transitiv auf dem Test-Classpath aller abhaengigen Projekte.
+ * <p><b>Reuse across module boundaries:</b> like {@link JsfViewLinter} and
+ * {@link MobileFormLinter} the class lives in {@code plaintext-root-common} (JDK only) and is
+ * transitively on the test classpath of all dependent projects.
  *
  * @author info@plaintext.ch
  * @since 2026
  */
 public final class InlineJsLinter {
 
-    /** Regel-Kennung: {@code <script>}/{@code <h:outputScript>} mit Rumpf statt ausgelagerter Datei. */
+    /** Rule identifier: {@code <script>}/{@code <h:outputScript>} with a body instead of an externalized file. */
     public static final String RULE_INLINE_SCRIPT = "inline-script-block";
 
-    /** Regel-Kennung: {@code on…}-Attribut an einem Nicht-PrimeFaces-Tag. */
+    /** Rule identifier: {@code on…} attribute on a non-PrimeFaces tag. */
     public static final String RULE_INLINE_HANDLER = "inline-event-handler";
 
-    /** Opt-out-Marker als Inline-Kommentar in derselben Zeile wie der gemeldete Treffer. */
+    /** Opt-out marker as an inline comment on the same line as the reported hit. */
     public static final String EXEMPT_COMMENT = "inline-js-ok";
 
-    /** XML-Kommentar (auch mehrzeilig). */
+    /** XML comment (also multi-line). */
     private static final Pattern COMMENT = Pattern.compile("<!--.*?-->", Pattern.DOTALL);
 
-    /** {@code <script …>…</script>} bzw. {@code <h:outputScript …>…</h:outputScript>} samt Rumpf. */
+    /** {@code <script …>…</script>} resp. {@code <h:outputScript …>…</h:outputScript>} including the body. */
     private static final Pattern SCRIPT_BLOCK = Pattern.compile(
             "<(script|h:outputScript)\\b([^>]*)>(.*?)</\\1\\s*>",
             Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 
-    /** {@code <style …>…</style>} samt Rumpf — nur zum Ausblenden. */
+    /** {@code <style …>…</style>} including the body — only for blanking out. */
     private static final Pattern STYLE_BLOCK = Pattern.compile(
             "<style\\b[^>]*>(.*?)</style\\s*>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 
-    /** {@code src="…"} bzw. {@code name="…"} im Attributteil eines Skript-Tags. */
+    /** {@code src="…"} resp. {@code name="…"} in the attribute part of a script tag. */
     private static final Pattern SRC_ODER_NAME = Pattern.compile("\\b(src|name)\\s*=", Pattern.CASE_INSENSITIVE);
 
     /**
-     * Ein oeffnendes Tag: Name, danach der Attributteil. Anfuehrungszeichen werden als Einheit
-     * gelesen, damit ein {@code >} INNERHALB eines Attributwerts das Tag nicht vorzeitig beendet
-     * (im Bestand steht etwa {@code style="…"} mit {@code >} in einem EL-Ausdruck).
+     * An opening tag: name, then the attribute part. Quotation marks are read as a unit, so that
+     * a {@code >} INSIDE an attribute value does not end the tag prematurely (the code base
+     * contains e.g. {@code style="…"} with a {@code >} in an EL expression).
      */
     private static final Pattern TAG = Pattern.compile(
             "<([A-Za-z][A-Za-z0-9:._-]*)((?:[^>\"']|\"[^\"]*\"|'[^']*')*+)/?>", Pattern.DOTALL);
 
     /**
-     * {@code on…=} im Attributteil eines Tags. Das vorausgehende Leerzeichen ist Pflicht, sonst
-     * schlaegt die Regel auch bei Attributnamen an, die zufaellig auf {@code on…} enden —
-     * {@code data-pt-only="…"} etwa enthaelt {@code only=}.
+     * {@code on…=} in the attribute part of a tag. The preceding space is mandatory, otherwise the
+     * rule also fires on attribute names that happen to end in {@code on…} —
+     * {@code data-pt-only="…"} for instance contains {@code only=}.
      */
     private static final Pattern ON_ATTRIBUT = Pattern.compile("(?<=\\s)on([A-Za-z]+)\\s*=");
 
@@ -109,13 +109,13 @@ public final class InlineJsLinter {
     }
 
     /**
-     * Ein einzelner Verstoss: Datei, Zeile (1-basiert), Regel-Kennung und eine menschenlesbare
-     * Beschreibung.
+     * A single violation: file, line (1-based), rule identifier and a human-readable
+     * description.
      *
-     * @param file    betroffene XHTML-Datei
-     * @param line    1-basierte Zeilennummer des gemeldeten Tags
-     * @param rule    {@link #RULE_INLINE_SCRIPT} oder {@link #RULE_INLINE_HANDLER}
-     * @param message Beschreibung samt Fix
+     * @param file    affected XHTML file
+     * @param line    1-based line number of the reported tag
+     * @param rule    {@link #RULE_INLINE_SCRIPT} or {@link #RULE_INLINE_HANDLER}
+     * @param message description including the fix
      */
     public record Violation(Path file, int line, String rule, String message) {
         @Override
@@ -125,11 +125,11 @@ public final class InlineJsLinter {
     }
 
     /**
-     * Scannt rekursiv alle {@code *.xhtml} unter {@code resourcesRoot}.
+     * Scans all {@code *.xhtml} below {@code resourcesRoot} recursively.
      *
-     * @param resourcesRoot Wurzelverzeichnis (z. B. {@code <modul>/src/main/resources}); existiert
-     *                      es nicht, wird eine leere Liste zurueckgegeben
-     * @return Liste der Verstoesse (leer = sauber)
+     * @param resourcesRoot root directory (e.g. {@code <modul>/src/main/resources}); if it does
+     *                      not exist, an empty list is returned
+     * @return list of violations (empty = clean)
      */
     public static List<Violation> scan(Path resourcesRoot) {
         List<Violation> violations = new ArrayList<>();
@@ -156,21 +156,21 @@ public final class InlineJsLinter {
         String ohneKommentare = blankSpans(original, COMMENT);
         pruefeSkriptbloecke(file, original, ohneKommentare, violations);
 
-        // Fuer die Attribut-Regel zusaetzlich die RUEMPFE von <script>/<style> ausblenden (nur die
-        // Ruempfe, nicht die oeffnenden Tags — ein on…= am <script>-Tag selbst bliebe sonst
-        // unentdeckt). Sonst zaehlt eine JavaScript-Eigenschaft wie xhr.onreadystatechange = …
-        // als Attribut.
+        // For the attribute rule additionally blank out the BODIES of <script>/<style> (only the
+        // bodies, not the opening tags — an on…= on the <script> tag itself would otherwise stay
+        // undetected). Otherwise a JavaScript property such as xhr.onreadystatechange = …
+        // counts as an attribute.
         String nurMarkup = blankGroup(blankGroup(ohneKommentare, SCRIPT_BLOCK, 3), STYLE_BLOCK, 1);
         pruefeHandlerAttribute(file, original, nurMarkup, violations);
     }
 
-    /** Regel 1 — {@code <script>}/{@code <h:outputScript>} mit Rumpf und ohne {@code src}/{@code name}. */
+    /** Rule 1 — {@code <script>}/{@code <h:outputScript>} with a body and without {@code src}/{@code name}. */
     private static void pruefeSkriptbloecke(Path file, String original, String content,
                                             List<Violation> violations) {
         Matcher m = SCRIPT_BLOCK.matcher(content);
         while (m.find()) {
             if (SRC_ODER_NAME.matcher(m.group(2)).find() || m.group(3).isBlank()) {
-                continue; // ausgelagerte Datei bzw. leerer Rumpf
+                continue; // externalized file resp. empty body
             }
             int lineNo = lineNumberAt(original, m.start());
             if (lineContent(original, lineNo).contains(EXEMPT_COMMENT)) {
@@ -187,14 +187,14 @@ public final class InlineJsLinter {
         }
     }
 
-    /** Regel 2 — {@code on…}-Attribut an einem Nicht-{@code p:}-Tag. */
+    /** Rule 2 — {@code on…} attribute on a non-{@code p:} tag. */
     private static void pruefeHandlerAttribute(Path file, String original, String content,
                                                List<Violation> violations) {
         Matcher tag = TAG.matcher(content);
         while (tag.find()) {
             String tagName = tag.group(1);
             if (tagName.startsWith("p:") || tagName.startsWith("P:")) {
-                continue; // PrimeFaces-Attribut bzw. vom CSP-Modus selbst herausgezogen
+                continue; // PrimeFaces attribute resp. pulled out by the CSP mode itself
             }
             Matcher attribut = ON_ATTRIBUT.matcher(tag.group(2));
             while (attribut.find()) {
@@ -213,12 +213,12 @@ public final class InlineJsLinter {
         }
     }
 
-    /** Ersetzt jedes {@code pattern}-Vorkommen durch gleich lange Leerzeichen; Newlines bleiben erhalten. */
+    /** Replaces every {@code pattern} occurrence with the same number of spaces; newlines are preserved. */
     private static String blankSpans(String content, Pattern pattern) {
         return blankGroup(content, pattern, 0);
     }
 
-    /** Wie {@link #blankSpans}, aber nur die angegebene Gruppe des Treffers. */
+    /** Like {@link #blankSpans}, but only the given group of the match. */
     private static String blankGroup(String content, Pattern pattern, int gruppe) {
         Matcher m = pattern.matcher(content);
         StringBuilder out = new StringBuilder(content);

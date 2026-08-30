@@ -16,11 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Karte 942: Bootstrap-Geheimnisse aus Dateien statt aus der Container-Umgebung.
+ * Karte 942: bootstrap secrets from files instead of from the container environment.
  *
- * <p>Der Anlass war eine Messung, kein Verdacht: {@code PLAINTEXT_VAULT_MASTER_PASSWORD} stand am
- * 30.08.2026 im Klartext in der Umgebung aller vier PROD-Container und war damit fuer jeden
- * lesbar, der einen Befehl darin ausfuehren darf.</p>
+ * <p>The trigger was a measurement, not a suspicion: on 30.08.2026
+ * {@code PLAINTEXT_VAULT_MASTER_PASSWORD} sat in plaintext in the environment of all four PROD
+ * containers and was thereby readable by anyone allowed to run a command in them.</p>
  */
 class VaultwardenSecretFilesTest {
 
@@ -47,9 +47,9 @@ class VaultwardenSecretFilesTest {
     @Test
     @DisplayName("Der abschliessende Zeilenumbruch aus 'echo > datei' gehoert nicht zum Passwort")
     void entferntZeilenumbruch(@TempDir Path tmp) throws IOException {
-        // Genau so entsteht die Datei in der Praxis — ohne strip() waere das \n Teil des
-        // Passworts, und der Vault-Login scheiterte mit einer Meldung, die auf alles andere
-        // hindeutet als auf ein Zeichen zu viel.
+        // That is exactly how the file comes about in practice — without strip() the \n would be
+        // part of the password, and the vault login would fail with a message that points at
+        // anything other than one character too many.
         Path f = schreibe(tmp, "pw", "geheim\n");
         MockEnvironment env = new MockEnvironment().withProperty(DATEI, f.toString());
 

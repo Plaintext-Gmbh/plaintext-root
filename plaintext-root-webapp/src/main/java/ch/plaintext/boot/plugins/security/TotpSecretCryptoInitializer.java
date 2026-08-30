@@ -10,9 +10,9 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * Reicht das Schluesselmaterial fuer {@link TotpSecretCrypto} beim Start durch — eigener
- * Schluessel, sonst der remember-me-key. Hoechste Prioritaet, damit der Schluessel steht, bevor
- * der erste Benutzer geladen wird (PlaintextInitLoader).
+ * Passes the key material for {@link TotpSecretCrypto} through at startup — the dedicated
+ * key, otherwise the remember-me key. Highest priority, so that the key is in place before
+ * the first user is loaded (PlaintextInitLoader).
  *
  * @author info@plaintext.ch
  * @since 1.636.0

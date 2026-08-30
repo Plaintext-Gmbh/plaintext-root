@@ -92,12 +92,12 @@ public class MandateMenuVisibilityService implements MenuVisibilityProvider {
     }
 
     /**
-     * Die Konfiguration eines Mandanten, oder {@code null}, wenn der Mandant keine hat (bzw. gar
-     * kein Mandant gesetzt ist) — dann gilt „alles sichtbar".
+     * The configuration of a tenant, or {@code null} when the tenant has none (or no tenant is set
+     * at all) — in which case "everything visible" applies.
      *
-     * @param menuTitle nur fuer die Protokollierung
-     * @param mandate   der Mandant, darf leer sein
-     * @return die Konfiguration oder {@code null}
+     * @param menuTitle for logging only
+     * @param mandate   the tenant, may be empty
+     * @return the configuration or {@code null}
      */
     private MandateMenuConfig findConfigFor(String menuTitle, String mandate) {
         if (mandate == null || mandate.isEmpty()) {
@@ -115,12 +115,12 @@ public class MandateMenuVisibilityService implements MenuVisibilityProvider {
     }
 
     /**
-     * Der Grund, warum der Mandantenfilter einen Menuepunkt ausblendet — fuer die Diagnose-Ansicht.
+     * The reason why the tenant filter hides a menu item — for the diagnostics view.
      *
-     * @param menuTitle  voller Menue-Titel
-     * @param moduleKeys Modul-Keys des Menuepunkts
-     * @param mandate    der Mandant
-     * @return Klartext-Grund, oder {@code ""} wenn der Mandantenfilter den Punkt durchlaesst
+     * @param menuTitle  full menu title
+     * @param moduleKeys module keys of the menu item
+     * @param mandate    the tenant
+     * @return plain-text reason, or {@code ""} when the tenant filter lets the item through
      * @since 1.608.0
      */
     public String mandateReason(String menuTitle, Collection<String> moduleKeys, String mandate) {
@@ -137,14 +137,14 @@ public class MandateMenuVisibilityService implements MenuVisibilityProvider {
     }
 
     /**
-     * Die Listen-Eintraege eines Mandanten, die im aktuellen Menuebaum ins Leere zeigen — Titel,
-     * die es nicht (mehr) gibt (typisch nach einer Umbenennung), und {@code modul:}-Eintraege auf
-     * unbekannte Modul-Keys.
+     * The list entries of a tenant that point nowhere in the current menu tree — titles that do not
+     * (or no longer) exist (typically after a rename), and {@code modul:} entries referring to
+     * unknown module keys.
      *
-     * @param config      die Mandanten-Konfiguration
-     * @param knownTitles alle aktuell vorhandenen vollen Menue-Titel
-     * @param knownKeys   alle aktuell erkannten Modul-Keys
-     * @return tote Eintraege, alphabetisch (nie {@code null})
+     * @param config      the tenant configuration
+     * @param knownTitles all full menu titles that currently exist
+     * @param knownKeys   all module keys currently detected
+     * @return dead entries, alphabetically (never {@code null})
      * @since 1.608.0
      */
     public static Set<String> deadEntries(MandateMenuConfig config,

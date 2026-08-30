@@ -14,23 +14,22 @@ import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.web.context.annotation.RequestScope;
 
 /**
- * Registriert den Seiten-Zugriffsschutz.
+ * Registers the page access guard.
  *
- * <p><b>Warum eine AutoConfiguration und keine Stereotypen.</b> Die Klassen trugen bis 1.491.0
- * {@code @Service} bzw. {@code @Component} und wurden nur dann zu Beans, wenn die konsumierende
- * App {@code ch.plaintext} component-scannte. Fuer die root-App traf das zu; eine App, die sich
- * nur einzelne Module aus root nimmt, bekam den Guard dagegen stillschweigend nicht — sie startet
- * ohne Fehlermeldung, und der Seitenschutz existiert einfach nicht. Genau diese Klasse von Fehler
- * faellt erst auf, wenn jemand eine URL direkt aufruft.
+ * <p><b>Why an auto-configuration and not stereotypes.</b> Up to 1.491.0 the classes carried
+ * {@code @Service} resp. {@code @Component} and only became beans if the consuming app
+ * component-scanned {@code ch.plaintext}. That was the case for the root app; an app that only
+ * picks individual modules out of root, on the other hand, silently did not get the guard — it
+ * starts without an error message, and page protection simply does not exist. Exactly this class
+ * of bug only surfaces once someone calls a URL directly.
  *
- * <p>Ueber {@code AutoConfiguration.imports} laeuft die Registrierung unabhaengig vom
- * Component-Scan. Alle Beans sind {@link ConditionalOnMissingBean}, eine App kann also jede
- * einzelne ersetzen.
+ * <p>Via {@code AutoConfiguration.imports} the registration runs independently of the component
+ * scan. All beans are {@link ConditionalOnMissingBean}, so an app can replace every single one of
+ * them.
  *
- * <p>Der {@link PageAccessGuardFilter} wird hier bewusst <b>nicht</b> registriert: er gehoert an
- * eine bestimmte Stelle der Spring-Security-Kette (nach dem {@code AuthorizationFilter}, siehe
- * Klassen-Javadoc des Filters) und wird darum von der Security-Konfiguration der App
- * eingehaengt.
+ * <p>The {@link PageAccessGuardFilter} is deliberately <b>not</b> registered here: it belongs at a
+ * particular place in the Spring Security chain (after the {@code AuthorizationFilter}, see the
+ * class javadoc of the filter) and is therefore hooked in by the app's security configuration.
  *
  * @author plaintext.ch
  * @since 1.492.0
@@ -41,9 +40,9 @@ import org.springframework.web.context.annotation.RequestScope;
 public class PageGuardAutoConfiguration {
 
     /**
-     * @param menuRegistry die Menue-Registry, aus der die Zugriffsregeln abgeleitet werden
-     * @param properties   Konfiguration unter {@code plaintext.security.page-guard}
-     * @return der Guard-Service
+     * @param menuRegistry the menu registry the access rules are derived from
+     * @param properties   configuration under {@code plaintext.security.page-guard}
+     * @return the guard service
      */
     @Bean
     @ConditionalOnMissingBean
@@ -55,25 +54,25 @@ public class PageGuardAutoConfiguration {
     }
 
     /**
-     * Der Startup-Report liest die ausgelieferten Facelets und meldet die ohne Zugriffsregel. Er
-     * laesst sich mit {@code plaintext.security.page-guard.startup-report=false} abschalten, etwa
-     * fuer Tests oder wenn der Scan bei sehr vielen Views ins Gewicht faellt.
+     * The startup report reads the shipped facelets and reports those without an access rule. It
+     * can be switched off with {@code plaintext.security.page-guard.startup-report=false}, for
+     * instance for tests or when the scan becomes noticeable with a very large number of views.
      *
-     * @param resourcePatternResolver Resolver fuer den Classpath-Scan der Views
-     * @param pageAccessGuardService  der Guard-Service
-     * @return der Startup-Report
+     * @param resourcePatternResolver resolver for the classpath scan of the views
+     * @param pageAccessGuardService  the guard service
+     * @return the startup report
      */
     /**
-     * Die Backing-Bean, die das Template bei jedem {@code preRenderView} ueber
-     * {@code #{pageAccessGuardBackingBean.checkPageAccess()}} aufruft. Sie trug bislang nur
-     * {@code @Named}/{@code @RequestScoped} und existierte damit nur in Apps, die
-     * {@code ch.plaintext} component-scannen — in einem Konsumenten ohne diesen Scan brach jede
-     * mit dem Template ausgelieferte Seite mit "Target Unreachable, identifier
-     * [pageAccessGuardBackingBean] resolved to null" ab (Inventar, 05.08.2026, settings.html).
-     * Request-Scope wie am Stereotyp; das {@code @Autowired}-Feld injiziert Spring auch bei
-     * {@code @Bean}-Instanzen.
+     * The backing bean that the template calls on every {@code preRenderView} via
+     * {@code #{pageAccessGuardBackingBean.checkPageAccess()}}. Until now it only carried
+     * {@code @Named}/{@code @RequestScoped} and therefore only existed in apps that
+     * component-scan {@code ch.plaintext} — in a consumer without that scan, every page shipped
+     * with the template failed with "Target Unreachable, identifier
+     * [pageAccessGuardBackingBean] resolved to null" (inventory, 05.08.2026, settings.html).
+     * Request scope as on the stereotype; Spring injects the {@code @Autowired} field for
+     * {@code @Bean} instances as well.
      *
-     * @return die Backing-Bean fuer den Template-Aufruf
+     * @return the backing bean for the template call
      */
     @Bean
     @ConditionalOnMissingBean

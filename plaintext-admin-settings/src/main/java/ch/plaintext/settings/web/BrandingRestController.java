@@ -34,17 +34,17 @@ public class BrandingRestController {
     }
 
     private ResponseEntity<byte[]> buildLogoResponse(BrandingLogo logo) {
-        // SECURITY (Karte 314, Punkt 14): Alt-Bestand. Vor der Umstellung hochgeladene
-        // SVG-Logos liegen weiterhin in der Datenbank; wuerden sie hier mit ihrem
-        // gespeicherten Content-Type ausgeliefert, bliebe die gespeicherte XSS bestehen.
-        // Nicht mehr auslieferbare Typen ergeben 404 — die Oberflaeche faellt dann auf das
-        // Text-Logo zurueck, es bricht also nichts.
+        // SECURITY (card 314, item 14): legacy data. SVG logos uploaded before the
+        // changeover are still in the database; if they were served here with their
+        // stored content type, the stored XSS would remain in place.
+        // Types that may no longer be served yield a 404 — the UI then falls back to the
+        // text logo, so nothing breaks.
         if (!BrandingService.isDeliverableContentType(logo.getContentType())) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(logo.getContentType()))
-                // Defense in Depth: der Browser darf den Typ nicht selbst "erraten".
+                // Defense in depth: the browser must not "guess" the type itself.
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
                 .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).mustRevalidate())
                 .header(HttpHeaders.ETAG, String.valueOf(logo.getLastModifiedDate() != null

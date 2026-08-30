@@ -16,21 +16,21 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 /**
- * Baut fuer die Controller-Tests einen <b>echten</b> {@link SessionLoginFinalizer} samt echtem
- * {@link PlaintextAuthenticationSuccessHandler}.
+ * Builds a <b>real</b> {@link SessionLoginFinalizer} together with a real
+ * {@link PlaintextAuthenticationSuccessHandler} for the controller tests.
  *
- * <p><b>Warum echt und nicht gemockt (Karte 309):</b> Der Befund war ja gerade, dass
- * {@code /autologin} und {@code /token-login} an Session-Erneuerung, Lockout-Pruefung und 2FA-Gate
- * <em>vorbei</em> liefen. Ein gemockter Finalizer wuerde genau das nicht mehr bemerken. Nur der echte
- * Pfad (inkl. echter {@link HttpSessionSecurityContextRepository}) belegt, dass sich die Session-Id
- * aendert und dass ein TOTP-User in den Pending-Flow statt in eine Vollsession geraet.</p>
+ * <p><b>Why real and not mocked (card 309):</b> the finding was precisely that
+ * {@code /autologin} and {@code /token-login} ran <em>past</em> session renewal, the lockout check
+ * and the 2FA gate. A mocked finalizer would no longer notice exactly that. Only the real
+ * path (incl. a real {@link HttpSessionSecurityContextRepository}) proves that the session id
+ * changes and that a TOTP user ends up in the pending flow instead of in a full session.</p>
  */
 final class LoginTestSupport {
 
     private LoginTestSupport() {
     }
 
-    /** Zusammengebauter Testaufbau inkl. der Stellschrauben, die einzelne Tests brauchen. */
+    /** Assembled test setup incl. the adjustment points that individual tests need. */
     record Aufbau(SessionLoginFinalizer finalizer,
                   SecurityContextRepository securityContextRepository,
                   TotpAuthenticationService totpAuthenticationService,

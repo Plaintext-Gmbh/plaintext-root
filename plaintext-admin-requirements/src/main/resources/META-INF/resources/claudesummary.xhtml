@@ -129,14 +129,14 @@
             </div>
 
             <!-- Hidden div to store the markdown content.
-                 SECURITY (Karte 304): hier stand escape="false". Das war doppelt falsch:
-                 (1) HTML im Summary landete ungefiltert im DOM — ein <img src=x onerror=...>
-                     feuert auch in einem display:none-Div, ein <script> im initialen HTML laeuft.
-                 (2) Funktional: das JS unten liest den Inhalt per textContent wieder aus, um ihn
-                     durch marked.parse() zu schicken. Wird der Markdown-Text vom Browser als
-                     Markup geparst, kommt er verstuemmelt zurueck.
-                 Escaping ist also die richtige Wahl (kein jsoup-Sanitizing): der Transport bleibt
-                 reiner Text, das Rendern zu HTML passiert wie bisher clientseitig. -->
+                 SECURITY (card 304): this used to read escape="false". That was wrong twice over:
+                 (1) HTML in the summary reached the DOM unfiltered. An <img src=x onerror=...>
+                     fires inside a display:none div too, and a <script> in the initial HTML runs.
+                 (2) Functionally: the JS below reads the content back out via textContent in order
+                     to send it through marked.parse(). If the browser parses the markdown text as
+                     markup, it comes back mangled.
+                 Escaping is therefore the right choice (no jsoup sanitising): the transport stays
+                 plain text, and rendering to HTML still happens on the client as before. -->
             <div id="markdown-data" style="display: none;"><h:outputText value="#{claudeSummaryBackingBean.anforderung.claudeSummary}" /></div>
         </h:panelGroup>
 

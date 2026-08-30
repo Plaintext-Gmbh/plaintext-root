@@ -16,13 +16,13 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Registry + Link-Bau fuer Deep-Links (Karte 345).
+ * Registry + link building for deep links (card 345).
  *
- * <p>Die Registry entsteht rein aus den im Kontext vorhandenen {@link DeepLinkTarget}-Beans; ein
- * Modul „meldet sich an", indem es eine solche Bean bereitstellt. Es wird nichts persistiert —
- * Deep-Links sind reine Adressen, keine Tokens. Genau deshalb verleihen sie auch keine
- * Berechtigung: es gibt kein Geheimnis, das man vorzeigen koennte, jeder Aufruf wird beim
- * Oeffnen frisch gegen die Rechte des angemeldeten Benutzers geprueft.
+ * <p>The registry arises purely from the {@link DeepLinkTarget} beans present in the context; a
+ * module "registers" by providing such a bean. Nothing is persisted —
+ * deep links are pure addresses, not tokens. Exactly for that reason they also grant no
+ * permission: there is no secret that could be presented, every call is checked freshly against the
+ * permissions of the logged-in user when it is opened.
  */
 @Service
 @Slf4j
@@ -43,10 +43,10 @@ public class DeepLinkServiceImpl implements DeepLinkService {
     }
 
     /**
-     * Fail-fast beim Start statt einer stillen Luecke zur Laufzeit: ein Ziel mit unsauberem
-     * {@code type} oder ohne View wuerde beim Aufruf ohnehin abgelehnt — dann lieber sofort
-     * sichtbar. Doppelte Typen werden abgelehnt, weil sonst unklar waere, welches Modul (und damit
-     * welche Zugriffspruefung) fuer einen Link zustaendig ist.
+     * Fail-fast at startup instead of a silent gap at runtime: a target with an unclean
+     * {@code type} or without a view would be rejected on call anyway — then better make it
+     * visible right away. Duplicate types are rejected, because it would otherwise be unclear which
+     * module (and thus which access check) is responsible for a link.
      */
     private void registriere(DeepLinkTarget ziel) {
         String type = ziel.getType() == null ? null : ziel.getType().toLowerCase(Locale.ROOT);
@@ -101,10 +101,10 @@ public class DeepLinkServiceImpl implements DeepLinkService {
     }
 
     /**
-     * Entfernt abschliessende Schraegstriche ohne regulaeren Ausdruck.
+     * Removes trailing slashes without a regular expression.
      *
-     * <p>Karte 458 (java:S5852): {@code replaceAll("/+$", "")} laeuft bei vielen aufeinander
-     * folgenden Schraegstrichen in quadratisches Backtracking. Diese Schleife ist linear.</p>
+     * <p>Card 458 (java:S5852): {@code replaceAll("/+$", "")} runs into quadratic backtracking on
+     * many consecutive slashes. This loop is linear.</p>
      */
     private static String ohneEndSchraegstriche(String wert) {
         int ende = wert.length();

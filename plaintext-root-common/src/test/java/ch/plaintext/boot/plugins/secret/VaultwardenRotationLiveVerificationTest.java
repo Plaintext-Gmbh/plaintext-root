@@ -14,18 +14,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 /**
- * LIVE-Verifikation der ROTATION (Schreibrichtung) gegen die eigene Vaultwarden-Instanz — laeuft NUR lokal.
+ * LIVE verification of the ROTATION (write direction) against our own Vaultwarden instance — runs ONLY locally.
  *
- * <p>Doppelt gegen CI abgesichert: {@code @Tag("live-vault")} UND
- * {@code @EnabledIfEnvironmentVariable(VAULT_LIVE=true)}. In der CI ist die
- * Umgebungsvariable nicht gesetzt, daher wird der Test automatisch uebersprungen.</p>
+ * <p>Guarded against CI twice over: {@code @Tag("live-vault")} AND
+ * {@code @EnabledIfEnvironmentVariable(VAULT_LIVE=true)}. In CI the environment
+ * variable is not set, so the test is skipped automatically.</p>
  *
- * <p><b>Sicherheit:</b> Dieser Test legt NICHTS im Tresor an und rotiert KEIN
- * Produktiv-Item. Er schreibt ausschliesslich dann, wenn ein dediziertes Item namens
- * {@code VaultRotationSelfTest} existiert. Fehlt es, wird der Schreibpfad NICHT live
- * geprueft (Test besteht mit Hinweis) — der Read-Flow ist ohnehin separat verifiziert.</p>
+ * <p><b>Safety:</b> this test creates NOTHING in the vault and rotates NO
+ * production item. It only ever writes when a dedicated item named
+ * {@code VaultRotationSelfTest} exists. If it is missing, the write path is NOT verified
+ * live (the test passes with a note) — the read flow is verified separately anyway.</p>
  *
- * <p>Lokaler Lauf (Creds ausschliesslich aus Env, nie im Repo):</p>
+ * <p>Local run (credentials exclusively from the env, never in the repo):</p>
  * <pre>
  * export VAULT_LIVE=true
  * export PLAINTEXT_VAULT_EMAIL=&lt;service-account-email&gt;
@@ -34,9 +34,9 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
  *     -Dtest=VaultwardenRotationLiveVerificationTest -Dmaven.build.cache.enabled=false
  * </pre>
  *
- * <p>Der Test setzt das Passwort des Self-Test-Items auf einen Zufallswert und liest
- * es via {@link VaultwardenSecretService#getPassword(String)} zurueck (== gesetzt).
- * Es werden KEINE Klartext-Secrets ausgegeben, nur JA/NEIN.</p>
+ * <p>The test sets the password of the self-test item to a random value and reads
+ * it back via {@link VaultwardenSecretService#getPassword(String)} (== what was set).
+ * NO plaintext secrets are printed, only JA/NEIN.</p>
  */
 @Tag("live-vault")
 @EnabledIfEnvironmentVariable(named = "VAULT_LIVE", matches = "true")
@@ -58,13 +58,13 @@ class VaultwardenRotationLiveVerificationTest {
         VaultwardenSecretService service =
                 new VaultwardenSecretService(props, new VaultwardenClient(props, "live-verify-test"));
 
-        // NUR schreiben, wenn das dedizierte Self-Test-Item bereits existiert.
+        // Write ONLY when the dedicated self-test item already exists.
         Optional<VaultwardenItem> selfTest = service.getSecret(SELF_TEST_ITEM);
         if (selfTest.isEmpty()) {
             System.out.println("=== LIVE-VAULT ROTATION ===");
             System.out.println("Self-Test-Item '" + SELF_TEST_ITEM
                     + "' nicht vorhanden -> Rotation-Write NICHT live geprueft (nichts angelegt).");
-            return; // bewusst kein Fehler: nichts im echten Tresor anlegen
+            return; // deliberately not an error: do not create anything in the real vault
         }
 
         String newPassword = randomToken();

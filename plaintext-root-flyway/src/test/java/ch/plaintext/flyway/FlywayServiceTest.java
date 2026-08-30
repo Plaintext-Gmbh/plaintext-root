@@ -35,9 +35,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): das Modul hatte keinen einzigen Test.
- * Der Dienst liest {@code flyway_schema_history} per JDBC an Hibernate vorbei und loescht
- * Eintraege — beides ohne Datenbank pruefbar, weil die JDBC-Objekte gemockt werden.
+ * Status report 29.08.2026, measure 13 (JaCoCo gate): the module did not have a single test.
+ * The service reads {@code flyway_schema_history} via JDBC, bypassing Hibernate, and deletes
+ * entries — both are verifiable without a database because the JDBC objects are mocked.
  *
  * @author info@plaintext.ch
  * @since 2026

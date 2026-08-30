@@ -28,13 +28,12 @@ import java.util.TreeSet;
 /**
  * Backing bean for mandate menu configuration page.
  *
- * <p><b>Zwei Formen von Listen-Eintraegen</b> (seit 1.608.0, siehe {@link MandateMenuConfig}): ein
- * {@code modul:<moduleId>}-Eintrag schaltet ein ganzes Modul, ein Menue-Titel genau einen Punkt.
- * Die Detailseite fuehrt drei getrennte Auswahlen — Module, Menuepunkte und die Eintraege, die im
- * aktuellen Menuebaum ins Leere zeigen — und setzt sie beim Speichern wieder zu einer Liste
- * zusammen. Die dritte Gruppe ist der Grund, warum die Umstellung nichts verliert: Bestandseintraege
- * ohne Entsprechung bleiben sichtbar und ausgewaehlt, statt beim naechsten Speichern still
- * wegzufallen.</p>
+ * <p><b>Two forms of list entries</b> (since 1.608.0, see {@link MandateMenuConfig}): a
+ * {@code modul:<moduleId>} entry switches a whole module, a menu title exactly one item. The detail
+ * page keeps three separate selections — modules, menu items, and the entries that point nowhere in
+ * the current menu tree — and merges them back into a single list when saving. The third group is
+ * the reason the migration loses nothing: existing entries without a match stay visible and
+ * selected instead of silently disappearing on the next save.</p>
  *
  * @author plaintext.ch
  * @since 1.39.0
@@ -61,9 +60,9 @@ public class MandateMenuBackingBean implements Serializable {
     private PlaintextSecurity plaintextSecurity;
 
     /**
-     * Liefert die erkannten Modul-Keys — die gueltige Auswahl fuer {@code modul:}-Eintraege.
-     * Optional: ohne den Service bleibt die Modul-Auswahl leer, die Titel-Auswahl funktioniert
-     * unveraendert.
+     * Supplies the detected module keys — the valid choices for {@code modul:} entries.
+     * Optional: without the service the module selection stays empty, while the title selection
+     * works unchanged.
      */
     @Autowired(required = false)
     private transient ModuleRoleService moduleRoleService;
@@ -72,24 +71,24 @@ public class MandateMenuBackingBean implements Serializable {
     private MandateMenuConfig selected;
     private List<String> availableMenus = new ArrayList<>();
 
-    /** Waehlbare Modul-Eintraege, Form {@code modul:<key>}. */
+    /** Selectable module entries, in the form {@code modul:<key>}. */
     private List<String> availableModuleEntries = new ArrayList<>();
 
-    /** Ausgewaehlte Modul-Eintraege der Detailseite. */
+    /** Module entries selected on the detail page. */
     private List<String> selectedModuleEntries = new ArrayList<>();
 
-    /** Ausgewaehlte Menue-Titel der Detailseite. */
+    /** Menu titles selected on the detail page. */
     private List<String> selectedTitleEntries = new ArrayList<>();
 
-    /** Gespeicherte Eintraege, die im aktuellen Menuebaum ins Leere zeigen. */
+    /** Stored entries that point nowhere in the current menu tree. */
     private List<String> deadEntries = new ArrayList<>();
 
-    /** Davon behaltene Eintraege (vorausgewaehlt — nichts geht ungewollt verloren). */
+    /** Those of them that are kept (preselected — nothing is lost unintentionally). */
     private List<String> selectedDeadEntries = new ArrayList<>();
 
     /**
-     * Ob die Detailseite die gespeicherte Liste in die drei Auswahlen aufgeteilt hat. Nur dann darf
-     * {@link #save()} sie aus den Auswahlen wieder zusammensetzen.
+     * Whether the detail page has split the stored list into the three selections. Only then may
+     * {@link #save()} reassemble it from those selections.
      */
     private boolean detailBearbeitung;
 
@@ -189,9 +188,9 @@ public class MandateMenuBackingBean implements Serializable {
     }
 
     /**
-     * Die waehlbaren Modul-Eintraege ({@code modul:<key>}) aus den erkannten Modul-Keys.
+     * The selectable module entries ({@code modul:<key>}) built from the detected module keys.
      *
-     * @return alphabetisch sortierte Modul-Eintraege (nie {@code null})
+     * @return alphabetically sorted module entries (never {@code null})
      */
     private List<String> ladeModulEintraege() {
         List<String> ret = new ArrayList<>();
@@ -212,8 +211,8 @@ public class MandateMenuBackingBean implements Serializable {
     }
 
     /**
-     * Zerlegt die gespeicherte Liste in die drei Auswahlen der Detailseite: Modul-Eintraege,
-     * Menue-Titel und Eintraege ohne Entsprechung im aktuellen Menuebaum.
+     * Splits the stored list into the three selections of the detail page: module entries, menu
+     * titles, and entries without a match in the current menu tree.
      */
     private void teileAuswahlAuf() {
         selectedModuleEntries = new ArrayList<>();
@@ -237,17 +236,17 @@ public class MandateMenuBackingBean implements Serializable {
                 deadEntries.add(eintrag);
             }
         }
-        // Tote Eintraege bleiben vorausgewaehlt: Speichern darf nichts wegwerfen, was der
-        // Bearbeiter nicht bewusst abgewaehlt hat.
+        // Dead entries stay preselected: saving must not throw away anything the editor has not
+        // deliberately deselected.
         selectedDeadEntries = new ArrayList<>(deadEntries);
         detailBearbeitung = true;
     }
 
     /**
-     * Bringt einen {@code modul:}-Eintrag auf die kanonische Schreibweise; Titel bleiben unberuehrt.
+     * Brings a {@code modul:} entry into its canonical spelling; titles are left untouched.
      *
-     * @param eintrag gespeicherter Listen-Eintrag
-     * @return kanonischer Eintrag
+     * @param eintrag stored list entry
+     * @return canonical entry
      */
     private static String normalisiereModulEintrag(String eintrag) {
         String key = MandateMenuConfig.moduleKeyOf(eintrag);
@@ -255,10 +254,9 @@ public class MandateMenuBackingBean implements Serializable {
     }
 
     /**
-     * Setzt die drei Auswahlen wieder zu einer Liste zusammen — die Form, in der sie gespeichert
-     * wird.
+     * Merges the three selections back into one list — the form in which it is stored.
      *
-     * @return die zusammengefuehrte Liste (nie {@code null})
+     * @return the merged list (never {@code null})
      */
     Set<String> zusammengefuehrteAuswahl() {
         Set<String> ret = new LinkedHashSet<>();
@@ -280,11 +278,11 @@ public class MandateMenuBackingBean implements Serializable {
     }
 
     /**
-     * Schreibt die drei Auswahlen der Detailseite in {@code selected.hiddenMenus} zurueck.
+     * Writes the three selections of the detail page back into {@code selected.hiddenMenus}.
      *
-     * <p>Nur, wenn die Detailseite die Auswahl auch aufgeteilt hat ({@link #teileAuswahlAuf()}).
-     * Ein {@code save()} auf einer nicht aufgeteilten Auswahl — etwa programmatisch — wuerde sonst
-     * die gespeicherte Liste durch drei leere Listen ersetzen.</p>
+     * <p>Only when the detail page has actually split the selection ({@link #teileAuswahlAuf()}).
+     * Otherwise a {@code save()} on a selection that was never split — programmatically, say —
+     * would replace the stored list with three empty ones.</p>
      */
     private void uebernehmeDetailAuswahl() {
         if (!detailBearbeitung || selected == null) {
@@ -394,10 +392,10 @@ public class MandateMenuBackingBean implements Serializable {
     }
 
     /**
-     * Alle waehlbaren Eintraege: Modul-Eintraege ({@code modul:<key>}) und Menue-Titel. Die
-     * Sammel-Aktionen der Detailseite arbeiten auf dieser Menge.
+     * All selectable entries: module entries ({@code modul:<key>}) and menu titles. The bulk
+     * actions of the detail page operate on this set.
      *
-     * @return waehlbare Eintraege (nie {@code null})
+     * @return selectable entries (never {@code null})
      */
     private Set<String> alleWaehlbarenEintraege() {
         Set<String> alle = new HashSet<>(availableModuleEntries);
@@ -434,7 +432,7 @@ public class MandateMenuBackingBean implements Serializable {
         }
     }
 
-    /** Nach einer Sammel-Aktion die drei Auswahlen der Detailseite nachziehen. */
+    /** Brings the three selections of the detail page up to date after a bulk action. */
     private void teileAuswahlNeuAuf() {
         if (detailBearbeitung) {
             teileAuswahlAuf();
@@ -452,7 +450,7 @@ public class MandateMenuBackingBean implements Serializable {
         }
 
         try {
-            // Get all available entries (Module + Menue-Titel)
+            // Get all available entries (modules + menu titles)
             Set<String> allMenus = alleWaehlbarenEintraege();
 
             // Create inverted selection: all menus that are NOT currently in hiddenMenus

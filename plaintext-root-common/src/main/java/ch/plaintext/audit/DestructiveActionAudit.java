@@ -11,10 +11,10 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Generisches Audit-Log für destruktive Operationen (wer/wann/was) — nutzbar von jeder App
- * (root/app/guild/iot/schuetu) über {@link DestructiveActionAuditService}. „Wer"/„wann" kommen über
- * die {@link SuperModel}-Standardspalten ({@code createdBy}/{@code createdDate}); {@code mandat}
- * ebenso.
+ * Generic audit log for destructive operations (who/when/what) — usable by every app
+ * (root/app/guild/iot/schuetu) through {@link DestructiveActionAuditService}. "Who"/"when" come
+ * from the {@link SuperModel} standard columns ({@code createdBy}/{@code createdDate}); so does
+ * {@code mandat}.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -25,23 +25,23 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = false)
 public class DestructiveActionAudit extends SuperModel {
 
-    /** {@code UI} oder {@code MCP}. */
+    /** {@code UI} or {@code MCP}. */
     @Column(name = "channel", length = 20)
     private String channel;
 
-    /** Frei wählbarer Aktions-Bezeichner, z. B. {@code RECHNUNG_HARD_DELETE}. */
+    /** Freely chosen action identifier, e.g. {@code RECHNUNG_HARD_DELETE}. */
     @Column(name = "action_type", length = 100)
     private String actionType;
 
-    /** Betroffener Entity-Typ, z. B. {@code Rechnung}. */
+    /** Affected entity type, e.g. {@code Rechnung}. */
     @Column(name = "entity_type", length = 100)
     private String entityType;
 
-    /** Betroffene IDs (z. B. kommagetrennt) oder eine Anzahl als Text. */
+    /** Affected IDs (e.g. comma separated) or a count as text. */
     @Column(name = "entity_ids", length = 2000)
     private String entityIds;
 
-    /** Freitext, z. B. Bestätigungsphrase, Fehlermeldung, Kontext. */
+    /** Free text, e.g. confirmation phrase, error message, context. */
     @Column(name = "detail", length = 2000)
     private String detail;
 }

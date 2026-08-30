@@ -85,7 +85,7 @@ class CronBackingBeanTest {
     void refreshCrons_rootUserSeesAllMandanten() {
         setupCronsMapAndRefresh("mandatA", true);
 
-        // Should see all 4 entities across all mandanten
+        // Should see all 4 entities across all tenants
         assertThat(backingBean.getCrons()).hasSize(4);
     }
 

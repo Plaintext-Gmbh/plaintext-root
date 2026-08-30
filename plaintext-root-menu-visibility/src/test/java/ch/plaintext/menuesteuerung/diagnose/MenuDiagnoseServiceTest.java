@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 
 /**
- * Die Diagnose-Auswertung: vier Filter einzeln, zu jedem Nein ein Grund.
+ * The diagnostics analysis: four filters individually, a reason behind each no.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Menue-Diagnose")
@@ -62,9 +62,9 @@ class MenuDiagnoseServiceTest {
         config.setWhitelistMode(whitelist);
         config.setHiddenMenus(new HashSet<>(Set.of(eintraege)));
         lenient().when(repository.findByMandateName(MANDANT)).thenReturn(Optional.of(config));
-        // Der Menuepunkt fragt den Provider ohne Mandanten-Argument — der nimmt den Mandanten der
-        // Session. Genau so laeuft es im Betrieb, und genau deshalb zeigt die Diagnose im
-        // Impersonate-Modus die Sicht des impersonierten Benutzers.
+        // The menu item asks the provider without a tenant argument — so the provider takes the
+        // tenant of the session. That is exactly how it works in production, and exactly why the
+        // diagnostics shows the impersonated user's view in impersonation mode.
         lenient().when(plaintextSecurity.getMandat()).thenReturn(MANDANT);
     }
 

@@ -54,12 +54,12 @@ class RollenzuteilungSubmenuTest {
     }
 
     /**
-     * SECURITY (Karte 308, H4): Vorher stand hier {@code assertEquals(0, annotation.roles().length)}.
-     * Ohne eigene {@code roles} prueft {@code MenuItemImpl.isOn()} nichts — und weil der
-     * {@code PageAccessGuardService} nur {@code isOn()} DIESES Eintrags auswertet und nicht die des
-     * Elternmenues „Admin", war {@code /rollenzuteilung.html} per Direkt-URL fuer jeden
-     * eingeloggten USER offen (Rollen vergeben!). Im gerenderten Menue war der Punkt nur unter dem
-     * ADMIN-Elternmenue sichtbar, die Darstellung aendert sich also nicht.
+     * SECURITY (Card 308, H4): this used to read {@code assertEquals(0, annotation.roles().length)}.
+     * Without its own {@code roles} the {@code MenuItemImpl.isOn()} check does nothing — and because
+     * the {@code PageAccessGuardService} only evaluates {@code isOn()} of THIS entry and not the one
+     * of the "Admin" parent menu, {@code /rollenzuteilung.html} was reachable by direct URL for
+     * every logged-in USER (granting roles!). In the rendered menu the item was only visible below
+     * the ADMIN parent menu, so its appearance does not change.
      */
     @Test
     @DisplayName("Should be restricted to ADMIN/ROOT")

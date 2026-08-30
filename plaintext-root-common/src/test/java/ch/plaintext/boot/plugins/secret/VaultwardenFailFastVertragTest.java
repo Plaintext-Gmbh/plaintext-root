@@ -25,20 +25,20 @@ import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 /**
- * Haelt fest, dass eine {@code vault:}-Referenz im <b>echten</b> Boot-Aufbau entweder aufgeloest
- * ankommt oder den Start abbricht — aber niemals als Roh-String im Ziel-Feld landet.
+ * Pins down that a {@code vault:} reference in the <b>real</b> boot setup either arrives
+ * resolved or aborts the startup — but never ends up as a raw string in the target field.
  *
- * <h2>Warum der Aufbau hier {@code ConfigurationPropertySources.attach} enthaelt</h2>
- * <p>Genau daran ist der Mechanismus vorher gescheitert (Karte 868): {@link StandardEnvironment}
- * allein — wie im {@link VaultwardenPropertySourceTest} — ist <b>nicht</b> die Umgebung, in der die
- * Apps laufen. Spring Boot ruft bei jedem Start {@code attach(environment)} auf und haengt damit
- * eine Source {@code configurationProperties} VOR alle anderen, die Zugriffe selbst beantwortet.
- * Die lazy {@link VaultwardenPropertySource} wurde so umgangen und der unaufgeloeste Literal
- * {@code vault:<item>} landete im {@code @Value}-Feld — bei einem {@code String}-Feld voellig
- * unbemerkt, weil der Boot durchlief.</p>
+ * <h2>Why the setup here includes {@code ConfigurationPropertySources.attach}</h2>
+ * <p>That is exactly where the mechanism failed before (Karte 868): {@link StandardEnvironment}
+ * alone — as in {@link VaultwardenPropertySourceTest} — is <b>not</b> the environment the apps
+ * run in. Spring Boot calls {@code attach(environment)} on every start and thereby hangs a
+ * source {@code configurationProperties} IN FRONT of all others, which answers accesses itself.
+ * The lazy {@link VaultwardenPropertySource} was bypassed that way and the unresolved literal
+ * {@code vault:<item>} ended up in the {@code @Value} field — completely unnoticed with a
+ * {@code String} field, because the boot ran through.</p>
  *
- * <p>Ein Test ohne {@code attach} war gruen und hat den Fehler trotzdem durchgelassen. Deshalb
- * gehoert das {@code attach} in den Aufbau, nicht in einen Kommentar.</p>
+ * <p>A test without {@code attach} was green and let the bug through nonetheless. That is why
+ * the {@code attach} belongs in the setup, not in a comment.</p>
  */
 class VaultwardenFailFastVertragTest {
 
@@ -65,7 +65,7 @@ class VaultwardenFailFastVertragTest {
         return svc;
     }
 
-    /** Environment wie im Boot: Referenz in einer Source, lazy Source davor, danach {@code attach}. */
+    /** Environment as in the boot: reference in a source, lazy source in front, then {@code attach}. */
     private StandardEnvironment umgebung(String referenz) {
         StandardEnvironment env = new StandardEnvironment();
         Map<String, Object> map = new HashMap<>();
@@ -80,7 +80,7 @@ class VaultwardenFailFastVertragTest {
         VaultwardenEagerResolution.resolveAll(env, new VaultwardenValueResolver(this::service));
     }
 
-    // ── Positivkontrolle: der Wert kommt im @Value an ─────────────────────────
+    // ── Positive control: the value arrives in the @Value ─────────────────────
 
     @Test
     void aufloesbareReferenzLandetAlsKlartextImValueFeld() {
@@ -96,13 +96,13 @@ class VaultwardenFailFastVertragTest {
         }
     }
 
-    // ── Die eigentliche Regression: NIE der Roh-String ────────────────────────
+    // ── The actual regression: NEVER the raw string ───────────────────────────
 
     @Test
     void unaufloesbareReferenzBrichtAbUndLandetNieAlsRohStringImFeld() {
         StandardEnvironment env = umgebung(REFERENZ_KAPUTT);
 
-        // Der Abbruch muss hier fallen — nicht erst, wenn ihn ein Adapter verschluckt hat.
+        // The abort has to happen here — not only once an adapter has swallowed it.
         assertThatThrownBy(() -> aufloesen(env))
                 .isInstanceOf(VaultwardenPropertyResolutionException.class)
                 .hasMessageContaining("app.secret")
@@ -111,10 +111,10 @@ class VaultwardenFailFastVertragTest {
     }
 
     /**
-     * Der Gegenbeweis zur Fehlerklasse: laesst man die Aufloesung weg, kommt im echten Aufbau
-     * (mit {@code attach}) genau der Roh-String an. Dieser Test dokumentiert, was ohne
-     * {@link VaultwardenEagerResolution} passieren wuerde — und wuerde rot, sobald jemand meint,
-     * die lazy Source allein genuege.
+     * The counter-proof for this class of bug: if the resolution is left out, exactly the raw
+     * string arrives in the real setup (with {@code attach}). This test documents what would
+     * happen without {@link VaultwardenEagerResolution} — and would go red as soon as somebody
+     * thinks the lazy source alone is enough.
      */
     @Test
     void ohneAufloesungWuerdeDerRohStringDurchkommen() {
@@ -131,7 +131,7 @@ class VaultwardenFailFastVertragTest {
         }
     }
 
-    // ── Der Typ der Quell-Source traegt die Namens-Semantik ───────────────────
+    // ── The type of the source carries the naming semantics ───────────────────
 
     @Test
     void referenzInDerUmgebungBleibtUeberDenKanonischenNamenErreichbar() {
@@ -142,7 +142,7 @@ class VaultwardenFailFastVertragTest {
 
         aufloesen(env);
 
-        // Haette die Ersetzung den Typ verloren, waere der Wert unter diesem Namen unauffindbar.
+        // Had the replacement lost the type, the value would be unfindable under this name.
         assertThat(env.getProperty("app.secret")).isEqualTo(SECRET);
     }
 }

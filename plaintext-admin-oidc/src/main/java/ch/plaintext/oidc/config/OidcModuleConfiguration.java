@@ -9,13 +9,13 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
- * Macht das Modul ausserhalb von plaintext-root nutzbar - dasselbe Muster wie
- * {@code CronModuleConfiguration} bzw. {@code SettingsModuleConfiguration}:
- * Konsumenten scannen ihr eigenes Package, nicht {@code ch.plaintext}; diese
- * AutoConfiguration registriert Beans, Entities und Repositories des Moduls
- * explizit. Geladen ueber die imports-Datei; vom Component-Scan der Webapp als
- * AutoConfiguration ausgeschlossen. Menueklassen findet der Konsument weiterhin
- * ueber {@code plaintext.menu.scan-package} (Kommaliste).
+ * Makes the module usable outside of plaintext-root - the same pattern as
+ * {@code CronModuleConfiguration} and {@code SettingsModuleConfiguration}:
+ * consumers scan their own package, not {@code ch.plaintext}; this
+ * AutoConfiguration registers the module's beans, entities and repositories
+ * explicitly. Loaded via the imports file; excluded from the webapp's component
+ * scan as an AutoConfiguration. The consumer still finds the menu classes via
+ * {@code plaintext.menu.scan-package} (comma-separated list).
  *
  * @since 1.508.0
  */

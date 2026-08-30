@@ -47,11 +47,11 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.save(n);
     }
 
-    // Sonar java:S2229 (Karte 891): notify() traegt @Transactional, wurde hier aber per SELBSTAUFRUF
-    // erreicht — dabei umgeht der Aufruf den Spring-Proxy, und die Annotation wirkt nicht. Die
-    // Benachrichtigungen liefen also ohne die zugesagte Transaktionsklammer, jede save() fuer sich.
-    // Die Klammer gehoert deshalb hierher: ein Ereignis erzeugt die Benachrichtigungen fuer alle
-    // Empfaenger des Mandanten oder keine.
+    // Sonar java:S2229 (card 891): notify() carries @Transactional, but was reached here by
+    // SELF-INVOCATION — such a call bypasses the Spring proxy, and the annotation has no effect. The
+    // notifications therefore ran without the promised transaction boundary, every save() on its own.
+    // The boundary therefore belongs here: one event creates the notifications for all recipients
+    // of the tenant, or none at all.
     @Override
     @Transactional
     public void notifyMandant(String mandat, String typ, String defaultTitel, String defaultText,
@@ -61,7 +61,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    /** Letzte Benachrichtigungen eines Benutzers, neueste zuerst (fuer Inbox-Seite und Topbar-Glocke). */
+    /** Latest notifications of a user, newest first (for the inbox page and the topbar bell). */
     public List<Notification> getInbox(String username, int limit) {
         return notificationRepository.findByEmpfaengerUsernameAndDeletedFalseOrderByCreatedDateDesc(
                 username, PageRequest.of(0, limit));
@@ -71,7 +71,7 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationRepository.countByEmpfaengerUsernameAndGelesenAmIsNullAndDeletedFalse(username);
     }
 
-    /** Markiert eine Benachrichtigung als gelesen — nur, wenn sie dem angegebenen Benutzer gehoert. */
+    /** Marks a notification as read — only if it belongs to the specified user. */
     @Transactional
     public void markiereGelesen(Long id, String username) {
         notificationRepository.findById(id)
@@ -91,7 +91,7 @@ public class NotificationServiceImpl implements NotificationService {
         return ungelesen.size();
     }
 
-    /** Loescht gelesene Benachrichtigungen, deren {@code gelesenAm} vor dem Cutoff liegt (Aufraeum-Cron). */
+    /** Deletes read notifications whose {@code gelesenAm} lies before the cutoff (cleanup cron). */
     @Transactional
     public int cleanupGelesenAelterAls(LocalDateTime cutoff) {
         List<Notification> alte = notificationRepository.findByGelesenAmIsNotNullAndGelesenAmBefore(cutoff);

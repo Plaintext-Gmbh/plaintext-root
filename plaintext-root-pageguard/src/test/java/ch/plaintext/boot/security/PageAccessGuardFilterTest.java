@@ -27,15 +27,15 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests fuer den {@link PageAccessGuardFilter} (Karte 308, H3).
+ * Tests for the {@link PageAccessGuardFilter} (card 308, H3).
  *
- * <p>Der wichtigste Nachweis steckt in {@link #postbackAufGesperrteSeiteErreichtDenServletNie()}:
- * der Guard hing vorher an {@code preRenderView} (RENDER_RESPONSE, Phase 6) und lief damit NACH
- * INVOKE_APPLICATION (Phase 5) — die Action-Methode einer gesperrten Seite war zum Zeitpunkt der
- * Pruefung also schon ausgefuehrt und ihre Schreiboperation committet. Ein Mockito-Verify auf die
- * Backing-Bean waere hier der falsche Nachweis: mit dem Filter erreicht die Anfrage die
- * JSF-Lifecycle gar nicht mehr, es gibt also keine Bean, die man beobachten koennte. Bewiesen wird
- * darum, dass die FilterChain nicht weiterlaeuft.
+ * <p>The most important proof sits in {@link #postbackAufGesperrteSeiteErreichtDenServletNie()}:
+ * the guard used to hang off {@code preRenderView} (RENDER_RESPONSE, phase 6) and therefore ran
+ * AFTER INVOKE_APPLICATION (phase 5) — by the time of the check, the action method of a blocked
+ * page had already been executed and its write operation committed. A Mockito verify on the
+ * backing bean would be the wrong proof here: with the filter in place the request never reaches
+ * the JSF lifecycle at all, so there is no bean one could observe. What is proven instead is that
+ * the filter chain does not continue.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -58,7 +58,7 @@ class PageAccessGuardFilterTest {
         return request;
     }
 
-    // ============================================================ erlaubt
+    // ============================================================ allowed
 
     @Test
     void erlaubteSeiteLaeuftWeiter() throws ServletException, IOException {
@@ -84,16 +84,16 @@ class PageAccessGuardFilterTest {
     @Test
     @DisplayName("Das /faces/*-Mapping des FacesServlet ist kein Weg um den Guard herum")
     void facesPraefixWirdNormalisiert() {
-        // joinfaces mappt das FacesServlet auch auf /faces/*. /faces/mandatemenu.xhtml rendert
-        // dieselbe View — ohne Normalisierung waere das eine View-Id ohne Menuetreffer und im
-        // Modus REPORT damit erlaubt.
+        // joinfaces also maps the FacesServlet to /faces/*. /faces/mandatemenu.xhtml renders the
+        // same view — without normalization that would be a view id without a menu match, and thus
+        // allowed in REPORT mode.
         assertEquals("/mandatemenu.xhtml", PageAccessGuardFilter.viewId("/faces/mandatemenu.xhtml"));
         assertEquals("/mandatemenu.xhtml", PageAccessGuardFilter.viewId("/faces/mandatemenu.html"));
-        // "facesXY" ist kein Praefix und darf nicht angeschnitten werden
+        // "facesXY" is not a prefix and must not be cut into
         assertEquals("/facesluft.xhtml", PageAccessGuardFilter.viewId("/facesluft.html"));
     }
 
-    // ============================================================ verweigert
+    // ============================================================ denied
 
     @Test
     void gesperrterGetLandetAufAccessDenied() throws ServletException, IOException {
@@ -145,7 +145,7 @@ class PageAccessGuardFilterTest {
         assertEquals("/app/access-denied.html", response.getRedirectedUrl());
     }
 
-    // ============================================================ nicht zustaendig
+    // ============================================================ not responsible
 
     @Test
     @DisplayName("JSF-Ressourcen werden nicht geprueft — sonst wuerde STRICT alle PrimeFaces-Assets sperren")

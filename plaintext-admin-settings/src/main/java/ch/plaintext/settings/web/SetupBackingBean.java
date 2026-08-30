@@ -65,8 +65,8 @@ public class SetupBackingBean implements Serializable {
     private boolean oidcAutoRedirectEnabled;
     private Long oidcAutoRedirectConfigId;
     private boolean passwordManagementEnabled = true;
-    // SECURITY (Karte 306): Vorbelegung fuer eine NEUE Setup-Konfiguration ist AUS; bestehende
-    // Konfigurationen ueberschreiben dies beim Laden (config.isRootUserEnabled()).
+    // SECURITY (card 306): the preset for a NEW setup configuration is OFF; existing
+    // configurations overwrite this while loading (config.isRootUserEnabled()).
     private boolean rootUserEnabled = false;
     private boolean selfRegistrationEnabled = false;
     private boolean passwordResetLinkEnabled = false;
@@ -74,11 +74,11 @@ public class SetupBackingBean implements Serializable {
     private boolean totpEnabled = false;
     private Long systemMailAccountId;
 
-    // Karte 627: Aufzeichnung der Sitzungsinformationen. Vorbelegung AN — eine Setup-Seite, die
-    // vor dem Laden „aus" anzeigt, wuerde beim Speichern still abschalten.
+    // Card 627: recording of the session information. Preset ON — a setup page that shows
+    // "off" before loading would silently switch it off on save.
     private boolean sessionTrackingEnabled = true;
 
-    /** Optional: von der App (plaintext-z-mailbox) geliefert; null, wenn die App/Mailbox nicht vorhanden ist. */
+    /** Optional: supplied by the app (plaintext-z-mailbox); null when the app/mailbox is not present. */
     @Autowired(required = false)
     private transient SystemMailSender systemMailSender;
 
@@ -95,9 +95,9 @@ public class SetupBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped statt @ViewScoped): setzt die Rolle, sperrt Nicht-ROOT aus
-     * (Redirect) und lädt die Daten FRISCH bei jedem Seitenaufruf (GET). Der isPostback-Guard verhindert
-     * das Neuladen bei jedem Ajax-Postback. Ersetzt das frühere @PostConstruct init() + checkAccess().
+     * preRenderView listener (session-scoped instead of @ViewScoped): sets the role, locks out non-ROOT
+     * (redirect) and loads the data FRESH on every page call (GET). The isPostback guard prevents
+     * the reload on every Ajax postback. Replaces the former @PostConstruct init() + checkAccess().
      */
     public void onLoad() {
         root = security.ifGranted("ROLE_ROOT");
@@ -310,9 +310,9 @@ public class SetupBackingBean implements Serializable {
     }
 
     /**
-     * Karte 627: Eigener Speicherpfad für den Sitzungs-Schalter. Bewusst nicht in
-     * {@link #saveLoginSettings()} mitgeführt — die Aufzeichnung ist kein Login-Verfahren, und ein
-     * gemeinsamer Knopf würde beide Bereiche aneinander binden.
+     * Card 627: a save path of its own for the session switch. Deliberately not carried along in
+     * {@link #saveLoginSettings()} — recording is not a login mechanism, and a shared button
+     * would tie the two areas to each other.
      */
     public void saveSessionSettings() {
         try {
@@ -327,7 +327,7 @@ public class SetupBackingBean implements Serializable {
         }
     }
 
-    /** Auswahl-Optionen der GLOBAL-Systemmailkonten (Wert = accountId); nur „Auswählen", wenn keines existiert. */
+    /** Selection options for the GLOBAL system mail accounts (value = accountId); only the "-- Auswählen --" placeholder when none exists. */
     public List<SelectItem> getSystemMailAccounts() {
         List<SelectItem> items = new ArrayList<>();
         items.add(new SelectItem(null, "-- Auswählen --"));
@@ -339,7 +339,7 @@ public class SetupBackingBean implements Serializable {
         return items;
     }
 
-    /** {@code true}, wenn mindestens ein GLOBAL-Systemmailkonto existiert (sonst Hinweis anzeigen). */
+    /** {@code true} when at least one GLOBAL system mail account exists (otherwise show a hint). */
     public boolean isSystemMailAccountAvailable() {
         return systemMailSender != null && !systemMailSender.listGlobalAccounts().isEmpty();
     }
@@ -352,8 +352,8 @@ public class SetupBackingBean implements Serializable {
     }
 
     private void refreshBrandingBean() {
-        // Seit die Bean im selben Modul liegt, braucht es die fruehere Reflection
-        // ueber den ApplicationContext nicht mehr.
+        // Since the bean lives in the same module, the former reflection
+        // via the ApplicationContext is no longer needed.
         try {
             brandingBean.refresh();
         } catch (RuntimeException e) {

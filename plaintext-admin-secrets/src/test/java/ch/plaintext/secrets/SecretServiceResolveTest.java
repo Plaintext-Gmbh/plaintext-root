@@ -23,12 +23,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Karte 388: Auflösung eines gepflegten Secrets zur Laufzeit über {@link SecretResolver}.
+ * Card 388: resolution of a managed secret at runtime via {@link SecretResolver}.
  *
- * <p>Hintergrund: Der {@code vault:}-Präfix in Properties wird beim Start aufgelöst und liest
- * ausschliesslich Vaultwarden. Für Backend {@code LOCAL_DB} ist das nicht nachrüstbar — beim Start gibt
- * es weder Datenbank noch Mandanten, und Secrets sind mandantengebunden. Deshalb diese
- * Request-Kontext-Auflösung.
+ * <p>Background: the {@code vault:} prefix in properties is resolved at startup and reads
+ * Vaultwarden exclusively. For the {@code LOCAL_DB} backend that cannot be retrofitted — at startup
+ * there is neither a database nor tenants, and secrets are tenant-bound. Hence this
+ * request-context resolution.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -84,11 +84,11 @@ class SecretServiceResolveTest {
     }
 
     /**
-     * Der eigentliche Grund, warum {@code resolve} den Backend-Typ des <b>Eintrags</b> auswertet und
-     * nicht {@code activeBackend()}: Letzteres ist nur die Vorgabe für neu angelegte Secrets. Nach einem
-     * Backend-Wechsel ohne Migration liegen die Werte weiter dort, wo sie angelegt wurden. Würde das
-     * aktive Backend befragt, lieferte die Auflösung hier stillschweigend nichts — und der Aufrufer
-     * fiele auf einen veralteten Property-Wert zurück, ohne dass es jemandem auffällt.
+     * The actual reason why {@code resolve} evaluates the backend type of the <b>entry</b> and not
+     * {@code activeBackend()}: the latter is only the default for newly created secrets. After a
+     * backend switch without migration the values still reside where they were created. If the
+     * active backend were asked, the resolution would silently return nothing here — and the caller
+     * would fall back to a stale property value without anyone noticing.
      */
     @Test
     void backendDesEintragsEntscheidet_nichtDasAktive() {
@@ -128,8 +128,8 @@ class SecretServiceResolveTest {
     }
 
     /**
-     * Ein nicht erreichbarer Tresor darf den Aufrufer nicht mitreissen: Der Download eines Skripts soll
-     * dann auf die konfigurierte Property zurückfallen, nicht mit einer Fehlerseite enden.
+     * An unreachable vault must not drag the caller down with it: the download of a script should
+     * then fall back to the configured property instead of ending with an error page.
      */
     @Test
     void backendFehler_wirdZuLeeremErgebnis() {
@@ -142,7 +142,7 @@ class SecretServiceResolveTest {
         }
     }
 
-    /** Ein leerer Wert ist so gut wie keiner — sonst überschriebe er den Fallback des Aufrufers. */
+    /** An empty value is as good as none — otherwise it would override the caller's fallback. */
     @Test
     void leererWert_giltAlsNichtVorhanden() {
         try (MockedStatic<PlaintextSecurityHolder> sec = mandat()) {

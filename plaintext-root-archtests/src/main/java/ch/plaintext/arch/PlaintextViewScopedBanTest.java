@@ -18,24 +18,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilter Quelltext-Guard gegen {@code jakarta.faces.view.ViewScoped} in ALLEN
- * {@code src/main/java} des jeweiligen Reactors.
+ * Shared source-code guard against {@code jakarta.faces.view.ViewScoped} in ALL
+ * {@code src/main/java} of the respective reactor.
  *
- * <p>Hintergrund: Die Backing-Beans wurden von {@code @ViewScoped} auf session-scoped umgestellt
- * ({@code @Component} + {@code @Scope("session")} + preRenderView-Listener {@code #{bean.onLoad()}} mit
- * {@code isPostback}-Guard). Diese Regel verhindert, dass die JSF-View-Scope-Annotation kuenftig wieder
- * eingefuehrt wird.
+ * <p>Background: the backing beans were migrated from {@code @ViewScoped} to session-scoped
+ * ({@code @Component} + {@code @Scope("session")} + preRenderView listener {@code #{bean.onLoad()}} with
+ * an {@code isPostback} guard). This rule prevents the JSF view-scope annotation from being
+ * reintroduced in the future.
  *
- * <p><b>Warum ein Quelltext-Scan statt (nur) ArchUnit?</b> Der ArchUnit-Bytecode-Scan in
- * {@link PlaintextArchitectureTest} ({@code keineViewScopedBeans}) sieht nur Klassen auf dem
- * Classpath. Reactor-Module, die an keiner webapp haengen (z. B. {@code plaintext-admin-requirements}
- * in root), laegen ausserhalb der ArchUnit-Abdeckung. Dieser Scan laeuft ab der Reactor-Wurzel ueber
- * JEDES Modul-{@code src/main/java} und schliesst diese Luecke. Javadoc-/Kommentar-Erwaehnungen werden
- * bewusst NICHT als Verstoss gewertet.
+ * <p><b>Why a source-code scan instead of (only) ArchUnit?</b> The ArchUnit bytecode scan in
+ * {@link PlaintextArchitectureTest} ({@code keineViewScopedBeans}) only sees classes on the
+ * classpath. Reactor modules that hang off no webapp (e.g. {@code plaintext-admin-requirements}
+ * in root) would lie outside the ArchUnit coverage. This scan runs from the reactor root over
+ * EVERY module's {@code src/main/java} and closes that gap. Mentions in Javadoc or comments are
+ * deliberately NOT counted as a violation.
  *
- * <p>Wie die anderen Klassen dieses Moduls liegt der Test in {@code src/main/java} von
- * {@code plaintext-root-archtests} und laeuft im Consumer via Surefire {@code <dependenciesToScan>}
- * gegen dessen Quelltext.
+ * <p>Like the other classes of this module the test lives in {@code src/main/java} of
+ * {@code plaintext-root-archtests} and runs inside a consumer via Surefire {@code <dependenciesToScan>}
+ * against that consumer's source code.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -48,11 +48,11 @@ class PlaintextViewScopedBanTest {
     private static final String SHORT_ANNOTATION = "@ViewScoped";
 
     /**
-     * Marker-Pfad der eigenen Linter-Quelle. Da dieser Test in {@code src/main/java} liegt, enthaelt
-     * er die Verbots-Tokens (z. B. {@code "@ViewScoped"}) selbst als String-Literale/Test-Fixtures.
-     * Der Quelltext-Scanner darf das Modul, das ihn ausliefert, deshalb NICHT scannen — sonst meldet
-     * er sich selbst. In Consumern liegt der Linter als Jar vor (nicht in {@code src/main/java}), dort
-     * greift diese Ausnahme nie und der komplette Consumer-Quelltext wird gescannt.
+     * Marker path of our own linter source. Since this test lives in {@code src/main/java}, it itself
+     * contains the forbidden tokens (e.g. {@code "@ViewScoped"}) as string literals / test fixtures.
+     * The source scanner must therefore NOT scan the module that ships it — otherwise it reports
+     * itself. In consumers the linter is present as a jar (not in {@code src/main/java}), where this
+     * exemption never applies and the complete consumer source code is scanned.
      */
     private static final String OWN_SOURCE_MARKER = "ch/plaintext/arch/PlaintextViewScopedBanTest.java";
 
@@ -110,8 +110,8 @@ class PlaintextViewScopedBanTest {
     }
 
     /**
-     * Scannt jede {@code *.java}-Datei unter {@code root} und meldet echte ViewScoped-Annotation-Nutzung
-     * (Import oder Annotation), aber KEINE Vorkommen in Zeilen-/Block-Kommentaren.
+     * Scans every {@code *.java} file below {@code root} and reports real use of the ViewScoped
+     * annotation (import or annotation), but NO occurrences in line or block comments.
      */
     static List<String> scanForViewScoped(Path root) throws IOException {
         List<String> hits = new ArrayList<>();
@@ -160,8 +160,8 @@ class PlaintextViewScopedBanTest {
     }
 
     /**
-     * Findet ab dem Arbeitsverzeichnis nach oben die Reactor-Wurzel und sammelt jedes
-     * {@code <modul>/src/main/java}. Faellt auf das eigene Modul zurueck, falls die Wurzel nicht gefunden wird.
+     * Walks upwards from the working directory to the reactor root and collects every
+     * {@code <modul>/src/main/java}. Falls back to our own module if the root is not found.
      */
     private static List<Path> findJavaSourceRoots() throws IOException {
         Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath();
@@ -187,16 +187,16 @@ class PlaintextViewScopedBanTest {
     }
 
     /**
-     * {@code true}, wenn {@code sourceRoot} das Modul ist, das diesen Linter ausliefert (enthaelt die
-     * eigene Quelldatei mit den Verbots-Tokens). Solche Roots werden vom Scan ausgenommen, damit der
-     * Linter sich nicht selbst meldet. Trifft nur in plaintext-root zu; in Consumern liegt der Linter
-     * als Jar vor und kein Quell-Root enthaelt diese Datei.
+     * {@code true} if {@code sourceRoot} is the module that ships this linter (it contains our own
+     * source file with the forbidden tokens). Such roots are excluded from the scan so that the
+     * linter does not report itself. Applies only in plaintext-root; in consumers the linter is
+     * present as a jar and no source root contains this file.
      */
     private static boolean shipsThisLinter(Path sourceRoot) {
         return Files.isRegularFile(sourceRoot.resolve(OWN_SOURCE_MARKER));
     }
 
-    /** Reactor-Wurzel = erstes Verzeichnis nach oben mit einer {@code pom.xml}, die {@code <modules>} enthaelt. */
+    /** Reactor root = first directory upwards with a {@code pom.xml} that contains {@code <modules>}. */
     private static Path findRepoRoot(Path start) throws IOException {
         Path dir = start;
         for (int i = 0; i < 8 && dir != null; i++) {

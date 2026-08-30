@@ -2,41 +2,41 @@
                 xmlns:ui="jakarta.faces.facelets"
                 xmlns:p="http://primefaces.org/ui">
     <!--
-      pt:table — eine p:dataTable mit den Hausvorgaben.
+      pt:table — a p:dataTable with the house defaults.
 
-      Der Bestand (Karte 984, gemessen ueber root und app): 113 handgebaute Tabellen, davon 45 mit
-      Paginator in vier verschiedenen rows-Werten, rowsPerPageTemplate in vier Varianten,
-      paginatorTemplate in fuenf, und 101 emptyMessage-Attribute mit 80 verschiedenen
-      Formulierungen. Nichts davon ist eine Entscheidung gewesen — es ist die jeweils
-      naechstliegende Kopiervorlage.
+      The existing code (card 984, measured across root and app): 113 hand built tables, 45 of them
+      with a paginator in four different rows values, rowsPerPageTemplate in four variants,
+      paginatorTemplate in five, and 101 emptyMessage attributes with 80 different
+      wordings. None of that was ever a decision — it is whichever copy template
+      happened to be nearest.
 
       ================================================================================
-      DIE ZEILENVARIABLE HEISST IMMER "row" — UND ZWAR NICHT AUS GESCHMACK.
+      THE ROW VARIABLE IS ALWAYS CALLED "row" — AND NOT OUT OF TASTE.
       ================================================================================
-      Ein durchgereichtes var="#{var}" ist technisch UNMOEGLICH, gemessen am 30.08.2026:
+      A passed through var="#{var}" is technically IMPOSSIBLE, measured on 30 August 2026:
 
           java.lang.IllegalArgumentException
             at jakarta.faces.component.UIData.setValueExpression(UIData.java:770)
 
-      UIData verbietet fuer "var" ausdruecklich eine ValueExpression — das Attribut MUSS ein
-      Literal sein. Sobald im Tag-File #{var} steht, legt Mojarra eine ValueExpression an, und die
-      Seite endet in HTTP 500. Die urspruengliche Analyse hat diesen Punkt nicht erwaehnt; er ist
-      hier durch einen echten Seitenabruf belegt und nicht durch Nachdenken.
+      UIData explicitly forbids a ValueExpression for "var" — the attribute MUST be a
+      literal. As soon as #{var} appears in the tag file, Mojarra creates a ValueExpression and the
+      page ends in HTTP 500. The original analysis did not mention this point; it is
+      documented here by a real page request and not by reasoning.
 
-      Folge fuer die Migration: Wer eine Tabelle auf pt:table umstellt, benennt ihre
-      Zeilenvariable auf "row" um — #{t.name} wird zu #{row.name}. Das ist mechanisch und
-      vollstaendig durch den Compiler bzw. den Seitenabruf pruefbar.
+      Consequence for the migration: whoever converts a table to pt:table renames its
+      row variable to "row" — #{t.name} becomes #{row.name}. That is mechanical and
+      fully verifiable by the compiler or by requesting the page.
 
-      WER DAS NICHT WILL, nimmt weiterhin eine handgebaute p:dataTable und trotzdem die
-      pt:col*-Tags: die brauchen kein var und funktionieren in jeder Tabelle. Der groessere Hebel
-      liegt ohnehin dort (rund 400 Spalten gegenueber 113 Tabellenkoepfen).
+      WHOEVER DOES NOT WANT THAT keeps a hand built p:dataTable and still uses the
+      pt:col* tags: those need no var and work in any table. The bigger lever
+      lies there anyway (around 400 columns against 113 table headers).
 
-      PFLICHT: value
+      REQUIRED: value
       OPTIONAL: id, emptyMessage, paginator, rows, rowsPerPageTemplate, styleClass, rowStyleClass,
                 rendered, widgetVar, reflow
 
-      Alle Vorgaben sind ueberschreibbar: Wer einen Grund hat, setzt das Attribut, und dann steht
-      der Grund an genau einer sichtbaren Stelle statt in der Kopie.
+      All defaults can be overridden: whoever has a reason sets the attribute, and then
+      the reason stands in exactly one visible place instead of in the copy.
     -->
     <p:dataTable id="#{empty id ? 'tbl' : id}"
                  value="#{value}"

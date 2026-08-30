@@ -22,8 +22,8 @@ import org.springframework.security.web.csrf.MissingCsrfTokenException;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Karte 385: Ein JSF-Ajax-Request darf nie eine Antwort bekommen, die die PrimeFaces-Ajax-Engine
- * nicht parsen kann — sonst dreht der Ladeindikator endlos.
+ * Card 385: a JSF Ajax request must never receive a response that the PrimeFaces Ajax engine
+ * cannot parse — otherwise the loading indicator spins forever.
  */
 class JsfAjaxAwareHandlersTest {
 
@@ -48,12 +48,12 @@ class JsfAjaxAwareHandlersTest {
 
     @Test
     void accessDeniedForAuthenticatedUserOnAjax_yieldsParsableErrorInsteadOfJson() throws Exception {
-        // Bewusst ein FRISCHER Kontext statt getContext().setAuthentication(...): laesst eine zuvor
-        // gelaufene Testklasse einen Mock-SecurityContext im Holder stehen, landet das
-        // setAuthentication auf dem Mock und verpufft — der Test saehe dann einen abgemeldeten
-        // Benutzer und schlaege fehl. Genau das ist am 02.08.2026 auf ubuntu-latest passiert
-        // (PlaintextSecurityImplExtendedTest raeumte nicht auf, Karte 426); dort ist die Ursache
-        // behoben, hier steht die Absicherung dagegen, dass es wieder jemand einschleppt.
+        // Deliberately a FRESH context instead of getContext().setAuthentication(...): if a previously
+        // executed test class leaves a mock SecurityContext in the holder, the
+        // setAuthentication lands on the mock and fizzles out — the test would then see a logged-out
+        // user and fail. Exactly that happened on 02.08.2026 on ubuntu-latest
+        // (PlaintextSecurityImplExtendedTest did not clean up, card 426); the cause is fixed there,
+        // here stands the safeguard against somebody dragging it back in.
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(
                 new UsernamePasswordAuthenticationToken("u", "p", AuthorityUtils.createAuthorityList("ROLE_USER")));
@@ -110,9 +110,9 @@ class JsfAjaxAwareHandlersTest {
     }
 
     /**
-     * Karte 385 (Manager-Review): Die Antwort ist jetzt HTTP 200 statt 403 — ohne eigenen
-     * Log-Eintrag waeren abgewiesene Requests und echte CSRF-Angriffsversuche unsichtbar.
-     * Der Eintrag muss die URI und den Grund nennen und darf kein Token enthalten.
+     * Card 385 (manager review): the response is now HTTP 200 instead of 403 — without a log
+     * entry of its own, rejected requests and real CSRF attack attempts would be invisible.
+     * The entry has to name the URI and the reason and must not contain a token.
      */
     @Test
     void csrfFailureOnAjax_wirdGeloggtOhneToken() throws Exception {
@@ -135,7 +135,7 @@ class JsfAjaxAwareHandlersTest {
         }
     }
 
-    /** Karte 385: Die abgelaufene Session ist der Normalfall — sichtbar, aber nur INFO. */
+    /** Card 385: the expired session is the normal case — visible, but only INFO. */
     @Test
     void entryPointOnAjax_wirdAufInfoGeloggt() throws Exception {
         ListAppender<ILoggingEvent> appender = attach(JsfAjaxAwareAuthenticationEntryPoint.class);

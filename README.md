@@ -1,6 +1,6 @@
 # Plaintext Root
 
-[![Build And Deploy](https://github.com/Plaintext-Gmbh/plaintext-root/actions/workflows/ci-cd.yaml/badge.svg)](https://github.com/Plaintext-Gmbh/plaintext-root/actions/workflows/ci-cd.yaml)
+[![Build Status](https://ci.plaintext.ch/api/badges/6/status.svg)](https://ci.plaintext.ch/repos/6)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 [![Java](https://img.shields.io/badge/Java-25-blue.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.x-green.svg)](https://spring.io/projects/spring-boot)
@@ -26,53 +26,80 @@
 ## Architecture
 
 ```mermaid
-graph TB
-    subgraph "Web Layer"
-        WEBAPP[plaintext-root-webapp<br/>Security, Login, Controllers]
-        WEB[plaintext-root-web<br/>URL rewrite, SecurityProvider, MenuBean]
-        PAGEGUARD[plaintext-root-pageguard<br/>Page Access Guard]
-        TEMPLATE[plaintext-root-template<br/>UI Template, CSS, JS]
+graph TD
+    subgraph app["Your application"]
+        APP[your-app-webapp]
     end
 
-    subgraph "Core Modules"
-        IFACE[plaintext-root-interfaces<br/>Shared Interfaces]
-        COMMON[plaintext-root-common<br/>Utilities]
-        JPA[plaintext-root-jpa<br/>Base Entities, Auditing]
-        MENU[plaintext-root-menu<br/>Menu Builder]
-        SECURITY[plaintext-root-menu-visibility<br/>Menu Visibility]
-        ROLES[plaintext-root-role-assignment<br/>Role Management]
-        FLYWAY[plaintext-root-flyway<br/>DB Migrations]
+    subgraph shell["Application shell"]
+        WEBAPP[plaintext-root-webapp<br/>Spring Security, login, REST]
+        TEMPLATE[plaintext-root-template<br/>UI template, CSS, JS]
     end
 
-    subgraph "Admin Modules"
-        ADMIN_SET[plaintext-admin-settings]
-        ADMIN_SES[plaintext-admin-sessions]
-        ADMIN_CRON[plaintext-admin-cron]
-        ADMIN_ANF[plaintext-admin-requirements]
-        ADMIN_MORE[plaintext-admin-*<br/>apitoken, i18n, oidc, secrets, modules,<br/>mailtemplate, webhooks, notifications]
+    subgraph infra["Infrastructure"]
+        WEB[plaintext-root-web<br/>URL rewrite, MenuBean]
+        PAGEGUARD[plaintext-root-pageguard<br/>per-view authorization]
+        VISIBILITY[plaintext-root-menu-visibility<br/>per-tenant menu config]
+        ROLES[plaintext-root-role-assignment]
+        JPA[plaintext-root-jpa<br/>SuperModel, auditing]
+        FLYWAY[plaintext-root-flyway<br/>framework migrations]
     end
+
+    subgraph admin["Admin modules — 12, each optional via &lt;exclusions&gt;"]
+        ADMIN[settings · sessions · cron · i18n · oidc<br/>apitoken · secrets · modules · mailtemplate<br/>webhooks · notifications · requirements]
+    end
+
+    subgraph core["Core"]
+        MENU[plaintext-root-menu<br/>annotation-driven menu]
+        COMMON[plaintext-root-common<br/>security SPI, utilities]
+        IFACE[plaintext-root-interfaces<br/>contracts only, no dependencies]
+    end
+
+    ARCH[plaintext-root-archtests<br/>shared ArchUnit rules]
+
+    APP --> WEBAPP
+    APP -.->|test scope| ARCH
 
     WEBAPP --> TEMPLATE
     WEBAPP --> WEB
     WEBAPP --> PAGEGUARD
-    WEBAPP --> IFACE
-    WEBAPP --> JPA
-    WEBAPP --> MENU
-    WEBAPP --> SECURITY
+    WEBAPP --> VISIBILITY
     WEBAPP --> ROLES
-    WEBAPP --> ADMIN_SET
-    WEBAPP --> ADMIN_SES
-    WEBAPP --> ADMIN_CRON
-    WEBAPP --> ADMIN_ANF
-    WEBAPP --> ADMIN_MORE
+    WEBAPP --> JPA
+    WEBAPP --> FLYWAY
+    WEBAPP --> ADMIN
+    WEBAPP --> COMMON
+    WEBAPP --> IFACE
 
     WEB --> MENU
     PAGEGUARD --> MENU
+    VISIBILITY --> MENU
+    ROLES --> MENU
+    JPA --> MENU
+    FLYWAY --> MENU
+    ADMIN --> MENU
+    ADMIN --> COMMON
+    ADMIN --> IFACE
+
     MENU --> IFACE
-    SECURITY --> IFACE
-    ROLES --> IFACE
-    JPA --> COMMON
+    COMMON --> IFACE
+    ARCH --> COMMON
 ```
+
+Every arrow is a direct Maven dependency, read off the `pom.xml` files. Three
+things are worth knowing:
+
+- **`plaintext-root-interfaces` has no dependencies at all.** It holds the
+  contracts (`PlaintextCron`, `SearchProvider`, `DeepLinkTarget`,
+  `IUploadTarget`, …) so that a module can implement one without pulling in the
+  framework.
+- **`plaintext-root-webapp` does not depend on `plaintext-root-menu` directly** —
+  it gets it through every module above it. The same is true for
+  `plaintext-admin-requirements`: it is a module of this repository, but the
+  webapp does not include it, so an application that wants it declares it
+  itself.
+- **`plaintext-root-template` has no dependencies either.** Swapping the UI shell
+  is a matter of replacing one jar.
 
 ## Module Overview
 
@@ -208,7 +235,7 @@ public class MyMenu extends MenuItemImpl {
     public MyMenu() {
         setTitle("My Feature");
         setParent("Admin");           // Parent menu item
-        setCommand("myfeature.xhtml"); // Target page
+        setCommand("myfeature.html"); // Target page
         setIcon("pi pi-star");         // PrimeIcons icon
         setOrder(100);                 // Sort order
         setRoles(List.of("ROLE_ADMIN")); // Required roles
@@ -406,3 +433,63 @@ the notable licenses among the Maven dependencies are listed in
 
 Please report security issues as described in [SECURITY.md](SECURITY.md) —
 not via public issues.
+
+---
+
+## Documentation
+
+Everything in this repository, grouped by what you are trying to do. Each page
+states when it was last checked against the code.
+
+### Evaluating the framework
+
+| Page | What it answers |
+|------|-----------------|
+| [Architecture](docs/ARCHITECTURE.md) | Modules and their real dependencies, multi-tenancy, request flow, data model, template system |
+| [Module reference](docs/MODULE_REFERENCE.md) | What each of the 24 modules contains and which classes matter |
+| [Architecture decisions](docs/adr/) | Why it is built this way — JSF over Spring MVC, discriminator-column tenancy, Maven multi-module over Spring Modulith, and five more |
+| [Changelog](CHANGELOG.md) | What changed per release |
+
+### Building an application on Plaintext Root
+
+| Page | What it answers |
+|------|-----------------|
+| [Getting started](docs/GETTING_STARTED.md) | Clone, build, run, and the first page |
+| [Menu system](docs/MENU_SYSTEM.md) | Declaring navigation with `@MenuAnnotation` — including why links end in `.html` |
+| [Page access guard](docs/security/PAGE_ACCESS_GUARD.md) | Per-view authorization derived from the menu; `REPORT` vs `STRICT` |
+| [Role registry](docs/ROLE_REGISTRY.md) | How a module declares its roles and who may assign them |
+| [Deep links](docs/DEEPLINKS.md) | Opening one record straight from an e-mail, without weakening the login |
+| [Optional modules](docs/OPTIONAL_MODULES.md) | Removing admin modules you do not want, with Maven `<exclusions>` |
+| [German terms](docs/GERMAN_TERMS.md) | Glossary for the German names that remain in packages, classes and tables |
+
+### Contributing to the framework
+
+| Page | What it answers |
+|------|-----------------|
+| [Contributing guide](CONTRIBUTING.md) | Build, test, code style, pull request process |
+| [CI pipeline](docs/CI.md) | What runs on a pull request and on `master`, and why this repository is release-only |
+| [Setting up Woodpecker](docs/ci/WOODPECKER_SETUP.md) | Runbook for wiring a repository to `ci.plaintext.ch`, with the pitfalls that cost us a day |
+| [Flyway migrations](docs/FLYWAY_MIGRATIONS.md) | Naming, PostgreSQL-only rules, and the embedded test database |
+
+### Running it
+
+| Page | What it answers |
+|------|-----------------|
+| [Prometheus and Grafana](docs/operator/PROMETHEUS.md) | Metrics endpoint and a starter dashboard |
+| [Two-factor authentication](docs/security/TOTP_2FA.md) | TOTP: opt-in, off by default |
+| [Login paths](docs/security/LOGIN_PATHS.md) | The supported ways in — and the two that were removed, with the reasoning |
+| [Security policy](SECURITY.md) | Reporting a vulnerability |
+
+### Known gaps
+
+Honest list of what a newcomer will look for and not find yet:
+
+- **"My first application on top of the framework"** — the parent POM, the one
+  dependency, the minimal `application.yml`. Today this is spread across
+  [Getting started](docs/GETTING_STARTED.md) and
+  [ADR 0006](docs/adr/0006-releases-und-konsumenten-pins.md).
+- **A configuration reference.** Every `plaintext.*` property in one table.
+  They are currently documented where the feature is documented, and a few only
+  in the changelog.
+- **An upgrade guide.** The minor version is not SemVer; what a consumer has to
+  check when bumping is not written down anywhere.

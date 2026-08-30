@@ -28,20 +28,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Vertragstest zur Transaktionsklammer des Event-Listeners (Sonar java:S2229, Karte 891).
+ * Contract test for the transaction boundary of the event listener (Sonar java:S2229, card 891).
  *
- * <p><b>Der Fehler hatte zwei Lagen.</b> Erstens erreichte {@code onDomainEvent} das
- * {@code @Transactional} von {@code dispatch} per Selbstaufruf — der geht am Spring-Proxy vorbei.
- * Zweitens, und schwerer wiegend: der Listener läuft mit {@code AFTER_COMMIT}. Die auslösende
- * Transaktion ist dort zwar noch an den Thread gebunden, aber bereits abgeschlossen — wer sich ihr
- * anschliesst, schreibt in etwas, das nicht mehr committet wird. Ein blosses {@code @Transactional}
- * an der äusseren Methode wäre deshalb keine Behebung, sondern ein Startfehler: Spring lässt an
- * einem {@code @TransactionalEventListener} nur {@code REQUIRES_NEW} oder {@code NOT_SUPPORTED} zu
- * und bricht den Kontextaufbau bei jeder anderen Propagation ab.</p>
+ * <p><b>The bug had two layers.</b> First, {@code onDomainEvent} reached the
+ * {@code @Transactional} of {@code dispatch} via self-invocation — which bypasses the Spring proxy.
+ * Second, and more seriously: the listener runs with {@code AFTER_COMMIT}. There the triggering
+ * transaction is still bound to the thread, but is already completed — whoever joins it writes into
+ * something that is no longer committed. A mere {@code @Transactional} on the outer method would
+ * therefore not be a fix but a startup error: on a {@code @TransactionalEventListener} Spring only
+ * permits {@code REQUIRES_NEW} or {@code NOT_SUPPORTED} and aborts the context startup for every
+ * other propagation.</p>
  *
- * <p>Der Test prüft daher nicht nur <em>dass</em> eine Transaktion angefordert wird, sondern
- * <em>mit welcher Propagation</em> — genau die Unterscheidung, an der die Behebung hängt. Er ist
- * die Kontrolle gegen ein späteres, gut gemeintes Vereinheitlichen der Annotationen.</p>
+ * <p>The test therefore checks not only <em>that</em> a transaction is requested, but <em>with which
+ * propagation</em> — exactly the distinction the fix hinges on. It is the safeguard against a later,
+ * well-meant unification of the annotations.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -105,27 +105,28 @@ class TransaktionsklammerVertragTest {
                     new PlaintextDomainEvent("rechnung.created", "Rechnung", "42", "m1", Map.of("betrag", "100")));
         }
 
-        // Die Transaktionsaussage steht ZUERST: sie ist der Gegenstand des Befundes. Ein Irrtum in
-        // der Fachzählung darunter darf sie nicht ungeprüft lassen (genau das ist beim ersten Lauf
-        // dieses Tests passiert — er brach an der Fachzahl ab, bevor er die Klammer gemessen hatte).
+        // The transaction assertion comes FIRST: it is the subject of the finding. A mistake in the
+        // business-level counting below must not leave it unchecked (exactly that happened on the
+        // first run of this test — it aborted on the business count before it had measured the
+        // bracket).
         ArgumentCaptor<TransactionDefinition> def = ArgumentCaptor.forClass(TransactionDefinition.class);
         verify(txManager, times(1)).getTransaction(def.capture());
         assertThat(def.getValue().getPropagationBehavior())
                 .as("nach AFTER_COMMIT ist die alte Transaktion abgeschlossen — nur eine EIGENE wird noch committet")
                 .isEqualTo(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
-        // Beide Endpoints wurden bedient — die Messung greift also überhaupt auf den Fachweg zu.
-        // Je Endpoint schreibt dispatch() ZWEIMAL: einmal die angelegte Delivery, einmal deren
-        // Ergebnis nach dem Zustellversuch. Der Zustellversuch selbst ist die eindeutigere Zahl.
+        // Both endpoints were served — so the measurement really does reach the business path.
+        // Per endpoint dispatch() writes TWICE: once the created delivery, once its result after
+        // the delivery attempt. The delivery attempt itself is the more unambiguous number.
         verify(httpClient, times(2)).post(any(), any(), any());
         verify(deliveryRepo, times(4)).save(any());
     }
 
     @Test
     void ohneAbonnierteEndpointsWirdKeineArbeitAngefangen() {
-        // Negativprobe zur Messung oben: findet der Listener nichts zu tun, darf zwar die Klammer
-        // aufgehen (sie steht an der Methode), aber keine Delivery entstehen. Ohne diese Probe
-        // wäre nicht auszuschliessen, dass die 2 oben aus einer anderen Quelle stammt.
+        // Negative control for the measurement above: if the listener finds nothing to do, the
+        // bracket may open (it sits on the method), but no delivery must be created. Without this
+        // control it could not be ruled out that the 2 above comes from another source.
         when(endpointRepo.findByMandatAndEnabledTrueAndDeletedFalse("m1")).thenReturn(List.of());
 
         try (AnnotationConfigApplicationContext ctx = kontext()) {

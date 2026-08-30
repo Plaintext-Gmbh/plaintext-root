@@ -13,14 +13,14 @@ import java.util.Optional;
 
 public interface RegistrationTokenRepository extends JpaRepository<RegistrationToken, Long> {
 
-    // SECURITY (Karte 307, K2.3): Lookup nur ueber den SHA-256-Hash; der Klartext-Token existiert nur
-    // im E-Mail-Link, nie in der DB.
+    // SECURITY (card 307, K2.3): lookup only via the SHA-256 hash; the clear-text token exists only
+    // in the e-mail link, never in the DB.
     Optional<RegistrationToken> findByTokenHash(String tokenHash);
 
     /**
-     * Loest einen Token atomar ein (bedingtes UPDATE) — verhindert TOCTOU-Races.
+     * Redeems a token atomically (conditional UPDATE) — prevents TOCTOU races.
      *
-     * @return Anzahl aktualisierter Zeilen (1 = erfolgreich, 0 = ungueltig/abgelaufen/verwendet)
+     * @return number of updated rows (1 = success, 0 = invalid/expired/used)
      */
     @Modifying
     @Query("UPDATE RegistrationToken t SET t.consumedAt = :now " +

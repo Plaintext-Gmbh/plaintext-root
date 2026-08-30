@@ -18,7 +18,7 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 
 /**
- * Mandat und Auditing provider, als Mapped Superclass
+ * Mandat and auditing provider, as a mapped superclass
  *
  * @author Plaintext GmbH
  * @since 2017
@@ -30,25 +30,26 @@ import java.util.*;
 public class SuperModel implements XstreamStorable {
 
     /**
-     * Die Id kommt von der Datenbank (Identity-Spalte).
+     * The id comes from the database (identity column).
      *
-     * <p><b>Karte 687:</b> Hier stand bis zum 12.08.2026 ein eigener Generator
-     * {@code UseExistingIdOtherwiseGenerateUsingIdentity}, der zwei Dinge versprach: eine bereits
-     * gesetzte Id durchzureichen und andernfalls über {@code RepoMaster} die nächste zu holen. Er
-     * hat seit dem Hibernate-7-Umstieg <b>keines von beiden</b> geleistet: seine Methode
-     * {@code generate(SharedSessionContractImplementor, Object)} überschrieb nichts —
-     * {@code org.hibernate.id.IdentityGenerator} ist über {@code PostInsertIdentifierGenerator}
-     * ein {@code OnExecutionGenerator} und kennt die Methode gar nicht, und die einzige Stelle mit
-     * diesem Namen ({@code IdentifierGenerator}) hat eine andere Signatur (Rückgabe {@code Object}).
-     * Weil {@code @Override} fehlte, fiel das beim Upgrade nicht als Compilerfehler auf.
+     * <p><b>Karte 687:</b> until 12.08.2026 a custom generator
+     * {@code UseExistingIdOtherwiseGenerateUsingIdentity} stood here, promising two things: to pass
+     * an already set id through and otherwise to fetch the next one via {@code RepoMaster}. Since
+     * the move to Hibernate 7 it delivered <b>neither of the two</b>: its method
+     * {@code generate(SharedSessionContractImplementor, Object)} overrode nothing —
+     * {@code org.hibernate.id.IdentityGenerator} is an {@code OnExecutionGenerator} by way of
+     * {@code PostInsertIdentifierGenerator} and does not know the method at all, and the only place
+     * with that name ({@code IdentifierGenerator}) has a different signature (returning
+     * {@code Object}). Because {@code @Override} was missing, this did not surface as a compiler
+     * error during the upgrade.
      *
-     * <p>Gelaufen ist die ganze Zeit die geerbte IDENTITY-Strategie. Genau die steht jetzt hier —
-     * die Zeile beschreibt also, was ohnehin passiert, statt etwas anderes zu versprechen.
+     * <p>What ran all along was the inherited IDENTITY strategy. That is exactly what stands here
+     * now — so the line describes what happens anyway instead of promising something else.
      *
-     * <p><b>Wer eine Id vorgeben will, kann das hier nicht.</b> Der Weg dafür ist ein
-     * {@code @Id}-Feld <i>ohne</i> {@code @GeneratedValue} an der eigenen Entity — so machen es die
-     * Singleton-Konfigurationszeilen {@code MessengerConfig} (app) und {@code SchuetuMysqlConfig}
-     * (schuetu), die deshalb bewusst nicht von {@code SuperModel} erben.
+     * <p><b>Whoever wants to supply an id cannot do it here.</b> The way to do that is an
+     * {@code @Id} field <i>without</i> {@code @GeneratedValue} on one's own entity — that is how
+     * the singleton configuration rows {@code MessengerConfig} (app) and {@code SchuetuMysqlConfig}
+     * (schuetu) do it, which is why they deliberately do not extend {@code SuperModel}.
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -94,7 +95,7 @@ public class SuperModel implements XstreamStorable {
         return new ArrayList<>(all);
     }
 
-    // fuer Emad Form
+    // for the Emad form
     public List<Field> getFieldsOhneSuper() {
         List<Field> privateFields = new ArrayList<>();
         Field[] allFields = this.getClass().getDeclaredFields();

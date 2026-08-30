@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integration test verifying that all Flyway migrations run successfully
- * against a real PostgreSQL database (eingebettet, siehe EmbeddedPg).
+ * against a real PostgreSQL database (embedded, see EmbeddedPg).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")

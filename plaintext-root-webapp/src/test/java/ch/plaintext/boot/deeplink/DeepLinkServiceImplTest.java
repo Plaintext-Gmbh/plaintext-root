@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Registry und Link-Bau (Karte 345). */
+/** Registry and link building (card 345). */
 class DeepLinkServiceImplTest {
 
     private record Ziel(String type, String view, String param) implements DeepLinkTarget {
@@ -58,9 +58,9 @@ class DeepLinkServiceImplTest {
     @Test
     @DisplayName("Mehrfache Schraegstriche am Ende der Basis-URL werden alle entfernt (Karte 458)")
     void mehrfacheEndSchraegstriche() {
-        // Karte 458 (java:S5852): Das frühere replaceAll("/+$", "") wurde durch eine lineare
-        // Schleife ersetzt. Dieser Test hält fest, dass sich das Verhalten dabei nicht ändert —
-        // und deckt gerade den Fall ab, der den Regex ins Backtracking getrieben hätte.
+        // Card 458 (java:S5852): the earlier replaceAll("/+$", "") was replaced by a linear
+        // loop. This test records that the behaviour does not change in the process —
+        // and covers precisely the case that would have driven the regex into backtracking.
         DeepLinkService s = service("https://example.com/////", new Ziel("auszahlung", "auszahlungen.html", "id"));
 
         assertEquals("https://example.com/deeplink?type=auszahlung&mandat=alpha&id=42",

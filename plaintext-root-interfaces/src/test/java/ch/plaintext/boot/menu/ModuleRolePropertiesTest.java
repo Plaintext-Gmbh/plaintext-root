@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Kanonisierung der Modul-Rollen-Konfiguration. */
+/** Canonicalization of the module role configuration. */
 class ModuleRolePropertiesTest {
 
     private static ModuleRoleProperties mit(Map<String, String> werte) {

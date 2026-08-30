@@ -17,9 +17,9 @@ public interface PlaintextCron {
      * Indicates whether this cron job runs globally (once) or per mandate.
      *
      * @return true if the job should run once globally, false if it should run per mandate
-     * @deprecated seit Task 005 (Cron-Scopes vereinheitlicht) — {@link #getScope()} überschreiben
-     *             statt {@code isGlobal()}. Bleibt aus Abwärtskompatibilität bestehen: das
-     *             Default-Mapping in {@link #getScope()} liest diesen Wert weiterhin.
+     * @deprecated since Task 005 (cron scopes unified) — override {@link #getScope()} instead of
+     *             {@code isGlobal()}. Kept for backwards compatibility: the default mapping in
+     *             {@link #getScope()} still reads this value.
      */
     @Deprecated
     default boolean isGlobal() {
@@ -27,17 +27,16 @@ public interface PlaintextCron {
     }
 
     /**
-     * Vereinheitlichung mit dem internen Event-Bus ({@code ch.plaintext.bus}): dasselbe
-     * {@link ExecutionScope}-Enum wie Bus-Events/-Subscriber. Bestimmt, wie {@code run(...)}
-     * aufgerufen wird: {@link ExecutionScope#APPLICATION}/{@link ExecutionScope#MANDAT} rufen
-     * {@link #run(String)} auf (genau einmal global bzw. einmal je Mandant); Implementierungen mit
-     * {@link ExecutionScope#PERSOENLICH} werden stattdessen einmal je aktivem Benutzer des
-     * Mandanten über {@link #run(String, String)} aufgerufen — solche Implementierungen MÜSSEN
-     * diesen Overload überschreiben.
+     * Unification with the internal event bus ({@code ch.plaintext.bus}): the same
+     * {@link ExecutionScope} enum as bus events and subscribers. It determines how
+     * {@code run(...)} is called: {@link ExecutionScope#APPLICATION}/{@link ExecutionScope#MANDAT}
+     * call {@link #run(String)} (exactly once globally, or once per tenant); implementations with
+     * {@link ExecutionScope#PERSOENLICH} are instead called once per active user of the tenant via
+     * {@link #run(String, String)} — such implementations MUST override that overload.
      *
-     * @return {@link ExecutionScope#APPLICATION}, falls {@link #isGlobal()}, sonst
-     *         {@link ExecutionScope#MANDAT} (Default-Mapping; neue Crons überschreiben stattdessen
-     *         direkt {@code getScope()})
+     * @return {@link ExecutionScope#APPLICATION} if {@link #isGlobal()}, otherwise
+     *         {@link ExecutionScope#MANDAT} (default mapping; new cron jobs override
+     *         {@code getScope()} directly instead)
      */
     @SuppressWarnings("deprecation")
     default ExecutionScope getScope() {
@@ -72,14 +71,14 @@ public interface PlaintextCron {
     void run(String mandant);
 
     /**
-     * Nur für {@link ExecutionScope#PERSOENLICH} relevant — wird einmal je aktivem Benutzer des
-     * Mandanten aufgerufen (Kontext: Mandant UND Benutzer gesetzt). Default delegiert auf
-     * {@link #run(String)} (ignoriert {@code userId}) — Implementierungen mit Scope
-     * {@code PERSOENLICH} MÜSSEN das überschreiben, sonst läuft die Logik pro Benutzer mehrfach
-     * identisch (ohne Benutzerbezug).
+     * Only relevant for {@link ExecutionScope#PERSOENLICH} — called once per active user of the
+     * tenant (context: tenant AND user set). The default delegates to {@link #run(String)}
+     * (ignoring {@code userId}) — implementations with scope {@code PERSOENLICH} MUST override it,
+     * otherwise the logic runs identically several times, once per user and without any user
+     * reference.
      *
-     * @param mandant der Mandant
-     * @param userId  der Benutzer, für den dieser Lauf ausgeführt wird
+     * @param mandant the tenant
+     * @param userId  the user this run is executed for
      */
     default void run(String mandant, String userId) {
         run(mandant);

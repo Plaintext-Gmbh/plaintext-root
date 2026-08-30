@@ -20,9 +20,9 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Backing-Bean für {@code webhooks.xhtml}: Endpoint-CRUD, Test-Ping, Delivery-Log je Endpoint.
- * Das Signing-Secret wird nach Anlage/Rotation einmalig im Klartext angezeigt ({@link #newSecret},
- * Muster wie {@code ApiTokenBackingBean}) und danach nie wieder ausgelesen.
+ * Backing Bean for {@code webhooks.xhtml}: endpoint CRUD, test ping, delivery log per endpoint.
+ * After creation/rotation the signing secret is shown in plain text exactly once ({@link #newSecret},
+ * same pattern as {@code ApiTokenBackingBean}) and never read out again afterwards.
  */
 @Component("webhookBean")
 @Scope("session")
@@ -37,14 +37,14 @@ public class WebhookBackingBean implements Serializable {
     private List<WebhookDelivery> deliveries;
     private WebhookEndpoint logEndpoint;
 
-    // Formular: Endpoint anlegen/ändern
+    // Form: create/edit endpoint
     private Long editId;
     private String name;
     private String url;
     private boolean enabled = true;
     private String eventTypes;
 
-    /** Klartext-Secret nach Anlage/Rotation — nur einmal sichtbar. */
+    /** Plain-text secret after creation/rotation — visible only once. */
     private String newSecret;
     private String newSecretEndpointName;
 
@@ -57,7 +57,7 @@ public class WebhookBackingBean implements Serializable {
         endpoints = endpointService.findAll(PlaintextSecurityHolder.getMandat());
     }
 
-    /** Bekannte Event-Typen (MVP-Katalog) als Hilfetext für das Formular. */
+    /** Known event types (MVP catalogue) as help text for the form. */
     public String getBekannteEventTypes() {
         return "rechnung.created, rechnung.status_changed, member.created, "
                 + "event.anmeldung.created, event.zahlung.updated";
@@ -170,8 +170,8 @@ public class WebhookBackingBean implements Serializable {
         if (eventTypes == null) {
             return "";
         }
-        // Karte 458 (java:S5852): '\\s*,\\s*' kann bei langen Eingaben aus dem UI-Feld in
-        // quadratisches Backtracking laufen. Trennen am Komma und einzeln trimmen ist linear.
+        // Card 458 (java:S5852): with long inputs from the UI field, '\\s*,\\s*' can run into
+        // quadratic backtracking. Splitting on the comma and trimming each part is linear.
         return java.util.Arrays.stream(eventTypes.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())

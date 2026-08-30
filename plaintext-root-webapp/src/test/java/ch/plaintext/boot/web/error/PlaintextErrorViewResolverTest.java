@@ -17,14 +17,14 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Karte 406: Ein unbekannter Pfad soll auf die Startseite fuehren statt auf die
- * Whitelabel-Errorpage — aber nur dort, wo das keine Fehler verdeckt.
+ * Card 406: an unknown path shall lead to the start page instead of to the
+ * whitelabel error page — but only where that hides no defects.
  */
 class PlaintextErrorViewResolverTest {
 
     private final PlaintextErrorViewResolver resolver = new PlaintextErrorViewResolver();
 
-    /** Fehler-Forward: getRequestURI() zeigt auf /error, der echte Pfad steht im Attribut. */
+    /** Error forward: getRequestURI() points to /error, the real path stands in the attribute. */
     private static MockHttpServletRequest fehlerRequest(String urspruenglicherPfad) {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/error");
         request.setAttribute(RequestDispatcher.ERROR_REQUEST_URI, urspruenglicherPfad);
@@ -94,8 +94,8 @@ class PlaintextErrorViewResolverTest {
 
     @Test
     void aehnlicherPraefix_wirdNichtVersehentlichAusgenommen() {
-        // "/apitest" faengt zwar mit "/api" an, aber nicht mit "/api/" — es ist eine
-        // gewoehnliche Seite und muss umgeleitet werden.
+        // "/apitest" does start with "/api", but not with "/api/" — it is an
+        // ordinary page and has to be redirected.
         assertTrue(resolver.istUmleitbar("/apitest"));
         assertTrue(resolver.istUmleitbar("/javascript-kurs"));
     }

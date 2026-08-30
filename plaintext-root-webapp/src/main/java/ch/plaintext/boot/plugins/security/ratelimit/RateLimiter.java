@@ -14,17 +14,17 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RateLimiter {
 
     /**
-     * Default-Obergrenze fuer die Anzahl gleichzeitig gehaltener Buckets.
-     * SECURITY (Karte 303, Befund 2, Zusatz): Ohne Deckel konnte ein Angreifer mit vielen
-     * verschiedenen Schluesseln die Map unbegrenzt wachsen lassen (Speicher-DoS), weil das
-     * Cleanup nur alle 5 Minuten laeuft.
+     * Default upper limit for the number of buckets held simultaneously.
+     * SECURITY (card 303, finding 2, addendum): without a cap an attacker with many
+     * different keys could make the map grow without bound (memory DoS), because the
+     * cleanup only runs every 5 minutes.
      */
     public static final int DEFAULT_MAX_BUCKETS = 50_000;
 
     /**
-     * Sammel-Schluessel, sobald der Deckel erreicht ist. Neue Schluessel bekommen keinen eigenen
-     * Bucket mehr, sondern teilen sich diesen einen — der Flood bremst damit sich selbst aus,
-     * waehrend bereits bekannte (legitime) Schluessel ihren eigenen Bucket behalten.
+     * Collective key, once the cap is reached. New keys no longer get a bucket of their
+     * own but share this single one — the flood thereby throttles itself,
+     * while already known (legitimate) keys keep their own bucket.
      */
     static final String OVERFLOW_KEY = "__overflow__";
 
@@ -68,9 +68,9 @@ public class RateLimiter {
     }
 
     /**
-     * Gibt ein zuvor verbrauchtes Token zurueck (maximal bis zur Kapazitaet).
-     * Wird fuer Login-Versuche benutzt, die sich nachtraeglich als erfolgreich herausstellen:
-     * das Limit soll Rateversuche bremsen, nicht echte Anmeldungen.
+     * Returns a previously consumed token (at most up to the capacity).
+     * Used for login attempts that turn out to be successful after the fact:
+     * the limit is meant to slow down guessing attempts, not real logins.
      */
     public void refund(String key) {
         TokenBucket bucket = buckets.get(key);

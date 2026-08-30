@@ -11,12 +11,12 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Karte 437: Der MCP-Bearer-Filter darf keine JPA-Session an einen langlebigen Request binden.
+ * Card 437: the MCP bearer filter must not bind a JPA session to a long-lived request.
  *
- * <p>Die Tests halten beides fest: dass der gespeicherte Rollenwert korrekt zerlegt wird, und —
- * wichtiger — dass die Klasse <b>kein</b> JPA-Repository mehr benutzt. Genau die Abhängigkeit war
- * die Ursache: Mit {@code open-in-view=true} bindet der erste JPA-Zugriff im Filter einen
- * EntityManager an den Request, und bei einer MCP-Sitzung bleibt der über Stunden offen.
+ * <p>The tests record both: that the stored role value is decomposed correctly, and — more
+ * importantly — that the class no longer uses a JPA repository. Exactly that dependency was
+ * the cause: with {@code open-in-view=true} the first JPA access in the filter binds an
+ * EntityManager to the request, and in an MCP session it stays open for hours.
  */
 class McpUserRolesImplTest {
 
@@ -43,8 +43,8 @@ class McpUserRolesImplTest {
     }
 
     /**
-     * Der eigentliche Regressionsschutz. Käme das Repository zurück, wäre auch der
-     * Connection-Leak zurück — und zwar unsichtbar, weil sich fachlich nichts ändert.
+     * The actual regression protection. If the repository came back, the connection leak would be
+     * back as well — and invisibly so, because nothing changes functionally.
      */
     @Test
     void klasseHaengtNichtMehrAnJpa() {

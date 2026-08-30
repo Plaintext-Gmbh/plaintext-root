@@ -33,10 +33,10 @@ import java.util.stream.Collectors;
 public class MyUserInfoBackingBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // Konstruktor-Injektion statt Field-Injection (Sonar S6813): Lomboks @RequiredArgsConstructor
-    // (aus @Data) erzeugt aus den final-Feldern den Injektions-Konstruktor. Alle injizierten
-    // Framework-Beans sind transient (Sonar S1948) – sie sind Singletons und nicht Teil des
-    // serialisierbaren Session-Zustands dieser Bean.
+    // Constructor injection instead of field injection (Sonar S6813): Lombok's @RequiredArgsConstructor
+    // (from @Data) builds the injection constructor from the final fields. All injected
+    // framework beans are transient (Sonar S1948) – they are singletons and not part of the
+    // serializable session state of this bean.
     private final transient MyUserRepository userRepository;
     private final transient PlaintextSecurity plaintextSecurity;
     private final transient ISetupConfigService setupConfigService;
@@ -46,10 +46,10 @@ public class MyUserInfoBackingBean implements Serializable {
     private final transient MagicLinkService magicLinkService;
 
     /**
-     * SECURITY (Karte 314, Punkt 7): zentrale {@link PasswordEncoder}-Bean statt eines lokalen
-     * {@code new BCryptPasswordEncoder()}. Der lokale Aufruf haette den Spring-Default-Kostenfaktor
-     * 10 behalten, waehrend die Bean in {@code PlaintextSecurityConfig} auf 12 steht — die
-     * Kostenfaktoren waeren also je nach Codepfad auseinandergedriftet.
+     * SECURITY (card 314, item 7): the central {@link PasswordEncoder} bean instead of a local
+     * {@code new BCryptPasswordEncoder()}. The local call would have kept the Spring default cost
+     * factor 10, while the bean in {@code PlaintextSecurityConfig} stands at 12 — the
+     * cost factors would therefore have drifted apart depending on the code path.
      */
     private final transient PasswordEncoder passwordEncoder;
 
@@ -62,15 +62,15 @@ public class MyUserInfoBackingBean implements Serializable {
     private String confirmPassword;
 
     // === TOTP / 2FA self-service state ===
-    /** Waehrend der Einrichtung gehaltenes (noch nicht aktiviertes) Secret. */
+    /** Secret held during the setup (not activated yet). */
     private String totpSetupSecret;
-    /** Data-URI des QR-Codes fuer die Einrichtung. */
+    /** Data URI of the QR code for the setup. */
     private String totpQrCodeDataUri;
-    /** Vom User eingegebener Bestaetigungscode. */
+    /** Confirmation code entered by the user. */
     private String totpConfirmationCode;
-    /** Passwort zur Bestaetigung beim Deaktivieren. */
+    /** Password for confirmation when deactivating. */
     private String totpDisablePassword;
-    /** Einmalig angezeigte Klartext-Recovery-Codes (nur direkt nach Aktivierung). */
+    /** Plaintext recovery codes shown once (only directly after activation). */
     private List<String> generatedRecoveryCodes = new ArrayList<>();
 
     public String getUsername() {
@@ -200,7 +200,7 @@ public class MyUserInfoBackingBean implements Serializable {
     }
 
     /**
-     * Generiert und versendet einen Magic-Link an die E-Mail-Adresse des eingeloggten Users.
+     * Generates a magic link and sends it to the e-mail address of the logged-in user.
      */
     public void sendMagicLinkToSelf() {
         FacesContext context = FacesContext.getCurrentInstance();
@@ -295,7 +295,7 @@ public class MyUserInfoBackingBean implements Serializable {
 
         // Update password
         user.setPassword(passwordEncoder.encode(newPassword));
-        // Karte 306: ein evtl. erzwungener Wechsel (Root-Initialpasswort) ist hiermit erledigt.
+        // Card 306: a possibly forced change (root initial password) is hereby done.
         user.setMustChangePassword(false);
         userRepository.save(user);
 
@@ -309,12 +309,12 @@ public class MyUserInfoBackingBean implements Serializable {
     }
 
     // ===================================================================================
-    // TOTP / Zwei-Faktor-Authentifizierung (Self-Service)
-    // Nur sichtbar/aktiv, wenn plaintext.security.totp.enabled=true UND der User nicht
-    // passwordless (OIDC-only) ist.
+    // TOTP / two-factor authentication (self-service)
+    // Only visible/active if plaintext.security.totp.enabled=true AND the user is not
+    // passwordless (OIDC only).
     // ===================================================================================
 
-    /** Ob der 2FA-Bereich ueberhaupt angezeigt werden soll (Feature an + lokaler User). */
+    /** Whether the 2FA section should be displayed at all (feature on + local user). */
     public boolean isTotpFeatureAvailable() {
         if (securityProperties == null || !securityProperties.getTotp().isEnabled()) {
             return false;
@@ -323,15 +323,15 @@ public class MyUserInfoBackingBean implements Serializable {
         return user != null && !user.isPasswordless();
     }
 
-    /** Ob der aktuelle User 2FA aktiviert hat. */
+    /** Whether the current user has 2FA activated. */
     public boolean isTotpEnabled() {
         MyUserEntity user = currentUserOrNull();
         return user != null && user.isTotpEnabled();
     }
 
     /**
-     * Startet die Einrichtung: generiert ein frisches Secret + QR-Code. Aktiviert 2FA
-     * noch NICHT (erst nach Code-Bestaetigung), damit sich niemand versehentlich aussperrt.
+     * Starts the setup: generates a fresh secret + QR code. Does NOT activate 2FA
+     * yet (only after the code has been confirmed), so that nobody locks themselves out by accident.
      */
     public void beginTotpSetup() {
         FacesContext context = FacesContext.getCurrentInstance();
@@ -346,7 +346,7 @@ public class MyUserInfoBackingBean implements Serializable {
         this.generatedRecoveryCodes = new ArrayList<>();
     }
 
-    /** Bricht eine laufende Einrichtung ab (Secret verwerfen). */
+    /** Aborts a running setup (discard the secret). */
     public void cancelTotpSetup() {
         this.totpSetupSecret = null;
         this.totpQrCodeDataUri = null;
@@ -354,8 +354,8 @@ public class MyUserInfoBackingBean implements Serializable {
     }
 
     /**
-     * Schliesst die Einrichtung ab: prueft den Bestaetigungscode gegen das gehaltene Secret,
-     * aktiviert 2FA und zeigt die Recovery-Codes EINMALIG an.
+     * Completes the setup: checks the confirmation code against the held secret,
+     * activates 2FA and shows the recovery codes ONCE.
      */
     public void confirmTotpSetup() {
         FacesContext context = FacesContext.getCurrentInstance();
@@ -368,7 +368,7 @@ public class MyUserInfoBackingBean implements Serializable {
             addTotpMessage(context, FacesMessage.SEVERITY_ERROR, "Der Code ist nicht korrekt. Bitte erneut versuchen.");
             return;
         }
-        // Einrichtung erfolgreich abgeschlossen.
+        // Setup completed successfully.
         this.generatedRecoveryCodes = codes;
         this.totpSetupSecret = null;
         this.totpQrCodeDataUri = null;
@@ -378,8 +378,8 @@ public class MyUserInfoBackingBean implements Serializable {
     }
 
     /**
-     * Deaktiviert 2FA nach Passwort-Bestaetigung. Das Passwort verhindert, dass ein bereits
-     * eingeloggter Angreifer (fremde offene Session) den zweiten Faktor still abschaltet.
+     * Deactivates 2FA after password confirmation. The password prevents an already
+     * logged-in attacker (a foreign open session) from silently switching off the second factor.
      */
     public void disableTotp() {
         FacesContext context = FacesContext.getCurrentInstance();

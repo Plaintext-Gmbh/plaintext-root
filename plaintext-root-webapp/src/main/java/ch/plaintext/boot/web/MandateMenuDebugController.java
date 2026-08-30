@@ -16,10 +16,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * SECURITY (Karte 314, Punkt 5): Diagnose-Endpunkt, nur im dev-Profil registriert.
- * Er legt die Menuekonfiguration ALLER Mandanten (repository.findAll()) offen und war bis dahin fuer JEDEN
- * eingeloggten Benutzer erreichbar. Zusaetzlich greift in der SecurityConfig
- * {@code /debug/** -> hasRole("ROOT")}.
+ * SECURITY (card 314, item 5): diagnostic endpoint, registered in the dev profile only.
+ * It exposes the menu configuration of ALL tenants (repository.findAll()) and was reachable for EVERY
+ * logged-in user until then. In addition {@code /debug/** -> hasRole("ROOT")} applies in the
+ * SecurityConfig.
  */
 @Profile("dev")
 @Controller

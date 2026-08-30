@@ -63,7 +63,7 @@ class TileAnnotationScannerTest {
 }
 
 /**
- * Test-Kachel mit {@link DashboardTile} zu Testzwecken.
+ * Test tile with {@link DashboardTile} for testing purposes.
  */
 @DashboardTile(
     id = "test-tile",

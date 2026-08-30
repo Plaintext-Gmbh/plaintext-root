@@ -17,8 +17,8 @@ public class Index {
 
     @GetMapping("/")
     public void getIndex(HttpServletResponse response) throws IOException {
-        // Individuelle Startseite verwenden, falls gültig gesetzt – sonst immer index.html.
-        // So wird kein Benutzer durch einen leeren/ungültigen startpage-Wert von der Startseite ausgesperrt.
+        // Use the individual start page if it is set validly - otherwise always index.html.
+        // This way no user is locked out of the start page by an empty/invalid startpage value.
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String redirect = StartpageResolver.resolve(auth == null ? null : auth.getAuthorities());
         response.sendRedirect(redirect);

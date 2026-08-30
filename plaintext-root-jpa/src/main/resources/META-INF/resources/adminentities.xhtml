@@ -10,8 +10,8 @@
     <ui:define name="title">#{i18n.t('Datenverwaltung')} (Admin)</ui:define>
 
     <ui:define name="page">
-        <!-- Zustandsbericht 29.08.2026 (R2): Seitenkoerper geteilt mit rootentities.xhtml —
-             siehe /includes/entityverwaltung.xhtml. Admin: eigener Mandant, ohne Export/Import. -->
+        <!-- Status report 29 August 2026 (R2): page body shared with rootentities.xhtml,
+             see /includes/entityverwaltung.xhtml. Admin: own tenant, without export/import. -->
         <ui:include src="/includes/entityverwaltung.xhtml">
             <ui:param name="bean" value="#{adminEntityBackingBean}"/>
             <ui:param name="pageUrl" value="/adminentities.html"/>

@@ -21,12 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Diagnose-Ansicht der Menue-Sichtbarkeit (nur root).
+ * Diagnostics view of menu visibility (root only).
  *
- * <p>Zeigt jeden Menuepunkt mit den vier Filtern aus {@code MenuItemImpl.isOn()} — Rolle,
- * Modul-Rolle, Modul aktiv, Mandant — und pro Zeile dem konkreten Grund, wenn einer Nein sagt.
- * Im Impersonate-Modus ist das die Sicht des impersonierten Benutzers, weil die Menuepunkte den
- * {@code SecurityProvider} der laufenden Session befragen.</p>
+ * <p>Shows every menu item with the four filters from {@code MenuItemImpl.isOn()} — role,
+ * module role, module active, tenant — and, per row, the concrete reason whenever one of them
+ * says no. In impersonation mode this is the view of the impersonated user, because the menu
+ * items query the {@code SecurityProvider} of the running session.</p>
  *
  * @author info@plaintext.ch
  * @since 1.608.0
@@ -53,15 +53,15 @@ public class MenuDiagnoseBackingBean implements Serializable {
     @Getter
     private List<MenuDiagnoseZeile> zeilen = new ArrayList<>();
 
-    /** Wenn gesetzt, werden nur die Zeilen angezeigt, die mindestens ein Nein haben. */
+    /** If set, only the rows that have at least one no are displayed. */
     @Getter
     @Setter
     private boolean nurUnsichtbare;
 
     /**
-     * @param menuRegistry      liefert die registrierten Menuepunkte
-     * @param visibilityService liefert den Grund des Mandantenfilters
-     * @param plaintextSecurity liefert Benutzer, Mandant und Impersonate-Zustand
+     * @param menuRegistry      supplies the registered menu items
+     * @param visibilityService supplies the reason given by the tenant filter
+     * @param plaintextSecurity supplies user, tenant and impersonation state
      */
     public MenuDiagnoseBackingBean(MenuRegistry menuRegistry,
                                    MandateMenuVisibilityService visibilityService,
@@ -72,8 +72,8 @@ public class MenuDiagnoseBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener: laedt die Auswertung bei jedem GET frisch. Der isPostback-Guard
-     * verhindert das Neuladen bei Ajax-Postbacks (Filter-Umschalter).
+     * preRenderView listener: reloads the analysis fresh on every GET. The isPostback guard
+     * prevents a reload on Ajax postbacks (the filter toggle).
      */
     public void onLoad() {
         FacesContext ctx = FacesContext.getCurrentInstance();
@@ -83,7 +83,7 @@ public class MenuDiagnoseBackingBean implements Serializable {
         aktualisieren();
     }
 
-    /** Wertet den Menuebaum neu aus. */
+    /** Re-evaluates the menu tree. */
     public void aktualisieren() {
         try {
             zeilen = diagnoseService.analysiereAlle(menuePunkte(), getMandant());
@@ -95,11 +95,11 @@ public class MenuDiagnoseBackingBean implements Serializable {
     }
 
     /**
-     * Die registrierten Menuepunkte. Wie im {@code PageAccessGuardService} ueber
-     * {@link MenuRegistryImpl#getAllMenuItemsImpl()}, um Classloader-Probleme im Spring-Boot-JAR
-     * zu vermeiden.
+     * The registered menu items. As in the {@code PageAccessGuardService}, obtained via
+     * {@link MenuRegistryImpl#getAllMenuItemsImpl()} to avoid classloader problems inside the
+     * Spring Boot JAR.
      *
-     * @return alle Menuepunkte, ggf. leer
+     * @return all menu items, possibly empty
      */
     private List<MenuItemImpl> menuePunkte() {
         if (menuRegistry instanceof MenuRegistryImpl impl) {
@@ -111,9 +111,9 @@ public class MenuDiagnoseBackingBean implements Serializable {
     }
 
     /**
-     * Die anzuzeigenden Zeilen — alle, oder nur die mit mindestens einem Nein.
+     * The rows to display — all of them, or only those with at least one no.
      *
-     * @return gefilterte Zeilen
+     * @return filtered rows
      */
     public List<MenuDiagnoseZeile> getAnzeigeZeilen() {
         if (!nurUnsichtbare) {
@@ -129,9 +129,9 @@ public class MenuDiagnoseBackingBean implements Serializable {
     }
 
     /**
-     * Der Mandant, dessen Liste ausgewertet wird.
+     * The tenant whose list is analysed.
      *
-     * @return Mandantenname, oder {@code "—"} wenn keiner gesetzt ist
+     * @return tenant name, or {@code "—"} if none is set
      */
     public String getMandant() {
         try {
@@ -144,9 +144,9 @@ public class MenuDiagnoseBackingBean implements Serializable {
     }
 
     /**
-     * Der Benutzer, dessen Sicht gezeigt wird.
+     * The user whose view is shown.
      *
-     * @return Benutzername, oder {@code "—"}
+     * @return user name, or {@code "—"}
      */
     public String getBenutzer() {
         try {
@@ -159,9 +159,10 @@ public class MenuDiagnoseBackingBean implements Serializable {
     }
 
     /**
-     * Ob gerade ein anderer Benutzer impersoniert wird — dann zeigt die Tabelle DESSEN Sicht.
+     * Whether another user is currently being impersonated — in that case the table shows THEIR
+     * view.
      *
-     * @return {@code true} im Impersonate-Modus
+     * @return {@code true} in impersonation mode
      */
     public boolean isImpersonating() {
         try {
@@ -173,18 +174,18 @@ public class MenuDiagnoseBackingBean implements Serializable {
     }
 
     /**
-     * Anzahl der Menuepunkte, die der aktuelle Benutzer sieht.
+     * Number of menu items the current user can see.
      *
-     * @return Anzahl sichtbarer Menuepunkte
+     * @return number of visible menu items
      */
     public long getAnzahlSichtbar() {
         return zeilen.stream().filter(MenuDiagnoseZeile::sichtbar).count();
     }
 
     /**
-     * Gesamtzahl der registrierten Menuepunkte.
+     * Total number of registered menu items.
      *
-     * @return Anzahl ausgewerteter Menuepunkte
+     * @return number of analysed menu items
      */
     public int getAnzahlGesamt() {
         return zeilen.size();

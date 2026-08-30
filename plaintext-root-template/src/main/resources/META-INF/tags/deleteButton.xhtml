@@ -2,23 +2,23 @@
                 xmlns:ui="jakarta.faces.facelets"
                 xmlns:p="http://primefaces.org/ui">
     <!--
-      pt:deleteButton — Loeschen mit Rueckfrage.
+      pt:deleteButton — delete with a confirmation prompt.
 
-      Im Bestand 67 nahezu identische Bloecke: pi pi-trash, eingebettetes p:confirm, update auf den
-      Growl. Der eingebettete p:confirm braucht einen globalen p:confirmDialog — den liefert seit
-      dem 28.08.2026 bereits /includes/template.xhtml (globalMessagesForm), eine seitenlokale Kopie
-      ist dafuer nicht mehr noetig.
+      67 almost identical blocks in the existing code: pi pi-trash, embedded p:confirm, update on the
+      growl. The embedded p:confirm needs a global p:confirmDialog — since 28 August 2026
+      /includes/template.xhtml already provides one (globalMessagesForm), so a page local copy
+      is no longer needed for it.
 
-      process="@this" ist gesetzt und nicht optional: Ohne das durchlaeuft beim Klick das ganze
-      Formular die Validierung, und ein unausgefuelltes Pflichtfeld an ganz anderer Stelle
-      verhindert das Loeschen, ohne dass ein Grund sichtbar wuerde.
+      process="@this" is set and is not optional: without it the whole form runs through validation
+      on the click, and an unfilled required field somewhere else entirely
+      prevents the delete without any visible reason.
 
-      PFLICHT: action, update
+      REQUIRED: action, update
       OPTIONAL: message, header, title, icon, btnClass, btnRendered, btnDisabled, value
 
-      Die optionalen Attribute tragen bewusst ein btn-Praefix: Ein Tag-File erbt sonst
-      gleichnamige Attribute des umgebenden Tags (z.B. rendered/styleClass einer pt:table).
-      Am gerenderten HTML gemessen, 30.08.2026 — siehe pt:colText.
+      The optional attributes deliberately carry a btn prefix: otherwise a tag file inherits
+      identically named attributes of the surrounding tag (e.g. rendered/styleClass of a pt:table).
+      Measured on the rendered HTML, 30 August 2026 — see pt:colText.
     -->
     <p:commandButton value="#{value}"
                      icon="#{empty icon ? 'pi pi-trash' : icon}"

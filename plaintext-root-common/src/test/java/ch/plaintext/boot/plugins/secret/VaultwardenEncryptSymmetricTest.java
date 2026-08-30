@@ -17,16 +17,16 @@ import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
 
 /**
- * Deterministische Tests fuer die Schreibrichtung (Rotation): {@code encryptSymmetric}.
- * OHNE Netz und OHNE Secrets — CI-tauglich.
+ * Deterministic tests for the write direction (rotation): {@code encryptSymmetric}.
+ * WITHOUT a network and WITHOUT secrets — CI-capable.
  *
- * <p>Kernaussage: {@code encryptSymmetric} erzeugt eine gueltige EncString type 2, die
- * {@code decryptSymmetric} mit demselben Schluessel verlustfrei zurueckliefert. Die
- * beiden Methoden bilden ein Paar (AES-256-CBC/PKCS7 + HMAC-SHA256 ueber IV||CT).</p>
+ * <p>Core statement: {@code encryptSymmetric} produces a valid EncString type 2 that
+ * {@code decryptSymmetric} returns losslessly with the same key. The two methods form a
+ * pair (AES-256-CBC/PKCS7 + HMAC-SHA256 over IV||CT).</p>
  */
 class VaultwardenEncryptSymmetricTest {
 
-    /** Round-Trip fuer mehrere Laengen inkl. leer, Sub-Block, Blockgrenze, Multi-Block. */
+    /** Round trip for several lengths including empty, sub-block, block boundary, multi-block. */
     @Test
     void encryptThenDecrypt_roundTripsForManyLengths() {
         byte[] key64 = randomBytes(64);
@@ -41,7 +41,7 @@ class VaultwardenEncryptSymmetricTest {
         }
     }
 
-    /** UTF-8-Passwort mit Umlauten/Emoji ueberlebt den Round-Trip 1:1. */
+    /** A UTF-8 password with umlauts/emoji survives the round trip 1:1. */
     @Test
     void encryptThenDecrypt_utf8Password() {
         byte[] key64 = randomBytes(64);
@@ -52,7 +52,7 @@ class VaultwardenEncryptSymmetricTest {
         assertThat(new String(decrypted, StandardCharsets.UTF_8)).isEqualTo(password);
     }
 
-    /** Ergebnis ist ein parsebarer EncString type 2 mit 16-Byte-IV und 32-Byte-MAC. */
+    /** The result is a parsable EncString type 2 with a 16-byte IV and a 32-byte MAC. */
     @Test
     void produced_isParseableType2() {
         byte[] key64 = randomBytes(64);
@@ -68,7 +68,7 @@ class VaultwardenEncryptSymmetricTest {
         assertThat(enc.ct()).isNotEmpty();
     }
 
-    /** MAC = HMAC-SHA256(macKey, IV||CT) — exakt so wie decryptSymmetric verifiziert. */
+    /** MAC = HMAC-SHA256(macKey, IV||CT) — exactly the way decryptSymmetric verifies it. */
     @Test
     void producedMac_isHmacOverIvAndCt() throws Exception {
         byte[] key64 = randomBytes(64);
@@ -86,7 +86,7 @@ class VaultwardenEncryptSymmetricTest {
         assertThat(MessageDigest.isEqual(expected, enc.mac())).isTrue();
     }
 
-    /** Zufaelliger IV: zweimal dasselbe Klartext-/Schluesselpaar ergibt verschiedene CTs. */
+    /** Random IV: the same plaintext/key pair twice yields different CTs. */
     @Test
     void ivIsRandom_ciphertextsDiffer() {
         byte[] key64 = randomBytes(64);
@@ -94,13 +94,13 @@ class VaultwardenEncryptSymmetricTest {
         String a = VaultwardenCrypto.encryptSymmetric(plaintext, key64);
         String b = VaultwardenCrypto.encryptSymmetric(plaintext, key64);
         assertThat(a).isNotEqualTo(b);
-        // ... entschluesseln aber beide zum selben Klartext
+        // ... but both decrypt to the same plaintext
         assertThat(VaultwardenCrypto.decryptSymmetric(EncString.parse(a), key64))
                 .isEqualTo(VaultwardenCrypto.decryptSymmetric(EncString.parse(b), key64))
                 .isEqualTo(plaintext);
     }
 
-    /** Ein anderer Schluessel schlaegt die MAC-Pruefung fehl (kein stiller Datenverlust). */
+    /** A different key fails the MAC check (no silent data loss). */
     @Test
     void wrongKey_failsMacVerification() {
         byte[] key64 = randomBytes(64);

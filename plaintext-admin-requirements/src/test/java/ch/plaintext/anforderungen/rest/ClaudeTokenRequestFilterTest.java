@@ -17,9 +17,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Header-Auth für {@code /nosec/api/claude/**}: {@code Authorization: Bearer} bzw.
- * {@code X-Claude-Token} werden als {@code token}-Parameter an den Controller
- * durchgereicht; der Legacy-URL-Token bleibt in der Übergangsphase funktionsfähig.
+ * Header auth for {@code /nosec/api/claude/**}: {@code Authorization: Bearer} respectively
+ * {@code X-Claude-Token} are passed on to the controller as the {@code token} parameter;
+ * the legacy URL token remains functional during the transitional phase.
  */
 @DisplayName("ClaudeTokenRequestFilter Header-Auth")
 class ClaudeTokenRequestFilterTest {
@@ -35,7 +35,7 @@ class ClaudeTokenRequestFilterTest {
         response = new MockHttpServletResponse();
     }
 
-    /** Führt den Filter aus und liefert den Request, der beim Controller ankommen würde. */
+    /** Runs the filter and returns the request that would arrive at the controller. */
     private ServletRequest filteredRequest() throws Exception {
         AtomicReference<ServletRequest> seen = new AtomicReference<>();
         filter.doFilter(request, response, (ServletRequest req, ServletResponse res) -> seen.set(req));
@@ -86,7 +86,7 @@ class ClaudeTokenRequestFilterTest {
 
     @Test
     void legacyUrlTokenNurMitFallbackSchalter() throws Exception {
-        // Zustandsbericht 29.08.2026: Uebergangsphase beendet — nur mit ausdruecklichem Schalter.
+        // Status report 29.08.2026: transitional phase over — only with an explicit switch.
         filter = new ClaudeTokenRequestFilter(true);
         request.setParameter("token", "legacy-url-token");
 
@@ -129,7 +129,7 @@ class ClaudeTokenRequestFilterTest {
 
     @Test
     void emptyBearerHeaderIsIgnored() throws Exception {
-        // Leerer Bearer zaehlt nicht als Header-Token; der URL-Token greift nur mit Fallback-Schalter.
+        // An empty Bearer does not count as a header token; the URL token only applies with the fallback switch.
         filter = new ClaudeTokenRequestFilter(true);
         request.addHeader("Authorization", "Bearer ");
         request.setParameter("token", "legacy-url-token");

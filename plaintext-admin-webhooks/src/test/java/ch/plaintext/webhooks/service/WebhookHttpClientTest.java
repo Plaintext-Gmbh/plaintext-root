@@ -17,7 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/** Tests für {@link WebhookHttpClient}: 2xx = Erfolg, sonst/Exception = Fehler, nie eine Exception nach aussen. */
+/** Tests for {@link WebhookHttpClient}: 2xx = success, anything else/exception = failure, never lets an exception escape. */
 class WebhookHttpClientTest {
 
     private final HttpClient jdkClient = mock(HttpClient.class);

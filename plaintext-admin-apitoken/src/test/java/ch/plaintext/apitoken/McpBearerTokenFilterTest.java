@@ -46,15 +46,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests für den kanonischen {@link McpBearerTokenFilter} (Zentralisierung der bisherigen
- * app-/iot-/schuetu-Kopien). Der MCP-Endpoint darf NICHT „open by default" sein:
+ * Tests for the canonical {@link McpBearerTokenFilter} (centralization of the former
+ * app/iot/schuetu copies). The MCP endpoint must NOT be "open by default":
  * <ul>
- *   <li>fehlender/leerer/ungültiger Bearer-Token → 401, Filterkette wird NICHT fortgesetzt;</li>
- *   <li>gültiger Token → Authentication mit Token- und echten User-Rollen während der Kette;</li>
- *   <li>SecurityContext-Hygiene: kein In-place-Mutieren eines Session-Contexts (schuetu-
- *       Regression) und sauberes Zurücksetzen im {@code finally} (iot-N1-Regression);</li>
- *   <li>Registrierung: greift per Default NUR auf {@code /mcp/*} — Nicht-MCP-Pfade bleiben
- *       unangetastet.</li>
+ *   <li>missing/empty/invalid bearer token → 401, the filter chain is NOT continued;</li>
+ *   <li>valid token → an Authentication with the token roles and the real user roles for the
+ *       duration of the chain;</li>
+ *   <li>SecurityContext hygiene: no in-place mutation of a session context (schuetu
+ *       regression) and a clean reset in the {@code finally} (iot N1 regression);</li>
+ *   <li>registration: by default it applies ONLY to {@code /mcp/*} — non-MCP paths stay
+ *       untouched.</li>
  * </ul>
  */
 class McpBearerTokenFilterTest {
@@ -111,13 +112,13 @@ class McpBearerTokenFilterTest {
 
         verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         verify(response).setContentType("application/json");
-        verify(chain, never()).doFilter(any(), any());   // NICHT durchgelassen
+        verify(chain, never()).doFilter(any(), any());   // NOT let through
         assertTrue(sink.toString().contains("Unauthorized"), "401-JSON-Body wird geschrieben");
         assertNull(SecurityContextHolder.getContext().getAuthentication(),
                 "Ohne gültiges Token wird keine Authentication gesetzt");
     }
 
-    // ------------------------------------------------------------------ Blocken
+    // ------------------------------------------------------------------ Blocking
 
     @Test
     void fehlendesToken_wird401_undNichtDurchgelassen() throws Exception {
@@ -139,7 +140,7 @@ class McpBearerTokenFilterTest {
         assertBlocked("Bearer falsch");
     }
 
-    // ------------------------------------------------------------------ Gültiger Token
+    // ------------------------------------------------------------------ Valid token
 
     @Test
     void gueltigesToken_setztAuthentication_undReichtDurch() throws Exception {
@@ -166,8 +167,8 @@ class McpBearerTokenFilterTest {
     @Test
     void echteUserRollen_werdenAlsAuthoritiesGemappt_nullBlankIgnoriert() throws Exception {
         JwtTokenService jwt = jwtValidating("gueltig", 7L, "mandat1", "root@plaintext.ch");
-        // Mischung: normale Rolle (→ ROLE_-Präfix + uppercase), PROPERTY_-Rolle (bleibt ohne
-        // ROLE_-Präfix), null und blank (werden ignoriert).
+        // Mixture: normal role (→ ROLE_ prefix + uppercase), PROPERTY_ role (stays without a
+        // ROLE_ prefix), null and blank (are ignored).
         McpUserRoles roles = mock(McpUserRoles.class);
         when(roles.rolesForUser(7L)).thenReturn(new LinkedHashSet<>(
                 Arrays.asList("root", "PROPERTY_MANDAT_extra", null, "  ")));
@@ -195,11 +196,11 @@ class McpBearerTokenFilterTest {
     }
 
     /**
-     * Karte 670: Die Benutzerrollen bringen denselben Mandanten in anderer Schreibweise mit
-     * ({@code PROPERTY_MANDAT_EXTRA} oben, in PROD {@code PROPERTY_MANDAT_PLAINTEXT}). Dann liegen
-     * zwei {@code PROPERTY_MANDAT_*} im Kontext und ein {@code findFirst()} darüber ist ein
-     * Münzwurf. {@code PROPERTY_TOKEN_MANDAT_*} muss deshalb <b>genau einmal</b> vorkommen — sonst
-     * verschiebt der Fix das Problem nur.
+     * Card 670: The user roles carry the same tenant in a different spelling
+     * ({@code PROPERTY_MANDAT_EXTRA} above, {@code PROPERTY_MANDAT_PLAINTEXT} in PROD). Then two
+     * {@code PROPERTY_MANDAT_*} sit in the context and a {@code findFirst()} over them is a
+     * coin toss. {@code PROPERTY_TOKEN_MANDAT_*} must therefore occur <b>exactly once</b> —
+     * otherwise the fix merely moves the problem elsewhere.
      */
     @Test
     void tokenMandatAuthority_kommtGenauEinmalVor_auchWennRollenDenMandantenWiederholen()
@@ -224,12 +225,12 @@ class McpBearerTokenFilterTest {
         assertTrue(namen.contains("PROPERTY_TOKEN_MANDAT_plaintext"), namen.toString());
     }
 
-    // ------------------------------------------------------------------ SecurityContext-Hygiene
+    // ------------------------------------------------------------------ SecurityContext hygiene
 
     /**
-     * schuetu-Regression: SPAs pollen die Token-REST-API mit Session-Cookie des eingeloggten
-     * Users PLUS Bearer-Token. Der Filter darf den (aus der Session geladenen) SecurityContext
-     * NICHT in-place mutieren, sonst klaut er dem User seine echten Rollen.
+     * schuetu regression: SPAs poll the token REST API with the session cookie of the logged-in
+     * user PLUS a bearer token. The filter must NOT mutate the (session-loaded) SecurityContext
+     * in place, otherwise it steals the user's real roles.
      */
     @Test
     void bestehenderSessionContext_wirdNichtMutiert_undDanachRestauriert() throws Exception {
@@ -248,18 +249,18 @@ class McpBearerTokenFilterTest {
 
         jwtFilter(jwt, mock(McpUserRoles.class)).doFilter(request, response, chain);
 
-        // Während des Requests galt die Token-Authentication, nicht die Session-Rollen.
+        // During the request the token authentication applied, not the session roles.
         assertNotNull(waehrendKette.get());
         assertTrue(hasAuthority(waehrendKette.get(), "ROLE_USER"));
         assertFalse(hasAuthority(waehrendKette.get(), "ROLE_ADMIN"));
 
-        // Nach dem Request: ursprünglicher Session-Context unverändert (keine In-place-Mutation).
+        // After the request: the original session context is unchanged (no in-place mutation).
         assertSame(userAuth, SecurityContextHolder.getContext().getAuthentication());
         assertTrue(hasAuthority(sessionCtx.getAuthentication(), "ROLE_ADMIN"));
         assertFalse(hasAuthority(sessionCtx.getAuthentication(), "ROLE_USER"));
     }
 
-    /** iot-N1-Regression: auch wenn die Kette wirft, wird der Context im finally zurückgesetzt. */
+    /** iot N1 regression: even if the chain throws, the context is reset in the finally. */
     @Test
     void securityContext_wirdAuchBeiFehlerInDerKetteImFinallyZurueckgesetzt() throws Exception {
         JwtTokenService jwt = jwtValidating("tok", 1L, "default", "token@plaintext.ch");
@@ -299,7 +300,7 @@ class McpBearerTokenFilterTest {
     }
 
     /**
-     * Karte 545: {@code WRITE} ist der neue Name des Schreibrechts (Entscheid Daniel, 05.08.2026).
+     * Card 545: {@code WRITE} is the new name of the write permission (decision by Daniel, 05.08.2026).
      */
     @Test
     void scopeWrite_bekommtReadUndWrite_keinAdmin() throws Exception {
@@ -312,10 +313,10 @@ class McpBearerTokenFilterTest {
     }
 
     /**
-     * Karte 545, Übergangsfenster: Der Altname {@code EINTRAGEN} und der neue Name {@code WRITE}
-     * vergeben <b>dieselben</b> Authorities. Ohne diese Gleichheit prüfte die eine Hälfte des Codes
-     * gegen SCOPE_EINTRAGEN und die andere gegen SCOPE_WRITE — ein Token bestünde nur die halbe
-     * Strecke, und genau diesen Zwischenzustand soll die Umbenennung vermeiden.
+     * Card 545, transition window: the old name {@code EINTRAGEN} and the new name {@code WRITE}
+     * grant <b>the same</b> authorities. Without that equality one half of the code would check
+     * against SCOPE_EINTRAGEN and the other against SCOPE_WRITE — a token would only make it
+     * halfway, and it is exactly that in-between state the rename is meant to avoid.
      */
     @Test
     void altnameEintragenUndNeunameWrite_vergebenDieselbenAuthorities() throws Exception {
@@ -344,10 +345,10 @@ class McpBearerTokenFilterTest {
     }
 
     /**
-     * Karte 312 (H-7): Ein fehlender {@code scope}-Claim darf NICHT mehr ADMIN bedeuten. Da die
-     * Token-Ausstellung bis dahin gar keinen Scope vergab, war zuvor faktisch jeder API-Token ein
-     * Vollzugriffs-Token — ein Mitglied konnte sich in der UI ein Token erzeugen und damit über MCP
-     * destruktive Tools aufrufen.
+     * Card 312 (H-7): A missing {@code scope} claim must NO longer mean ADMIN. Since token
+     * issuing granted no scope at all until then, in practice every API token used to be a
+     * full-access token — a member could create a token in the UI and use it to call destructive
+     * tools over MCP.
      */
     @Test
     void fehlenderScopeClaim_giltNurNochAlsRead_failClosed() throws Exception {
@@ -361,8 +362,9 @@ class McpBearerTokenFilterTest {
     }
 
     /**
-     * Der Migrations-Opt-out {@code legacy-scope-admin=true} holt das Alt-Verhalten befristet zurück,
-     * damit eine Instanz mit noch nicht erneuerten Tokens nicht schlagartig auf Lesezugriff fällt.
+     * The migration opt-out {@code legacy-scope-admin=true} brings the old behaviour back for a
+     * limited time, so that an instance whose tokens have not been renewed yet does not drop to
+     * read access all at once.
      */
     @Test
     void fehlenderScopeClaim_mitLegacyFlag_giltWeiterhinAlsAdmin() throws Exception {
@@ -420,15 +422,15 @@ class McpBearerTokenFilterTest {
 
     @Test
     void ohneRevocationChecker_wirdKeinTokenAlsRevokedBehandelt() throws Exception {
-        // 2-Arg-Factory (kein Checker) — Default-Verhalten für app/iot/guild, die (noch) keine
-        // Blocklist-Bean bereitstellen.
+        // 2-arg factory (no checker) — the default behaviour for app/iot/guild, which do not
+        // (yet) provide a blocklist bean.
         JwtTokenService jwt = jwtValidating("tok", 1L, "default", "u@x.ch", "ADMIN", "irgendeine-jti");
         Authentication auth = runAndCaptureAuth(jwtFilter(jwt, mock(McpUserRoles.class)), "Bearer tok");
 
         assertNotNull(auth);
     }
 
-    // ------------------------------------------------------------------ DATABASE-Strategie
+    // ------------------------------------------------------------------ DATABASE strategy
 
     @Test
     void databaseStrategie_nutztApiTokenServiceInklusiveRevocationCheck() throws Exception {
@@ -454,10 +456,10 @@ class McpBearerTokenFilterTest {
     }
 
     /**
-     * Regression (Karte 349): Die DATABASE-Strategie muss den {@code scope} des Tokens durchreichen.
-     * Tat sie das nicht, kam jedes Token ohne Claim im Filter an und der fail-closed-Default degradierte
-     * es auf READ — ein Umstellen auf {@code validation: DATABASE} hätte damit alle EINTRAGEN-Flows
-     * (Zeiterfassung-Uhr, Juriwagen) stillschweigend auf Lesezugriff gekappt.
+     * Regression (card 349): The DATABASE strategy must pass the token's {@code scope} through.
+     * When it did not, every token arrived at the filter without a claim and the fail-closed default
+     * degraded it to READ — switching to {@code validation: DATABASE} would thereby have silently
+     * capped all EINTRAGEN flows (Zeiterfassung-Uhr, Juriwagen) to read access.
      */
     @Test
     void databaseStrategie_reichtScopeDurch() throws Exception {
@@ -498,9 +500,9 @@ class McpBearerTokenFilterTest {
         verify(chain, never()).doFilter(any(), any());
     }
 
-    // ------------------------------------------------------------------ Registrierung / Patterns
+    // ------------------------------------------------------------------ Registration / patterns
 
-    /** Nicht-MCP-Pfade bleiben unangetastet: der Filter wird per Default NUR auf /mcp/* gemappt. */
+    /** Non-MCP paths stay untouched: by default the filter is mapped ONLY to /mcp/*. */
     @Test
     void registrierung_defaultNurMcpPattern_undOrder1() {
         McpBearerTokenFilterProperties props = new McpBearerTokenFilterProperties();
@@ -528,7 +530,7 @@ class McpBearerTokenFilterTest {
         assertEquals(List.of("/mcp/*", "/api/turnier/*"), List.copyOf(registration.getUrlPatterns()));
     }
 
-    /** Leere Pattern-Liste darf NIE auf /* mappen (würde die ganze App hinter Bearer-Auth legen). */
+    /** An empty pattern list must NEVER map to /* (would put the whole app behind bearer auth). */
     @Test
     void registrierung_leerePatterns_fallenAufMcpDefaultZurueck() {
         McpBearerTokenFilterProperties props = new McpBearerTokenFilterProperties();
@@ -541,15 +543,15 @@ class McpBearerTokenFilterTest {
         assertEquals(List.of("/mcp/*"), List.copyOf(registration.getUrlPatterns()));
     }
 
-    // ------------------------------------------------------------------ Recht fehlt → 403, nicht 302 (Karte 652)
+    // ------------------------------------------------------------------ Permission missing → 403, not 302 (card 652)
 
     /**
-     * Gemessen an schuetu INT am 11.08.2026: Ein gueltiges READ-Token gegen
-     * {@code @PreAuthorize("hasAuthority('SCOPE_WRITE')")} lieferte HTTP 302 auf {@code /login.html},
-     * mit {@code curl -L} daraus HTTP 200 und 14 534 Bytes Anmeldeseite — im aufrufenden Skript ein
-     * Erfolg. Ursache: Das {@code finally} restauriert den anonymen Context, bevor der
-     * {@code ExceptionTranslationFilter} an genau dieser Authentication zwischen 403 und
-     * Login-Redirect entscheidet.
+     * Measured on schuetu INT on 11.08.2026: A valid READ token against
+     * {@code @PreAuthorize("hasAuthority('SCOPE_WRITE')")} returned HTTP 302 to {@code /login.html},
+     * and with {@code curl -L} that became HTTP 200 and 14 534 bytes of login page — a success as
+     * far as the calling script was concerned. Cause: the {@code finally} restores the anonymous
+     * context before the {@code ExceptionTranslationFilter} decides, on exactly that
+     * Authentication, between 403 and a login redirect.
      */
     private static HttpServletRequest apiRequestWithAuth(String authHeader) {
         HttpServletRequest request = requestWithAuth(authHeader);
@@ -560,7 +562,7 @@ class McpBearerTokenFilterTest {
 
     @Test
     void rechtFehlt_wird403MitJson_statt302AufDieAnmeldung() throws Exception {
-        // Der Filter sieht den Header MIT Prefix; validateToken bekommt den Rest.
+        // The filter sees the header WITH the prefix; validateToken gets the rest.
         JwtTokenService jwt = jwtValidating("t", 7L, "worb", "u@example.invalid", "READ", null);
 
         HttpServletRequest request = apiRequestWithAuth("Bearer t");
@@ -582,7 +584,7 @@ class McpBearerTokenFilterTest {
                 "Die Fehlerantwort verraet nicht, welcher Scope gefehlt haette");
     }
 
-    /** Auch im Ablehnungsfall darf keine Token-Authentication auf dem gepoolten Thread zurueckbleiben. */
+    /** Even on the rejection path, no token authentication may be left behind on the pooled thread. */
     @Test
     void rechtFehlt_securityContextWirdTrotzdemRestauriert() throws Exception {
         SecurityContext vorher = SecurityContextHolder.getContext();
@@ -601,9 +603,9 @@ class McpBearerTokenFilterTest {
     }
 
     /**
-     * Laeuft die Antwort schon (z.B. ein SSE-Strom unter /mcp), wuerde ein nachgeschobener
-     * JSON-Rumpf den Datenstrom zerstoeren. Dann reicht der Filter die Exception weiter, statt
-     * in eine angefangene Antwort hineinzuschreiben.
+     * If the response is already running (an SSE stream under /mcp, for example), a JSON body
+     * pushed in afterwards would destroy the data stream. In that case the filter passes the
+     * exception on instead of writing into a response that has already begun.
      */
     @Test
     void antwortBereitsBegonnen_exceptionWirdDurchgereicht() throws Exception {
@@ -624,14 +626,14 @@ class McpBearerTokenFilterTest {
                 "finally raeumt auch beim Durchreichen auf");
     }
 
-    // ------------------------------------------------------------------ Karte 652: Recht fehlt
+    // ------------------------------------------------------------------ Card 652: permission missing
 
     /**
-     * Karte 652: Eine Rechteverweigerung aus {@code @PreAuthorize} erreicht diesen Filter NICHT als
-     * {@link org.springframework.security.access.AccessDeniedException}, sondern in eine
-     * {@link jakarta.servlet.ServletException} gehuellt — so wickelt der DispatcherServlet sie ein.
-     * Der erste Anlauf dieser Karte fing nur den unverpackten Typ und wurde deshalb nie ausgefuehrt;
-     * der Aufrufer bekam weiterhin 302 auf /login.html (gemessen an schuetu INT, 11.08.2026).
+     * Card 652: A permission denial from {@code @PreAuthorize} does NOT reach this filter as an
+     * {@link org.springframework.security.access.AccessDeniedException}, but wrapped in a
+     * {@link jakarta.servlet.ServletException} — that is how the DispatcherServlet wraps it.
+     * The first attempt at this card caught only the unwrapped type and was therefore never
+     * executed; the caller still got a 302 to /login.html (measured on schuetu INT, 11.08.2026).
      */
     @Test
     void verpackteAccessDeniedException_wird403Json() throws Exception {
@@ -656,8 +658,8 @@ class McpBearerTokenFilterTest {
     }
 
     /**
-     * Gegenprobe: Ohne diese Abgrenzung waere aus dem catch ein Schweigefilter geworden — ein
-     * beliebiger Serverfehler duerfte nicht als 403 beim Client landen.
+     * Counter-check: Without this distinction the catch would have turned into a silencing filter —
+     * an arbitrary server error must not end up at the client as a 403.
      */
     @Test
     void andereVerpackteFehler_werdenDurchgereicht() throws Exception {

@@ -6,13 +6,13 @@ package ch.plaintext.boot.menu;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 /**
- * Menuepunkt „Swagger" — nur wenn die Swagger-UI auch ausgeliefert wird.
+ * Menu entry "Swagger" — only if the Swagger UI is actually shipped.
  *
- * <p>springdoc ist secure-by-default abgeschaltet ({@code springdoc.swagger-ui.enabled=false},
- * per {@code SPRINGDOC_ENABLED=true} einschaltbar). Bis zum 29.08.2026 stand der Menuepunkt
- * trotzdem in jedem Root-Menue: der Klick lief auf 404, und der {@code PlaintextErrorViewResolver}
- * leitete von dort auf das Dashboard — fuer den Benutzer sah das aus, als oeffne „Swagger" die
- * Startseite. Der {@code MenuAnnotationScanner} wertet die Bedingung gegen die echte Umgebung aus.</p>
+ * <p>springdoc is switched off secure-by-default ({@code springdoc.swagger-ui.enabled=false},
+ * can be switched on with {@code SPRINGDOC_ENABLED=true}). Until 29.08.2026 the menu entry stood
+ * in every root menu regardless: the click ran into a 404, and the {@code PlaintextErrorViewResolver}
+ * redirected from there to the dashboard — to the user that looked as if "Swagger" opened the
+ * start page. The {@code MenuAnnotationScanner} evaluates the condition against the real environment.</p>
  */
 @ConditionalOnProperty(name = "springdoc.swagger-ui.enabled", havingValue = "true")
 @MenuAnnotation(

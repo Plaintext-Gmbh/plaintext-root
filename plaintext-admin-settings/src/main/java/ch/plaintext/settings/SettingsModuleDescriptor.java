@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Meldet das Settings-Modul an die zentrale Modul-Verwaltung (Task #016). */
+/** Registers the settings module with the central module management (task #016). */
 @Component
 public class SettingsModuleDescriptor implements ModuleDescriptor {
     @Override

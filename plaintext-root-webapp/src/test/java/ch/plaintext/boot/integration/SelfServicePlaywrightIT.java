@@ -54,11 +54,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SelfServicePlaywrightIT {
 
-    // Frueher lief hier ein Testcontainers-Postgres mit @ServiceConnection: @DynamicPropertySource
-    // hatte 'spring.datasource.url' schon waehrend der Condition-Auswertung gelesen, bevor der
-    // Container oben war ("Mapped port can only be obtained after the container is started").
-    // Mit dem eingebetteten Server entfaellt das Problem — er laeuft bereits, wenn die Registry
-    // gefuellt wird (statischer Start in EmbeddedPg).
+    // Formerly a Testcontainers Postgres with @ServiceConnection ran here: @DynamicPropertySource
+    // had read 'spring.datasource.url' already during the condition evaluation, before the
+    // container was up ("Mapped port can only be obtained after the container is started").
+    // With the embedded server that problem disappears — it is already running when the registry
+    // is filled (static start in EmbeddedPg).
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         EmbeddedPg.registrieren(registry, "selfserviceplaywrightit");
@@ -123,10 +123,10 @@ class SelfServicePlaywrightIT {
         assertTrue(page.content().contains("Posteingang"),
                 "expected confirmation page, got: " + page.content());
 
-        // 2. Karte 307, K2.3: In der DB liegt jetzt NUR der SHA-256-Hash, nie der Klartext. Wir setzen
-        //    den gespeicherten Hash auf den eines uns bekannten Klartext-Tokens und benutzen diesen im
-        //    Verifikations-Link — so, wie der Nutzer ihn aus der E-Mail bekaeme. Das testet das Hashing
-        //    zugleich end-to-end (der Verify-Schritt hasht den Klartext und muss den Hash treffen).
+        // 2. Card 307, K2.3: the DB now holds ONLY the SHA-256 hash, never the plaintext. We set
+        //    the stored hash to that of a plaintext token known to us and use this one in the
+        //    verification link — just as the user would get it from the e-mail. That tests the hashing
+        //    end-to-end at the same time (the verify step hashes the plaintext and has to hit the hash).
         String token = "playwright-known-registration-token";
         var regToken = registrationTokenRepository.findAll().stream()
                 .filter(t -> t.getEmail().equals("playwright-user@example.com"))
@@ -171,8 +171,8 @@ class SelfServicePlaywrightIT {
         page.click("button[type=submit]");
         assertTrue(page.content().contains("Posteingang"));
 
-        // 2. Karte 307, K2.3: DB haelt nur den Hash — wir setzen ihn auf den eines bekannten Klartext-
-        //    Tokens und benutzen diesen im Confirm-Link (wie aus der E-Mail).
+        // 2. Card 307, K2.3: the DB holds only the hash — we set it to that of a known plaintext
+        //    token and use this one in the confirm link (as if from the e-mail).
         String token = "playwright-known-reset-token";
         var resetToken = passwordResetTokenRepository.findAll().stream()
                 .filter(t -> t.getUsername().equals("reset-target@example.com"))
@@ -197,10 +197,10 @@ class SelfServicePlaywrightIT {
 
     @Test
     void registrationFlow_whenDisabled_quietlyAcceptsButCreatesNoUser() {
-        // Selbstregistrierung explizit AUS. Nicht auf den Default verlassen: andere Tests in dieser
-        // Klasse (PER_CLASS, geteilter Container) setzen das Flag für "default" auf true und speichern
-        // es -> ohne explizites Zurücksetzen liefe dieser Test je nach Reihenfolge mit aktiver
-        // Registrierung und legte doch ein Token an.
+        // Self-registration explicitly OFF. Do not rely on the default: other tests in this
+        // class (PER_CLASS, shared container) set the flag for "default" to true and store
+        // it -> without an explicit reset this test would, depending on the order, run with active
+        // registration and would create a token after all.
         SetupConfig cfg = setupConfigService.getOrCreate("default");
         cfg.setSelfRegistrationEnabled(false);
         setupConfigService.save(cfg);
@@ -215,7 +215,7 @@ class SelfServicePlaywrightIT {
                 .noneMatch(t -> t.getEmail().equals("blocked@example.com")));
     }
 
-    /** SHA-256-Hex eines Klartext-Tokens (Karte 307, K2.3) — identisch zur Server-Berechnung. */
+    /** SHA-256 hex of a plaintext token (card 307, K2.3) — identical to the server-side computation. */
     private static String sha256Hex(String raw) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

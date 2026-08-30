@@ -45,8 +45,8 @@ public class ApiTokenService implements IApiTokenService {
     private final JwtTokenService jwtTokenService;
 
     /**
-     * Leak-freier Lesezugriff für die Revocation-Prüfung (Karte 659) — siehe
-     * {@link ApiTokenRevocationLookup} für den Grund, warum dieser eine Pfad an JPA vorbeigeht.
+     * Leak-free read access for the revocation check (card 659) — see
+     * {@link ApiTokenRevocationLookup} for the reason why this one path bypasses JPA.
      */
     private final ApiTokenRevocationLookup revocationLookup;
 
@@ -65,17 +65,17 @@ public class ApiTokenService implements IApiTokenService {
     }
 
     /**
-     * Wie {@link #createToken(Long, String, String, String, int)}, jedoch mit explizitem Berechtigungs-
-     * {@code scope} ({@code READ}/{@code EINTRAGEN}/{@code ADMIN}) im JWT.
+     * Like {@link #createToken(Long, String, String, String, int)}, but with an explicit permission
+     * {@code scope} ({@code READ}/{@code EINTRAGEN}/{@code ADMIN}) in the JWT.
      *
-     * <p><b>Warum das nötig ist (Karte 312, H-7):</b> Bis hierher stellte die Ausstellung Tokens
-     * grundsätzlich <em>ohne</em> {@code scope}-Claim aus, und {@code McpBearerTokenFilter} deutete einen
-     * fehlenden Scope als {@code ADMIN}. Damit war faktisch jeder API-Token ein Vollzugriffs-Token. Der
-     * Filter wird auf fail-closed ({@code READ}) umgestellt — das ist aber nur dann gefahrlos, wenn die
-     * Ausstellung einen Scope überhaupt vergeben <em>kann</em>. Genau das leistet diese Überladung.</p>
+     * <p><b>Why this is necessary (card 312, H-7):</b> up to this point the issuing always created
+     * tokens <em>without</em> a {@code scope} claim, and {@code McpBearerTokenFilter} read a
+     * missing scope as {@code ADMIN}. That effectively made every API token a full-access token. The
+     * filter is being switched to fail-closed ({@code READ}) — but that is only safe if the
+     * issuing <em>can</em> assign a scope at all. That is exactly what this overload provides.</p>
      *
-     * @param scope {@code READ}, {@code EINTRAGEN} oder {@code ADMIN}; {@code null}/leer lässt den Claim
-     *              weg (Alt-Verhalten, dann greift im Filter der fail-closed-Default)
+     * @param scope {@code READ}, {@code EINTRAGEN} or {@code ADMIN}; {@code null}/empty omits the
+     *              claim (legacy behaviour, the filter's fail-closed default then applies)
      */
     @Transactional
     public String createToken(Long userId, String mandat, String tokenName, String email, int validityDays,
@@ -99,7 +99,7 @@ public class ApiTokenService implements IApiTokenService {
         if (validityDays < JwtTokenService.MIN_VALIDITY_DAYS) validityDays = JwtTokenService.MIN_VALIDITY_DAYS;
         if (validityDays > JwtTokenService.MAX_VALIDITY_DAYS) validityDays = JwtTokenService.MAX_VALIDITY_DAYS;
 
-        // Generate JWT token (mit explizitem scope-Claim, sofern gesetzt — siehe Javadoc/Karte 312)
+        // Generate JWT token (with explicit scope claim, if set — see Javadoc/card 312)
         String jwtToken = jwtTokenService.generateToken(userId, mandat, email, tokenName, validityDays, scope);
 
         // Compute SHA-256 hash of the JWT - only the hash is stored
@@ -109,8 +109,8 @@ public class ApiTokenService implements IApiTokenService {
 
         ApiToken token = new ApiToken();
         token.setTokenHash(hash);
-        // Karte 664: ohne den jti in der Zeile kann der Filter ein eingehendes Token nicht seiner
-        // Zeile zuordnen -> revoke_api_token meldet Erfolg und das Token funktioniert weiter.
+        // Card 664: without the jti in the row, the filter cannot map an incoming token to its
+        // row -> revoke_api_token reports success and the token keeps working.
         token.setJti(jwtTokenService.extractJti(jwtToken).orElse(null));
         token.setUserId(userId);
         token.setMandat(mandat);
@@ -137,29 +137,29 @@ public class ApiTokenService implements IApiTokenService {
     }
 
     /**
-     * Stellt ein Token für einen <b>maschinellen</b> Ausstellungs-Flow aus und persistiert es wie ein
-     * UI-Token (SHA-256-Hash in {@code api_token}) — Voraussetzung dafür, dass
-     * {@code plaintext.mcp.bearer-filter.validation: DATABASE} solche Flows nicht aussperrt (Karte 349).
+     * Issues a token for a <b>machine</b> issuing flow and persists it like a
+     * UI token (SHA-256 hash in {@code api_token}) — the prerequisite for
+     * {@code plaintext.mcp.bearer-filter.validation: DATABASE} not locking such flows out (card 349).
      *
-     * <p><b>Warum nicht {@link #createToken(Long, String, String, String, int, String)}?</b> Dessen zwei
-     * Schutzregeln sind für die UI richtig, für automatische Aussteller aber tödlich:</p>
+     * <p><b>Why not {@link #createToken(Long, String, String, String, int, String)}?</b> Its two
+     * protective rules are right for the UI, but fatal for automatic issuers:</p>
      * <ul>
-     *   <li><b>Duplikat-Namen-Prüfung</b> — der Juriwagen mintet bei <em>jedem</em> Öffnen der SPA ein
-     *       Token; beim zweiten Öffnen würde „Ein Token mit diesem Namen existiert bereits" fliegen.</li>
-     *   <li><b>{@code MAX_TOKENS_PER_USER}</b> — nach zehn Öffnungen wäre der Flow dauerhaft blockiert,
-     *       mitten am Turniertag.</li>
+     *   <li><b>Duplicate name check</b> — the Juriwagen mints a token on <em>every</em> opening of the
+     *       SPA; on the second opening "Ein Token mit diesem Namen existiert bereits" would be thrown.</li>
+     *   <li><b>{@code MAX_TOKENS_PER_USER}</b> — after ten openings the flow would be blocked for good,
+     *       in the middle of the tournament day.</li>
      * </ul>
      *
-     * <p>Deshalb: gleichnamige Service-Tokens sind hier <b>erlaubt</b> und das Limit greift nicht.
-     * Damit die Tabelle trotzdem nicht unbegrenzt wächst, werden vor dem Anlegen die <b>abgelaufenen</b>
-     * Tokens desselben Flows ({@code userId}/{@code mandat}/{@code tokenName}) soft-gelöscht.</p>
+     * <p>Therefore: service tokens of the same name are <b>allowed</b> here and the limit does not apply.
+     * So that the table nevertheless does not grow without bound, the <b>expired</b>
+     * tokens of the same flow ({@code userId}/{@code mandat}/{@code tokenName}) are soft-deleted first.</p>
      *
-     * <p>Bewusst wird <b>nicht</b> das jeweils vorherige Token ersetzt: Zwei Geräte bzw. Browser-Tabs
-     * desselben Benutzers müssen gleichzeitig arbeiten können — ein „immer nur ein aktives Token" würde
-     * dem Juri am Turniertag mitten im Betrieb den Zugang entziehen.</p>
+     * <p>The respective previous token is deliberately <b>not</b> replaced: two devices or browser tabs
+     * of the same user have to be able to work at the same time — an "only ever one active token" would
+     * cut off the jury member's access mid-operation on the tournament day.</p>
      *
-     * @param scope {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, oder {@code null} (dann greift im
-     *              Filter der fail-closed-Default, siehe Karte 312)
+     * @param scope {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, or {@code null} (the filter's
+     *              fail-closed default then applies, see card 312)
      */
     @Transactional
     public String createServiceToken(Long userId, String mandat, String tokenName, String email,
@@ -178,7 +178,7 @@ public class ApiTokenService implements IApiTokenService {
 
         ApiToken token = new ApiToken();
         token.setTokenHash(sha256(jwtToken));
-        // Karte 664: siehe createToken — auch Service-Tokens muessen widerrufbar sein.
+        // Card 664: see createToken — service tokens must be revocable too.
         token.setJti(jwtTokenService.extractJti(jwtToken).orElse(null));
         token.setUserId(userId);
         token.setMandat(mandat);
@@ -196,10 +196,10 @@ public class ApiTokenService implements IApiTokenService {
     }
 
     /**
-     * Soft-löscht abgelaufene Tokens desselben Service-Flows. Hält {@code api_token} klein, ohne aktive
-     * Tokens anzutasten — ein noch gültiges Token eines zweiten Geräts bleibt bestehen.
+     * Soft-deletes expired tokens of the same service flow. Keeps {@code api_token} small without
+     * touching active tokens — a still valid token of a second device is left in place.
      *
-     * @return Anzahl aufgeräumter Zeilen
+     * @return number of rows cleaned up
      */
     private int raeumeAbgelaufeneAuf(Long userId, String mandat, String tokenName) {
         if (tokenName == null || tokenName.isBlank()) {
@@ -359,7 +359,7 @@ public class ApiTokenService implements IApiTokenService {
      * They need no shared transaction: the last-used
      * update is non-critical statistics, not atomic with the revocation check.
      * <p>
-     * <b>Correction, Karte 655 (11.08.2026): the connection is NOT released immediately, and this
+     * <b>Correction, card 655 (11.08.2026): the connection is NOT released immediately, and this
      * path is NOT outside the OpenSessionInView lifecycle.</b> A full Hikari leak stack trace from
      * PROD shows {@code OpenEntityManagerInViewFilter.doFilterInternal} <i>below</i> the entire
      * Spring Security filter chain — it wraps {@link McpBearerTokenFilter} as well. With
@@ -371,13 +371,13 @@ public class ApiTokenService implements IApiTokenService {
      * one on an {@code http-nio-8080-exec-*} thread with this method in the stack.
      * <p>
      * This is the same mechanism {@code McpUserRolesImpl} already documents and avoids for the role
-     * lookup (Karte 437, {@code JdbcTemplate} instead of JPA); the revocation lookup here was left
+     * lookup (card 437, {@code JdbcTemplate} instead of JPA); the revocation lookup here was left
      * on JPA. It is a warning sign, not an outage: the connections come back when the session ends,
      * and no pool exhaustion has ever been observed. Converting this lookup to JDBC is deliberately
      * <b>not</b> done as a side effect — it touches revocation, i.e. security-relevant behaviour,
      * and needs its own card and its own evidence.
      * <p>
-     * <b>Karte 659 (11.08.2026): that card exists and the conversion is done.</b> Both DB accesses
+     * <b>Card 659 (11.08.2026): that card exists and the conversion is done.</b> Both DB accesses
      * of {@link #validateVerifiedToken(String, JwtTokenService.JwtValidationResult)} — the
      * revocation read and the best-effort last-used write — now run through
      * {@link ApiTokenRevocationLookup} on {@code JdbcTemplate}, so no EntityManager is bound to the
@@ -402,21 +402,21 @@ public class ApiTokenService implements IApiTokenService {
     }
 
     /**
-     * Revocation-/DB-Teil der Validierung (Steps 2-3) für einen BEREITS signatur- und
-     * ablauf-geprüften Token. Erlaubt Aufrufern wie {@link ApiTokenValidatorServiceImpl},
-     * die JWT-Signatur genau EINMAL zu prüfen und das Ergebnis hierher weiterzureichen,
-     * statt sie ein zweites Mal zu validieren. Gleiche Transaktions-Überlegungen wie bei
-     * {@link #validateToken(String)} (bewusst nicht {@code @Transactional}).
+     * Revocation/DB part of the validation (steps 2-3) for a token whose signature and expiry have
+     * ALREADY been checked. Allows callers such as {@link ApiTokenValidatorServiceImpl}
+     * to check the JWT signature exactly ONCE and pass the result on to here,
+     * instead of validating it a second time. Same transaction considerations as for
+     * {@link #validateToken(String)} (deliberately not {@code @Transactional}).
      *
-     * @param jwtToken der rohe JWT-String (für den Hash-Lookup)
-     * @param jwt      Ergebnis der bereits erfolgten JWT-Signatur-/Ablauf-Validierung
-     * @return Validation result, oder empty wenn revoked/invalidiert/gelöscht
+     * @param jwtToken the raw JWT string (for the hash lookup)
+     * @param jwt      result of the JWT signature/expiry validation that has already taken place
+     * @return validation result, or empty if revoked/invalidated/deleted
      */
     public Optional<ApiTokenValidationResult> validateVerifiedToken(String jwtToken, JwtTokenService.JwtValidationResult jwt) {
         // Step 2: Compute SHA-256 hash and look up in DB for revocation check.
-        // Karte 659: über ApiTokenRevocationLookup (JDBC) statt über das JPA-Repository — dieser
-        // Pfad läuft aus einem Servlet-Filter heraus, und mit open-in-view=true hielte der erste
-        // JPA-Zugriff die DB-Verbindung über die ganze (bei MCP: sitzungslange) Requestdauer.
+        // Card 659: via ApiTokenRevocationLookup (JDBC) instead of via the JPA repository — this
+        // path runs out of a servlet filter, and with open-in-view=true the first JPA access would
+        // hold the DB connection for the whole request duration (with MCP: session-long).
         String hash = sha256(jwtToken);
         Optional<ApiTokenRevocationLookup.TokenZustand> apiToken = revocationLookup.findForValidation(hash);
         if (apiToken.isEmpty()) {
@@ -439,9 +439,9 @@ public class ApiTokenService implements IApiTokenService {
             return Optional.empty();
         }
 
-        // Step 3: Update last used timestamp and use count (best effort, ebenfalls über JDBC).
-        // Ein Fehler hier darf die bereits getroffene Zugriffsentscheidung nicht kippen: die Zahlen
-        // sind Statistik, nicht Teil der Validierung.
+        // Step 3: Update last used timestamp and use count (best effort, likewise via JDBC).
+        // An error here must not overturn the access decision already taken: the numbers
+        // are statistics, not part of the validation.
         try {
             revocationLookup.markUsed(t.id());
         } catch (RuntimeException e) {
@@ -449,8 +449,8 @@ public class ApiTokenService implements IApiTokenService {
         }
 
         log.debug("Token validated successfully for userId={}, mandat={}", jwt.userId(), jwt.mandat());
-        // Karte 309: scope-Claim mitgeben, damit Aufrufer (z.B. TokenLoginController) die
-        // Berechtigungs-Beschraenkung des Tokens ueberhaupt auswerten koennen.
+        // Card 309: pass the scope claim along so that callers (e.g. TokenLoginController) can
+        // evaluate the token's permission restriction at all.
         return Optional.of(new ApiTokenValidationResult(jwt.userId(), jwt.mandat(), t.userEmail(),
                 jwt.tokenName(), jwt.expiresAt(), jwt.scope()));
     }

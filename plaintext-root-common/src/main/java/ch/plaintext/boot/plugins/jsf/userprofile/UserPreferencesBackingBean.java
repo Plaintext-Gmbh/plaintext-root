@@ -138,38 +138,36 @@ public class UserPreferencesBackingBean implements Serializable {
     }
 
     /**
-     * Karte 937: Breite eines verschiebbaren Trenners merken.
+     * Karte 937: remember the width of a draggable splitter.
      *
-     * <p><b>Warum diese Methode hier steht und die Oberflaeche nicht selbst am Feld dreht.</b> Das
-     * Setzen und das Speichern gehoeren zusammen — ein gesetzter Wert ohne {@code save()} ist beim
-     * naechsten Anmelden weg, und genau das waere der Fehler, den niemand bemerkt, weil er erst
-     * am naechsten Tag auffaellt. Ausserdem liegt die Bereichspruefung damit an EINER Stelle statt
-     * in jeder aufrufenden Seite.
+     * <p><b>Why this method sits here instead of the UI touching the field itself.</b> Setting and
+     * saving belong together — a value that is set without {@code save()} is gone at the next
+     * login, and that would be exactly the kind of bug nobody notices, because it only shows up
+     * the following day. It also puts the range check in ONE place instead of in every calling
+     * page.
      *
-     * <p><b>Die untere Grenze ist der eigentliche Zweck der Pruefung.</b> Ohne sie laesst sich ein
-     * Baum auf 0 Pixel ziehen — danach ist der Griff nicht mehr zu fassen, und weil der Wert
-     * gespeichert wird, sperrt sich der Benutzer dauerhaft aus. Ein Wert von {@code 0} bleibt
-     * dagegen ausdruecklich erlaubt: er bedeutet „Vorgabe des Layouts" und ist der Weg zurueck.
+     * <p><b>The lower bound is the actual point of the check.</b> Without it a tree can be dragged
+     * down to 0 pixels — after which the handle can no longer be grabbed, and because the value is
+     * persisted, the user locks themselves out for good. A value of {@code 0}, by contrast, stays
+     * explicitly allowed: it means "the layout's default" and is the way back.
      *
-     * @param bereich {@code "wiki"} oder {@code "mail"} — unbekannte Bereiche werden ignoriert,
-     *                statt eine Ausnahme in eine Ajax-Antwort zu werfen
-     * @param breite  Pixel; 0 setzt auf die Layout-Vorgabe zurueck
+     * @param bereich {@code "wiki"} or {@code "mail"} — unknown areas are ignored instead of
+     *                throwing an exception into an Ajax response
+     * @param breite  pixels; 0 resets to the layout default
      */
     /**
-     * Auftrag Daniel, 25.08.2026: die Spaltenauswahl einer Tabelle je Benutzer merken.
+     * Request by Daniel, 25.08.2026: remember a table's column selection per user.
      *
-     * <p>Gebaut wie {@link #merkeTrennerBreite(String, int)} und aus demselben Grund: Setzen und
-     * Speichern gehoeren zusammen. Eine Auswahl, die nur im Feld steht, ist beim naechsten
-     * Anmelden weg — der Fehler faellt erst am naechsten Tag auf, und dann sucht niemand mehr
-     * hier.
+     * <p>Built like {@link #merkeTrennerBreite(String, int)} and for the same reason: setting and
+     * saving belong together. A selection that only sits in the field is gone at the next login —
+     * the bug only shows up the following day, and by then nobody looks here any more.
      *
-     * <p>Eine <b>leere</b> Auswahl wird gespeichert wie jede andere: „ich will keine dieser
-     * Spalten sehen" ist eine gueltige Aussage und darf nicht stillschweigend in die
-     * Voreinstellung zurueckfallen. Deshalb unterscheidet {@link #tabellenSpalten(String)}
-     * zwischen „leer" und „nie gesetzt" ({@code null}).
+     * <p>An <b>empty</b> selection is stored like any other: "I want to see none of these columns"
+     * is a valid statement and must not silently fall back to the default. That is why
+     * {@link #tabellenSpalten(String)} distinguishes "empty" from "never set" ({@code null}).
      *
-     * @param tabelle Kennung der Tabelle, z.B. {@code "useradmin"}
-     * @param spalten die sichtbaren Spaltenschluessel; {@code null} wird als leer behandelt
+     * @param tabelle identifier of the table, e.g. {@code "useradmin"}
+     * @param spalten the visible column keys; {@code null} is treated as empty
      */
     public void merkeTabellenSpalten(String tabelle, List<String> spalten) {
         if (prefs == null || tabelle == null || tabelle.isBlank()) {
@@ -183,18 +181,18 @@ public class UserPreferencesBackingBean implements Serializable {
     }
 
     /**
-     * Die gemerkte Spaltenauswahl einer Tabelle.
+     * The remembered column selection of a table.
      *
-     * <p>Gegenstueck zu {@link #merkeTabellenSpalten(String, List)}. Der Rueckgabewert
-     * {@code null} heisst ausdruecklich <b>„nie gesetzt"</b> und ist von einer leeren Liste zu
-     * unterscheiden: die aufrufende Tabelle muss {@code null} als ihre eigene Voreinstellung
-     * auslegen, eine leere Liste dagegen als bewusste Auswahl des Benutzers.
+     * <p>Counterpart to {@link #merkeTabellenSpalten(String, List)}. A return value of
+     * {@code null} explicitly means <b>"never set"</b> and must be distinguished from an empty
+     * list: the calling table has to interpret {@code null} as its own default, but an empty list
+     * as a deliberate choice by the user.
      *
-     * @return die gespeicherten Spaltenschluessel oder {@code null}
+     * @return the stored column keys or {@code null}
      */
     public List<String> tabellenSpalten(String tabelle) {
         if (prefs == null || tabelle == null) {
-            // Nach dem Wiederherstellen einer Sitzung ist das transiente Feld leer.
+            // After a session has been restored, the transient field is empty.
             return null;
         }
         return prefs.getTabellenSpalten().get(tabelle);
@@ -214,26 +212,26 @@ public class UserPreferencesBackingBean implements Serializable {
     }
 
     /**
-     * Karte 937: Die gemerkte Breite eines verschiebbaren Trenners, {@code 0} = Vorgabe des Layouts.
+     * Karte 937: the remembered width of a draggable splitter, {@code 0} = the layout's default.
      *
-     * <p><b>Warum es diese Methode braucht und die Seite nicht {@code prefs} liest.</b> Das Feld ist
-     * privat und {@code transient} und damit aus einem EL-Ausdruck nicht erreichbar. Eine Seite, die
-     * es trotzdem versucht, faellt nicht beim Uebersetzen auf, sondern erst beim Rendern — mit einer
-     * {@code ELException} mitten in der bereits gesendeten Antwort: Das Menue steht dann schon, der
-     * Inhalt fehlt, und im Browser bleibt eine weisse Flaeche ohne Fehlermeldung zurueck. Genau so
-     * ist wiki.xhtml ab dem 19.08.2026 ausgefallen.
+     * <p><b>Why this method is needed and the page does not read {@code prefs}.</b> The field is
+     * private and {@code transient} and therefore unreachable from an EL expression. A page that
+     * tries anyway does not fail at compile time but only while rendering — with an
+     * {@code ELException} in the middle of a response that has already been sent: the menu is
+     * already in place, the content is missing, and what is left in the browser is a white area
+     * without any error message. That is exactly how wiki.xhtml failed from 19.08.2026 on.
      *
-     * <p>Gegenstueck zu {@link #merkeTrennerBreite(String, int)}: Lesen und Schreiben teilen sich
-     * dieselben Bereichsnamen, damit die Zuordnung nicht an zwei Stellen auseinanderlaufen kann.
+     * <p>Counterpart to {@link #merkeTrennerBreite(String, int)}: reading and writing share the
+     * same area names, so the mapping cannot drift apart in two places.
      *
-     * @param bereich {@code "wiki"} oder {@code "mail"}
-     * @return die gemerkte Breite in Pixeln; {@code 0} fuer unbekannte Bereiche und solange keine
-     *         Einstellungen geladen sind — beides heisst fuer die Seite „nimm deine Vorgabe"
+     * @param bereich {@code "wiki"} or {@code "mail"}
+     * @return the remembered width in pixels; {@code 0} for unknown areas and for as long as no
+     *         settings are loaded — for the page both mean "use your own default"
      */
     public int trennerBreite(String bereich) {
         if (prefs == null) {
-            // Nach dem Wiederherstellen einer Sitzung ist das transiente Feld leer: lieber die
-            // Layout-Vorgabe als eine Ausnahme aus einem Attribut heraus.
+            // After a session has been restored the transient field is empty: better the
+            // layout default than an exception thrown out of an attribute.
             return 0;
         }
         if ("wiki".equals(bereich)) {
@@ -246,10 +244,10 @@ public class UserPreferencesBackingBean implements Serializable {
         return 0;
     }
 
-    /** Untere Grenze: darunter ist der Griff nicht mehr zu treffen. */
+    /** Lower bound: below this the handle can no longer be hit. */
     public static final int MIN_TRENNER_PX = 140;
 
-    /** Obere Grenze: darueber bleibt fuer den Inhalt nichts uebrig. */
+    /** Upper bound: above this nothing is left for the content. */
     public static final int MAX_TRENNER_PX = 900;
 
     /**
@@ -416,10 +414,10 @@ public class UserPreferencesBackingBean implements Serializable {
     // ==================== Computed Properties ====================
 
     public String getLayout() {
-        // Nur die tatsächlich vorhandenen Layout-CSS referenzieren (layout-light.css / layout-dark.css).
-        // darkMode wird u.a. ungeprüft aus einem theme-Cookie übernommen; ein abweichender Wert
-        // (z.B. "auto"/leer) ergab sonst 'css/layout-<wert>.css' -> RES_NOT_FOUND -> der Browser
-        // verwirft das Stylesheet (strict MIME, application/json) und das Layout/die Karten brechen.
+        // Only reference the layout CSS files that actually exist (layout-light.css / layout-dark.css).
+        // darkMode is, among other things, taken unchecked from a theme cookie; a deviating value
+        // (e.g. "auto"/empty) otherwise produced 'css/layout-<value>.css' -> RES_NOT_FOUND -> the browser
+        // discards the stylesheet (strict MIME, application/json) and the layout/the cards break.
         return "dark".equalsIgnoreCase(prefs.getDarkMode()) ? "layout-dark" : "layout-light";
     }
 
@@ -491,9 +489,9 @@ public class UserPreferencesBackingBean implements Serializable {
                     if (cookieName.equals(cookie.getName())) {
                         String value = cookie.getValue();
                         if (value != null && !value.isEmpty()) {
-                            // SECURITY (Forensik 23.08.2026): nur den Namen protokollieren. Diese Methode
-                            // liest einen BELIEBIGEN Cookie-Namen — wer sie einmal auf einen
-                            // Sitzungs-/Remember-Me-Cookie ansetzt, haette dessen Wert sonst im Log.
+                            // SECURITY (forensics 23.08.2026): log the name only. This method
+                            // reads an ARBITRARY cookie name — anyone who ever points it at a
+                            // session or remember-me cookie would otherwise have its value in the log.
                             log.debug("Loaded cookie '{}' ({} Zeichen)", cookieName, value.length());
                             return value;
                         }
@@ -522,10 +520,10 @@ public class UserPreferencesBackingBean implements Serializable {
             Cookie cookie = new Cookie("plaintext-theme", theme);
             cookie.setPath("/");
             cookie.setMaxAge(365 * 24 * 60 * 60); // 1 year
-            // NOSONAR (S3330): Das Cookie traegt ausschliesslich die Themewahl (z.B. "dark") und
-            // MUSS fuer JavaScript lesbar sein, sonst flackert die Seite beim Laden im falschen
-            // Theme. Es enthaelt kein Geheimnis und keine Sitzungskennung; Secure und SameSite=Lax
-            // sind gesetzt (Karte 458).
+            // NOSONAR (S3330): the cookie carries nothing but the theme choice (e.g. "dark") and
+            // MUST be readable by JavaScript, otherwise the page flickers in the wrong theme while
+            // loading. It contains no secret and no session identifier; Secure and SameSite=Lax
+            // are set (Karte 458).
             cookie.setHttpOnly(false); // NOSONAR — theme is read client-side via JavaScript
             cookie.setSecure(true);    // HTTPS only; harmless on http://localhost dev
             cookie.setAttribute("SameSite", "Lax");

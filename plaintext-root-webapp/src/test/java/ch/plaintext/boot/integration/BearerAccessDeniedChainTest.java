@@ -48,30 +48,30 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 652 — eine Rechteverweigerung an einem Bearer-authentifizierten Endpunkt muss als 403
- * beim Aufrufer ankommen, nicht als Umleitung auf die Anmeldeseite.
+ * Card 652 — a permission denial at a bearer-authenticated endpoint has to arrive at the caller as a
+ * 403, not as a redirect to the login page.
  *
- * <p><b>Warum dieser Test existiert:</b> An schuetu INT liefert ein gueltiges Token mit Scope
- * {@code READ} gegen einen {@code @PreAuthorize("hasAuthority('SCOPE_WRITE')")}-Endpunkt
- * {@code HTTP 302 -> /login.html}. Ein Geraet bekommt HTML statt JSON, und ein Skript mit
- * {@code curl -L} liest daraus HTTP 200 — eine fehlende Berechtigung als Erfolg. Zwei Erklaerungen
- * dafuer waren plausibel und beide unvollstaendig; deshalb wird die Konstellation hier
- * nachgebaut, statt sie an der Testumgebung weiter zu raten.</p>
+ * <p><b>Why this test exists:</b> on schuetu INT a valid token with scope
+ * {@code READ} against a {@code @PreAuthorize("hasAuthority('SCOPE_WRITE')")} endpoint returns
+ * {@code HTTP 302 -> /login.html}. A device gets HTML instead of JSON, and a script with
+ * {@code curl -L} reads HTTP 200 out of it — a missing permission as a success. Two explanations
+ * for it were plausible and both incomplete; that is why the constellation is
+ * rebuilt here instead of guessing further at the test environment.</p>
  *
- * <p><b>Was nachgebaut wird</b> — exakt die Konstellation des {@code McpBearerTokenFilter}:
- * ein {@link FilterRegistrationBean} mit {@code order=1} (also INNERHALB der
- * {@code springSecurityFilterChain}, die auf {@code -100} liegt), das einen frischen
- * {@link SecurityContext} setzt, im {@code finally} den vorherigen wiederherstellt und eine
- * {@link AccessDeniedException} im {@code catch} selbst als JSON beantwortet. Der Endpunkt liegt
- * unter {@code permitAll}, weil die Authentisierung der Filter macht — genauso wie
+ * <p><b>What is rebuilt</b> — exactly the constellation of the {@code McpBearerTokenFilter}:
+ * a {@link FilterRegistrationBean} with {@code order=1} (that is, INSIDE the
+ * {@code springSecurityFilterChain}, which sits at {@code -100}) that sets a fresh
+ * {@link SecurityContext}, restores the previous one in the {@code finally} and answers an
+ * {@link AccessDeniedException} in the {@code catch} itself as JSON. The endpoint lies
+ * under {@code permitAll}, because the filter does the authentication — just like
  * {@code /api/turnier/**} in schuetu.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "karte652"})
 @TestPropertySource(properties = {
-        // Der Endpunkt kommt durch die Kette; authentifiziert wird im Filter (wie /api/turnier/**).
+        // The endpoint comes through the chain; authentication happens in the filter (like /api/turnier/**).
         "plaintext.security.permit-all-patterns[0]=/api/karte652/**",
-        // Ohne diese Zeile misst der Test den CSRF-Filter statt der Autorisierung.
+        // Without this line the test measures the CSRF filter instead of the authorization.
         "plaintext.security.csrf-ignore-patterns[0]=/api/karte652/**"
 })
 class BearerAccessDeniedChainTest {
@@ -84,7 +84,7 @@ class BearerAccessDeniedChainTest {
     @LocalServerPort
     private int port;
 
-    /** Header statt echtem JWT — geprueft wird die Filterkette, nicht die Token-Validierung. */
+    /** A header instead of a real JWT — what is checked is the filter chain, not the token validation. */
     private static final String TEST_HEADER = "X-Karte652-Scope";
 
     @TestConfiguration
@@ -94,12 +94,12 @@ class BearerAccessDeniedChainTest {
         FilterRegistrationBean<Filter> karte652BearerFilter() {
             FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(new NachbauFilter());
             registration.addUrlPatterns("/api/karte652/*");
-            registration.setOrder(1);   // wie McpBearerTokenFilterProperties.order
+            registration.setOrder(1);   // like McpBearerTokenFilterProperties.order
             return registration;
         }
     }
 
-    /** Nachbau von {@code McpBearerTokenFilter#doFilter} — dieselbe Reihenfolge, dieselben Zweige. */
+    /** Rebuild of {@code McpBearerTokenFilter#doFilter} — the same order, the same branches. */
     static class NachbauFilter implements Filter {
         @Override
         public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -127,10 +127,10 @@ class BearerAccessDeniedChainTest {
             try {
                 chain.doFilter(request, response);
             } catch (ServletException | RuntimeException ex) {
-                // Bewusst ueber die Hilfsmethode des PRODUKTIONSFILTERS: Die Exception aus
-                // @PreAuthorize kommt hier in eine ServletException gehuellt an (gemessen, Karte
-                // 652). Wuerde der Test die Kette selbst durchsuchen, pruefte er seine eigene
-                // Nachbildung statt des ausgelieferten Codes.
+                // Deliberately via the helper method of the PRODUCTION FILTER: the exception from
+                // @PreAuthorize arrives here wrapped in a ServletException (measured, card
+                // 652). If the test searched the chain itself, it would be checking its own
+                // reproduction instead of the shipped code.
                 AccessDeniedException e = ch.plaintext.apitoken.McpBearerTokenFilter.findeAccessDenied(ex);
                 if (e == null) {
                     throw ex;
@@ -148,9 +148,9 @@ class BearerAccessDeniedChainTest {
     }
 
     /**
-     * Eigenes Profil, weil der Component-Scan von {@code ch.RootBootApplication} auch
-     * Test-Klassen erfasst: ohne {@code @Profile} haenge dieser Endpunkt in JEDEM
-     * Anwendungskontext der Testsuite.
+     * A profile of its own, because the component scan of {@code ch.RootBootApplication} also
+     * covers test classes: without {@code @Profile} this endpoint would hang in EVERY
+     * application context of the test suite.
      */
     @org.springframework.context.annotation.Profile("karte652")
     @RestController

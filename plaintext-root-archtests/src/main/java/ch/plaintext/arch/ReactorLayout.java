@@ -12,43 +12,44 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Pfadaufloesung der geteilten Datei-Linter: Wo ist die Reactor-Wurzel, welche Module gibt es,
- * welche {@code src/...}-Verzeichnisse sind zu scannen.
+ * Path resolution for the shared file linters: where the reactor root is, which modules exist,
+ * which {@code src/...} directories have to be scanned.
  *
- * <p>Die Tests dieses Moduls laufen an zwei Orten: in root selbst (Arbeitsverzeichnis =
- * {@code plaintext-root-webapp}) und in jedem Consumer, der das Jar per Surefire
- * {@code <dependenciesToScan>} zieht (Arbeitsverzeichnis = dessen webapp-Modul). In beiden Faellen
- * gilt: ab {@code user.dir} nach oben bis zur ersten {@code pom.xml} mit {@code <modules>} — das
- * ist der Reactor — und von dort in jedes (auch verschachtelte) Modul. Das Modul, das diese Linter
- * ausliefert, wird nie gescannt: seine Quellen tragen die Verbots-Tokens als Literale und
- * Test-Fixtures (in Consumern liegt es als Jar vor, dort greift die Ausnahme nie).
+ * <p>The tests of this module run in two places: in root itself (working directory =
+ * {@code plaintext-root-webapp}) and in every consumer that pulls the jar in via Surefire
+ * {@code <dependenciesToScan>} (working directory = that consumer's webapp module). In both cases
+ * the same rule applies: from {@code user.dir} upwards to the first {@code pom.xml} with
+ * {@code <modules>} — that is the reactor — and from there into every (also nested) module. The
+ * module that ships these linters is never scanned: its sources carry the forbidden tokens as
+ * literals and test fixtures (in consumers it is present as a jar, where that exemption never
+ * applies).
  *
- * <p>Bisher trug jede Linter-Klasse ihre eigene Kopie dieser Suche; die neuen Regeln des
- * Zustandsberichts vom 29.08.2026 teilen sie sich hier. Die aelteren Klassen bleiben unveraendert.
+ * <p>Until now every linter class carried its own copy of this lookup; the new rules from the
+ * status report of 29.08.2026 share it here. The older classes remain unchanged.
  *
  * @author info@plaintext.ch
  * @since 2026
  */
 final class ReactorLayout {
 
-    /** Marker der eigenen Quelle: liegt sie unter {@code <modul>/src/main/java}, ist das Modul dieses hier. */
+    /** Marker for our own source: if it lies under {@code <modul>/src/main/java}, that module is this one. */
     private static final String OWN_SOURCE_MARKER = "ch/plaintext/arch/ReactorLayout.java";
 
-    /** Verzeichnisse, in denen keine Modulquellen liegen — nicht betreten (Laufzeit + Fehlalarme). */
+    /** Directories that contain no module sources — do not descend into them (runtime + false alarms). */
     private static final List<String> SKIP_DIRS = List.of("target", "src", ".git", "node_modules", ".mvn", ".idea");
 
-    /** Maximale Modultiefe unter der Reactor-Wurzel. */
+    /** Maximum module depth below the reactor root. */
     private static final int MAX_MODULE_DEPTH = 5;
 
     private ReactorLayout() {
     }
 
-    /** Arbeitsverzeichnis des Testlaufs (Surefire setzt {@code user.dir} auf das Modul). */
+    /** Working directory of the test run (Surefire sets {@code user.dir} to the module). */
     static Path start() {
         return Path.of(System.getProperty("user.dir")).toAbsolutePath();
     }
 
-    /** Reactor-Wurzel = erstes Verzeichnis nach oben, dessen {@code pom.xml} {@code <modules>} traegt — oder null. */
+    /** Reactor root = first directory upwards whose {@code pom.xml} carries {@code <modules>} — or null. */
     static Path repoRoot() {
         return repoRoot(start());
     }
@@ -70,10 +71,10 @@ final class ReactorLayout {
     }
 
     /**
-     * Alle {@code <modul>/<suffix>}-Verzeichnisse des Reactors (eigenes Modul zuerst, dann jedes
-     * — auch verschachtelte — Modul ab der Wurzel), ohne das Modul, das diese Linter ausliefert.
+     * All {@code <modul>/<suffix>} directories of the reactor (own module first, then every
+     * — also nested — module below the root), without the module that ships these linters.
      *
-     * @param suffix z. B. {@code src/main/resources/META-INF/resources} oder {@code src/main/java}
+     * @param suffix e.g. {@code src/main/resources/META-INF/resources} or {@code src/main/java}
      */
     static List<Path> sourceRoots(String suffix) {
         Path start = start();
@@ -109,7 +110,7 @@ final class ReactorLayout {
         }
     }
 
-    /** Pfad relativ zur Reactor-Wurzel (mit {@code /}), damit Meldungen und Allowlist-Eintraege ueberall gleich lauten. */
+    /** Path relative to the reactor root (with {@code /}), so that messages and allowlist entries read the same everywhere. */
     static String relativ(Path file) {
         Path root = repoRoot();
         Path p = file.toAbsolutePath().normalize();

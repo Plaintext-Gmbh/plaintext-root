@@ -27,29 +27,28 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Veröffentlicht die öffentlichen Signaturschlüssel dieser Instanz als <b>JWK Set</b>
- * (RFC 7517) unter {@code /.well-known/jwks.json} — Karte 635.
+ * Publishes the public signature keys of this instance as a <b>JWK set</b>
+ * (RFC 7517) under {@code /.well-known/jwks.json} — card 635.
  *
- * <p><b>Wozu.</b> Bisher konnte eine Gegenstelle ein von uns ausgestelltes Token nicht prüfen,
- * ohne dass ihr jemand den öffentlichen Schlüssel von Hand überreicht. Damit blieb als einziger
- * Ausweis ein <em>geteiltes Geheimnis</em>: Wer den Wert kennt, gilt als berechtigt — und wer ihn
- * vergisst (etwa nach einem Neustart), ist ausgesperrt. Genau dieser Fall steht in Karte 556: Der
- * Label-Drucker hält eine exklusive Session, und guild verliert nach einem Neustart den Token
- * dazu.
+ * <p><b>What for.</b> Until now a counterpart could not verify a token we had issued
+ * without somebody handing it the public key by hand. That left a <em>shared secret</em> as the
+ * only credential: whoever knows the value counts as authorized — and whoever forgets it
+ * (after a restart, say) is locked out. Exactly that case is described in card 556: the
+ * label printer holds an exclusive session, and guild loses the token for it after a restart.
  *
- * <p>Mit veröffentlichtem Schlüssel <b>weist sich der Aufrufer aus</b>, statt ein gemerktes
- * Geheimnis vorzuzeigen. Nach einem Neustart signiert er einfach neu. Das Geheimnis — der private
- * Schlüssel — verlässt die Anwendung nie.
+ * <p>With a published key the caller <b>identifies himself</b> instead of presenting a memorized
+ * secret. After a restart he simply signs anew. The secret — the private
+ * key — never leaves the application.
  *
- * <p><b>Warum genau dieser Pfad.</b> {@code /.well-known/jwks.json} ist der Ort, den RFC 8414 und
- * OpenID Connect Discovery vorsehen; dort sucht jede Bibliothek von selbst. Ein Hausweg unter
- * {@code /nosec} wäre bequemer gewesen (dort ist bereits alles freigegeben), aber dann wäre es
- * kein Standard mehr, sondern nur ein JSON an einer eigenen Adresse.
+ * <p><b>Why exactly this path.</b> {@code /.well-known/jwks.json} is the location that RFC 8414 and
+ * OpenID Connect Discovery prescribe; every library looks there by itself. A home-grown path under
+ * {@code /nosec} would have been more convenient (everything is already permitted there), but then it
+ * would no longer be a standard, just a JSON document at an address of our own.
  *
- * <p><b>Was hier nicht hineingehört.</b> Ausschliesslich öffentliche Schlüssel. Ein RSA-JWK mit
- * privatem Anteil trüge zusätzlich {@code d}, {@code p}, {@code q}, {@code dp}, {@code dq},
- * {@code qi} — dass keines davon je erscheint, hält ein eigener Test fest. Diese Zusage ist der
- * ganze Grund, warum der Endpunkt ohne Anmeldung erreichbar sein darf.
+ * <p><b>What does not belong in here.</b> Exclusively public keys. An RSA JWK with a
+ * private part would additionally carry {@code d}, {@code p}, {@code q}, {@code dp}, {@code dq},
+ * {@code qi} — that none of these ever appears is pinned down by a test of its own. That promise is
+ * the whole reason why the endpoint may be reachable without authentication.
  */
 @RestController
 @ConditionalOnWebApplication
@@ -74,25 +73,25 @@ public class JwksController {
             if (pk instanceof RSAPublicKey rsa) {
                 keys.add(toJwk(rsa));
             } else {
-                // Kein Fehler nach aussen: ein Schluessel, den wir nicht abbilden koennen, wird
-                // ausgelassen. Ein 500 wuerde den Abruf der uebrigen mitreissen.
+                // No error towards the outside: a key that we cannot map is
+                // left out. A 500 would drag down the retrieval of the others with it.
                 log.warn("Signaturschluessel vom Typ {} wird im JWK Set ausgelassen — nur RSA wird abgebildet.",
                         pk.getAlgorithm());
             }
         }
-        // Kein Caching: nach einem Schluesselwechsel muss die Gegenstelle den neuen sofort sehen.
-        // Bei einer Handvoll Schluesseln kostet das nichts.
+        // No caching: after a key rotation the counterpart has to see the new key immediately.
+        // With a handful of keys that costs nothing.
         return ResponseEntity.ok()
                 .header("Cache-Control", "no-store")
                 .body(Map.of("keys", keys));
     }
 
     /**
-     * RSA-Schlüssel als JWK (RFC 7517, Abschnitt 6.3.1).
+     * RSA key as a JWK (RFC 7517, section 6.3.1).
      *
-     * <p>Die Reihenfolge der Felder ist <b>nicht</b> beliebig: Der Thumbprint nach RFC 7638 wird
-     * über die kanonische Form gebildet, und die verlangt genau {@code e}, {@code kty}, {@code n}
-     * in lexikographischer Reihenfolge. Deshalb {@link LinkedHashMap} statt {@link Map#of}.
+     * <p>The order of the fields is <b>not</b> arbitrary: the thumbprint according to RFC 7638 is
+     * formed over the canonical form, and that requires exactly {@code e}, {@code kty}, {@code n}
+     * in lexicographic order. Hence {@link LinkedHashMap} instead of {@link Map#of}.
      */
     private static Map<String, Object> toJwk(RSAPublicKey rsa) {
         String n = b64url(rsa.getModulus());
@@ -109,15 +108,15 @@ public class JwksController {
     }
 
     /**
-     * {@code kid} als Thumbprint nach RFC 7638: SHA-256 über die kanonische JWK-Form.
+     * {@code kid} as a thumbprint according to RFC 7638: SHA-256 over the canonical JWK form.
      *
-     * <p>Bewusst abgeleitet statt konfiguriert. Ein frei vergebener {@code kid} müsste gepflegt und
-     * bei jedem Schlüsselwechsel mitgezogen werden — ein Thumbprint ergibt sich aus dem Schlüssel
-     * selbst, ist stabil, und die Gegenstelle kann ihn unabhängig nachrechnen.
+     * <p>Deliberately derived instead of configured. A freely assigned {@code kid} would have to be
+     * maintained and carried along on every key rotation — a thumbprint follows from the key
+     * itself, is stable, and the counterpart can recompute it independently.
      *
-     * <p>Die kanonische Form enthält <b>nur</b> {@code e}, {@code kty}, {@code n}, ohne Leerzeichen,
-     * in dieser Reihenfolge — jede Abweichung ergibt einen anderen Thumbprint und damit eine
-     * {@code kid}, die niemand nachrechnen kann.
+     * <p>The canonical form contains <b>only</b> {@code e}, {@code kty}, {@code n}, without spaces,
+     * in this order — every deviation yields a different thumbprint and thereby a
+     * {@code kid} that nobody can recompute.
      */
     static String thumbprint(String n, String e) {
         String kanonisch = "{\"e\":\"" + e + "\",\"kty\":\"RSA\",\"n\":\"" + n + "\"}";
@@ -125,18 +124,18 @@ public class JwksController {
             byte[] hash = MessageDigest.getInstance("SHA-256").digest(kanonisch.getBytes(StandardCharsets.UTF_8));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
         } catch (NoSuchAlgorithmException ex) {
-            // SHA-256 ist in jeder JRE vorhanden; hier zu landen hiesse, dass die Plattform kaputt ist.
+            // SHA-256 is present in every JRE; ending up here would mean that the platform is broken.
             throw new IllegalStateException("SHA-256 nicht verfuegbar", ex);
         }
     }
 
     /**
-     * Base64url ohne Padding, wie RFC 7518 es für {@code n} und {@code e} verlangt.
+     * Base64url without padding, as RFC 7518 requires for {@code n} and {@code e}.
      *
-     * <p>{@link BigInteger#toByteArray()} stellt bei positiven Zahlen mit gesetztem höchstem Bit ein
-     * Null-Byte voran (Zweierkomplement). Bleibt es stehen, ist der Modulus 257 statt 256 Byte lang
-     * — die Signaturprüfung schlägt dann bei manchen Bibliotheken fehl, bei anderen nicht, und der
-     * Fehler sieht aus wie ein falscher Schlüssel.
+     * <p>For positive numbers with the highest bit set, {@link BigInteger#toByteArray()} prepends a
+     * zero byte (two's complement). If it stays there, the modulus is 257 instead of 256 bytes long
+     * — the signature check then fails with some libraries and not with others, and the
+     * error looks like a wrong key.
      */
     static String b64url(BigInteger wert) {
         byte[] b = wert.toByteArray();

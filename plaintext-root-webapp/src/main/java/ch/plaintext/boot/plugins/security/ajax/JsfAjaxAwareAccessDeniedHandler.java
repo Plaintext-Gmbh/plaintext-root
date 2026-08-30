@@ -19,17 +19,17 @@ import org.springframework.security.web.csrf.CsrfException;
 import java.io.IOException;
 
 /**
- * {@link AccessDeniedHandler}, der JSF-/PrimeFaces-Ajax-Requests eine verarbeitbare
- * XML-{@code partial-response} liefert statt eines JSON-403 (Karte 385).
+ * {@link AccessDeniedHandler} that delivers a processable XML {@code partial-response} to
+ * JSF/PrimeFaces Ajax requests instead of a JSON 403 (card 385).
  *
- * <p>Ein abgelaufenes CSRF-Token ({@link CsrfException}) — nach jedem Deploy und nach jedem
- * Re-Login in einem anderen Tab der Normalfall — fuehrt zum Redirect auf die Anmeldung. Eine
- * echte Autorisierungsverweigerung eines angemeldeten Nutzers wird dagegen als
- * {@code <error>} zurueckgegeben: den auf die Login-Seite zu schicken waere irrefuehrend, und
- * das Raedchen muss trotzdem stoppen.</p>
+ * <p>An expired CSRF token ({@link CsrfException}) — the normal case after every deploy and after every
+ * re-login in another tab — leads to a redirect to the login page. A
+ * genuine authorization denial of a logged-in user, in contrast, is returned as an
+ * {@code <error>}: sending that user to the login page would be misleading, and
+ * the spinner has to stop regardless.</p>
  *
- * <p>Nicht-Ajax-Requests reicht der Handler unveraendert an das Spring-Default-Verhalten
- * durch.</p>
+ * <p>Non-Ajax requests are passed through unchanged by the handler to the Spring default
+ * behaviour.</p>
  */
 @Slf4j
 public class JsfAjaxAwareAccessDeniedHandler implements AccessDeniedHandler {
@@ -49,14 +49,14 @@ public class JsfAjaxAwareAccessDeniedHandler implements AccessDeniedHandler {
             delegate.handle(request, response, accessDeniedException);
             return;
         }
-        // LOGGING (Karte 385, Manager-Review): Vor diesem Fix hinterliess jede Ablehnung ein
-        // HTTP 403 im Zugriffslog. Die Antwort ist jetzt ein HTTP 200 — ohne eigenen Log-Eintrag
-        // waeren abgewiesene Requests, einschliesslich echter CSRF-Angriffsversuche, voellig
-        // unsichtbar. Genau diese Unsichtbarkeit hat die Diagnose dieses Bugs vier Anlaeufe
-        // gekostet. Bewusst WARN und nicht INFO: eine CSRF-Ablehnung ist entweder ein
-        // Angriffsversuch oder ein Deploy-/Tab-Nebeneffekt — beides will man in Graylog finden,
-        // und die Haeufigkeit ist ein direktes Mass fuer die Restwirkung dieses Bugs.
-        // Bewusst NICHT geloggt: Token, Session-Id, Benutzername, Request-Parameter.
+        // LOGGING (card 385, manager review): before this fix every denial left an
+        // HTTP 403 in the access log. The response is now an HTTP 200 — without a log entry of our own
+        // rejected requests, including genuine CSRF attack attempts, would be completely
+        // invisible. Exactly this invisibility made the diagnosis of this bug take four attempts.
+        // Deliberately WARN and not INFO: a CSRF denial is either an
+        // attack attempt or a deploy/tab side effect — one wants to find both in Graylog,
+        // and the frequency is a direct measure of the residual effect of this bug.
+        // Deliberately NOT logged: token, session id, user name, request parameters.
         if (accessDeniedException instanceof CsrfException) {
             log.warn("Ajax-Request abgewiesen (CSRF-Token fehlt oder ist ungueltig): {} {} "
                             + "— beantwortet mit JSF-partial-response, Redirect auf {}",

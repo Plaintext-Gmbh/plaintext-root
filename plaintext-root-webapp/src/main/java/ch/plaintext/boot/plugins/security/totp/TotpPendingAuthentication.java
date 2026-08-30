@@ -8,23 +8,23 @@ import org.springframework.security.core.Authentication;
 import java.io.Serializable;
 
 /**
- * Traeger fuer den "Passwort ok, zweiter Faktor ausstehend"-Zwischenzustand. Wird nach
- * erfolgreichem Passwort-Login in der HTTP-Session abgelegt (NICHT im SecurityContext) und
- * erst nach gueltigem TOTP-/Recovery-Code in eine volle Authentication ueberfuehrt.
+ * Carrier for the "password ok, second factor pending" intermediate state. It is stored in the
+ * HTTP session after a successful password login (NOT in the SecurityContext) and is only
+ * turned into a full authentication after a valid TOTP/recovery code.
  *
- * <p><b>Sicherheits-Invariante:</b> Solange dieses Objekt in der Session liegt und die
- * eigentliche Authentication NICHT im SecurityContext steht, gilt der Request-Kontext als
- * anonym – jeder Zugriff auf geschuetzte Ressourcen wird abgewiesen. Damit ist der zweite
- * Faktor nicht umgehbar.
+ * <p><b>Security invariant:</b> as long as this object lies in the session and the
+ * actual authentication is NOT in the SecurityContext, the request context counts as
+ * anonymous - every access to protected resources is rejected. The second
+ * factor therefore cannot be bypassed.
  *
- * @param authentication die zurueckgehaltene, voll aufgeloeste Authentication
- * @param username       Login-Name (fuer Verifikation/Rate-Limit)
- * @param targetUrl      urspruenglich angepeiltes Ziel (Startseite), auf das nach Erfolg
- *                       weitergeleitet wird
+ * @param authentication the withheld, fully resolved authentication
+ * @param username       login name (for verification/rate limit)
+ * @param targetUrl      originally intended target (start page), to which the user is
+ *                       redirected after success
  */
 public record TotpPendingAuthentication(Authentication authentication, String username, String targetUrl)
         implements Serializable {
 
-    /** Session-Attribut-Schluessel fuer den ausstehenden Zwei-Faktor-Zustand. */
+    /** Session attribute key for the pending two-factor state. */
     public static final String SESSION_ATTRIBUTE = "PLAINTEXT_TOTP_PENDING_AUTH";
 }

@@ -11,9 +11,9 @@ import ch.plaintext.boot.menu.MenuAnnotation;
         parent = "Root",
         order = 3,
         icon = "pi pi-key",
-        // Zustandsbericht 29.08.2026 (H4): "root" klein geschrieben — der Rollenvergleich ist
-        // case-sensitiv (ROLE_ROOT), die Seite war fuer NIEMANDEN erreichbar. SeitenrechteInvariantTest
-        // haelt die Schreibweise jetzt fest.
+        // Status report 29.08.2026 (H4): "root" was spelled in lower case — the role comparison is
+        // case-sensitive (ROLE_ROOT), so the page was reachable for NOBODY. SeitenrechteInvariantTest
+        // now pins the spelling down.
         roles = {"ROOT"}
 )
 public class OidcConfigSubmenu {

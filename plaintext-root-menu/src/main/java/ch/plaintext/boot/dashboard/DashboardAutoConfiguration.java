@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Auto-Konfiguration für den Dashboard-Kachel-Mechanismus – analog zur
+ * Auto-configuration for the dashboard tile mechanism – analogous to
  * {@link ch.plaintext.boot.menu.MenuAutoConfiguration}.
  *
  * @author plaintext.ch

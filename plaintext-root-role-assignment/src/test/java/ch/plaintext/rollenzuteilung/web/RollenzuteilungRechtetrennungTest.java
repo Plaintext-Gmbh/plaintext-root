@@ -28,11 +28,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Rechtetrennung in der Rollenzuteilung: admin verteilt <b>Modul-Rollen</b> (genau dafuer steht die
- * Seite ihm offen), aber keine Verwaltungsrechte.
+ * Separation of privileges in the role assignment: an admin hands out <b>module roles</b> (that is
+ * exactly what the page is open to them for), but no administrative privileges.
  *
- * <p>Ohne diese Pruefung waere die Rollenzuteilung ein Umweg um die Allowlist der
- * Benutzerverwaltung: ein admin haette sich hier {@code ROLE_ROOT} zuteilen koennen.</p>
+ * <p>Without this check the role assignment would be a way around the allowlist of the user
+ * administration: an admin could have granted themselves {@code ROLE_ROOT} here.</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Rollenzuteilung: Rechtetrennung root/admin")

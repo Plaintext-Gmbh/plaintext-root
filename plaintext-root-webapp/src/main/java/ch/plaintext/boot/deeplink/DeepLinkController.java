@@ -16,21 +16,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.io.IOException;
 
 /**
- * Einstiegspunkt fuer Deep-Links aus Mails (Karte 345): {@code /deeplink?type=…&mandat=…&id=…}.
+ * Entry point for deep links coming from mails (card 345): {@code /deeplink?type=…&mandat=…&id=…}.
  *
- * <p>Der Pfad steht bewusst in der {@code permitAll}-Liste — nicht, weil er offen waere, sondern
- * weil der <b>nicht angemeldete</b> Fall hier sauber behandelt werden muss (siehe
- * {@link DeepLinkPendingStore}). Der Zugriffsschutz sitzt eine Ebene tiefer: ohne
- * Authentifizierung fuehrt der Aufruf ausschliesslich zur Login-Seite, jede inhaltliche Pruefung
- * macht {@link DeepLinkResolver} und die laeuft erst nach dem Login.
+ * <p>The path deliberately stands in the {@code permitAll} list — not because it were open, but
+ * because the <b>unauthenticated</b> case has to be handled cleanly here (see
+ * {@link DeepLinkPendingStore}). The access protection sits one level deeper: without
+ * authentication the call leads exclusively to the login page, every substantive check is done by
+ * {@link DeepLinkResolver} and that only runs after the login.
  *
- * <p>Nur GET, keine Zustandsaenderung ausser dem Mandat-Wechsel; darum kein CSRF-Thema.
+ * <p>GET only, no state change apart from switching the tenant; hence no CSRF topic.
  */
 @Controller
 @Slf4j
 public class DeepLinkController {
 
-    /** Ziel bei jeder Ablehnung — dieselbe Seite, die auch der Seiten-Guard verwendet. */
+    /** Target on every rejection — the same page that the page guard uses as well. */
     static final String ACCESS_DENIED_PAGE = "/access-denied.html";
 
     static final String LOGIN_PAGE = "/login.html";
@@ -51,10 +51,10 @@ public class DeepLinkController {
         String contextPath = request.getContextPath() == null ? "" : request.getContextPath();
 
         if (!istAngemeldet()) {
-            // Ziel in der Session merken (nur die drei validierten Bezeichner, keine URL) und zur
-            // Anmeldung schicken. Nach erfolgreichem Login holt der
-            // PlaintextAuthenticationSuccessHandler den Deep-Link wieder hervor und ruft diesen
-            // Endpunkt erneut auf — inklusive aller Pruefungen.
+            // Remember the target in the session (only the three validated identifiers, no URL) and send
+            // the user to the login. After a successful login the
+            // PlaintextAuthenticationSuccessHandler brings the deep link back out and calls this
+            // endpoint again — including all checks.
             DeepLinkPendingStore.merke(request, type, mandat, id);
             log.debug("Deep-Link ohne Anmeldung aufgerufen -> Login, Ziel gemerkt");
             response.sendRedirect(contextPath + LOGIN_PAGE);
@@ -63,7 +63,7 @@ public class DeepLinkController {
 
         DeepLinkResolution resolution = resolver.resolve(type, mandat, id);
         if (!resolution.erlaubt()) {
-            // Bewusst ohne Details in der URL: der Grund steht im Log, nicht auf der Seite.
+            // Deliberately without details in the URL: the reason belongs in the log, not on the page.
             response.sendRedirect(contextPath + ACCESS_DENIED_PAGE);
             return;
         }
@@ -71,8 +71,8 @@ public class DeepLinkController {
     }
 
     /**
-     * Remember-Me zaehlt hier als angemeldet (der Benutzer hat eine echte Identitaet und damit
-     * echte Rechte); Anonymous nicht.
+     * Remember-me counts as authenticated here (the user has a real identity and therefore real
+     * permissions); anonymous does not.
      */
     private boolean istAngemeldet() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

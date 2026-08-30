@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die Trennung der Zustaendigkeiten in Rollen-Form: root vergibt Verwaltungsrechte, admin vergibt
- * Modul-Zugaenge.
+ * The separation of responsibilities in role form: root assigns administrative rights, admin
+ * assigns module access.
  */
 @DisplayName("Privilegierte Rollen")
 class PrivilegedRoleRulesTest {

@@ -7,12 +7,12 @@
 package ch.plaintext.apitoken;
 
 /**
- * Optionaler Collaborator für {@link McpBearerTokenFilter}: prüft, ob ein Token anhand seiner
- * {@code jti} (JWT-ID-Claim) gesperrt wurde. Root selbst führt keine Blocklist-Tabelle — Apps, die
- * Revocation wollen (z.B. schuetu), registrieren eine eigene Spring-Bean, die dieses Interface
- * implementiert; der Filter holt sie sich optional per {@code ObjectProvider} (siehe
- * {@link McpBearerTokenFilterConfig}). Ist keine Bean vorhanden, gilt kein Token als revoked —
- * 100% verhaltensgleich zum bisherigen Filter für Apps, die (noch) keine Blocklist betreiben.
+ * Optional collaborator for {@link McpBearerTokenFilter}: checks whether a token has been revoked
+ * based on its {@code jti} (JWT ID claim). Root itself does not maintain a blocklist table — apps
+ * that want revocation (e.g. schuetu) register their own Spring bean implementing this interface;
+ * the filter obtains it optionally via {@code ObjectProvider} (see
+ * {@link McpBearerTokenFilterConfig}). If no bean is present, no token counts as revoked —
+ * 100% behaviourally identical to the previous filter for apps that do not (yet) run a blocklist.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -21,9 +21,9 @@ package ch.plaintext.apitoken;
 public interface JtiRevocationChecker {
 
     /**
-     * @param jti JWT-ID-Claim des zu prüfenden Tokens (nie {@code null} — der Filter ruft dies nur
-     *            auf, wenn das Token einen {@code jti}-Claim trägt)
-     * @return {@code true}, wenn das Token gesperrt wurde und die Anfrage mit 401 abgelehnt werden soll
+     * @param jti JWT ID claim of the token to be checked (never {@code null} — the filter only
+     *            calls this when the token carries a {@code jti} claim)
+     * @return {@code true} if the token has been revoked and the request should be rejected with 401
      */
     boolean isRevoked(String jti);
 }

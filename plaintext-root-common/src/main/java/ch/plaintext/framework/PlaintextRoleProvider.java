@@ -7,14 +7,14 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Modul-Beitrag fuer Rollen — das Pendant zum Menue-Muster ({@code @MenuAnnotation}/Submenu-Beans),
- * mit dem Module Menueeintraege beisteuern: Ein Modul (in root selbst oder in einer App, die root
- * nutzt) implementiert dieses Interface als Spring-Bean und deklariert damit die Rollen, die es
- * kennt/prueft. Die {@link PlaintextRoleRegistry} sammelt alle Provider-Beans ein (Union,
- * dedupliziert) und stellt die Rollen z.B. der Benutzerverwaltung als Auswahl zur Verfuegung.
+ * A module's contribution of roles — the counterpart to the menu pattern ({@code @MenuAnnotation}
+ * / submenu beans) with which modules contribute menu entries: a module (in root itself or in an
+ * app that uses root) implements this interface as a Spring bean and thereby declares the roles
+ * it knows/checks. The {@link PlaintextRoleRegistry} collects all provider beans (union,
+ * deduplicated) and offers the roles to the user administration, for instance, as a selection.
  *
- * <p>Referenzimplementierung: {@code RootRoleProvider} im Webapp-Modul deklariert die
- * root-eigenen Rollen ({@code root}, {@code admin}, {@code user}, {@code system}).</p>
+ * <p>Reference implementation: {@code RootRoleProvider} in the webapp module declares root's own
+ * roles ({@code root}, {@code admin}, {@code user}, {@code system}).</p>
  *
  * @author info@plaintext.ch
  * @since 0.0.1
@@ -22,20 +22,20 @@ import java.util.Set;
 public interface PlaintextRoleProvider {
 
     /**
-     * Die technischen Rollennamen dieses Moduls.
+     * The technical role names of this module.
      *
-     * @return Rollennamen (mit oder ohne {@code ROLE_}-Prefix)
+     * @return role names (with or without the {@code ROLE_} prefix)
      */
     Set<String> getRoles();
 
     /**
-     * Die Rollen dieses Moduls inklusive Beschreibung fuer Auswahl-UIs.
+     * The roles of this module including a description for selection UIs.
      *
-     * <p>Default: leitet aus {@link #getRoles()} Rollen ohne Beschreibung ab — bestehende
-     * Provider bleiben damit unveraendert lauffaehig. Module, die eine Beschreibung anzeigen
-     * wollen, ueberschreiben diese Methode (und liefern {@link #getRoles()} konsistent dazu).</p>
+     * <p>Default: derives roles without a description from {@link #getRoles()} — existing
+     * providers therefore keep working unchanged. Modules that want to display a description
+     * override this method (and keep {@link #getRoles()} consistent with it).</p>
      *
-     * @return deklarierte Rollen mit Beschreibung
+     * @return declared roles with description
      * @since 1.600.0
      */
     default Set<PlaintextRole> getDeclaredRoles() {

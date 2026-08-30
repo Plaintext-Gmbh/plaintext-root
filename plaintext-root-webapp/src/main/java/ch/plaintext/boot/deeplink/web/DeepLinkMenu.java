@@ -6,8 +6,8 @@ package ch.plaintext.boot.deeplink.web;
 import ch.plaintext.boot.menu.MenuAnnotation;
 
 /**
- * Menuepunkt „Deep-Links" (Root) — Uebersicht der registrierten Deep-Link-Ziele (Karte 345).
- * Nur ROOT, zusaetzlich hart in {@code PlaintextSecurityConfig.ROOT_ONLY_PAGES} abgesichert.
+ * Menu entry "deep links" (root) — overview of the registered deep-link targets (card 345).
+ * ROOT only, additionally secured explicitly in {@code PlaintextSecurityConfig.ROOT_ONLY_PAGES}.
  */
 @MenuAnnotation(
         title = "Deep-Links",

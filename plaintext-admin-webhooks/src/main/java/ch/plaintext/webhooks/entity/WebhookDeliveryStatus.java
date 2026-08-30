@@ -3,14 +3,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.webhooks.entity;
 
-/** Zustand eines {@link WebhookDelivery}-Versuchs. */
+/** State of a {@link WebhookDelivery} attempt. */
 public enum WebhookDeliveryStatus {
-    /** Noch kein (weiterer) Versandversuch unternommen bzw. fällig für Retry. */
+    /** No (further) send attempt made yet, or due for a retry. */
     PENDING,
-    /** Erfolgreich zugestellt (2xx-Antwort). */
+    /** Delivered successfully (2xx response). */
     OK,
-    /** Zustellung fehlgeschlagen, Retry ist noch möglich ({@link WebhookDelivery#getNextAttemptAt()}). */
+    /** Delivery failed, a retry is still possible ({@link WebhookDelivery#getNextAttemptAt()}). */
     FAILED,
-    /** Maximale Anzahl Versuche erreicht — kein weiterer Retry. */
+    /** Maximum number of attempts reached — no further retry. */
     GIVEN_UP
 }

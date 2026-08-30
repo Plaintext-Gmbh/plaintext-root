@@ -61,13 +61,13 @@ public class MenuAutoConfiguration {
     }
 
     /**
-     * Setzt die konfigurierbaren Modul-Rollen durch ({@code plaintext.menu.module-roles}). Hier
-     * registriert statt per {@code @Service} annotiert, damit auch Anwendungen ohne
-     * {@code ch.plaintext}-Component-Scan den Service bekommen.
+     * Enforces the configurable module roles ({@code plaintext.menu.module-roles}). Registered
+     * here rather than annotated with {@code @Service}, so that applications without a
+     * {@code ch.plaintext} component scan get the service as well.
      *
-     * @param applicationContext liefert die registrierten Menuepunkt-Beans
-     * @param properties         die konfigurierte Modul-Rollen-Zuordnung
-     * @return der Modul-Rollen-Service
+     * @param applicationContext supplies the registered menu item beans
+     * @param properties         the configured module role mapping
+     * @return the module role service
      */
     @Bean
     @ConditionalOnMissingBean

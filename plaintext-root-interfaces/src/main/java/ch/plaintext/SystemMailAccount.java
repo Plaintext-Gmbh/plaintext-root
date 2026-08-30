@@ -4,12 +4,12 @@
 package ch.plaintext;
 
 /**
- * Schlanke, modulübergreifende Referenz auf ein GLOBAL-Systemmailkonto der Mailbox – für die Auswahl in
- * der Root-Konfiguration (Setup), ohne die internen Mailbox-Typen offenzulegen.
+ * Slim, cross-module reference to a GLOBAL system mail account of the mailbox – for the selection
+ * in the root configuration (setup), without exposing the internal mailbox types.
  *
- * @param id           Id des Mailbox-Kontos
- * @param name         Anzeigename
- * @param emailAddress Absender-Adresse
+ * @param id           id of the mailbox account
+ * @param name         display name
+ * @param emailAddress sender address
  */
 public record SystemMailAccount(Long id, String name, String emailAddress) {
 }

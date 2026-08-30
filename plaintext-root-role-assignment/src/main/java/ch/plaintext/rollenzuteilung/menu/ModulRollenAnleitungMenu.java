@@ -6,11 +6,11 @@ package ch.plaintext.rollenzuteilung.menu;
 import ch.plaintext.boot.menu.MenuAnnotation;
 
 /**
- * Untermenue „Anleitung Modul-Rollen" — die Anleitung fuer admin: eine Modul-Rolle an einen
- * Benutzer vergeben, was sie bewirkt, wie sie mit den Mandanten-Listen von root zusammenspielt und
- * woran man erkennt, dass man root braucht.
+ * Submenu "Anleitung Modul-Rollen" — the guide for admins: how to grant a module role to a user,
+ * what it does, how it interacts with root's tenant lists and how to recognise that you actually
+ * need root.
  *
- * <p>Sichtbar fuer {@code ADMIN} und {@code ROOT}; steht zuunterst im Admin-Zweig.</p>
+ * <p>Visible for {@code ADMIN} and {@code ROOT}; sits at the very bottom of the Admin branch.</p>
  *
  * @author info@plaintext.ch
  * @since 1.608.0

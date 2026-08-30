@@ -31,10 +31,10 @@ public interface RollenzuteilungRepository extends JpaRepository<Rollenzuteilung
     List<String> findAllUsernamesByMandat(String mandat);
 
     /**
-     * Alle jemals zugeteilten Rollennamen (Bestand) — Fallback fuer die Rollen-Auswahl, damit
-     * Rollen, die kein Modul (mehr) deklariert, nicht aus der Auswahl verschwinden.
+     * All role names ever assigned (existing data) — a fallback for the role selection, so that
+     * roles which are no longer declared by any module do not vanish from the selection.
      *
-     * @return distinct roleNames aller Rollenzuteilungen
+     * @return distinct roleNames across all role assignments
      */
     @Query("SELECT DISTINCT r.roleName FROM Rollenzuteilung r")
     List<String> findDistinctRoleNames();

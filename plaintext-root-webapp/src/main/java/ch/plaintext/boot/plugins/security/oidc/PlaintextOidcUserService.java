@@ -34,11 +34,11 @@ public class PlaintextOidcUserService implements OAuth2UserService<OidcUserReque
     private final OidcUserService delegate = new OidcUserService();
 
     /**
-     * SECURITY (Karte 314, Punkt 12): verlangt {@code email_verified=true}, bevor ein bestehendes
-     * lokales Konto erstmalig an einen IdP-{@code sub} gebunden wird. Fail-closed: ein fehlender
-     * Claim gilt als "nicht verifiziert". Ueber
-     * {@code plaintext.security.oidc-require-verified-email=false} abschaltbar, falls ein IdP den
-     * Claim nachweislich nicht liefert.
+     * SECURITY (card 314, item 12): requires {@code email_verified=true} before an existing
+     * local account is bound to an IdP {@code sub} for the first time. Fail-closed: a missing
+     * claim counts as "not verified". Can be switched off via
+     * {@code plaintext.security.oidc-require-verified-email=false}, in case an IdP demonstrably does
+     * not deliver the claim.
      */
     private void requireVerifiedEmail(OidcUser oidcUser, String username, String usernameAttr) {
         if (!securityProperties.isOidcRequireVerifiedEmail()) {
@@ -89,15 +89,15 @@ public class PlaintextOidcUserService implements OAuth2UserService<OidcUserReque
         if (localUser == null) {
             localUser = userRepository.findByUsername(username);
             if (localUser != null) {
-                // SECURITY (Karte 314, Punkt 12): Kontouebernahme-Schutz beim Verlinken.
-                // Hier wird ein BESTEHENDES lokales Konto allein aufgrund der vom IdP
-                // gelieferten Mailadresse an einen IdP-'sub' gebunden. Laesst der IdP
-                // unverifizierte Adressen zu, koennte sich jemand dort mit der Adresse eines
-                // bestehenden Benutzers registrieren und danach dessen Konto uebernehmen.
-                // Beim erstmaligen Verlinken verlangen wir deshalb email_verified=true.
-                // Bewusst NUR an dieser Stelle: bereits verlinkte Konten (findByOidcSubject)
-                // und Auto-Create sind nicht betroffen, ein IdP ohne den Claim wird nicht
-                // stillschweigend akzeptiert, sondern mit klarer Meldung abgelehnt.
+                // SECURITY (card 314, item 12): account takeover protection when linking.
+                // Here an EXISTING local account is bound to an IdP 'sub' solely on the basis of
+                // the mail address delivered by the IdP. If the IdP permits
+                // unverified addresses, somebody could register there with the address of an
+                // existing user and afterwards take over that user's account.
+                // On the first linking we therefore require email_verified=true.
+                // Deliberately ONLY at this point: already linked accounts (findByOidcSubject)
+                // and auto-create are not affected; an IdP without the claim is not
+                // accepted silently, but rejected with a clear message.
                 requireVerifiedEmail(oidcUser, username, usernameAttr);
                 // Link existing user with OIDC subject
                 localUser.setOidcSubject(oidcSubject);
@@ -131,8 +131,8 @@ public class PlaintextOidcUserService implements OAuth2UserService<OidcUserReque
         if (value != null) {
             return value.toString();
         }
-        // Fallback: try claims. getIdToken() ist laut OidcUser-Vertrag @NonNull, daher keine
-        // (immer wahre) Null-Pruefung mehr (Sonar S2589).
+        // Fallback: try claims. According to the OidcUser contract getIdToken() is @NonNull, hence no
+        // (always true) null check any more (Sonar S2589).
         value = oidcUser.getIdToken().getClaim(attributeName);
         if (value != null) {
             return value.toString();

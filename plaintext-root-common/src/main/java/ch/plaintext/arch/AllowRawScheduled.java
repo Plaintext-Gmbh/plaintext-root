@@ -10,22 +10,22 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Markiert eine Klasse, die bewusst rohes {@code @Scheduled} nutzen darf (Ausnahme von
- * {@code keinRohesScheduled}). Nur fuer echte Framework-/System-Waechter; normale periodische Logik
- * gehoert in {@link ch.plaintext.PlaintextCron}.
+ * Marks a class that is deliberately allowed to use raw {@code @Scheduled} (an exception to
+ * {@code keinRohesScheduled}). Only for genuine framework/system guards; ordinary periodic logic
+ * belongs in {@link ch.plaintext.PlaintextCron}.
  *
- * <p><b>Warum es das gibt:</b> Die geteilte ArchUnit-Regel {@code keinRohesScheduled} (im Modul
- * {@code plaintext-root-archtests}) verbietet rohes Spring-{@code @Scheduled}, weil Zeitsteuerung
- * ueber das PlaintextCron-Framework laufen soll (Admin-UI mit Zeitplan/an-aus, per-Mandant-
- * Ausfuehrung, Laufzeit-Statistik). Wenige Framework-Infrastruktur-Klassen mit Sub-Minuten- bzw.
- * Selbst-Wartungs-Takten, die eine Cron-Expression nicht abbilden kann, sind davon ausgenommen —
- * sie tragen diese Annotation.
+ * <p><b>Why this exists:</b> the shared ArchUnit rule {@code keinRohesScheduled} (in the module
+ * {@code plaintext-root-archtests}) forbids raw Spring {@code @Scheduled}, because scheduling is
+ * meant to run through the PlaintextCron framework (admin UI with schedule and on/off switch,
+ * per-tenant execution, runtime statistics). A handful of framework infrastructure classes with
+ * sub-minute or self-maintenance intervals that a cron expression cannot express are exempt —
+ * they carry this annotation.
  *
- * <p><b>Fuer Consumer (app, iot, fwtool, schuetu):</b> Diese Annotation liegt in
- * {@code plaintext-root-common} auf dem MAIN-Classpath. Hat ein Consumer eine legitime eigene
- * {@code @Scheduled}-Klasse (echter System-Waechter, kein normaler periodischer Job), annotiert er
- * einfach diese Main-Klasse mit {@code @AllowRawScheduled} — ganz ohne eigenen Test-Code. Die
- * geteilte Regel erkennt die Ausnahme dann automatisch.
+ * <p><b>For consumers (app, iot, fwtool, schuetu):</b> this annotation lives in
+ * {@code plaintext-root-common} on the MAIN classpath. If a consumer has a legitimate
+ * {@code @Scheduled} class of its own (a real system guard, not an ordinary periodic job), it
+ * simply annotates that main class with {@code @AllowRawScheduled} — with no test code of its
+ * own. The shared rule then recognises the exception automatically.
  *
  * @author info@plaintext.ch
  * @since 2026

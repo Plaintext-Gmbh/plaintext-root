@@ -30,11 +30,11 @@ class PlaintextInitLoaderTest2 {
     private ISetupConfigService setupConfigService;
 
     /**
-     * Forensik 23.08.2026: Der {@link org.springframework.security.crypto.password.PasswordEncoder} fehlte
-     * hier — {@code @InjectMocks} laeuft wegen des parametrisierten Konstruktors ueber
-     * Konstruktor-Injection und reichte {@code null} durch, sodass die Klasse beim gefilterten
-     * Ausfuehren (z. B. {@code -Dtest=PlaintextInitLoaderTest2}) mit einer NPE abbrach. Als
-     * {@code @Spy} mit echter Instanz, analog zu {@code PlaintextInitLoaderTest}.
+     * Forensics 23.08.2026: the {@link org.springframework.security.crypto.password.PasswordEncoder} was missing
+     * here — because of the parameterized constructor {@code @InjectMocks} goes through
+     * constructor injection and passed {@code null} through, so that the class aborted with an NPE
+     * on a filtered run (e.g. {@code -Dtest=PlaintextInitLoaderTest2}). As a
+     * {@code @Spy} with a real instance, analogous to {@code PlaintextInitLoaderTest}.
      */
     @org.mockito.Spy
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();

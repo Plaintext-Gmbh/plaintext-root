@@ -10,19 +10,18 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
- * Hilfsmethoden, um auf einen JSF-/PrimeFaces-Ajax-Request eine <b>verarbeitbare</b> Antwort zu
- * schicken.
+ * Helper methods for sending a <b>processable</b> response to a JSF/PrimeFaces Ajax request.
  *
- * <p>Hintergrund (Karte 385): Bei ungueltigem CSRF-Token oder abgelaufener Session beantwortet
- * Spring Security einen Ajax-POST mit HTTP 403/401 und einem JSON-Body. PrimeFaces erwartet auf
- * einen Ajax-Request zwingend eine XML-{@code partial-response}; ein JSON-Body ist unverarbeitbar,
- * es meldet nichts und der Ladeindikator dreht endlos. Statt dessen wird hier eine gueltige
- * {@code partial-response} mit {@code <redirect>} erzeugt — PrimeFaces fuehrt den Redirect selbst
- * aus, der Nutzer landet auf der Anmeldung.</p>
+ * <p>Background (card 385): on an invalid CSRF token or an expired session,
+ * Spring Security answers an Ajax POST with HTTP 403/401 and a JSON body. PrimeFaces mandatorily
+ * expects an XML {@code partial-response} to an Ajax request; a JSON body is unprocessable,
+ * it reports nothing and the loading indicator spins forever. Instead a valid
+ * {@code partial-response} with a {@code <redirect>} is produced here — PrimeFaces performs the
+ * redirect itself and the user lands on the login page.</p>
  */
 public final class JsfAjaxResponses {
 
-    /** Header, den JSF/PrimeFaces auf jedem Ajax-Request mitschickt. */
+    /** Header that JSF/PrimeFaces sends along with every Ajax request. */
     public static final String FACES_REQUEST_HEADER = "Faces-Request";
     public static final String FACES_PARTIAL_AJAX = "partial/ajax";
 
@@ -30,8 +29,8 @@ public final class JsfAjaxResponses {
     }
 
     /**
-     * @return {@code true}, wenn der Request von der JSF-Ajax-Engine stammt und deshalb eine
-     * XML-{@code partial-response} erwartet.
+     * @return {@code true} if the request comes from the JSF Ajax engine and therefore expects an
+     * XML {@code partial-response}.
      */
     public static boolean isJsfAjaxRequest(HttpServletRequest request) {
         if (request == null) {
@@ -42,8 +41,8 @@ public final class JsfAjaxResponses {
     }
 
     /**
-     * Schreibt eine gueltige JSF-{@code partial-response} mit {@code <redirect url="..."/>} und
-     * HTTP 200. Nur 200 wird von der Ajax-Engine ueberhaupt geparst.
+     * Writes a valid JSF {@code partial-response} with {@code <redirect url="..."/>} and
+     * HTTP 200. Only 200 is parsed by the Ajax engine at all.
      */
     public static void sendPartialRedirect(HttpServletResponse response, String url) throws IOException {
         prepare(response);
@@ -55,9 +54,9 @@ public final class JsfAjaxResponses {
     }
 
     /**
-     * Schreibt eine gueltige JSF-{@code partial-response} mit {@code <error>}. Ebenfalls HTTP 200,
-     * damit PrimeFaces den Body parst, seinen Fehler-Handler ausloest und den Ladeindikator
-     * beendet — statt still haengen zu bleiben.
+     * Writes a valid JSF {@code partial-response} with an {@code <error>}. Likewise HTTP 200,
+     * so that PrimeFaces parses the body, triggers its error handler and terminates the loading
+     * indicator — instead of hanging silently.
      */
     public static void sendPartialError(HttpServletResponse response, String name, String message) throws IOException {
         prepare(response);

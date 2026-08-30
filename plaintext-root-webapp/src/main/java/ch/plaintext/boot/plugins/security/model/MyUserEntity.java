@@ -30,37 +30,37 @@ public class MyUserEntity {
     private boolean passwordless;
 
     /**
-     * Erzwingt einen Passwortwechsel beim naechsten Login (Karte 306). Wird fuer den
-     * Root-Bootstrap-User gesetzt (Einmal-Initialpasswort statt statischem {@code root}) und
-     * nach erfolgreichem Selbst-Passwortwechsel wieder geloescht. Default {@code false}, sodass
-     * Bestands-User nicht betroffen sind.
+     * Forces a password change on the next login (card 306). Is set for the
+     * root bootstrap user (one-off initial password instead of a static {@code root}) and
+     * cleared again after a successful self-service password change. Default {@code false}, so that
+     * existing users are not affected.
      */
     @Column(name = "MUST_CHANGE_PASSWORD")
     private boolean mustChangePassword;
 
     /**
-     * Base32-kodiertes TOTP-Secret (RFC 6238). {@code null}, solange 2FA nicht
-     * eingerichtet ist. Das Secret ist der geteilte Schluessel zwischen Server und
-     * Authenticator-App; es wird ausschliesslich lokal geprueft und nie ueber die
-     * Login-Grenze hinweg weitergegeben.
+     * Base32-encoded TOTP secret (RFC 6238). {@code null} as long as 2FA has not been
+     * set up. The secret is the shared key between the server and the
+     * authenticator app; it is checked exclusively locally and never passed on beyond the
+     * login boundary.
      */
     @Column(name = "TOTP_SECRET", length = 255)
     @Convert(converter = TotpSecretConverter.class)
     private String totpSecret;
 
     /**
-     * Ob der zweite Faktor fuer diesen (lokalen) User scharf ist. Erst {@code true},
-     * nachdem der User bei der Einrichtung einen gueltigen Code bestaetigt hat
-     * (kein Aussperren durch versehentliches Aktivieren). Default {@code false}.
+     * Whether the second factor is armed for this (local) user. Only {@code true}
+     * after the user has confirmed a valid code during setup
+     * (no lockout through activating it by accident). Default {@code false}.
      */
     @Column(name = "TOTP_ENABLED")
     private boolean totpEnabled;
 
     /**
-     * Gehashte (SHA-256, Hex) Einmal-Recovery-Codes. Der Klartext wird dem User
-     * genau einmal bei der Einrichtung angezeigt und danach nur noch gehasht
-     * gespeichert – so kann ein legitimer User sich trotz verlorenem Authenticator
-     * nie dauerhaft aussperren, ohne dass ein DB-Leak die Codes preisgibt.
+     * Hashed (SHA-256, hex) one-time recovery codes. The plaintext is shown to the user
+     * exactly once during setup and afterwards stored only in hashed form –
+     * this way a legitimate user can never lock themselves out permanently despite a lost
+     * authenticator, without a DB leak disclosing the codes.
      */
     @Convert(converter = RecoveryCodesConverter.class)
     @Column(name = "RECOVERY_CODES", length = 2000)
@@ -70,23 +70,23 @@ public class MyUserEntity {
     private Set<String> roles = new HashSet<>();
 
     /**
-     * Vor- und Nachname, beide optional.
+     * First and last name, both optional.
      *
-     * <p><b>Warum sie neu sind (Auftrag Daniel, 25.08.2026: „noch Vor- und Nachname einblenden").</b>
-     * Am Benutzer gab es sie bis hierher <b>nicht</b> — weder als Feld noch als Spalte in
-     * {@code my_user_entity}. Das Rahmenwerk erwartet sie allerdings seit jeher:
-     * {@code ch.plaintext.framework.PlaintextUser} deklariert {@code getVorname()} und
-     * {@code getNachname()}. Nur hatte diese Schnittstelle <b>keine einzige Implementierung</b>,
-     * die Erwartung lief also ins Leere.
+     * <p><b>Why they are new (request from Daniel, 25.08.2026: "also show the first and last name").</b>
+     * On the user they did <b>not</b> exist up to this point — neither as a field nor as a column in
+     * {@code my_user_entity}. The framework has always expected them, though:
+     * {@code ch.plaintext.framework.PlaintextUser} declares {@code getVorname()} and
+     * {@code getNachname()}. Only, that interface had <b>not a single implementation</b>,
+     * so the expectation went nowhere.
      *
-     * <p>Sie bleiben bewusst {@code null}-fähig: bestehende Konten haben keine Namen, und ein
-     * Pflichtfeld wuerde jedes Speichern eines Altkontos blockieren.
+     * <p>They deliberately remain {@code null}-able: existing accounts have no names, and a
+     * mandatory field would block every save of a legacy account.
      */
     private String vorname;
 
     private String nachname;
 
-    /** Vor- und Nachname zusammen, oder leer — fuer Anzeige und Sortierung in einer Spalte. */
+    /** First and last name together, or empty — for display and sorting in a single column. */
     @Transient
     public String getAnzeigename() {
         String v = vorname == null ? "" : vorname.trim();

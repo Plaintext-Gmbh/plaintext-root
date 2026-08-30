@@ -7,27 +7,27 @@ import java.io.Serializable;
 import java.util.Locale;
 
 /**
- * Eine von einem Modul deklarierte Rolle: technischer Name plus menschenlesbare Beschreibung.
+ * A role declared by a module: technical name plus human-readable description.
  *
- * <p>Module deklarieren ihre Rollen ueber {@link PlaintextRoleProvider#getDeclaredRoles()};
- * die {@link PlaintextRoleRegistry} sammelt alle Deklarationen ein und stellt sie u.a. der
- * Benutzerverwaltung als Auswahl zur Verfuegung.</p>
+ * <p>Modules declare their roles through {@link PlaintextRoleProvider#getDeclaredRoles()};
+ * the {@link PlaintextRoleRegistry} collects all declarations and offers them, among other
+ * things, to the user administration as a selection.</p>
  *
- * <p><b>Namens-Konvention:</b> {@link #name()} ist der technische Rollenname OHNE
- * {@code ROLE_}-Prefix (z.B. {@code admin}). Fuer die Identitaet (Dedup in der Registry)
- * zaehlt {@link #normalizedName()}: lowercase und ohne {@code ROLE_}-Prefix — so wie die
- * Rollen auch am {@code MyUserEntity} gespeichert werden. {@link #authorityName()} liefert
- * die Spring-Security-Schreibweise {@code ROLE_<UPPERCASE>}, wie sie der
- * {@code MyUserDetailsService} beim Login vergibt.</p>
+ * <p><b>Naming convention:</b> {@link #name()} is the technical role name WITHOUT the
+ * {@code ROLE_} prefix (e.g. {@code admin}). What counts for identity (dedup in the registry)
+ * is {@link #normalizedName()}: lowercase and without the {@code ROLE_} prefix — the same way
+ * the roles are stored on the {@code MyUserEntity}. {@link #authorityName()} returns the
+ * Spring Security spelling {@code ROLE_<UPPERCASE>}, the way the
+ * {@code MyUserDetailsService} assigns it at login.</p>
  *
- * @param name        technischer Rollenname (mit oder ohne {@code ROLE_}-Prefix deklariert)
- * @param description menschenlesbare Beschreibung fuer Auswahl-UIs; nie {@code null} (ggf. leer)
+ * @param name        technical role name (declared with or without the {@code ROLE_} prefix)
+ * @param description human-readable description for selection UIs; never {@code null} (possibly empty)
  * @author info@plaintext.ch
  * @since 1.600.0
  */
 public record PlaintextRole(String name, String description) implements Serializable {
 
-    /** Spring-Security-Prefix der Authority-Schreibweise. */
+    /** Spring Security prefix of the authority spelling. */
     private static final String ROLE_PREFIX = "ROLE_";
 
     public PlaintextRole {
@@ -39,21 +39,21 @@ public record PlaintextRole(String name, String description) implements Serializ
     }
 
     /**
-     * Rolle ohne Beschreibung — fuer Provider, die nur {@link PlaintextRoleProvider#getRoles()}
-     * implementieren (Rueckwaertskompatibilitaet).
+     * Role without a description — for providers that only implement
+     * {@link PlaintextRoleProvider#getRoles()} (backwards compatibility).
      *
-     * @param name technischer Rollenname
-     * @return Rolle mit leerer Beschreibung
+     * @param name technical role name
+     * @return role with an empty description
      */
     public static PlaintextRole of(String name) {
         return new PlaintextRole(name, "");
     }
 
     /**
-     * Kanonische Identitaet der Rolle: lowercase, ohne {@code ROLE_}-Prefix.
-     * Entspricht der Speicher-Konvention der Benutzerverwaltung.
+     * Canonical identity of the role: lowercase, without the {@code ROLE_} prefix.
+     * Matches the storage convention of the user administration.
      *
-     * @return normalisierter Rollenname, z.B. {@code admin}
+     * @return normalized role name, e.g. {@code admin}
      */
     public String normalizedName() {
         String n = name;
@@ -64,9 +64,9 @@ public record PlaintextRole(String name, String description) implements Serializ
     }
 
     /**
-     * Spring-Security-Authority-Schreibweise der Rolle.
+     * Spring Security authority spelling of the role.
      *
-     * @return Authority-Name, z.B. {@code ROLE_ADMIN}
+     * @return authority name, e.g. {@code ROLE_ADMIN}
      */
     public String authorityName() {
         return ROLE_PREFIX + normalizedName().toUpperCase(Locale.ROOT);

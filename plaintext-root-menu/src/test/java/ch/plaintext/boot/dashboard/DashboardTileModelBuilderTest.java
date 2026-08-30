@@ -50,7 +50,7 @@ class DashboardTileModelBuilderTest {
 
     @Test
     void shouldHideTileWhenCoupledMenuTitleIsHidden() {
-        // Kopplung: Kachel mit explizitem menuTitle -> Provider blendet exakt diesen Titel aus
+        // Coupling: tile with an explicit menuTitle -> the provider hides exactly that title
         TileItemImpl coupled = tile("biel", "Lauftage", 10, "bieler-map.html");
         coupled.setMenuTitle("Lauftage");
         coupled.setMenuVisibilityProvider(menuVisibilityProvider);
@@ -73,7 +73,7 @@ class DashboardTileModelBuilderTest {
         builder.buildTiles();
         builder.buildTiles();
 
-        // Statische Bean-Mengen werden gecacht -> nur ein einziger getBeansOfType-Aufruf je Typ
+        // The static bean sets are cached -> only a single getBeansOfType call per type
         verify(applicationContext, times(1)).getBeansOfType(TileItemImpl.class);
         verify(applicationContext, times(1)).getBeansOfType(DashboardTileDataProvider.class);
     }
@@ -88,7 +88,7 @@ class DashboardTileModelBuilderTest {
         List<DashboardTileData> result = builder.buildTiles();
 
         assertEquals(1, result.size());
-        // Cache wurde beim Start gefüllt -> buildTiles löst nicht erneut auf
+        // The cache was filled at startup -> buildTiles does not resolve again
         verify(applicationContext, times(1)).getBeansOfType(TileItemImpl.class);
     }
 
@@ -159,7 +159,7 @@ class DashboardTileModelBuilderTest {
 
         assertEquals(1, result.size());
         assertEquals("Aktiver Lauf: Biel", result.get(0).getStatusText());
-        // Provider hat bereits eine Aktion gesetzt -> kein zusätzlicher Default
+        // The provider already set an action -> no additional default
         assertEquals(1, result.get(0).getActions().size());
         assertEquals("Zur Karte", result.get(0).getActions().get(0).getLabel());
     }

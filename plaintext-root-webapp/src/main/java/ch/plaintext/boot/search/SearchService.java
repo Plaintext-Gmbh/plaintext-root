@@ -17,20 +17,20 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Aggregiert die globale Suche (Cmd+K) über alle registrierten {@link SearchProvider}-Beans.
+ * Aggregates the global search (Cmd+K) across all registered {@link SearchProvider} beans.
  * <p>
- * Spiegelt das {@code DashboardTileModelBuilder}-Muster: Spring sammelt alle Provider-Beans
- * automatisch (Konstruktor-Injektion einer {@code List<SearchProvider>}), root fragt sie ab und
- * gruppiert die Ergebnisse nach {@link SearchProvider#moduleTitle()}.
+ * Mirrors the {@code DashboardTileModelBuilder} pattern: Spring collects all provider beans
+ * automatically (constructor injection of a {@code List<SearchProvider>}), root queries them and
+ * groups the results by {@link SearchProvider#moduleTitle()}.
  * <p>
- * <b>Sichtbarkeits-/Security-Kopplung</b> (wie Tiles/Menüs): ein Provider wird nur abgefragt, wenn
- * sein {@code moduleTitle} in {@link MenuRegistry#getAllMenuTitles()} sichtbar ist. So tauchen keine
- * Treffer aus Modulen auf, die der Benutzer/Mandant gar nicht sieht. Die feinere Mandanten-Filterung
- * je Treffer macht jeder Provider selbst.
+ * <b>Visibility/security coupling</b> (like tiles/menus): a provider is only queried when
+ * its {@code moduleTitle} is visible in {@link MenuRegistry#getAllMenuTitles()}. This way no
+ * hits show up from modules that the user/tenant does not see at all. The finer per-hit tenant
+ * filtering is done by each provider itself.
  * <p>
- * <b>Robustheit:</b> jeder Provider läuft in try/catch; ein fehlerhafter Provider liefert eine leere
- * Liste statt die Gesamtsuche zu sprengen. Zu kurze/leere Queries liefern ein leeres Ergebnis; die
- * Query-Länge wird gedeckelt.
+ * <b>Robustness:</b> every provider runs inside try/catch; a faulty provider returns an empty
+ * list instead of blowing up the whole search. Queries that are too short/empty return an empty
+ * result; the query length is capped.
  *
  * @author plaintext.ch
  */
@@ -38,22 +38,22 @@ import java.util.Set;
 @Service
 public class SearchService {
 
-    /** Kürzere Queries als das werden ignoriert (leeres Ergebnis). */
+    /** Queries shorter than this are ignored (empty result). */
     static final int MIN_QUERY_LENGTH = 2;
 
-    /** Query wird auf diese Länge gekürzt (Schutz gegen pathologisch lange Eingaben). */
+    /** The query is truncated to this length (protection against pathologically long inputs). */
     static final int MAX_QUERY_LENGTH = 100;
 
-    /** Maximale Trefferzahl je Modul-Gruppe. */
+    /** Maximum number of hits per module group. */
     static final int MAX_HITS_PER_MODULE = 8;
 
     private final List<SearchProvider> providers;
     private final MenuRegistry menuRegistry;
 
     /**
-     * @param providers    alle im Context registrierten Provider-Beans (von Spring gesammelt; kann
-     *                     leer sein, wenn kein Modul einen Provider beisteuert)
-     * @param menuRegistry Menü-Registry zur Sichtbarkeits-Kopplung
+     * @param providers    all provider beans registered in the context (collected by Spring; may be
+     *                     empty when no module contributes a provider)
+     * @param menuRegistry menu registry for the visibility coupling
      */
     public SearchService(List<SearchProvider> providers, MenuRegistry menuRegistry) {
         this.providers = providers != null ? providers : List.of();
@@ -62,11 +62,11 @@ public class SearchService {
     }
 
     /**
-     * Führt die globale Suche aus: fragt alle sichtbaren Provider ab und gruppiert die Ergebnisse
-     * nach Modul-Titel. Die Gruppen erscheinen in der Reihenfolge des ersten Treffers.
+     * Runs the global search: queries all visible providers and groups the results
+     * by module title. The groups appear in the order of their first hit.
      *
-     * @param query der Suchbegriff (roh; wird getrimmt und gedeckelt)
-     * @return gruppierte Trefferliste (nie {@code null}, ggf. leer)
+     * @param query the search term (raw; is trimmed and capped)
+     * @return grouped hit list (never {@code null}, possibly empty)
      */
     public List<SearchResultGroup> search(String query) {
         String q = normalize(query);
@@ -76,7 +76,7 @@ public class SearchService {
 
         Set<String> visibleTitles = safeVisibleMenuTitles();
 
-        // Reihenfolge der Gruppen = Reihenfolge des ersten Treffers → LinkedHashMap
+        // order of the groups = order of the first hit → LinkedHashMap
         Map<String, List<SearchHit>> grouped = new LinkedHashMap<>();
 
         for (SearchProvider provider : providers) {
@@ -92,7 +92,7 @@ public class SearchService {
         List<SearchResultGroup> result = new ArrayList<>();
         for (Map.Entry<String, List<SearchHit>> e : grouped.entrySet()) {
             List<SearchHit> hits = e.getValue();
-            // Innerhalb der Gruppe nach Score absteigend sortieren und cappen.
+            // Sort by score in descending order within the group and cap.
             hits.sort(Comparator.comparingInt(SearchHit::getScore).reversed());
             List<SearchHit> capped = hits.size() > MAX_HITS_PER_MODULE
                     ? new ArrayList<>(hits.subList(0, MAX_HITS_PER_MODULE))
@@ -103,7 +103,7 @@ public class SearchService {
     }
 
     /**
-     * Fragt einen einzelnen Provider ab und fängt jeden Fehler ab (leere Liste bei Problemen).
+     * Queries a single provider and catches every error (empty list on problems).
      */
     private List<SearchHit> queryProvider(SearchProvider provider, String query) {
         try {
@@ -111,7 +111,7 @@ public class SearchService {
             if (hits == null) {
                 return List.of();
             }
-            // Defensive: null-Treffer und Treffer ohne Link/Titel aussortieren.
+            // Defensive: sort out null hits and hits without a link/title.
             List<SearchHit> clean = new ArrayList<>(hits.size());
             for (SearchHit h : hits) {
                 if (h != null && h.getTitle() != null && h.getLink() != null && !h.getLink().isBlank()) {
@@ -127,8 +127,8 @@ public class SearchService {
     }
 
     /**
-     * Ob ein Provider abgefragt werden darf: quer schneidende Root-Provider immer, menü-gekoppelte
-     * Fachmodul-Provider nur bei sichtbarem Modul-Menü.
+     * Whether a provider may be queried: cross-cutting root providers always, menu-coupled
+     * domain module providers only when the module menu is visible.
      */
     private boolean isProviderVisible(SearchProvider provider, String moduleTitle, Set<String> visibleTitles) {
         if (isMenuScoped(provider) && !isModuleVisible(moduleTitle, visibleTitles)) {
@@ -140,10 +140,10 @@ public class SearchService {
     }
 
     /**
-     * Ein Modul gilt als sichtbar, wenn sein Titel als Menü-Titel oder als letztes Segment eines
-     * Voll-Titels ({@code "Parent | Titel"}) unter den sichtbaren Menü-Titeln vorkommt. Ist die
-     * Menü-Registry leer/nicht verfügbar, wird nicht gefiltert (fail-open auf Sichtbarkeit, die
-     * eigentliche Mandanten-Absicherung macht jeder Provider selbst).
+     * A module counts as visible when its title occurs among the visible menu titles either as a
+     * menu title or as the last segment of a full title ({@code "Parent | Titel"}). If the
+     * menu registry is empty/unavailable, no filtering takes place (fail-open on visibility; the
+     * actual tenant protection is done by each provider itself).
      */
     private boolean isModuleVisible(String moduleTitle, Set<String> visibleTitles) {
         if (visibleTitles.isEmpty()) {
@@ -152,7 +152,7 @@ public class SearchService {
         if (visibleTitles.contains(moduleTitle)) {
             return true;
         }
-        // Voll-Titel "Parent | Titel": auf letztes Segment matchen.
+        // Full title "Parent | Titel": match on the last segment.
         for (String title : visibleTitles) {
             int idx = title.lastIndexOf('|');
             if (idx >= 0 && title.substring(idx + 1).trim().equals(moduleTitle)) {
@@ -221,10 +221,10 @@ public class SearchService {
     }
 
     /**
-     * Eine nach Modul gruppierte Trefferliste.
+     * A hit list grouped by module.
      *
-     * @param module das Modul (Gruppentitel)
-     * @param hits   die Treffer dieses Moduls (bereits sortiert und gecappt)
+     * @param module the module (group title)
+     * @param hits   the hits of this module (already sorted and capped)
      */
     public record SearchResultGroup(String module, List<SearchHit> hits) {
     }

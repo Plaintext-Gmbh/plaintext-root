@@ -89,7 +89,7 @@ class PlaintextSecurityConfigTest2 {
 
     @Test
     void securityContextRepository_shouldReturnInstance() {
-        // Bean nach SecurityContextRepositoryConfig ausgelagert (siehe TOTP-Gate).
+        // Bean moved out into SecurityContextRepositoryConfig (see TOTP gate).
         SecurityContextRepository repo = new SecurityContextRepositoryConfig().securityContextRepository();
 
         assertNotNull(repo);

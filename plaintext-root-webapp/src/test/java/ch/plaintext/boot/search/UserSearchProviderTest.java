@@ -158,7 +158,7 @@ class UserSearchProviderTest {
         lenient().when(sec.ifGranted("ROLE_ADMIN")).thenReturn(false);
 
         UserSearchProvider p = new UserSearchProvider(repo, sec);
-        // "ali" steckt in der Mitte von "malice" → contains-Treffer (60).
+        // "ali" sits in the middle of "malice" → contains hit (60).
         List<SearchHit> hits = p.search("ali", 10);
         assertEquals(1, hits.size());
         assertEquals(60, hits.get(0).getScore());
@@ -199,7 +199,7 @@ class UserSearchProviderTest {
         when(sec.getMandat()).thenThrow(new RuntimeException("kein mandant"));
 
         UserSearchProvider p = new UserSearchProvider(repo, sec);
-        // safeMandat faengt ab → null → ADMIN sieht ohne Mandant nichts.
+        // safeMandat intercepts → null → an ADMIN without a tenant sees nothing.
         assertTrue(p.search("alice", 10).isEmpty());
     }
 }

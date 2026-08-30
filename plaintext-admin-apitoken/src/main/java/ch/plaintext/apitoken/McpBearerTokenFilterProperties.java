@@ -13,19 +13,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Konfiguration des zentralen {@link McpBearerTokenFilter} (Prefix
+ * Configuration of the central {@link McpBearerTokenFilter} (prefix
  * {@code plaintext.mcp.bearer-filter}).
  *
  * <pre>{@code
  * plaintext:
  *   mcp:
  *     bearer-filter:
- *       enabled: true                # Default false — Filter wird nur auf Wunsch registriert
- *       validation: DATABASE         # JWT (Default, ohne DB-Revocation) oder DATABASE
+ *       enabled: true                # Default false — the filter is only registered on demand
+ *       validation: DATABASE         # JWT (default, without DB revocation) or DATABASE
  *       url-patterns:                # Default: /mcp/*
  *         - /mcp/*
  *         - /api/turnier/*
- *       order: 1                     # Default 1 (nach der Security-Chain, permitAll-Pfade)
+ *       order: 1                     # Default 1 (after the security chain, permitAll paths)
  * }</pre>
  *
  * @author info@plaintext.ch
@@ -35,42 +35,42 @@ import java.util.List;
 @ConfigurationProperties(prefix = "plaintext.mcp.bearer-filter")
 public class McpBearerTokenFilterProperties {
 
-    /** Registriert den Filter nur, wenn explizit {@code true} (kein Auto-Filter für Apps ohne MCP). */
+    /** Registers the filter only if explicitly {@code true} (no auto-filter for apps without MCP). */
     private boolean enabled = false;
 
-    /** Servlet-URL-Patterns, auf die der Filter greift. Leer => Default {@code /mcp/*}. */
+    /** Servlet URL patterns the filter applies to. Empty => default {@code /mcp/*}. */
     private List<String> urlPatterns = new ArrayList<>(List.of("/mcp/*"));
 
-    /** Validierungs-Strategie, siehe {@link Validation}. */
+    /** Validation strategy, see {@link Validation}. */
     private Validation validation = Validation.JWT;
 
-    /** Filter-Order der {@code FilterRegistrationBean} (Default 1, wie alle bisherigen Kopien). */
+    /** Filter order of the {@code FilterRegistrationBean} (default 1, as in all previous copies). */
     private int order = 1;
 
     /**
-     * Migrations-Opt-out für Tokens OHNE {@code scope}-Claim (Karte 312, H-7).
+     * Migration opt-out for tokens WITHOUT a {@code scope} claim (card 312, H-7).
      *
-     * <p>Bis root 1.424.0 galt ein fehlender Scope als {@code ADMIN} — und weil die Token-Ausstellung
-     * gar keinen Scope vergab, war damit <b>jeder</b> API-Token ein Vollzugriffs-Token. Seither gilt
-     * fail-closed: fehlender/leerer Claim ⇒ nur {@code SCOPE_READ}.</p>
+     * <p>Up to root 1.424.0 a missing scope counted as {@code ADMIN} — and because token issuance
+     * did not assign any scope at all, <b>every</b> API token was effectively a full-access token.
+     * Since then the rule is fail-closed: missing/empty claim ⇒ only {@code SCOPE_READ}.</p>
      *
-     * <p>Eine Instanz, deren produktive Integrationen noch mit scope-losen Alt-Tokens arbeiten, kann
-     * das alte Verhalten hiermit befristet zurückholen ({@code true}), bis die Tokens mit explizitem
-     * Scope neu ausgestellt sind. Bewusst pro Instanz konfigurierbar statt hartkodiert — und bewusst
-     * mit Default {@code false}, damit „nichts tun" die sichere Variante ist.</p>
+     * <p>An instance whose productive integrations still work with scope-less legacy tokens can use
+     * this to restore the old behaviour for a limited time ({@code true}), until the tokens have been
+     * re-issued with an explicit scope. Deliberately configurable per instance instead of hard-coded —
+     * and deliberately with default {@code false}, so that "doing nothing" is the safe option.</p>
      */
     private boolean legacyScopeAdmin = false;
 
-    /** Validierungs-Strategien des Filters. */
+    /** Validation strategies of the filter. */
     public enum Validation {
         /**
-         * Nur JWT-Signatur/Expiry ({@link JwtTokenService}), KEIN DB-Zugriff. Historischer
-         * Workaround für den (inzwischen gefixten) Hikari-Leak; Revocation greift erst mit Expiry.
+         * JWT signature/expiry only ({@link JwtTokenService}), NO DB access. Historical
+         * workaround for the (meanwhile fixed) Hikari leak; revocation only takes effect at expiry.
          */
         JWT,
         /**
-         * Vollständige Validierung inkl. DB-Revocation-Check ({@link IApiTokenService}),
-         * leak-frei seit root ≥ 1.246.0 — empfohlen.
+         * Full validation including a DB revocation check ({@link IApiTokenService}),
+         * leak-free since root ≥ 1.246.0 — recommended.
          */
         DATABASE
     }

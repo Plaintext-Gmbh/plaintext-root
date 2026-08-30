@@ -54,32 +54,32 @@ public class ApiTokenBackingBean implements Serializable {
     private int newTokenValidityDays = JwtTokenService.DEFAULT_VALIDITY_DAYS;
 
     /**
-     * Berechtigungsumfang des neuen Tokens (Karte 312): {@code READ}, {@code WRITE} oder
-     * {@code ADMIN}. Default bewusst {@code READ} — wer mehr braucht, wählt es aktiv aus. Vorher gab
-     * die Ausstellung gar keinen Scope mit, und der MCP-Filter deutete das als ADMIN; damit war jedes
-     * hier erzeugte Token ein Vollzugriffs-Token.
+     * Permission scope of the new token (card 312): {@code READ}, {@code WRITE} or
+     * {@code ADMIN}. The default is deliberately {@code READ} — whoever needs more picks it
+     * actively. Previously the issuing passed no scope at all, and the MCP filter read that as
+     * ADMIN; that made every token created here a full-access token.
      */
     @Getter
     @Setter
     private String newTokenScope = "READ";
 
     /**
-     * Auswahlwerte für den Scope, aufsteigend nach Berechtigung.
+     * Selectable values for the scope, ascending by permission.
      *
-     * <p><b>{@code WRITE} statt {@code EINTRAGEN} (Karte 545, Entscheid Daniel 05.08.2026):</b> Der
-     * Altname wird vom {@link McpBearerTokenFilter} weiterhin <em>akzeptiert</em>, aber hier nicht
-     * mehr <em>angeboten</em> — bestehende Tokens laufen unverändert, neue Alt-Tokens entstehen
-     * nicht mehr. Beide Werte vergeben dieselben Authorities.</p>
+     * <p><b>{@code WRITE} instead of {@code EINTRAGEN} (card 545, decision by Daniel 05.08.2026):</b>
+     * the old name is still <em>accepted</em> by {@link McpBearerTokenFilter}, but no longer
+     * <em>offered</em> here — existing tokens keep running unchanged, new legacy tokens are no
+     * longer created. Both values grant the same authorities.</p>
      *
-     * <p><b>{@code SESSION} ist hier entfallen (Karte 560, 05.08.2026).</b> Der Wert war kein
-     * MCP-Berechtigungsgrad, sondern der Marker dafür, dass aus dem Token per {@code /token-login}
-     * eine Browser-Session gebaut werden darf — und diesen Endpunkt gibt es nicht mehr. Ein
-     * weiterhin angebotener Wert hätte Tokens erzeugt, die nichts mehr können: der
-     * MCP-Bearer-Filter kennt {@code SESSION} nicht und vergibt dafür nur {@code SCOPE_READ}.</p>
+     * <p><b>{@code SESSION} has been dropped here (card 560, 05.08.2026).</b> The value was not an
+     * MCP permission level, but the marker that a browser session may be built from the token via
+     * {@code /token-login} — and that endpoint no longer exists. Continuing to offer the value
+     * would have produced tokens that can no longer do anything: the
+     * MCP bearer filter does not know {@code SESSION} and only grants {@code SCOPE_READ} for it.</p>
      *
-     * <p>Wie bei {@code EINTRAGEN} wird der Wert nur nicht mehr <em>angeboten</em>. Bestehende
-     * Tokens mit {@code scope=SESSION} bleiben gültig und verhalten sich unverändert wie
-     * {@code READ}-Tokens; es gibt keine Migration und niemand wird ausgesperrt.</p>
+     * <p>As with {@code EINTRAGEN}, the value is merely no longer <em>offered</em>. Existing
+     * tokens with {@code scope=SESSION} remain valid and behave unchanged like
+     * {@code READ} tokens; there is no migration and nobody is locked out.</p>
      */
     @Getter
     private final List<String> verfuegbareScopes = List.of("READ", "WRITE", "ADMIN");
@@ -112,8 +112,8 @@ public class ApiTokenBackingBean implements Serializable {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     /**
-     * preRenderView-Listener (session-scoped statt @ViewScoped): lädt die Tokens FRISCH bei jedem
-     * Seitenaufruf (GET). Der isPostback-Guard verhindert das Neuladen bei jedem Ajax-Postback.
+     * preRenderView listener (session-scoped instead of @ViewScoped): loads the tokens FRESH on
+     * every page call (GET). The isPostback guard prevents a reload on every Ajax postback.
      */
     public void onLoad() {
         FacesContext ctx = FacesContext.getCurrentInstance();

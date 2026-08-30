@@ -57,17 +57,17 @@ class RepoMasterTest {
     }
 
     // -------------------------------------------------------------------------
-    // Karte 687: getNextID(Object) und das statische instance-Feld gibt es nicht
-    // mehr. Die zugehoerigen Faelle sind hier ersatzlos entfallen — sie haben
-    // eine Methode geprueft, die nur ihr eigener (ebenfalls toter) Aufrufer
-    // erreichte. Was bleibt, ist die Registry oben.
+    // Karte 687: getNextID(Object) and the static instance field no longer
+    // exist. The corresponding cases have been dropped here without replacement —
+    // they checked a method that only its own (equally dead) caller ever
+    // reached. What remains is the registry above.
     // -------------------------------------------------------------------------
 
     /**
-     * Karte 687: {@code getNextID} ist weg — und zwar nachweislich, nicht nur „im Code nicht mehr
-     * zu sehen". Ohne diese Zusicherung koennte die Methode samt {@code -1}-Zweig wieder
-     * hereinwachsen, ohne dass ein Test rot wird: ihr einziger Aufrufer war schon vorher tot, ein
-     * Verhaltenstest kann sie also gar nicht erwischen.
+     * Karte 687: {@code getNextID} is gone — and demonstrably so, not merely "no longer visible
+     * in the code". Without this assertion the method including its {@code -1} branch could grow
+     * back in without any test going red: its only caller was already dead before, so a
+     * behavioural test cannot catch it at all.
      */
     @Test
     void getNextID_gibtEsNichtMehr() {
@@ -78,7 +78,7 @@ class RepoMasterTest {
                         + "einen erreichbaren Aufrufer und eine Antwort auf den -1-Fall.");
     }
 
-    /** Ebenso das statische {@code instance}: es hatte nur der geloeschte Generator gelesen. */
+    /** Likewise the static {@code instance}: only the deleted generator had read it. */
     @Test
     void statischesInstanceFeld_gibtEsNichtMehr() {
         assertTrue(java.util.Arrays.stream(RepoMaster.class.getDeclaredFields())

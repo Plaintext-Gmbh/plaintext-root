@@ -22,8 +22,8 @@ public class PasswordResetToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // SECURITY (Karte 307, K2.3): NUR der SHA-256-Hash des Tokens wird gespeichert, nie der Klartext
-    // (Muster MagicLinkToken). Ein DB-/Backup-/Log-Leak erlaubt so keine Konto-Uebernahme.
+    // SECURITY (card 307, K2.3): ONLY the SHA-256 hash of the token is stored, never the clear text
+    // (pattern MagicLinkToken). A DB/backup/log leak therefore allows no account takeover.
     @Column(name = "TOKEN_HASH", nullable = false, unique = true, length = 64)
     private String tokenHash;
 

@@ -19,13 +19,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
- * HashiCorp-Vault-Backend (KV v2). Konfiguration (URL/Token/Mount) liegt AES-verschlüsselt in
- * {@code secret_backend_config} und wird über {@link SecretCrypto} entschlüsselt gelesen — das Token
- * wird nie im Klartext gehalten/geloggt. Werte werden geschrieben (one-way); die Notiz landet als
- * {@code note}-Feld neben dem Wert, {@link #comment} liest NUR die Notiz (nie den Wert).
+ * HashiCorp Vault backend (KV v2). The configuration (URL/token/mount) is stored AES-encrypted in
+ * {@code secret_backend_config} and is read decrypted via {@link SecretCrypto} — the token is never
+ * held in plaintext or logged. Values are written (one-way); the note ends up as a {@code note} field
+ * next to the value, {@link #comment} reads ONLY the note (never the value).
  *
- * <p>Config-JSON (im Settings-Feld einzugeben): {@code {"url":"https://vault:8200","token":"hvs...",
- * "mount":"secret"}} — {@code mount} optional (Default {@code secret}).</p>
+ * <p>Config JSON (to be entered in the settings field): {@code {"url":"https://vault:8200","token":"hvs...",
+ * "mount":"secret"}} — {@code mount} optional (default {@code secret}).</p>
  */
 @Slf4j
 @Component
@@ -145,7 +145,7 @@ public class HashiCorpVaultBackend implements SecretBackend {
         }
     }
 
-    // ── intern ───────────────────────────────────────────────
+    // ── internal ─────────────────────────────────────────────
 
     private HttpRequest get(Cfg c, String path) {
         return HttpRequest.newBuilder(URI.create(c.url + path))
@@ -158,7 +158,7 @@ public class HashiCorpVaultBackend implements SecretBackend {
         return java.net.URLEncoder.encode(s, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
-    /** Aktive HASHICORP-Config des Mandanten (entschlüsselt), oder null. */
+    /** Active HASHICORP config of the tenant (decrypted), or null. */
     private Cfg config() {
         String mandat = PlaintextSecurityHolder.getMandat();
         return configRepo.findFirstByMandatAndAktivAndDeleted(mandat, true, false)
@@ -183,10 +183,10 @@ public class HashiCorpVaultBackend implements SecretBackend {
     private record Cfg(String url, String token, String mount) { }
 
     /**
-     * Entfernt abschliessende Schraegstriche ohne regulaeren Ausdruck.
+     * Removes trailing slashes without a regular expression.
      *
-     * <p>Karte 458 (java:S5852): {@code replaceAll("/+$", "")} laeuft bei vielen aufeinander
-     * folgenden Schraegstrichen in quadratisches Backtracking. Diese Schleife ist linear.</p>
+     * <p>Card 458 (java:S5852): {@code replaceAll("/+$", "")} runs into quadratic backtracking with
+     * many consecutive slashes. This loop is linear.</p>
      */
     private static String ohneEndSchraegstriche(String wert) {
         int ende = wert.length();

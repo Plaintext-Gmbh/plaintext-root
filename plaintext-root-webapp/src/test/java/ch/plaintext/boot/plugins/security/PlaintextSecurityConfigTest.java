@@ -95,8 +95,8 @@ class PlaintextSecurityConfigTest {
 
     @Test
     void securityContextRepository_shouldReturnHttpSessionRepository() {
-        // Die Repository-Bean wurde in SecurityContextRepositoryConfig ausgelagert
-        // (bricht die Konstruktor-Zyklus-Abhaengigkeit des TOTP-Gates).
+        // The repository bean was moved out into SecurityContextRepositoryConfig
+        // (this breaks the constructor cycle dependency of the TOTP gate).
         SecurityContextRepository repo = new SecurityContextRepositoryConfig().securityContextRepository();
 
         assertNotNull(repo);
@@ -135,9 +135,9 @@ class PlaintextSecurityConfigTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 7): der BCrypt-Kostenfaktor muss 12 sein, nicht der
-     * Spring-Default 10. Der Faktor steht im Hash-Präfix ({@code $2a$12$...}) und laesst sich
-     * dort direkt ablesen.
+     * SECURITY (card 314, item 7): the BCrypt cost factor has to be 12, not the
+     * Spring default 10. The factor stands in the hash prefix ({@code $2a$12$...}) and can be
+     * read off directly there.
      */
     @Test
     void passwordEncoder_shouldUseCostFactor12() {
@@ -150,9 +150,9 @@ class PlaintextSecurityConfigTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 13): in PROD ist ein stabiler Remember-Me-Key Pflicht. Bisher
-     * gab es nur eine WARN und einen fluechtigen Zufallsschluessel — funktional unauffaellig,
-     * deshalb faellt ein fehlender Schluessel im Betrieb nie auf.
+     * SECURITY (card 314, item 13): in PROD a stable remember-me key is mandatory. Until now
+     * there was only a WARN and an ephemeral random key — functionally inconspicuous,
+     * which is why a missing key never stands out in production.
      */
     @Test
     void rememberMeKey_shouldFailFastInProductionWhenMissing() {
@@ -164,7 +164,7 @@ class PlaintextSecurityConfigTest {
         assertTrue(ex.getMessage().contains("remember-me-key"));
     }
 
-    /** In dev/test bleibt der Zufallsschluessel erhalten — lokaler Start ohne Env muss gehen. */
+    /** In dev/test the random key is kept — a local start without env has to work. */
     @Test
     void rememberMeKey_shouldNotFailOutsideProduction() {
         when(securityProperties.getRememberMeKey()).thenReturn("");
@@ -173,9 +173,9 @@ class PlaintextSecurityConfigTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 4): {@code /api/preferences/**} darf NICHT mehr in der
-     * CSRF-Ausnahmeliste stehen — die Endpunkte sind session-authentifiziert und waren damit
-     * per cross-site-POST ansteuerbar.
+     * SECURITY (card 314, item 4): {@code /api/preferences/**} must NO longer stand in the
+     * CSRF exception list — the endpoints are session-authenticated and were therefore
+     * reachable by a cross-site POST.
      */
     @Test
     void csrfIgnoreList_shouldNotContainPreferencesApi() {

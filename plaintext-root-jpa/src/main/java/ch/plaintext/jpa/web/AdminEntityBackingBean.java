@@ -16,9 +16,9 @@ import java.util.List;
  * Admin Entity Management Backing Bean
  * Allows administrators to manage entities for their own mandat.
  *
- * <p>Die gesamte Verwaltungslogik steht in {@link AbstractEntityBackingBean}; hier nur, was den
- * Admin vom Root unterscheidet: nur mandantenfaehige Entitaeten, nur der eigene Mandant, und der
- * Mandant wird beim Speichern serverseitig erzwungen.
+ * <p>The entire management logic lives in {@link AbstractEntityBackingBean}; only what sets the
+ * Admin apart from the Root is here: only tenant-capable entities, only the own tenant, and the
+ * tenant is enforced server-side when saving.
  *
  * @author info@plaintext.ch
  * @since 2024
@@ -52,10 +52,10 @@ public class AdminEntityBackingBean extends AbstractEntityBackingBean {
     }
 
     /**
-     * SECURITY (Karte 307, MITTEL): ein Nicht-ROOT-Admin darf Datensaetze NUR im EIGENEN Mandanten
-     * speichern. Der Mandant wird serverseitig auf den eigenen erzwungen — unabhaengig davon, was
-     * das (aus getAllMandate befuellte) Dropdown geliefert hat. So kann niemand in fremde
-     * Mandanten schreiben. Nur ROOT darf den Mandanten frei setzen.
+     * SECURITY (Karte 307, MEDIUM): a non-ROOT admin may save records ONLY within their OWN tenant.
+     * The tenant is forced server-side to the admin's own one — regardless of what the dropdown
+     * (filled from getAllMandate) delivered. That way nobody can write into a foreign tenant. Only
+     * ROOT may set the tenant freely.
      */
     @Override
     protected void vorSpeichern(Object entity) {

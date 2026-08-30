@@ -20,34 +20,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilte Leitplanke fuer Datei-Header und {@code @author}-Angaben in ALLEN {@code src/main/java}
- * und {@code src/test/java} des jeweiligen Reactors (Zustandsbericht 29.08.2026, Paket R2).
+ * Shared guardrail for file headers and {@code @author} entries in ALL {@code src/main/java}
+ * and {@code src/test/java} of the respective reactor (status report 29.08.2026, package R2).
  *
- * <p><b>Befund:</b> 27 root-Dateien (vor allem {@code plaintext-admin-apitoken}) trugen den Header
- * {@code Copyright (C) eMad, 2026.} — der Name einer frueheren Firmierung, den kein Leser dem
- * Projekt zuordnen kann. Dazu Platzhalter-Autoren aus Generatoren und Agenten-Laeufen
- * ({@code @author worker01}, {@code @author Author}, {@code @author Generated}) und ein
- * abgeschnittenes {@code @author info}. Solche Angaben sagen nichts und werden per Copy-Paste
- * weitergetragen — dieser Test haelt sie draussen, in root und in jedem Consumer.
+ * <p><b>Finding:</b> 27 root files (above all {@code plaintext-admin-apitoken}) carried the header
+ * {@code Copyright (C) eMad, 2026.} — the name of an earlier company that no reader can associate
+ * with the project. On top of that placeholder authors from generators and agent runs
+ * ({@code @author worker01}, {@code @author Author}, {@code @author Generated}) and a truncated
+ * {@code @author info}. Such entries say nothing and get carried on by copy-paste — this test
+ * keeps them out, in root and in every consumer.
  *
- * <p><b>Erlaubte Form:</b>
+ * <p><b>Permitted form:</b>
  * <ul>
- *   <li>Lizenz-Header: der MPL-2.0-Block (Standard) oder {@code Copyright (C) plaintext.ch, <Jahr>.}
- *       fuer Altbestand mit dokumentiertem Jahr.</li>
- *   <li>{@code @author info@plaintext.ch} (bevorzugt); {@code @author plaintext.ch} und
- *       {@code @author Plaintext GmbH} bleiben zulaessig. Persoenliche Kuerzel werden nicht
- *       beanstandet.</li>
+ *   <li>License header: the MPL-2.0 block (standard) or {@code Copyright (C) plaintext.ch, <Jahr>.}
+ *       for legacy code with a documented year.</li>
+ *   <li>{@code @author info@plaintext.ch} (preferred); {@code @author plaintext.ch} and
+ *       {@code @author Plaintext GmbH} remain admissible. Personal initials are not
+ *       objected to.</li>
  * </ul>
  *
- * <p><b>Warum ein Dateiscan statt ArchUnit?</b> Header und Javadoc sind kein Bytecode. Gescannt wird
- * ab der Reactor-Wurzel jedes Modul-{@code src/main/java} und {@code src/test/java}
- * ({@link ReactorLayout}); das Modul, das diesen Linter ausliefert, bleibt aussen vor, weil es die
- * verbotenen Tokens als Literale traegt.
+ * <p><b>Why a file scan instead of ArchUnit?</b> Headers and Javadoc are not bytecode. Scanned is,
+ * from the reactor root, every module's {@code src/main/java} and {@code src/test/java}
+ * ({@link ReactorLayout}); the module that ships this linter stays out, because it carries the
+ * forbidden tokens as literals.
  *
- * <p><b>Ausnahmen:</b> Allowlist des Reactors ({@code plaintext-arch-allowlist.txt}, Regel
- * {@code header-hygiene}, Pfad relativ zur Wurzel, {@code *}/{@code **} erlaubt, Begruendung
- * Pflicht — {@link ArchAllowlist}). root fuehrt keine Allowlist; Consumer mit Altbestand tragen
- * ihre Dateien dort ein, bis sie bereinigt sind.
+ * <p><b>Exceptions:</b> the reactor's allowlist ({@code plaintext-arch-allowlist.txt}, rule
+ * {@code header-hygiene}, path relative to the root, {@code *}/{@code **} allowed, justification
+ * mandatory — {@link ArchAllowlist}). root keeps no allowlist; consumers with legacy code enter
+ * their files there until they have been cleaned up.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -58,14 +58,14 @@ class PlaintextHeaderHygieneTest {
 
     private static final List<String> JAVA_SUFFIXES = List.of("src/main/java", "src/test/java");
 
-    /** {@code Copyright (C) eMad, 2026.} in jeder Schreibweise (auch {@code ©}, ohne {@code (C)}). */
+    /** {@code Copyright (C) eMad, 2026.} in every spelling (also {@code ©}, without {@code (C)}). */
     private static final Pattern EMAD_HEADER = Pattern.compile(
             "Copyright\\s*(?:\\(C\\)|©)?\\s*eMad\\b", Pattern.CASE_INSENSITIVE);
 
     /**
-     * {@code @author} gefolgt von einem Platzhalter oder gar nichts — bis zum Zeilenende bzw. bis
-     * zum schliessenden {@code *&#47;} eines einzeiligen Javadocs. {@code info} allein ist die
-     * abgeschnittene Form von {@code info@plaintext.ch}.
+     * {@code @author} followed by a placeholder or by nothing at all — up to the end of the line resp.
+     * up to the closing {@code *&#47;} of a single-line Javadoc. {@code info} on its own is the
+     * truncated form of {@code info@plaintext.ch}.
      */
     private static final Pattern PLATZHALTER_AUTHOR = Pattern.compile(
             "@author\\s*(?::\\s*)?(Author|worker\\d+|Generated|info|TODO|unknown)?\\s*(?:\\*/)?\\s*$",
@@ -78,7 +78,7 @@ class PlaintextHeaderHygieneTest {
             roots.addAll(ReactorLayout.sourceRoots(suffix));
         }
         if (roots.isEmpty()) {
-            return; // Reactor ohne Java-Quellen an dieser Stelle -> nichts zu pruefen
+            return; // reactor without Java sources at this point -> nothing to check
         }
         ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
 
@@ -194,8 +194,8 @@ class PlaintextHeaderHygieneTest {
     }
 
     /**
-     * Meldet jede {@code .java}-Datei unter {@code root} als {@code <relativer Pfad>:<Zeile> -> <Grund>}.
-     * Pro Datei und Regel hoechstens ein Treffer — die Meldung ist die Arbeitsanweisung, keine Statistik.
+     * Reports every {@code .java} file below {@code root} as {@code <relativer Pfad>:<Zeile> -> <Grund>}.
+     * At most one hit per file and rule — the message is the work instruction, not a statistic.
      */
     static List<String> scan(Path root) throws IOException {
         List<String> hits = new ArrayList<>();

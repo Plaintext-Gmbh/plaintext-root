@@ -32,10 +32,10 @@ public class EntityMetadataService {
     ));
 
     /**
-     * SECURITY (Karte 307, MITTEL): Feldnamen, die in der generischen Datenverwaltung NIE als Spalte
-     * erscheinen oder editierbar sein duerfen — Chiffrate/Secrets/Hashes (z.B. {@code SecretEntry.wertEncrypted},
-     * im Code als "NIE im UI anzeigen (one-way)" dokumentiert). Defense-in-Depth zusaetzlich zur
-     * Entity-Ausschlussliste in EntityRegistryService. Match case-insensitiv.
+     * SECURITY (Karte 307, MEDIUM): field names that must NEVER appear as a column or be editable in
+     * the generic data management — ciphertexts/secrets/hashes (e.g. {@code SecretEntry.wertEncrypted},
+     * documented in the code as "NIE im UI anzeigen (one-way)"). Defense in depth on top of the
+     * entity exclusion list in EntityRegistryService. Matched case-insensitively.
      */
     private static final Set<String> SENSITIVE_FIELDS = new HashSet<>(Arrays.asList(
             "wertencrypted", "password", "passwordhash", "tokenhash", "token", "secret",
@@ -75,7 +75,7 @@ public class EntityMetadataService {
 
     private boolean shouldIncludeField(Field field) {
         int modifiers = field.getModifiers();
-        // SECURITY (Karte 307, MITTEL): sensible Felder (Chiffrate/Secrets/Hashes) nie ins Daten-UI.
+        // SECURITY (Karte 307, MEDIUM): sensitive fields (ciphertexts/secrets/hashes) never reach the data UI.
         if (SENSITIVE_FIELDS.contains(field.getName().toLowerCase())) {
             return false;
         }

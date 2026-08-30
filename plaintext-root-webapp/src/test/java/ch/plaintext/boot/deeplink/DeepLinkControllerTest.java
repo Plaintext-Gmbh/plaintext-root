@@ -25,7 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Der Einstiegspunkt {@code /deeplink} — vor allem der Fall „nicht angemeldet" (Karte 345). */
+/** The entry point {@code /deeplink} — above all the case "not logged in" (card 345). */
 class DeepLinkControllerTest {
 
     private DeepLinkResolver resolver;
@@ -66,7 +66,7 @@ class DeepLinkControllerTest {
 
         assertEquals("/login.html", response.getRedirectedUrl());
         assertNotNull(request.getSession(false).getAttribute(DeepLinkPendingStore.SESSION_ATTRIBUTE));
-        // Ohne Anmeldung wird gar nichts aufgeloest — keine Information ueber Existenz von Daten.
+        // Without a login nothing is resolved at all — no information about the existence of data.
         verify(resolver, never()).resolve(any(), any(), any());
     }
 
@@ -87,7 +87,7 @@ class DeepLinkControllerTest {
         controller.oeffne("auszahlung", "alpha", "42&next=https://example.com", request, response);
 
         assertEquals("/login.html", response.getRedirectedUrl());
-        // Es wird nicht einmal eine Session dafuer angelegt — es gibt schlicht nichts zu merken.
+        // Not even a session is created for it — there is simply nothing to remember.
         assertNull(request.getSession(false));
     }
 

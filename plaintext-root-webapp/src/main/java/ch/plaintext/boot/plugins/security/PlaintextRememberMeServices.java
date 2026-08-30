@@ -13,35 +13,35 @@ import org.springframework.security.web.authentication.rememberme.PersistentToke
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
 /**
- * Remember-Me-Dienst, der einen Series/Token-Mismatch nicht in einen HTTP 500 laufen laesst.
+ * Remember-me service that does not let a series/token mismatch run into an HTTP 500.
  *
- * <h2>Warum diese Klasse existiert (Karte 898)</h2>
- * Spring Security wirft bei einem Mismatch eine {@link CookieTheftException}, und zwar mit Absicht
- * bis nach draussen: {@code AbstractRememberMeServices#autoLogin} faengt sie, loescht das Cookie und
- * wirft sie <b>weiter</b>. Der {@code RememberMeAuthenticationFilter} umschliesst den
- * {@code autoLogin}-Aufruf nicht mit seinem {@code catch (AuthenticationException)} — die Exception
- * schlaegt deshalb bis in den {@code dispatcherServlet} durch, und der Benutzer bekommt auf
- * {@code /login.html} eine <b>500-Fehlerseite statt eines Anmeldeformulars</b>.
+ * <h2>Why this class exists (card 898)</h2>
+ * On a mismatch Spring Security throws a {@link CookieTheftException}, and does so deliberately
+ * all the way out: {@code AbstractRememberMeServices#autoLogin} catches it, deletes the cookie and
+ * <b>rethrows</b> it. The {@code RememberMeAuthenticationFilter} does not wrap the
+ * {@code autoLogin} call in its {@code catch (AuthenticationException)} — the exception
+ * therefore propagates into the {@code dispatcherServlet}, and on
+ * {@code /login.html} the user gets a <b>500 error page instead of a login form</b>.
  *
- * <p>Gemessen im Zugriffsbericht (Karte 892): sechs solche 500er in sieben Tagen, jeder von einem
- * echten Browser, jeder auf der Anmeldeseite. Im Anwendungslog davor jeweils eine abgelaufene
- * Sitzung ({@code Ajax-Request abgewiesen (CSRF-Token fehlt oder ist ungueltig)}), danach die
- * Weiterleitung auf die Anmeldeseite — und dort der 500. Wer sich anmelden will, sieht also ein
- * kaputtes System.
+ * <p>Measured in the access report (card 892): six such 500s in seven days, each from a
+ * real browser, each on the login page. In the application log before each one an expired
+ * session ({@code Ajax-Request abgewiesen (CSRF-Token fehlt oder ist ungueltig)}), afterwards the
+ * redirect to the login page — and there the 500. So whoever wants to log in sees a
+ * broken system.
  *
- * <h2>Warum das den Diebstahlschutz nicht aufweicht</h2>
- * Der Schutz greift, <b>bevor</b> die Exception fliegt, und liegt nicht in ihrer Weitergabe:
- * {@code PersistentTokenBasedRememberMeServices#processAutoLoginCookie} ruft
- * {@code tokenRepository.removeUserTokens(series)} und erst danach {@code throw}. Alle persistenten
- * Tokens des Benutzers sind zu diesem Zeitpunkt also schon verworfen, und {@code autoLogin} hat das
- * Cookie per {@code cancelCookie} geloescht. Diese Klasse aendert damit ausschliesslich die
- * <b>Antwort</b> (Anmeldeseite statt 500), nicht die Wirkung.
+ * <h2>Why this does not weaken the theft protection</h2>
+ * The protection takes effect <b>before</b> the exception flies, and does not lie in propagating it:
+ * {@code PersistentTokenBasedRememberMeServices#processAutoLoginCookie} calls
+ * {@code tokenRepository.removeUserTokens(series)} and only then {@code throw}. All persistent
+ * tokens of the user are therefore already discarded at that point, and {@code autoLogin} has deleted
+ * the cookie via {@code cancelCookie}. This class therefore changes exclusively the
+ * <b>response</b> (login page instead of 500), not the effect.
  *
- * <p>Ein Mismatch ist ausserdem in der Mehrzahl der Faelle <b>kein</b> Angriff: zwei Tabs oder zwei
- * Geraete, die denselben Cookie parallel erneuern, oder ein Cookie aus der Zeit vor einem
- * Datenbank-Reset erzeugen ihn genauso. Deshalb bleibt eine WARN-Zeile mit Serie und Kennung
- * stehen — der Unterschied zwischen harmlos und Angriff liegt in der Haeufung, nicht im Einzelfall,
- * und die Haeufung ist nur sichtbar, wenn jeder Fall protokolliert wird.
+ * <p>Besides, in the majority of cases a mismatch is <b>no</b> attack: two tabs or two
+ * devices renewing the same cookie in parallel, or a cookie from before a
+ * database reset produce it just as well. That is why a WARN line with series and identifier stays
+ * in place — the difference between harmless and attack lies in the accumulation, not in the single
+ * case, and the accumulation is only visible if every case is logged.
  */
 @Slf4j
 public class PlaintextRememberMeServices extends PersistentTokenBasedRememberMeServices {
@@ -52,19 +52,19 @@ public class PlaintextRememberMeServices extends PersistentTokenBasedRememberMeS
     }
 
     /**
-     * Wie {@code super}, aber ohne die {@link CookieTheftException} nach draussen zu geben.
+     * Like {@code super}, but without letting the {@link CookieTheftException} out.
      *
-     * <p>{@code null} ist die Antwort, die der {@code RememberMeAuthenticationFilter} als
-     * „kein Auto-Login" versteht: die Anfrage laeuft anonym weiter und landet regulaer auf der
-     * Anmeldeseite. Genau das ist das gewuenschte Verhalten fuer einen unbrauchbaren Cookie.
+     * <p>{@code null} is the answer that the {@code RememberMeAuthenticationFilter} understands as
+     * "no auto login": the request continues anonymously and ends up on the login page in the regular
+     * way. That is exactly the desired behaviour for an unusable cookie.
      */
     @Override
     public Authentication autoLogin(HttpServletRequest request, HttpServletResponse response) {
         try {
             return super.autoLogin(request, response);
         } catch (CookieTheftException ex) {
-            // Kein Stacktrace: die Meldung von Spring Security nennt den Sachverhalt vollstaendig,
-            // und ein Stacktrace pro Vorfall macht die Haeufung im Log schwerer lesbar.
+            // No stack trace: Spring Security's message states the facts completely,
+            // and one stack trace per incident makes the accumulation harder to read in the log.
             log.warn("SECURITY: remember-me Series/Token-Mismatch auf {} {} — alle persistenten "
                             + "Tokens des Benutzers sind verworfen, das Cookie ist geloescht. "
                             + "Der Aufrufer bekommt die Anmeldeseite statt HTTP 500 (Karte 898). "

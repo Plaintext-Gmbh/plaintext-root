@@ -21,20 +21,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13: Leitplanke ueber ALLE Flyway-Migrationen des
- * root-Reactors ({@code <modul>/src/main/resources/db/migration/V*.sql}).
+ * Status report 29.08.2026, measure 13: guardrail covering ALL Flyway migrations of the
+ * root reactor ({@code <modul>/src/main/resources/db/migration/V*.sql}).
  *
  * <ul>
- *   <li><b>Dateiname</b> {@code V<epoch>__<beschreibung>.sql} — die Nummer kommt aus
- *       {@code ./getflywaynr} (Unix-Sekunden), damit Module sich nicht in die Quere kommen.</li>
- *   <li><b>Versionsnummer reactorweit eindeutig.</b> Zwei Module lieferten dieselbe
- *       {@code V1774038471__create_branding_logo_table.sql} (plaintext-root-flyway und
- *       plaintext-admin-settings, identischer Inhalt). Flyway hat das nur deshalb nicht bemerkt,
- *       weil der Classpath-Scanner gleichnamige Ressourcen zusammenfaellt — eine abweichende
- *       Zeile in einer der Kopien haette einen Checksum-Konflikt beim Start ergeben. Die Kopie
- *       im Flyway-Modul ist entfernt; die Tabelle gehoert zu {@code BrandingLogo} in settings.</li>
- *   <li><b>PostgreSQL-Syntax.</b> Die Apps laufen nur auf {@code jdbc:postgresql}; H2-/HSQLDB-/
- *       MySQL-Idiome (Denylist unten) fallen sonst erst beim Deploy auf.</li>
+ *   <li><b>File name</b> {@code V<epoch>__<beschreibung>.sql} — the number comes from
+ *       {@code ./getflywaynr} (Unix seconds), so that modules cannot get in each other's way.</li>
+ *   <li><b>Version number unique across the whole reactor.</b> Two modules shipped the very same
+ *       {@code V1774038471__create_branding_logo_table.sql} (plaintext-root-flyway and
+ *       plaintext-admin-settings, identical content). Flyway only failed to notice because the
+ *       classpath scanner collapses equally named resources — a single differing line in one of
+ *       the copies would have caused a checksum conflict at startup. The copy in the Flyway
+ *       module has been removed; the table belongs to {@code BrandingLogo} in settings.</li>
+ *   <li><b>PostgreSQL syntax.</b> The apps only ever run on {@code jdbc:postgresql}; H2/HSQLDB/
+ *       MySQL idioms (denylist below) would otherwise only surface at deploy time.</li>
  * </ul>
  *
  * @author info@plaintext.ch
@@ -45,7 +45,7 @@ class FlywayMigrationenTest {
 
     private static final Pattern DATEINAME = Pattern.compile("^V(\\d+)__[A-Za-z0-9_]+\\.sql$");
 
-    /** Nicht-PostgreSQL-Idiome; {@code IDENTITY} ist nur als {@code ... AS IDENTITY} PostgreSQL. */
+    /** Non-PostgreSQL idioms; {@code IDENTITY} is PostgreSQL only when written as {@code ... AS IDENTITY}. */
     private static final Pattern FREMDE_SYNTAX = Pattern.compile(
             "\\bSET\\s+DATABASE\\b|\\bCREATE\\s+(?:MEMORY|CACHED)\\s+TABLE\\b|\\bLONGVARCHAR\\b"
                     + "|\\bAUTO_INCREMENT\\b|\\bENGINE\\s*=|\\bMODIFY\\s+COLUMN\\b|\\bNVARCHAR\\b"
@@ -96,7 +96,7 @@ class FlywayMigrationenTest {
         assertTrue(fehler.isEmpty(), () -> fehler.size() + " Befund(e):\n  " + String.join("\n  ", fehler));
     }
 
-    /** Alle {@code V*.sql} unter {@code <reactor>/<modul>/src/main/resources/db/migration}. */
+    /** All {@code V*.sql} below {@code <reactor>/<modul>/src/main/resources/db/migration}. */
     private static List<Path> migrationen() throws IOException {
         Path reactor = reactorWurzel();
         List<Path> dateien = new ArrayList<>();

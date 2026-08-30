@@ -1,69 +1,68 @@
-# Releases von root und das Nachziehen der Konsumenten (Auto-Bump, Pins)
+# Releases of root and how the consumers follow (auto-bump, pins)
 
 * **Status:** accepted
-* **Date:** 2026-08-29 (nachträglich festgehalten; Karten 322, 776, 942)
+* **Date:** 2026-08-29 (recorded retroactively; cards 322, 776, 942)
 * **Deciders:** Daniel Marthaler
 
 ## Context
 
-`plaintext-root` ist eine Bibliothek mit vier Konsumenten (`plaintext-app`, `-guild`,
-`-schuetu`, `-iot`), die `plaintext-root-parent` als Parent-POM haben und so auch ihre
-Spring-Boot-Version von hier beziehen. Der eigene Container von root ist seit 12.08.2026
-stillgelegt (Karte 776) — es gibt nichts mehr zu deployen, aber ohne Releases von hier hätte
-keine App einen Weg zu einer neuen root-Version.
+`plaintext-root` is a library with four consumers (`plaintext-app`, `-guild`, `-schuetu`,
+`-iot`) that use `plaintext-root-parent` as their parent POM and therefore draw their Spring Boot
+version from here as well. Root's own container has been shut down since 12.08.2026 (card 776) —
+there is nothing left to deploy, but without releases from here no app would have a route to a
+new root version.
 
-Drei Dinge mussten geklärt sein: Wie entsteht ein root-Release, wie kommt er in die Apps,
-und wie verhindert man, dass das Aufräumen des Maven-Repos eine Version löscht, auf der eine
-App noch steht.
+Three things had to be settled: how a root release comes about, how it reaches the apps, and how
+to keep the cleanup of the Maven repository from deleting a version an app is still pinned to.
 
 ## Decision
 
-1. **Jeder Merge nach `master` ist ein Release** (`ci-cd.yaml` → `release-only`): Bump, Tag,
-   `mvn clean deploy` nach `maven.plaintext.ch/releases` **und** GitHub Packages
-   (Dual-Publish), anschliessend `Prepare next development iteration … [skip-ci]`. Kein
-   Container-Deploy. Die Minor-Nummer zählt Releases und ist kein SemVer-Versprechen;
-   Kompatibilität steht im `CHANGELOG.md`-Text.
-2. **Die Konsumenten ziehen — nicht root schiebt** (`root-autobump.yaml` in jedem
-   Consumer-Repo, Karte 322): Der Workflow liest die `maven-metadata.xml` des NAS-Repos
-   (nicht den Git-Tag — der entsteht vor dem `deploy`), setzt Parent-Version und
-   `<plaintext-root.version>`, **baut zur Prüfung** und öffnet erst dann einen PR. Roter
-   Build → kein PR, nur Pushover. **Kein Auto-Merge**: der Merge im Consumer ist dessen
-   Deploy und bleibt eine bewusste, serielle Handlung.
-3. **Jeder Consumer meldet seinen Pin** (`publish-root-pin.yaml`, Karte 942) nach
-   `Plaintext-Gmbh/plaintext-mvn`, Branch `pins`, bei jedem master-Push mit `pom.xml`-Änderung
-   und wöchentlich als Heartbeat. Der Aufräumer dort löscht keine gepinnte Version und bricht
-   ab, wenn ein Pin älter als 30 Tage ist.
+1. **Every merge to `master` is a release** (`ci-cd.yaml` → `release-only`): bump, tag,
+   `mvn clean deploy` to `maven.plaintext.ch/releases` **and** to GitHub Packages (dual publish),
+   followed by `Prepare next development iteration … [skip-ci]`. No container deployment. The
+   minor number counts releases and is not a SemVer promise; compatibility is stated in the
+   `CHANGELOG.md` text.
+2. **The consumers pull — root does not push** (`root-autobump.yaml` in every consumer repo,
+   card 322): the workflow reads the `maven-metadata.xml` of the NAS repository (not the Git tag
+   — that is created before the `deploy`), sets the parent version and
+   `<plaintext-root.version>`, **builds as a check** and only then opens a PR. Red build → no PR,
+   just a Pushover message. **No auto-merge**: the merge in the consumer is that consumer's
+   deployment and stays a deliberate, serial act.
+3. **Every consumer reports its pin** (`publish-root-pin.yaml`, card 942) to
+   `Plaintext-Gmbh/plaintext-mvn`, branch `pins`, on every master push that touches `pom.xml`,
+   and weekly as a heartbeat. The cleanup job there deletes no pinned version and aborts if a pin
+   is older than 30 days.
 
 ## Consequences
 
-* **Positiv:** Ein kaputter root-Release kann sich nicht über die Apps verteilen — der
-  Verify-Build im Consumer hält ihn auf, bevor ein PR existiert.
-* **Positiv:** Kein cross-repo-PAT, kein Push-Recht von root in die Apps; die Richtung
-  «ziehen» kommt mit dem Token aus, das ohnehin existiert.
-* **Negativ:** Latenz. Die Apps hängen bis zu einem Tag (zwei Cron-Fenster) hinter root;
-  ein dringender Fix braucht `workflow_dispatch` oder einen Bump von Hand.
-* **Negativ:** Ein Bump-PR pro App und root-Release — bei täglichen root-Releases ist das
-  sichtbarer Review-Aufwand, den niemand automatisiert wegnimmt (bewusst).
-* **Negativ:** Ein grüner Build beweist keine funktionierende Laufzeit (fwtool fiel nach
-  einem Bump mit 502, weil Vault-Variablen fehlten — Build war grün). Der Merge bleibt
-  darum ein Mensch.
-* **Neutral:** Die Versionsnummer von root steigt schnell (dreistellige Minor). Das ist die
-  Folge von «jeder Merge ein Release» und kein Fehler.
+* **Positive:** a broken root release cannot spread through the apps — the verify build in the
+  consumer stops it before a PR even exists.
+* **Positive:** no cross-repo PAT, no push rights from root into the apps; the "pull" direction
+  makes do with the token that exists anyway.
+* **Negative:** latency. The apps lag up to a day (two cron windows) behind root; an urgent fix
+  needs `workflow_dispatch` or a manual bump.
+* **Negative:** one bump PR per app and per root release — with daily root releases that is
+  visible review effort, and nobody automates it away (deliberately).
+* **Negative:** a green build is no proof of a working runtime (fwtool fell over with a 502 after
+  a bump because Vault variables were missing — the build was green). That is why a human stays
+  in charge of the merge.
+* **Neutral:** root's version number climbs fast (a three-digit minor). That is the consequence
+  of "every merge a release" and not a defect.
 
 ## Alternatives considered
 
 | Option | Why not? |
 | --- | --- |
-| root stösst per `repository_dispatch` Bumps in den Apps an (Push) | Braucht ein cross-repo-PAT; Org-Secrets lösen auf dem Free-Plan in privaten Repos still zu leer auf — ein weiterer stiller Fehlerpfad. |
-| Auto-Merge der Bump-PRs | Parallele Consumer-Deploys recyceln die NAS-Runner mitten im Blue-Green (PROD 502); und grün ≠ läuft. |
-| `versions:update-property` für den Bump | Liefert falsche Vorschläge, weil `${plaintext-root.version}` über `${plaintext.version}` auch an Artefakte anderer Versionslinien hängt (Messung 30.07.2026 in iot). |
-| Git-Tag als Versionsquelle | Der Tag entsteht vor dem `mvn deploy`; ein Tag ohne Artefakt ergäbe einen unauflösbaren Bump. |
-| Pins durch den Aufräumer aus den App-POMs lesen | Die App-Repos sind privat; der Token von `plaintext-mvn` kommt nicht hinein. Deshalb schieben die Apps. |
+| root triggers bumps in the apps via `repository_dispatch` (push) | Needs a cross-repo PAT; on the free plan, org secrets silently resolve to empty in private repos — one more silent failure path. |
+| Auto-merging the bump PRs | Parallel consumer deployments recycle the NAS runners in the middle of a blue-green switch (PROD 502); and green ≠ running. |
+| `versions:update-property` for the bump | Produces wrong suggestions, because through `${plaintext.version}` the property `${plaintext-root.version}` also attaches to artifacts from other version lines (measured on 30.07.2026 in iot). |
+| The Git tag as the source of the version | The tag is created before the `mvn deploy`; a tag without an artifact would give an unresolvable bump. |
+| Letting the cleanup job read the pins out of the app POMs | The app repos are private; the token of `plaintext-mvn` cannot get in. That is why the apps push. |
 
 ## References
 
-* `.github/workflows/ci-cd.yaml` (Kopfkommentar zu Karte 776 / `release-only`)
-* Consumer-Repos: `.github/workflows/root-autobump.yaml`, `.github/scripts/root-autobump.sh`,
+* `.github/workflows/ci-cd.yaml` (header comment on card 776 / `release-only`)
+* Consumer repos: `.github/workflows/root-autobump.yaml`, `.github/scripts/root-autobump.sh`,
   `.github/workflows/publish-root-pin.yaml`
 * `plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml`
-* `CLAUDE.md` (Release-Ablauf, Port-Tabelle)
+* `CLAUDE.md` (release procedure, port table)

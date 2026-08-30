@@ -19,7 +19,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-/** Backing Bean der vollen Inbox-Seite ({@code notifications.xhtml}). */
+/** Backing Bean of the full inbox page ({@code notifications.xhtml}). */
 @Component("notificationBean")
 @Scope("session")
 @Data
@@ -51,7 +51,7 @@ public class NotificationBackingBean implements Serializable {
         info("Erledigt", n + " Benachrichtigung(en) als gelesen markiert.");
     }
 
-    /** Erzeugt eine Test-Benachrichtigung an sich selbst — Nachweis/Verifikation des Mechanismus. */
+    /** Creates a test notification addressed to oneself — proof/verification of the mechanism. */
     public void sendeTestBenachrichtigung() {
         notificationService.notify(PlaintextSecurityHolder.getUser(), PlaintextSecurityHolder.getMandat(), "test",
                 "Test-Benachrichtigung", "Dies ist eine Test-Benachrichtigung, manuell über die Admin-Seite ausgelöst.",

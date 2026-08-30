@@ -81,7 +81,7 @@
              Abwaehlbar (nachgewiesen durch den Surefire-Lauf 'kontext-ohne-abwaehlbare-module',
              siehe unten, und AbwaehlbareModuleXhtmlTest):
                  plaintext-admin-webhooks, -notifications, -secrets, -modules
-             Nicht abwaehlbar und warum je einzeln: docs/MODULE_ABWAEHLEN.md,
+             Nicht abwaehlbar und warum je einzeln: docs/OPTIONAL_MODULES.md,
              Begruendung des Wegs: docs/adr/0007-admin-module-abwaehlbar-per-exclusions.md. -->
         <dependency>
             <groupId>ch.plaintext</groupId>
@@ -434,7 +434,7 @@
                       Die Liste steht doppelt (hier und in SchlankerKontextTest) — Maven kann
                       Plugin-Konfiguration nicht aus Java lesen. Deshalb wird sie als
                       Systemproperty hereingereicht und dort gegengeprueft.
-                      Aendern? Dann auch docs/MODULE_ABWAEHLEN.md nachziehen.
+                      Aendern? Dann auch docs/OPTIONAL_MODULES.md nachziehen.
                     -->
                     <execution>
                         <id>kontext-ohne-abwaehlbare-module</id>

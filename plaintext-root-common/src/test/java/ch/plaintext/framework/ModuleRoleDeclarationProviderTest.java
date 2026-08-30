@@ -15,9 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Die per Konfiguration vergebenen Modul-Rollen muessen ohne Zutun der App in der
- * {@link PlaintextRoleRegistry} landen — sonst stehen sie in der Benutzerverwaltung nicht zur
- * Auswahl und koennen niemandem vergeben werden.
+ * The module roles assigned by configuration have to end up in the
+ * {@link PlaintextRoleRegistry} without any action by the app — otherwise they are not offered
+ * for selection in the user administration and cannot be assigned to anybody.
  */
 class ModuleRoleDeclarationProviderTest {
 

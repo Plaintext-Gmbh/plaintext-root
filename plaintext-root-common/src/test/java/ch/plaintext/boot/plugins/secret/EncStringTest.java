@@ -108,7 +108,7 @@ class EncStringTest {
 
     @Test
     void parsesLegacyWithoutTypePrefixAsType0WhenNoMac() {
-        // Nur ein Pipe (iv|ct) und kein Typ-Prefix → type 0.
+        // Only one pipe (iv|ct) and no type prefix → type 0.
         String s = b64(16, 1) + "|" + b64(32, 2);
         EncString enc = EncString.parse(s);
         assertThat(enc.type()).isZero();
@@ -131,7 +131,7 @@ class EncStringTest {
         EncString a = EncString.parse(s);
         EncString b = EncString.parse(s);
         assertThat(a).isEqualTo(b).hasSameHashCodeAs(b);
-        // Reflexivitaet (this == o Kurzschluss im equals) direkt auf dem Vertrag pruefen.
+        // Check reflexivity (the this == o short circuit in equals) directly against the contract.
         assertThat(a.equals(a)).isTrue();
     }
 
@@ -139,8 +139,8 @@ class EncStringTest {
     void ungleichBeiAbweichendemInhalt() {
         EncString a = EncString.parse("2." + b64(16, 1) + "|" + b64(32, 2) + "|" + b64(32, 3));
         EncString b = EncString.parse("2." + b64(16, 1) + "|" + b64(32, 2) + "|" + b64(32, 9));
-        // Fremdtyp ueber eine Object-Referenz, damit AssertJ keinen Vergleich unaehnlicher Typen
-        // moniert; anderer Inhalt, Fremdtyp und null sind alle ungleich (eine Assertion-Kette).
+        // A foreign type through an Object reference, so that AssertJ does not complain about a
+        // comparison of dissimilar types; different content, foreign type and null are all unequal (one assertion chain).
         Object fremderTyp = "string";
         assertThat(a).isNotEqualTo(b).isNotEqualTo(fremderTyp).isNotNull();
     }
@@ -150,7 +150,7 @@ class EncStringTest {
         String payload = b64(16, 1);
         EncString enc = EncString.parse("0." + payload + "|" + b64(32, 2));
         String str = enc.toString();
-        // Der Base64-Payload darf NICHT im toString auftauchen.
+        // The Base64 payload must NOT show up in toString.
         assertThat(str)
                 .contains("type=0").contains("iv=16B").contains("ct=32B").contains("mac=null")
                 .doesNotContain(payload);

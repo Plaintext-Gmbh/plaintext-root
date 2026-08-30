@@ -125,14 +125,14 @@ class CronConfigStoreTest {
     }
 
     /**
-     * Karte 574: Am 03.08.2026 wechselte der gespeicherte Name vom CGLIB-Proxy-Namen auf den
-     * Klassennamen. Weil nur exakt gesucht wurde, entstanden 99 verwaiste Zeilen, und 22 bewusst
-     * abgeschaltete Boot-Laeufe waren wieder an — ohne Fehlermeldung, der Start blieb gruen.
+     * Card 574: on 03.08.2026 the stored name changed from the CGLIB proxy name to the class
+     * name. Because the lookup was exact only, 99 orphaned rows appeared and 22 deliberately
+     * disabled startup runs were on again — without an error message, startup stayed green.
      */
     @Nested
     class BestandszeileUnterAltemNamen {
 
-        /** Nur findAll ist bedient — genau die Ausgangslage einer fremden Store-Implementierung. */
+        /** Only findAll is served — exactly the starting point of a third-party store implementation. */
         private CronConfigStore storeMit(CronConfigEntity... zeilen) {
             return new CronConfigStore() {
                 @Override
@@ -173,8 +173,8 @@ class CronConfigStoreTest {
 
         @Test
         void trifft_keinen_anderen_Job_mit_gleichem_Wortanfang() {
-            // Ohne das trennende "$$" wuerde MailSyncCron die Zeile von MailSyncCronExtra kapern
-            // und deren Einstellungen an sich ziehen.
+            // Without the separating "$$", MailSyncCron would hijack the row of MailSyncCronExtra
+            // and pull its settings over to itself.
             CronConfigEntity anderer = zeile("MailSyncCronExtra$$SpringCGLIB$$0", "trimstein", false, "0 6 * * *");
 
             assertThat(storeMit(anderer).findLegacyProxyRow("MailSyncCron", "trimstein")).isEmpty();

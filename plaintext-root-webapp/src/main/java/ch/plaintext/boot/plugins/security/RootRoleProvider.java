@@ -11,14 +11,14 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Referenzimplementierung des Rollen-Registry-Musters: deklariert die root-eigenen Rollen,
- * damit sie in der Benutzerverwaltung als Auswahl erscheinen (statt freihaendig getippt zu
- * werden). Apps, die root nutzen, deklarieren ihre Modul-Rollen nach demselben Muster —
- * eine {@link PlaintextRoleProvider}-Bean pro Modul.
+ * Reference implementation of the role registry pattern: declares root's own roles so that they
+ * appear as a choice in the user administration (instead of being typed in freehand). Apps that
+ * use root declare their module roles according to the same pattern —
+ * one {@link PlaintextRoleProvider} bean per module.
  *
- * <p>Bewusst NICHT deklariert: {@code system} ({@code ROLE_SYSTEM} ist eine rein technische
- * Authority fuer Cron-/Bus-Kontexte und soll keinem Benutzer zugewiesen werden) sowie die
- * {@code PROPERTY_*}-Pseudo-Rollen (Mandat etc.), die die Benutzerverwaltung separat behandelt.</p>
+ * <p>Deliberately NOT declared: {@code system} ({@code ROLE_SYSTEM} is a purely technical
+ * authority for cron/bus contexts and must not be assigned to any user) as well as the
+ * {@code PROPERTY_*} pseudo roles (tenant etc.), which the user administration handles separately.</p>
  *
  * @author info@plaintext.ch
  * @since 1.600.0

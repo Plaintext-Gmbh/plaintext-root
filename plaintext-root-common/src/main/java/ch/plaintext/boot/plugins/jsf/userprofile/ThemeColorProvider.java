@@ -27,7 +27,7 @@ public class ThemeColorProvider implements Serializable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ThemeColorProvider.class);
 
-    /** Nur zum Schreiben reiner String-Maps verwendet — zustandslos und damit teilbar. */
+    /** Only used to write plain string maps — stateless and therefore shareable. */
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Getter
@@ -255,49 +255,48 @@ public class ThemeColorProvider implements Serializable {
     }
 
     /**
-     * Die Farbpalette als <b>JSON</b> fuer die Browserseite — Ziel ist das Attribut
-     * {@code data-theme-colors} an {@code #layout-config} (includes/config.xhtml), aus dem
-     * {@code plaintext-layout/js/config.js} sie mit {@code JSON.parse} liest.
+     * The colour palette as <b>JSON</b> for the browser side — its destination is the attribute
+     * {@code data-theme-colors} on {@code #layout-config} (includes/config.xhtml), from which
+     * {@code plaintext-layout/js/config.js} reads it with {@code JSON.parse}.
      *
-     * <p><b>Karte 938.</b> Bis zum 23.08.2026 baute diese Methode ein
-     * <i>JavaScript-Objektliteral</i> statt JSON: Schluessel unquotiert ({@code light:{ … }}),
-     * Werte in einfachen Anfuehrungszeichen ({@code primary:'#2196F3'}). Solange der Wert direkt
-     * in einen {@code <script>}-Block geschrieben wurde, war das gueltiges JavaScript. Seit
-     * Karte 502 steht er in einem data-Attribut und wird mit {@code JSON.parse} gelesen — und
-     * JSON kennt weder unquotierte Schluessel noch einfache Anfuehrungszeichen. Auf
-     * <b>jeder</b> Seite <b>jeder</b> Anwendung stand seither in der Browserkonsole:</p>
+     * <p><b>Karte 938.</b> Until 23.08.2026 this method built a <i>JavaScript object literal</i>
+     * instead of JSON: unquoted keys ({@code light:{ … }}), values in single quotes
+     * ({@code primary:'#2196F3'}). As long as the value was written straight into a
+     * {@code <script>} block, that was valid JavaScript. Since Karte 502 it sits in a data
+     * attribute and is read with {@code JSON.parse} — and JSON knows neither unquoted keys nor
+     * single quotes. On <b>every</b> page of <b>every</b> application the browser console has
+     * shown ever since:</p>
      *
      * <pre>SyntaxError: Expected property name or '}' in JSON at position 1</pre>
      *
-     * <p><b>Was das kostete</b> (gemessen am 23.08.2026 gegen PROD 2.1646.0, Skript
-     * {@code pw-test/test-themecolors-prod.js}): Der Wurf beendet den Lauf der Datei auf oberster
-     * Ebene. Die Funktionsdeklarationen darunter ueberleben zwar — sie werden beim Parsen
-     * hochgezogen —, aber jede Anweisung ab Zeile 39 wurde nie ausgefuehrt:</p>
+     * <p><b>What that cost</b> (measured on 23.08.2026 against PROD 2.1646.0, script
+     * {@code pw-test/test-themecolors-prod.js}): the throw ends the run of the file at the top
+     * level. The function declarations below it do survive — they are hoisted while parsing — but
+     * every statement from line 39 on was never executed:</p>
      * <ul>
-     *   <li>{@code themeColors} blieb {@code undefined}; ein Klick auf eine Farbe endete in
+     *   <li>{@code themeColors} stayed {@code undefined}; a click on a colour ended in
      *       {@code Cannot read properties of undefined (reading 'green')}.</li>
-     *   <li>Der Initialisierungsblock lief nicht, {@code isInitializing} blieb dauerhaft
-     *       {@code true} — und {@code handleChange()} steigt in dem Fall sofort aus. Damit taten
-     *       auch die Radiogruppen fuer Menuetyp, Hell/Dunkel und Eingabestil <b>nichts</b>.</li>
-     *   <li>Die Zuhoerer fuer {@code beforeunload} und den Klick ausserhalb des Panels wurden nie
-     *       registriert; nichts wurde gespeichert.</li>
+     *   <li>The initialization block did not run, {@code isInitializing} stayed permanently
+     *       {@code true} — and in that case {@code handleChange()} bails out immediately. So the
+     *       radio groups for menu type, light/dark and input style did <b>nothing</b> either.</li>
+     *   <li>The listeners for {@code beforeunload} and for the click outside the panel were never
+     *       registered; nothing was saved.</li>
      * </ul>
      *
-     * <p>Dieselbe Fehlerform wie in den Karten 430/502: HTTP 200, kein Serverlog, kein
-     * {@code console.error} — die Meldung ist ein <i>uncaught error</i> und taucht nur im
-     * {@code pageerror}-Ereignis auf. Genau deshalb hat sie auch der Smoke-Test nicht gesehen,
-     * der ausschliesslich Konsolenmeldungen vom Typ {@code error} sammelt.</p>
+     * <p>The same shape of failure as in Karte 430/502: HTTP 200, no server log, no
+     * {@code console.error} — the message is an <i>uncaught error</i> and only surfaces in the
+     * {@code pageerror} event. That is exactly why the smoke test did not see it either: it
+     * collects console messages of type {@code error} only.</p>
      *
-     * <p>Erzeugt wird das JSON deshalb nicht mehr von Hand, sondern von Jackson: Anfuehrungs-
-     * zeichen und Escaping sind damit keine Frage der Sorgfalt mehr.</p>
+     * <p>The JSON is therefore no longer built by hand but by Jackson: quoting and escaping are
+     * no longer a matter of diligence.</p>
      *
-     * <p><b>Reihenfolge.</b> Der Attributwert soll zwischen zwei Starts derselben Version
-     * identisch sein — sonst unterscheidet sich ausgeliefertes HTML ohne inhaltlichen Grund, was
-     * jeden Vergleich (Diff, Cache, Fehlersuche) verrauscht. Beide Ebenen brauchen dafuer eine
-     * Zusicherung: {@link Map#ofEntries} <b>und</b> {@link Map#of} iterieren je JVM-Lauf anders
-     * (ihre Streuung haengt an einem beim Start gewuerfelten SALT). Aussen sorgt eine
-     * {@link TreeMap} fuer alphabetische Ordnung, innen eine {@link LinkedHashMap} fuer
-     * light-vor-dark.</p>
+     * <p><b>Ordering.</b> The attribute value should be identical between two starts of the same
+     * version — otherwise the delivered HTML differs for no substantive reason, which adds noise
+     * to every comparison (diff, cache, debugging). Both levels need a guarantee for that:
+     * {@link Map#ofEntries} <b>and</b> {@link Map#of} iterate differently in every JVM run (their
+     * scattering depends on a SALT drawn at startup). On the outside a {@link TreeMap} provides
+     * alphabetical order, on the inside a {@link LinkedHashMap} provides light-before-dark.</p>
      */
     public String getColorsJson() {
         Map<String, Object> alle = new TreeMap<>();
@@ -312,8 +311,8 @@ public class ThemeColorProvider implements Serializable {
         try {
             return JSON.writeValueAsString(alle);
         } catch (JsonProcessingException e) {
-            // Kann mit reinen String-Maps nicht eintreten; ein leeres Objekt ist immer noch
-            // gueltiges JSON und laesst config.js weiterlaufen (statt die Datei abbrechen zu lassen).
+            // Cannot happen with plain string maps; an empty object is still
+            // valid JSON and lets config.js keep running (instead of aborting the file).
             LOG.error("Farbpalette liess sich nicht als JSON schreiben", e);
             return "{}";
         }

@@ -19,36 +19,35 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Leitet den Aufruf eines unbekannten Pfades auf die Startseite um, statt die
- * Whitelabel-Errorpage zu zeigen (Karte 406).
+ * Redirects the call of an unknown path to the start page instead of showing the
+ * whitelabel error page (card 406).
  *
- * <p>Liegt in plaintext-root und wirkt dadurch in <em>allen</em> Ableitungen (app, schuetu, guild,
- * iot, fwtool) — der Fehler soll nicht in jeder App einzeln behoben werden muessen.</p>
+ * <p>Lives in plaintext-root and therefore takes effect in <em>all</em> derivatives (app, schuetu, guild,
+ * iot, fwtool) — the defect should not have to be fixed in every app separately.</p>
  *
- * <p><strong>Warum ein {@link ErrorViewResolver} und kein eigener {@code ErrorController}:</strong>
- * Ein eigener {@code ErrorController} wuerde den {@code BasicErrorController} ersetzen; damit
- * verloeren API-Clients ihr JSON-Fehlerformat. Ein {@code ErrorViewResolver} wird nur fuer die
- * HTML-Variante befragt — wer {@code Accept: application/json} schickt, bekommt unveraendert
- * JSON.</p>
+ * <p><strong>Why an {@link ErrorViewResolver} and not an {@code ErrorController} of our own:</strong>
+ * an own {@code ErrorController} would replace the {@code BasicErrorController}; API clients
+ * would thereby lose their JSON error format. An {@code ErrorViewResolver} is only consulted for
+ * the HTML variant — whoever sends {@code Accept: application/json} gets JSON unchanged.</p>
  *
- * <p><strong>Bewusst eng gefasst:</strong> Umgeleitet wird ausschliesslich bei {@code 404}. Echte
- * Serverfehler (5xx) bleiben sichtbar — wuerde man sie mit umleiten, verschwaenden Stoerungen
- * lautlos. Fuer sie liegt eine schlichte {@code static/error.html} bei, damit auch dort kein
- * Whitelabel nach aussen dringt.</p>
+ * <p><strong>Deliberately narrow:</strong> the redirect happens exclusively on {@code 404}. Real
+ * server errors (5xx) stay visible — redirecting them as well would make malfunctions disappear
+ * silently. For them a plain {@code static/error.html} is shipped, so that no whitelabel page
+ * reaches the outside there either.</p>
  */
 @Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class PlaintextErrorViewResolver implements ErrorViewResolver {
 
-    /** Ziel der Umleitung. */
+    /** Target of the redirect. */
     static final String STARTSEITE = "/";
 
     /**
-     * Pfade, die NICHT umgeleitet werden duerfen. Ein 404 muss dort ein 404 bleiben: Clients
-     * erwarten JSON bzw. eine echte Fehlermeldung, und ein stiller Redirect auf HTML wuerde
-     * Fehler unsichtbar machen — auch dann, wenn ein Browser sie mit {@code Accept: text/html}
-     * aufruft und der Resolver deshalb ueberhaupt gefragt wird.
+     * Paths that must NOT be redirected. A 404 has to stay a 404 there: clients
+     * expect JSON resp. a real error message, and a silent redirect to HTML would
+     * make errors invisible — even when a browser calls them with {@code Accept: text/html}
+     * and the resolver is therefore consulted at all.
      */
     private static final List<String> AUSGENOMMENE_PRAEFIXE = List.of(
             "/api/",
@@ -63,9 +62,9 @@ public class PlaintextErrorViewResolver implements ErrorViewResolver {
             "/images/");
 
     /**
-     * Pfade, die exakt so lauten und nicht umgeleitet werden. {@code /} und {@code /index.html}
-     * sind das Redirect-Ziel selbst — eine Umleitung dorthin ergaebe eine Endlosschleife, falls
-     * die Startseite ihrerseits 404 liefert.
+     * Paths that read exactly like this and are not redirected. {@code /} and {@code /index.html}
+     * are the redirect target itself — a redirect there would produce an endless loop should
+     * the start page return a 404 in turn.
      */
     private static final Set<String> AUSGENOMMENE_PFADE = Set.of(
             "/", "/index.html", "/error", "/favicon.ico");
@@ -74,7 +73,7 @@ public class PlaintextErrorViewResolver implements ErrorViewResolver {
     public ModelAndView resolveErrorView(HttpServletRequest request, HttpStatus status,
                                          Map<String, Object> model) {
         if (status != HttpStatus.NOT_FOUND) {
-            return null;   // 5xx und alles andere: Standardverhalten, Fehler bleibt sichtbar
+            return null;   // 5xx and everything else: default behaviour, the error stays visible
         }
         String pfad = ermittlePfad(request);
         if (!istUmleitbar(pfad)) {
@@ -85,8 +84,8 @@ public class PlaintextErrorViewResolver implements ErrorViewResolver {
     }
 
     /**
-     * Der urspruenglich angefragte Pfad. Beim Fehler-Forward zeigt {@code getRequestURI()} auf
-     * {@code /error}; der echte Pfad steht im Request-Attribut, das der Container setzt.
+     * The originally requested path. On the error forward {@code getRequestURI()} points to
+     * {@code /error}; the real path stands in the request attribute that the container sets.
      */
     private String ermittlePfad(HttpServletRequest request) {
         Object uri = request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
@@ -97,7 +96,7 @@ public class PlaintextErrorViewResolver implements ErrorViewResolver {
         return fallback == null ? "" : fallback;
     }
 
-    /** Sichtbar fuer Tests. */
+    /** Visible for tests. */
     boolean istUmleitbar(String pfad) {
         if (pfad == null || pfad.isBlank()) {
             return false;

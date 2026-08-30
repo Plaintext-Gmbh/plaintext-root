@@ -19,34 +19,34 @@ import org.springframework.core.io.Resource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Speist {@code plaintext-defaults.yml} als <b>unterste</b> Property-Source ein und macht damit
- * die gemeinsamen Grundeinstellungen in jeder Anwendung wirksam.
+ * Feeds {@code plaintext-defaults.yml} in as the <b>lowest</b> property source and thereby makes
+ * the shared base settings take effect in every application.
  *
- * <h2>Das Problem, das dieser Processor loest (Karte 620)</h2>
- * <p>Spring Boot laedt genau <b>eine</b> {@code classpath:/application.yml}. Bringt eine
- * Anwendung eine eigene mit — und das tun alle fuenf Consumer —, ist die Fassung aus
- * {@code plaintext-root-webapp} vollstaendig unsichtbar. Nicht teilweise, nicht zusammengefuehrt:
- * unsichtbar. Am 08.08.2026 gingen auf diesem Weg 14 Schluessel verloren, darunter
- * {@code same-site}, {@code tracking-modes} und das Session-Timeout.
+ * <h2>The problem this processor solves (Karte 620)</h2>
+ * <p>Spring Boot loads exactly <b>one</b> {@code classpath:/application.yml}. If an application
+ * brings one of its own — and all five consumers do — the version from
+ * {@code plaintext-root-webapp} is entirely invisible. Not partially, not merged: invisible.
+ * On 08.08.2026 14 keys were lost that way, among them {@code same-site},
+ * {@code tracking-modes} and the session timeout.
  *
- * <p>Das Tueckische daran ist nicht der Verlust, sondern seine Unsichtbarkeit: Die Einstellung
- * steht im Repository, sie ist reviewt, sie sieht gesetzt aus — und sie wirkt nirgends. Zwei
- * Faelle wurden bisher zufaellig gefunden (dieser und {@code @EnableMethodSecurity}, Karte 546),
- * beide erst durch eine Messung am laufenden System.
+ * <p>The treacherous part is not the loss but its invisibility: the setting is in the repository,
+ * it has been reviewed, it looks as if it were set — and it takes effect nowhere. Two cases have
+ * been found so far, both by accident (this one and {@code @EnableMethodSecurity}, Karte 546),
+ * and both only through a measurement on the running system.
  *
- * <h2>Warum ein EnvironmentPostProcessor</h2>
- * <p>Die Alternative waere, in jede Anwendung {@code spring.config.import} einzutragen. Das
- * wirkt nur, solange es niemand vergisst — und ein vergessener Import faellt genauso wenig auf
- * wie das Problem, das er beheben soll. Dieser Processor braucht kein Zutun der Anwendung: Er
- * wird ueber {@code META-INF/spring.factories} gefunden, sobald {@code plaintext-root-common}
- * im Classpath liegt.
+ * <h2>Why an EnvironmentPostProcessor</h2>
+ * <p>The alternative would be to add {@code spring.config.import} to every application. That only
+ * works as long as nobody forgets it — and a forgotten import is just as unnoticeable as the
+ * problem it is supposed to fix. This processor needs nothing from the application: it is found
+ * via {@code META-INF/spring.factories} as soon as {@code plaintext-root-common} is on the
+ * classpath.
  *
- * <h2>Praezedenz: bewusst die niedrigste</h2>
- * <p>{@link MutablePropertySources#addLast} — Grundeinstellungen, keine Vorschriften. Jede
- * {@code application.yml}, jedes Profil, jede Umgebungsvariable und jedes Kommandozeilen-
- * Argument gewinnt weiterhin. Das ist der Unterschied zum
- * {@code VaultwardenEnvironmentPostProcessor}, der mit {@code addFirst} arbeitet: Secrets
- * <em>sollen</em> alles schlagen, Defaults nicht.
+ * <h2>Precedence: deliberately the lowest</h2>
+ * <p>{@link MutablePropertySources#addLast} — base settings, not mandates. Every
+ * {@code application.yml}, every profile, every environment variable and every command line
+ * argument still wins. That is the difference to the
+ * {@code VaultwardenEnvironmentPostProcessor}, which works with {@code addFirst}: secrets
+ * <em>are supposed</em> to beat everything, defaults are not.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -54,7 +54,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PlaintextDefaultsEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
-    /** Name der eingespeisten Property-Source — auch die Kennung fuer die Idempotenz-Pruefung. */
+    /** Name of the injected property source — also the marker for the idempotency check. */
     public static final String SOURCE_NAME = "plaintext-defaults";
 
     private static final String DATEI = "plaintext-defaults.yml";
@@ -65,52 +65,51 @@ public class PlaintextDefaultsEnvironmentPostProcessor implements EnvironmentPos
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         MutablePropertySources sources = environment.getPropertySources();
         if (sources.contains(SOURCE_NAME)) {
-            return; // idempotent — der Processor kann mehrfach durchlaufen werden
+            return; // idempotent — the processor may be run more than once
         }
 
         Resource resource = new ClassPathResource(DATEI);
         if (!resource.exists()) {
-            // Kein Fehlerfall: root-common laesst sich auch ohne die Datei einbinden.
+            // Not an error: root-common can be embedded without the file as well.
             log.debug("{} nicht im Classpath — keine gemeinsamen Grundeinstellungen geladen", DATEI);
             return;
         }
 
         try {
             List<PropertySource<?>> geladen = lader.load(SOURCE_NAME, resource);
-            // Rueckwaerts einfuegen: load() liefert die YAML-Dokumente in Lesereihenfolge,
-            // addLast kehrt sie sonst um.
+            // Insert in reverse: load() returns the YAML documents in reading order, which
+            // addLast would otherwise turn around.
             for (int i = geladen.size() - 1; i >= 0; i--) {
                 sources.addLast(geladen.get(i));
             }
             log.debug("{} als unterste Property-Source eingespeist ({} Dokument(e))",
                     DATEI, geladen.size());
         } catch (IOException e) {
-            // Fail-fast: Eine unlesbare Defaults-Datei ist ein Konfigurationsfehler. Sie still
-            // zu ueberspringen brachte genau die Situation zurueck, die dieser Processor
-            // beheben soll — Einstellungen, die vorhanden aussehen und nicht wirken.
+            // Fail fast: an unreadable defaults file is a configuration error. Silently skipping
+            // it brought back exactly the situation this processor is meant to fix —
+            // settings that look present and take no effect.
             throw new IllegalStateException(
                     DATEI + " ist im Classpath, laesst sich aber nicht lesen", e);
         }
     }
 
     /**
-     * <b>Moeglichst spaet ausfuehren</b> — und das ist hier keine Feinheit, sondern der Kern.
+     * <b>Run as late as possible</b> — and that is not a nicety here, it is the whole point.
      *
-     * <p>Der {@code ConfigDataEnvironmentPostProcessor}, der die {@code application.yml} laedt,
-     * laeuft bei {@code HIGHEST_PRECEDENCE + 10}. Lief dieser Processor davor, landete unsere
-     * mit {@code addLast} eingefuegte Source <em>ueber</em> der erst danach eingefuegten
-     * {@code application.yml} — und die Grundeinstellungen ueberschrieben genau das, was sie
-     * ergaenzen sollten.
+     * <p>The {@code ConfigDataEnvironmentPostProcessor} that loads the {@code application.yml} runs
+     * at {@code HIGHEST_PRECEDENCE + 10}. When this processor ran before it, the source we insert
+     * with {@code addLast} ended up <em>above</em> the {@code application.yml} that was only added
+     * afterwards — and the base settings overrode precisely what they were meant to complement.
      *
-     * <p>Das ist am 08.08.2026 auf PROD passiert: {@code plaintext-root} verlor sein
-     * {@code Secure}-Cookie, weil der Default {@code false} aus {@code plaintext-defaults.yml}
-     * den Wert {@code ${PLAINTEXT_COOKIE_SECURE:true}} aus der eigenen {@code application.yml}
-     * schlug. Gemessen am Set-Cookie-Header vor und nach dem Rollout von 1.532.0.
+     * <p>That happened on PROD on 08.08.2026: {@code plaintext-root} lost its {@code Secure} cookie,
+     * because the default {@code false} from {@code plaintext-defaults.yml} beat the value
+     * {@code ${PLAINTEXT_COOKIE_SECURE:true}} from its own {@code application.yml}. Measured on the
+     * Set-Cookie header before and after the rollout of 1.532.0.
      *
-     * <p>Mit {@code LOWEST_PRECEDENCE} laeuft der Processor nach ConfigData, und {@code addLast}
-     * setzt die Source dorthin, wo sie hingehoert: unter alles andere. Dieselbe Ueberlegung wie
-     * beim {@code VaultwardenEnvironmentPostProcessor}, nur mit umgekehrtem Ziel — spaet laufen
-     * heisst bei {@code addFirst} "ganz oben" und bei {@code addLast} "ganz unten".
+     * <p>With {@code LOWEST_PRECEDENCE} the processor runs after ConfigData, and {@code addLast}
+     * puts the source where it belongs: below everything else. The same reasoning as in the
+     * {@code VaultwardenEnvironmentPostProcessor}, only with the opposite goal — running late means
+     * "right at the top" with {@code addFirst} and "right at the bottom" with {@code addLast}.
      */
     @Override
     public int getOrder() {

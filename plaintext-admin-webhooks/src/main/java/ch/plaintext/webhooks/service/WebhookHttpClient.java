@@ -15,9 +15,9 @@ import java.time.Duration;
 import java.util.Map;
 
 /**
- * Fail-safe HTTP-POST-Client für Webhook-Zustellungen (Muster analog {@code PaperlessClient}: JDK
- * {@link HttpClient}, Timeouts pro Request, Test-Konstruktor mit injiziertem Client, nie eine
- * Exception nach aussen reichen).
+ * Fail-safe HTTP POST client for webhook deliveries (pattern analogous to {@code PaperlessClient}:
+ * JDK {@link HttpClient}, per-request timeouts, test constructor with an injected client, never let
+ * an exception escape).
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -34,7 +34,7 @@ public class WebhookHttpClient {
         this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
     }
 
-    /** Test-Konstruktor mit injiziertem {@link HttpClient}. */
+    /** Test constructor with an injected {@link HttpClient}. */
     WebhookHttpClient(HttpClient httpClient) {
         this.httpClient = httpClient;
     }
@@ -45,7 +45,7 @@ public class WebhookHttpClient {
         }
     }
 
-    /** Sendet {@code body} per POST an {@code url} mit den gegebenen Headern. Nie eine Exception nach aussen. */
+    /** Sends {@code body} via POST to {@code url} with the given headers. Never lets an exception escape. */
     public DeliveryResult post(String url, Map<String, String> headers, String body) {
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()

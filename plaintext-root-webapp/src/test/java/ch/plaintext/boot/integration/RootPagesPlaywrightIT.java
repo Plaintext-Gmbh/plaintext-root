@@ -32,19 +32,19 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Auftrag Daniel, 29.08.2026: Die Root-/Admin-Seiten im echten Browser — genau die vier Befunde von
- * app.guild42.ch, damit sie nicht wiederkommen:
+ * Assignment from Daniel, 29.08.2026: the root/admin pages in a real browser — exactly the four
+ * findings from app.guild42.ch, so that they do not come back:
  *
  * <ol>
- *   <li>{@code menudiagnose.html} rendert die Tabelle (Record-EL-Fehler),</li>
- *   <li>{@code rootentities.html}: die Typ-Auswahl zeigt die Tabelle (Ajax statt {@code submit()}),</li>
- *   <li>„Swagger" fehlt im Menue, solange springdoc aus ist,</li>
- *   <li>die Menuesteuerungs-Anleitung ist ohne Menuepunkt ueber den Info-Knopf erreichbar,</li>
- *   <li>Mailtexte sind fuer einen ADMIN erreichbar und im Menue verlinkt.</li>
+ *   <li>{@code menudiagnose.html} renders the table (record EL error),</li>
+ *   <li>{@code rootentities.html}: the type selector shows the table (Ajax instead of {@code submit()}),</li>
+ *   <li>"Swagger" is missing from the menu as long as springdoc is off,</li>
+ *   <li>the menu control guide is reachable through the info button without a menu entry,</li>
+ *   <li>mail texts are reachable for an ADMIN and linked in the menu.</li>
  * </ol>
  *
- * <p>Aufbau wie {@link SelfServicePlaywrightIT}: eingebettetes PostgreSQL, Chromium headless; ohne
- * installiertes Chromium ueberspringt sich die Klasse still.</p>
+ * <p>Set up like {@link SelfServicePlaywrightIT}: embedded PostgreSQL, Chromium headless; without an
+ * installed Chromium the class skips itself silently.</p>
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -87,8 +87,8 @@ class RootPagesPlaywrightIT {
         } catch (RuntimeException e) {
             org.junit.jupiter.api.Assumptions.assumeTrue(false, "Chromium not installed: " + e.getMessage());
         }
-        // Rollen OHNE "ROLE_"-Praefix: MyUserDetailsService stellt ihn selbst voran — aus
-        // "ROLE_ROOT" wuerde "ROLE_ROLE_ROOT", und hasRole("ROOT") saehe nichts (403).
+        // Roles WITHOUT the "ROLE_" prefix: MyUserDetailsService prepends it itself — out of
+        // "ROLE_ROOT" would come "ROLE_ROLE_ROOT", and hasRole("ROOT") would see nothing (403).
         benutzerAnlegen(ROOT_USER, "ROOT", "ADMIN", "USER");
         benutzerAnlegen(ADMIN_USER, "ADMIN", "USER");
     }
@@ -133,7 +133,7 @@ class RootPagesPlaywrightIT {
         assertFalse(page.url().contains("login"), "Login als " + benutzer + " schlug fehl: " + page.url());
     }
 
-    // ------------------------------------------------------------------ 1. Menue-Diagnose
+    // ------------------------------------------------------------------ 1. menu diagnosis
 
     @Test
     @DisplayName("Menue-Diagnose rendert die Tabelle mit Menuepunkten (Record-EL)")
@@ -150,7 +150,7 @@ class RootPagesPlaywrightIT {
         assertFalse(page.content().contains("PropertyNotFoundException"));
     }
 
-    // ------------------------------------------------------------------ 2. Datenverwaltung
+    // ------------------------------------------------------------------ 2. data administration
 
     @Test
     @DisplayName("Datenverwaltung: Typ-Auswahl zeigt die Tabelle")
@@ -161,7 +161,7 @@ class RootPagesPlaywrightIT {
         assertTrue(page.url().contains("rootentities"), "umgeleitet nach " + page.url());
         assertEquals(0, page.locator("#listForm\\:entityTable").count(), "Tabelle darf vor der Auswahl fehlen");
 
-        // PrimeFaces-SelectOneMenu: Label anklicken, dann den ersten echten Eintrag im Panel.
+        // PrimeFaces SelectOneMenu: click the label, then the first real entry in the panel.
         page.click("#selectorForm\\:entityType_label");
         Locator eintraege = page.locator("#selectorForm\\:entityType_panel li.ui-selectonemenu-item");
         eintraege.first().waitFor();
@@ -188,11 +188,11 @@ class RootPagesPlaywrightIT {
 
         assertEquals(0, page.locator("a[href*='swagger-ui']").count(),
                 "Swagger-Link im Menue, obwohl springdoc.swagger-ui.enabled=false");
-        // Gegenprobe: das Root-Menue ist da (sonst waere der Test trivial gruen).
+        // Counter-check: the root menu is there (otherwise the test would be trivially green).
         assertTrue(page.locator("a[href*='mandatemenu.html']").count() > 0, "Root-Menue fehlt");
     }
 
-    // ------------------------------------------------------------------ 4. Anleitung
+    // ------------------------------------------------------------------ 4. guide
 
     @Test
     @DisplayName("Anleitung: kein Menuepunkt, aber Info-Knopf und direkt erreichbar")
@@ -212,7 +212,7 @@ class RootPagesPlaywrightIT {
         assertTrue(page.content().contains("Anleitung"));
     }
 
-    // ------------------------------------------------------------------ 6. Sprachwechsel + Setup
+    // ------------------------------------------------------------------ 6. language switch + setup
 
     @Test
     @DisplayName("Setup-Schalter Sprachwechsel blendet das Topbar-Symbol aus und wieder ein")
@@ -246,7 +246,7 @@ class RootPagesPlaywrightIT {
         assertTrue(page.locator("#fm\\:i18nEnabled").count() > 0, "Sprachwechsel-Schalter fehlt");
     }
 
-    // ------------------------------------------------------------------ 5. Mailtexte
+    // ------------------------------------------------------------------ 5. mail texts
 
     @Test
     @DisplayName("Mailtexte: fuer ADMIN erreichbar und im Menue verlinkt")

@@ -28,8 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Backing Bean der Modul-Verwaltung (module.html): Liste anzeigen + ein-/ausschalten sowie
- * Export/Import der Moduldaten als JSON (Task #016 Phase 2, PR 3).
+ * Backing Bean of the module management (module.html): display the list + switch modules on/off
+ * as well as export/import of the module data as JSON (Task #016 phase 2, PR 3).
  */
 @Slf4j
 @Scope("session")
@@ -59,7 +59,7 @@ public class ModulesBackingBean implements Serializable {
     private transient byte[] importBytes;
     private String importFileName;
 
-    // ── Danger-Zone (Daten leeren) ─────────────────────────
+    // ── Danger zone (clear data) ───────────────────────────
     private String clearModuleId;
     private String clearModuleDisplayName;
     private String clearBestaetigung;
@@ -68,14 +68,14 @@ public class ModulesBackingBean implements Serializable {
         module = moduleService.list();
     }
 
-    /** Ajax-Listener des Ein-/Aus-Schalters: {@code m.enabled} ist bereits gesetzt, persistieren. */
+    /** Ajax listener of the on/off switch: {@code m.enabled} is already set, persist it. */
     public void toggle(ModuleView m) {
         moduleService.setEnabled(m.getModuleId(), m.isEnabled());
         addMessage(FacesMessage.SEVERITY_INFO,
                 "Modul '" + m.getDisplayName() + "' " + (m.isEnabled() ? "aktiviert" : "deaktiviert") + ".");
     }
 
-    /** Exportiert die Daten eines Moduls als JSON-Download ({@code p:fileDownload}, nicht-ajax). */
+    /** Exports the data of a module as a JSON download ({@code p:fileDownload}, non-ajax). */
     public void export(ModuleView m) {
         try {
             String json = moduleDataService.export(m.getModuleId());
@@ -94,7 +94,7 @@ public class ModulesBackingBean implements Serializable {
         }
     }
 
-    /** Öffnet den Import-Dialog für ein Modul. */
+    /** Opens the import dialog for a module. */
     public void importVorbereiten(ModuleView m) {
         importModuleId = m.getModuleId();
         importModuleDisplayName = m.getDisplayName();
@@ -102,7 +102,7 @@ public class ModulesBackingBean implements Serializable {
         importFileName = null;
     }
 
-    /** Übernimmt eine hochgeladene Modul-Export-Datei (noch nicht importiert). */
+    /** Accepts an uploaded module export file (not imported yet). */
     public void handleImportUpload(FileUploadEvent event) {
         UploadedFile file = event.getFile();
         if (file == null || file.getContent() == null || file.getContent().length == 0) {
@@ -112,7 +112,7 @@ public class ModulesBackingBean implements Serializable {
         importFileName = file.getFileName();
     }
 
-    /** Importiert die hochgeladene Datei ins Modul {@link #importModuleId}. */
+    /** Imports the uploaded file into the module {@link #importModuleId}. */
     public void importUebernehmen() {
         if (importBytes == null) {
             addMessage(FacesMessage.SEVERITY_ERROR, "Bitte zuerst eine Export-Datei hochladen.");
@@ -137,21 +137,21 @@ public class ModulesBackingBean implements Serializable {
         }
     }
 
-    /** Öffnet den Danger-Zone-Dialog für ein Modul. */
+    /** Opens the danger-zone dialog for a module. */
     public void clearVorbereiten(ModuleView m) {
         clearModuleId = m.getModuleId();
         clearModuleDisplayName = m.getDisplayName();
         clearBestaetigung = null;
     }
 
-    /** Client-seitige Vorprüfung für den „Daten leeren"-Button (serverseitig re-validiert). */
+    /** Client-side pre-check for the "clear data" button (re-validated on the server side). */
     public boolean isClearBestaetigungOk() {
         return clearModuleDisplayName != null && clearModuleDisplayName.equals(clearBestaetigung);
     }
 
     /**
-     * Leert die Daten des Moduls {@link #clearModuleId} — Backup wird vorher automatisch erzeugt
-     * und (bei Erfolg) als Download angeboten ({@code p:fileDownload} auf {@link #exportFile}).
+     * Clears the data of the module {@link #clearModuleId} — a backup is created automatically
+     * beforehand and (on success) offered as a download ({@code p:fileDownload} on {@link #exportFile}).
      */
     public void clearData() {
         try {

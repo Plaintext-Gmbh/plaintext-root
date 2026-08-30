@@ -4,7 +4,7 @@
 
 Plaintext Root uses [Flyway](https://flywaydb.org/) for database schema management. Migrations are SQL files that are automatically executed on application startup.
 
-**Database:** PostgreSQL (development via Docker Compose, tests via Testcontainers).
+**Database:** PostgreSQL (development via Docker Compose, tests against an embedded PostgreSQL).
 
 ## Migration File Location
 
@@ -23,7 +23,7 @@ V{timestamp}__{description}.sql
 ```
 
 - **V**: Prefix (required by Flyway)
-- **{timestamp}**: Seconds since January 1, 2000 (ensures unique, ordered names)
+- **{timestamp}**: Unix epoch seconds — `date +%s` (unique, and sorts in the order the migrations were written)
 - **__**: Double underscore separator (required by Flyway)
 - **{description}**: Snake_case description of the change
 
@@ -39,8 +39,17 @@ V1770481749__add_expires_at_and_enlarge_token.sql
 ### Recommended: Use the included script
 
 ```bash
-./getflywaynr
+echo $(( $(date +%s) ))
 ```
+
+> **The epoch changed, and the old one now sorts wrong.** The 29 oldest
+> migrations in this repository count from 1 January 2000 (`820503544` …
+> `837712929`); everything written since March 2026 uses plain Unix epoch
+> seconds (`1772925358` … `1788027866`). A number computed the old way *today*
+> is around 841 000 000 — it would sort **below every migration of the last
+> year**, and Flyway would either refuse to run it or run it out of order.
+> Use `date +%s`, nothing else.
+
 
 The script generates a Unix timestamp, checks all existing migrations for conflicts, and confirms the version is safe to use.
 

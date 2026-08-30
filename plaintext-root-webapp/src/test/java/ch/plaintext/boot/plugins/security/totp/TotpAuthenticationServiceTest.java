@@ -24,9 +24,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit-Tests fuer {@link TotpAuthenticationService}: die sicherheitsrelevanten Entscheidungen
- * (Gate-Bedingung, TOTP-Verify, Recovery-Code one-time, Aktivieren/Deaktivieren) gegen eine
- * gemockte User-Persistenz.
+ * Unit tests for {@link TotpAuthenticationService}: the security-relevant decisions
+ * (gate condition, TOTP verification, one-time recovery code, enabling/disabling) against a
+ * mocked user persistence.
  */
 @ExtendWith(MockitoExtension.class)
 class TotpAuthenticationServiceTest {
@@ -68,23 +68,23 @@ class TotpAuthenticationServiceTest {
         return u;
     }
 
-    // === isTotpRequired: die Bypass-relevante Gate-Bedingung ===
+    // === isTotpRequired: the gate condition relevant for the bypass ===
 
     @Test
     void isTotpRequired_falseWennFeatureGlobalAus() {
         securityProperties.getTotp().setEnabled(false);
         when(setupConfigService.isTotpEnabledAnywhere()).thenReturn(false);
-        // Kein Repository-Zugriff noetig, wenn Feature (weder Property noch DB-Flag) aus ist.
+        // No repository access needed when the feature is off (neither property nor DB flag).
         assertFalse(service.isTotpRequired("alice"));
         verifyNoInteractions(userRepository);
     }
 
-    // === Feature-Gate: statische Property ODER DB-Flag (Root->Setup-UI) ===
+    // === feature gate: static property OR DB flag (root->setup UI) ===
 
     @Test
     void isFeatureEnabled_trueWennNurProperty() {
         securityProperties.getTotp().setEnabled(true);
-        // OR kurzschliesst auf der Property -> DB-Flag wird nicht befragt.
+        // The OR short-circuits on the property -> the DB flag is not consulted.
         assertTrue(service.isFeatureEnabled());
         verifyNoInteractions(setupConfigService);
     }
@@ -145,7 +145,7 @@ class TotpAuthenticationServiceTest {
         assertFalse(service.isTotpRequired("ghost"));
     }
 
-    // === verifySecondFactor: TOTP-Code ===
+    // === verifySecondFactor: TOTP code ===
 
     @Test
     void verifySecondFactor_akzeptiertGueltigenTotpCode() throws Exception {
@@ -161,7 +161,7 @@ class TotpAuthenticationServiceTest {
         assertFalse(service.verifySecondFactor("alice", "000000"));
     }
 
-    // === verifySecondFactor: Recovery-Code one-time ===
+    // === verifySecondFactor: one-time recovery code ===
 
     @Test
     void verifySecondFactor_recoveryCodeIstEinmalGueltig() {
@@ -172,12 +172,12 @@ class TotpAuthenticationServiceTest {
         MyUserEntity user = userWithTotp(secret, hashed);
         when(userRepository.findByUsername("alice")).thenReturn(user);
 
-        // Erste Nutzung: gueltig, Code wird verbraucht + gespeichert.
+        // First use: valid, the code is consumed + stored.
         assertTrue(service.verifySecondFactor("alice", plainRecovery));
         assertTrue(user.getRecoveryCodes().isEmpty(), "Recovery-Code muss nach Nutzung entfernt sein");
         verify(userRepository).save(user);
 
-        // Zweite Nutzung desselben Codes: ungueltig (one-time).
+        // Second use of the same code: invalid (one-time).
         assertFalse(service.verifySecondFactor("alice", plainRecovery),
                 "Bereits eingeloester Recovery-Code darf nicht erneut funktionieren");
     }
@@ -207,7 +207,7 @@ class TotpAuthenticationServiceTest {
         assertTrue(u.isTotpEnabled());
         assertEquals(secret, u.getTotpSecret());
         assertFalse(u.getRecoveryCodes().isEmpty(), "Gehashte Recovery-Codes muessen gespeichert sein");
-        // Klartext-Codes duerfen NICHT im gespeicherten Set liegen.
+        // Plain-text codes must NOT lie in the stored set.
         for (String plain : codes) {
             assertFalse(u.getRecoveryCodes().contains(plain));
         }

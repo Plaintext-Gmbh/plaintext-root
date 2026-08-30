@@ -17,12 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Konfigurierbare Modul-Rollen ({@code plaintext.menu.module-roles}).
+ * Configurable module roles ({@code plaintext.menu.module-roles}).
  *
- * <p>Nachgestellt wird die reale Struktur eines gebuendelten Moduls: ein Wurzelmenue mit
- * {@code moduleId} und Kinder, die nur ueber {@code parent} daran haengen und selbst
- * {@code roles = {USER, ADMIN, ROOT}} deklarieren — genau die Konstellation, in der ein Modul
- * ohne Aenderung am Modul-Code komplett abschaltbar sein muss.
+ * <p>What is reproduced here is the real structure of a bundled module: a root menu with a
+ * {@code moduleId} and children that hang off it only via {@code parent} and themselves declare
+ * {@code roles = {USER, ADMIN, ROOT}} — exactly the constellation in which a module has to be
+ * switchable off entirely without any change to the module code.
  */
 class ModuleRoleServiceTest {
 
@@ -31,7 +31,7 @@ class ModuleRoleServiceTest {
     private static final Set<String> ADMIN = Set.of("USER", "ADMIN");
     private static final Set<String> ROOT = Set.of("ROOT");
 
-    // ---------------------------------------------------------------- Hilfsmittel
+    // ---------------------------------------------------------------- Helpers
 
     private static SecurityProvider security(Set<String> rollen) {
         Set<String> gross = rollen.stream().map(r -> r.toUpperCase(Locale.ROOT)).collect(Collectors.toSet());
@@ -56,7 +56,7 @@ class ModuleRoleServiceTest {
         return item;
     }
 
-    /** Wiki-Modul (Wurzel mit moduleId + zwei Kinder) und ein unkonfiguriertes Kontakte-Modul. */
+    /** Wiki module (root with moduleId + two children) and an unconfigured Kontakte module. */
     private static List<MenuItemImpl> menueBaum(Set<String> rollen) {
         return List.of(
                 menu("Wiki", "", "wiki.html", "wiki", rollen),
@@ -78,7 +78,7 @@ class ModuleRoleServiceTest {
         return menues.stream().filter(m -> titel.equals(m.getTitle())).findFirst().orElseThrow();
     }
 
-    // ---------------------------------------------------------------- Menue
+    // ---------------------------------------------------------------- Menu
 
     @Test
     void ohneKonfigurationBleibtAllesWieBisher() {
@@ -148,11 +148,11 @@ class ModuleRoleServiceTest {
         assertTrue(finde(mitRolle, "Kontakte").isOn());
     }
 
-    // ---------------------------------------------------------------- Modul-Key
+    // ---------------------------------------------------------------- Module key
 
     @Test
     void modulKeyIstDieModuleIdUndAlsFallbackDieMenuRootId() {
-        // "Rechnungsverwaltung" traegt moduleId="rechnungen" - beide Keys muessen greifen.
+        // "Rechnungsverwaltung" carries moduleId="rechnungen" - both keys must apply.
         List<MenuItemImpl> menues = List.of(
                 menu("Rechnungsverwaltung", "", "rechnungen.html", "rechnungen", USER),
                 menu("Rechnungen", "Rechnungsverwaltung", "rechnungen.html", "", USER));
@@ -202,7 +202,7 @@ class ModuleRoleServiceTest {
         assertTrue(finde(menues, "Wiki").isOn());
     }
 
-    // ---------------------------------------------------------------- Kacheln
+    // ---------------------------------------------------------------- Tiles
 
     @Test
     void kachelVerschwindetMitIhremModul() {

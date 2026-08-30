@@ -27,11 +27,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 
 /**
- * Die Detailseite zerlegt die gespeicherte Liste in drei Auswahlen (Module, Titel, tote Eintraege)
- * und setzt sie beim Speichern wieder zusammen.
+ * The detail page splits the stored list into three selections (modules, titles, dead entries) and
+ * reassembles them when saving.
  *
- * <p>Der wichtigste Test hier ist {@link #toteEintraegeUeberlebenDasSpeichern()}: die Umstellung
- * darf nichts verlieren, auch keinen Eintrag, den der aktuelle Menuebaum nicht mehr kennt.</p>
+ * <p>The most important test here is {@link #toteEintraegeUeberlebenDasSpeichern()}: the migration
+ * must lose nothing, not even an entry the current menu tree no longer knows about.</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Menuesteuerung-Detailseite: Modul- und Titel-Eintraege")

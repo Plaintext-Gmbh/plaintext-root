@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Kacheln muessen konsistent mit ihrem Modul-Menue verschwinden: eine Kachel, die auf eine Seite
- * eines per {@code plaintext.menu.module-roles} geschuetzten Moduls zeigt, darf ohne die Rolle
- * nicht auf dem Dashboard stehen.
+ * Tiles must disappear consistently with their module menu: a tile that points at a page of a
+ * module protected via {@code plaintext.menu.module-roles} must not appear on the dashboard
+ * without that role.
  */
 class TileItemModuleRoleTest {
 

@@ -25,11 +25,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Welle 2: Der Seed-Importer ist die einzige Stelle, an der ein Deploy
- * die Uebersetzungstabelle anfasst. Diese Tests belegen die Zusage aus dem Javadoc von
- * {@link I18nService#importSeedTranslations()}: fehlende Zeilen werden angelegt, {@code X_}-Platzhalter
- * ersetzt, ein gepflegter Text wird NIE ueberschrieben. Gelesen wird die echte Seed dieses Moduls
- * ({@code i18n/plaintext-root.csv} auf dem Test-Classpath).
+ * Status report 29.08.2026, wave 2: the seed importer is the only place where a deployment touches
+ * the translation table. These tests prove the promise made in the Javadoc of
+ * {@link I18nService#importSeedTranslations()}: missing rows are created, {@code X_} placeholders are
+ * replaced, a maintained text is NEVER overwritten. The real seed of this module is read
+ * ({@code i18n/plaintext-root.csv} on the test classpath).
  */
 @DisplayName("I18nService.importSeedTranslations: Vorbelegung nur fuer fehlende Schluessel")
 class I18nServiceSeedImportTest {
@@ -60,8 +60,8 @@ class I18nServiceSeedImportTest {
         assertEquals("Save", db.get("Speichern::en").getTranslatedText());
         assertEquals("Enregistrer", db.get("Speichern::fr").getTranslatedText());
         assertEquals("Salva", db.get("Speichern::it").getTranslatedText());
-        // Zielsprachen der Seed = getAvailableLanguages() ohne de; de waere wirkungslos, weil
-        // translate() den deutschen Vorgabetext unveraendert zurueckgibt.
+        // Target languages of the seed = getAvailableLanguages() without de; de would have no effect
+        // because translate() returns the German default text unchanged.
         assertTrue(db.keySet().stream().allMatch(k -> k.endsWith("::en") || k.endsWith("::fr") || k.endsWith("::it")),
                 "nur en/fr/it-Zeilen erwartet: " + db.keySet());
     }
@@ -77,8 +77,8 @@ class I18nServiceSeedImportTest {
         assertEquals("Store", db.get("Speichern::en").getTranslatedText());
         ArgumentCaptor<I18nTranslation> saved = ArgumentCaptor.forClass(I18nTranslation.class);
         verify(repository, org.mockito.Mockito.atLeastOnce()).save(saved.capture());
-        // Nur das gepflegte Paar (Label, Sprache) ist tabu — die fr-/it-Zeilen desselben Labels
-        // fehlen noch und werden sehr wohl angelegt.
+        // Only the maintained (label, language) pair is off limits — the fr/it rows of the same
+        // label are still missing and do get created.
         assertFalse(saved.getAllValues().stream()
                         .anyMatch(t -> "Speichern".equals(t.getDefaultLabel()) && "en".equals(t.getLanguageCode())),
                 "save() fuer den gepflegten Eintrag aufgerufen");

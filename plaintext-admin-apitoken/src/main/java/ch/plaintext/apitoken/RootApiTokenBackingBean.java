@@ -47,9 +47,9 @@ public class RootApiTokenBackingBean implements Serializable {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     /**
-     * preRenderView-Listener (session-scoped statt @ViewScoped): sperrt Nicht-ROOT aus (Redirect) und
-     * lädt die Tokens FRISCH bei jedem Seitenaufruf (GET). Der isPostback-Guard verhindert das
-     * Neuladen bei jedem Ajax-Postback. Ersetzt das frühere @PostConstruct init() + checkAccess().
+     * preRenderView listener (session-scoped instead of @ViewScoped): locks out non-ROOT users
+     * (redirect) and loads the tokens FRESH on every page call (GET). The isPostback guard prevents
+     * the reload on every Ajax postback. Replaces the former @PostConstruct init() + checkAccess().
      */
     public void onLoad() {
         if (!security.ifGranted("ROLE_ROOT")) {

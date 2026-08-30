@@ -19,33 +19,33 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilter Linter-Guard gegen drei JSF-View-Fallstricke in ALLEN {@code src/main/resources/**}
- * {@code .xhtml} des jeweiligen Reactors (Zustandsbericht 29.08.2026, Paket R2).
+ * Shared linter guard against three JSF view pitfalls in ALL {@code src/main/resources/**}
+ * {@code .xhtml} of the respective reactor (status report 29.08.2026, package R2).
  *
- * <p><b>Die drei Vorfaelle, die diesen Test noetig machen:</b>
+ * <p><b>The three incidents that make this test necessary:</b>
  * <ol>
- *   <li><b>{@code <f:metadata>} nach dem ersten {@code <ui:define>}</b> — 20 root-Seiten hatten den
- *       Block in einem {@code ui:define} (Titel/Content/Page). Das Template
- *       {@code /includes/template.xhtml} hat keinen Metadaten-Insert; {@code preRenderView}-Listener,
- *       {@code f:viewParam} und {@code f:viewAction} sind dort unwirksam bzw. unzuverlaessig.
- *       Der Block gehoert direkt unter {@code <ui:composition ...>} (Vorlage {@code menudiagnose.xhtml}).</li>
- *   <li><b>{@code <f:metadata>} innerhalb {@code <h:form>}</b> — 16 dieser 20 Seiten. Zusaetzlich
- *       laeuft der Listener bei jedem Ajax-Postback des Formulars mit und ueberschreibt Daten, die
- *       der Benutzer gerade bearbeitet.</li>
- *   <li><b>{@code onchange="submit()"} an einer {@code p:}-Komponente</b> — an der Typ-Auswahl der
- *       Datenverwaltung ({@code rootentities.xhtml}) loeste PrimeFaces 15 darueber keinen Request
- *       aus; die Auswahl blieb wirkungslos, keine Tabelle erschien. Richtig ist {@code <p:ajax>}.</li>
+ *   <li><b>{@code <f:metadata>} after the first {@code <ui:define>}</b> — 20 root pages had the block
+ *       inside a {@code ui:define} (title/content/page). The template
+ *       {@code /includes/template.xhtml} has no metadata insert; {@code preRenderView} listeners,
+ *       {@code f:viewParam} and {@code f:viewAction} are ineffective resp. unreliable there.
+ *       The block belongs directly below {@code <ui:composition ...>} (model: {@code menudiagnose.xhtml}).</li>
+ *   <li><b>{@code <f:metadata>} inside {@code <h:form>}</b> — 16 of those 20 pages. On top of that
+ *       the listener also runs on every Ajax postback of the form and overwrites data the user is
+ *       currently editing.</li>
+ *   <li><b>{@code onchange="submit()"} on a {@code p:} component</b> — on the type selector of the
+ *       data administration ({@code rootentities.xhtml}) PrimeFaces 15 triggered no request through
+ *       it; the selection had no effect, no table appeared. The correct form is {@code <p:ajax>}.</li>
  * </ol>
  *
- * <p><b>Ausnahmen:</b> {@code <!-- jsf-view-ok -->} in derselben Zeile nimmt einen einzelnen
- * Treffer aus (wie {@code mobile-ok} / {@code el-quote-ok}); ganze Dateien nimmt die Allowlist des
- * Reactors aus ({@code plaintext-arch-allowlist.txt}, Regel {@code jsf-view}, Begruendung Pflicht —
- * siehe {@link ArchAllowlist}). root fuehrt keine Allowlist.
+ * <p><b>Exceptions:</b> {@code <!-- jsf-view-ok -->} on the same line exempts a single hit (like
+ * {@code mobile-ok} / {@code el-quote-ok}); whole files are exempted by the reactor's allowlist
+ * ({@code plaintext-arch-allowlist.txt}, rule {@code jsf-view}, justification mandatory —
+ * see {@link ArchAllowlist}). root keeps no allowlist.
  *
- * <p>Der Scan-Code lebt in {@link JsfViewLinter} (plaintext-root-common). Dieser Test liegt in
- * {@code src/main/java} von {@code plaintext-root-archtests} und laeuft im Consumer via Surefire
- * {@code <dependenciesToScan>} ab dessen Reactor-Wurzel ueber jedes Modul-{@code src/main/resources}
- * (Pfadaufloesung: {@link ReactorLayout}).
+ * <p>The scan code lives in {@link JsfViewLinter} (plaintext-root-common). This test lives in
+ * {@code src/main/java} of {@code plaintext-root-archtests} and runs in the consumer via Surefire
+ * {@code <dependenciesToScan>} from that consumer's reactor root over every module's
+ * {@code src/main/resources} (path resolution: {@link ReactorLayout}).
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -57,9 +57,9 @@ class PlaintextJsfViewLinterTest {
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
     /**
-     * Scannt jedes {@code src/main/resources} aller Reactor-Module und schlaegt bei jedem Verstoss
-     * mit Datei, Zeile und Regel fehl. Consumer ohne eigene XHTML haben nichts zu linten — der Test
-     * besteht dann.
+     * Scans every {@code src/main/resources} of all reactor modules and fails on every violation with
+     * file, line and rule. Consumers without XHTML of their own have nothing to lint — the test then
+     * passes.
      */
     @Test
     void keineJsfViewFallstrickeInXhtml() {
@@ -96,7 +96,7 @@ class PlaintextJsfViewLinterTest {
     void linterErkenntAlleDreiRegelnUndRespektiertOptOut(@TempDir Path tmp) throws IOException {
         Path res = Files.createDirectories(tmp.resolve("META-INF/resources"));
 
-        // Verstoss 1+2: metadata in ui:define UND in h:form (zwei Meldungen, eine Datei).
+        // Violation 1+2: metadata in ui:define AND in h:form (two messages, one file).
         Files.writeString(res.resolve("badForm.xhtml"), """
                 <ui:composition template="/includes/template.xhtml">
                     <ui:define name="content">
@@ -108,7 +108,7 @@ class PlaintextJsfViewLinterTest {
                     </ui:define>
                 </ui:composition>
                 """);
-        // Verstoss 1 allein: metadata in ui:define, aber ausserhalb eines Formulars.
+        // Violation 1 alone: metadata in ui:define, but outside a form.
         Files.writeString(res.resolve("badDefine.xhtml"), """
                 <ui:composition template="/includes/template.xhtml">
                     <ui:define name="page">
@@ -116,7 +116,7 @@ class PlaintextJsfViewLinterTest {
                     </ui:define>
                 </ui:composition>
                 """);
-        // Verstoss 3: onchange="submit()" bzw. this.form.submit() an p:-Komponenten (auch mehrzeilig).
+        // Violation 3: onchange="submit()" resp. this.form.submit() on p: components (also multi-line).
         Files.writeString(res.resolve("badSubmit.xhtml"), """
                 <h:form>
                     <p:selectOneMenu value="#{bean.typ}" onchange="submit()"/>
@@ -124,7 +124,7 @@ class PlaintextJsfViewLinterTest {
                                       onchange="this.form.submit()"/>
                 </h:form>
                 """);
-        // KEIN Verstoss: metadata direkt unter ui:composition (Vorlage menudiagnose.xhtml), p:ajax statt submit.
+        // NO violation: metadata directly below ui:composition (model menudiagnose.xhtml), p:ajax instead of submit.
         Files.writeString(res.resolve("ok.xhtml"), """
                 <ui:composition template="/includes/template.xhtml">
                     <f:metadata>
@@ -139,7 +139,7 @@ class PlaintextJsfViewLinterTest {
                     </ui:define>
                 </ui:composition>
                 """);
-        // KEIN Verstoss: Standalone-Seite mit h:body (kein ui:define), h:-Komponente statt p:, Beispiel im Kommentar.
+        // NO violation: standalone page with h:body (no ui:define), h: component instead of p:, example inside a comment.
         Files.writeString(res.resolve("okStandalone.xhtml"), """
                 <h:body>
                     <f:metadata><f:viewParam name="id" value="#{bean.id}"/></f:metadata>
@@ -147,7 +147,7 @@ class PlaintextJsfViewLinterTest {
                     <h:form><h:selectOneMenu value="#{bean.typ}" onchange="submit()"/></h:form>
                 </h:body>
                 """);
-        // KEIN Verstoss: begruendetes Opt-out in derselben Zeile.
+        // NO violation: justified opt-out on the same line.
         Files.writeString(res.resolve("okOptOut.xhtml"), """
                 <ui:composition template="/includes/template.xhtml">
                     <ui:define name="content">

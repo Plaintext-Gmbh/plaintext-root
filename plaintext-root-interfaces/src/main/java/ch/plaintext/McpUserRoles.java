@@ -6,15 +6,16 @@ package ch.plaintext;
 import java.util.Set;
 
 /**
- * Leichtgewichtiger, leak-freier Rollen-Lookup eines Benutzers per userId — für token-basierte
- * Zugriffe (MCP-BearerToken-Filter), die den {@link org.springframework.security.core.context.SecurityContext}
- * VOR der eigentlichen Verarbeitung befüllen müssen.
+ * Lightweight, leak-free role lookup for a user by userId — for token-based access (the MCP bearer
+ * token filter) that has to populate the
+ * {@link org.springframework.security.core.context.SecurityContext} BEFORE the actual processing.
  *
- * <p>Hintergrund: Das MCP-JWT trägt bewusst KEINE Rollen. Damit {@link PlaintextSecurity#getAllowedMandate()}
- * für ROOT-Benutzer alle Mandate liefert, muss der Filter die echten Rollen des Token-Benutzers laden und
- * als Authorities in den Context legen. Die Implementierung liest nur die (als konvertierte Spalte EAGER
- * geladenen) Rollen — ein einzelner {@code findById}-Read, KEINE {@code @Transactional}-Kette (vermeidet den
- * bekannten Hikari-Connection-Leak des DB-gestützten Token-Validators).</p>
+ * <p>Background: the MCP JWT deliberately carries NO roles. For
+ * {@link PlaintextSecurity#getAllowedMandate()} to return all tenants for ROOT users, the filter
+ * has to load the token user's real roles and put them into the context as authorities. The
+ * implementation reads only the roles (EAGER-loaded as a converted column) — a single
+ * {@code findById} read, NOT a {@code @Transactional} chain (which avoids the known Hikari
+ * connection leak of the DB-backed token validator).</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -22,9 +23,9 @@ import java.util.Set;
 public interface McpUserRoles {
 
     /**
-     * @param userId Benutzer-ID (aus dem validierten Token)
-     * @return die Rollen des Benutzers (z.B. {@code ROOT}, {@code ADMIN}, {@code PROPERTY_MANDAT_xy}),
-     *         oder eine leere Menge, wenn {@code userId} null ist oder kein Benutzer existiert
+     * @param userId user ID (from the validated token)
+     * @return the user's roles (e.g. {@code ROOT}, {@code ADMIN}, {@code PROPERTY_MANDAT_xy}), or
+     *         an empty set if {@code userId} is null or no such user exists
      */
     Set<String> rolesForUser(Long userId);
 }

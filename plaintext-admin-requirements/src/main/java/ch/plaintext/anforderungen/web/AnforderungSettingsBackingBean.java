@@ -46,8 +46,8 @@ public class AnforderungSettingsBackingBean implements Serializable {
     private List<ClaudePrompt> promptHistory;
 
     /**
-     * preRenderView-Listener (session-scoped): laedt/initialisiert die API-Settings des Mandanten bei jedem GET.
-     * Der isPostback-Guard verhindert das Neuladen bei Ajax-Postbacks. Ersetzt das fruehere @PostConstruct init().
+     * preRenderView listener (session-scoped): loads/initializes the tenant's API settings on every GET.
+     * The isPostback guard prevents a reload on Ajax postbacks. Replaces the former @PostConstruct init().
      */
     public void onLoad() {
         FacesContext ctx = FacesContext.getCurrentInstance();

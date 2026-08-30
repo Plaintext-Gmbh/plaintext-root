@@ -29,18 +29,18 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Vertragstest zu Karte 659: Der JDBC-Revocation-Lookup muss dieselbe Zugriffsentscheidung
- * treffen wie der bisherige JPA-Weg — und darf dabei keine DB-Verbindung am Request halten.
+ * Contract test for card 659: the JDBC revocation lookup has to reach the same access decision
+ * as the previous JPA path — and must not hold a DB connection for the duration of the request.
  *
- * <p><b>Warum als Integrationstest und nicht mit Mocks:</b> Geprüft wird gerade die Übereinstimmung
- * zweier <i>Datenbankzugriffe</i>. Ein Mock würde beide Seiten dasselbe antworten lassen und den
- * Test zur Tautologie machen. Beide Wege laufen hier gegen dieselbe echte Tabelle im selben
- * Zustand ({@link EmbeddedPg}, Karte 451 — kein Docker-Daemon nötig).
+ * <p><b>Why as an integration test and not with mocks:</b> what is checked is precisely the agreement
+ * of two <i>database accesses</i>. A mock would make both sides answer the same and turn the
+ * test into a tautology. Both paths run here against the same real table in the same
+ * state ({@link EmbeddedPg}, card 451 — no Docker daemon needed).
  *
- * <p><b>Der Referenzweg</b> ({@link #jpaEntscheidung}) bildet {@code validateVerifiedToken} vor dem
- * Umbau nach: {@code findByTokenHash} + {@code getDeleted()} + {@code isInvalidated()}. Er ist
- * bewusst hier nachgebaut und nicht aus dem Service aufgerufen — der Service benutzt inzwischen
- * den JDBC-Weg, ein Vergleich mit sich selbst wäre wertlos.
+ * <p><b>The reference path</b> ({@link #jpaEntscheidung}) reproduces {@code validateVerifiedToken} as it
+ * was before the rebuild: {@code findByTokenHash} + {@code getDeleted()} + {@code isInvalidated()}. It is
+ * deliberately rebuilt here and not called from the service — the service meanwhile takes
+ * the JDBC path, and a comparison with itself would be worthless.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
@@ -63,14 +63,14 @@ class ApiTokenRevocationVertragIT {
     @Autowired
     private EntityManagerFactory entityManagerFactory;
 
-    /** Ergebnis einer Zugriffsentscheidung — {@code null} heisst „abgewiesen". */
+    /** Result of an access decision — {@code null} means "rejected". */
     private record Entscheidung(boolean gueltig, String userEmail) {
         static final Entscheidung ABGEWIESEN = new Entscheidung(false, null);
     }
 
-    // ── Die beiden Wege ─────────────────────────────────────────────────────────────────────────
+    // ── The two paths ───────────────────────────────────────────────────────────────────────────
 
-    /** Der alte Weg über JPA, so wie {@code validateVerifiedToken} ihn bis Karte 659 ging. */
+    /** The old path via JPA, exactly as {@code validateVerifiedToken} went until card 659. */
     private Entscheidung jpaEntscheidung(String hash) {
         Optional<ApiToken> gefunden = repository.findByTokenHash(hash);
         if (gefunden.isEmpty()) {
@@ -83,7 +83,7 @@ class ApiTokenRevocationVertragIT {
         return new Entscheidung(true, t.getUserEmail());
     }
 
-    /** Der neue Weg über JDBC. */
+    /** The new path via JDBC. */
     private Entscheidung jdbcEntscheidung(String hash) {
         Optional<ApiTokenRevocationLookup.TokenZustand> gefunden = lookup.findForValidation(hash);
         if (gefunden.isEmpty()) {
@@ -96,11 +96,11 @@ class ApiTokenRevocationVertragIT {
         return new Entscheidung(true, t.userEmail());
     }
 
-    // ── Der Vertrag ─────────────────────────────────────────────────────────────────────────────
+    // ── The contract ────────────────────────────────────────────────────────────────────────────
 
     @Test
     void beideWegeEntscheidenGleich_ueberAlleKombinationen() {
-        // deleted / invalidated / abgelaufen, jeweils in allen Kombinationen
+        // deleted / invalidated / expired, each in all combinations
         for (boolean geloescht : new boolean[]{false, true}) {
             for (boolean invalidiert : new boolean[]{false, true}) {
                 for (boolean abgelaufen : new boolean[]{false, true}) {
@@ -122,8 +122,8 @@ class ApiTokenRevocationVertragIT {
     }
 
     /**
-     * Positivkontrolle zum Test darüber: Ohne sie belegte „beide gleich" auch dann etwas, wenn
-     * schlicht jeder Token abgewiesen würde. Ein sauberer Token muss durchkommen — mit Mailadresse.
+     * Positive control for the test above: without it "both the same" would also hold when
+     * simply every token was rejected. A clean token has to get through — with a mail address.
      */
     @Test
     void sauberesToken_kommtBeiBeidenDurch() {
@@ -133,13 +133,13 @@ class ApiTokenRevocationVertragIT {
     }
 
     /**
-     * {@code deleted} ist laut {@code V1775256894} <b>nullable</b>, und {@code SuperModel.deleted}
-     * ist ein {@code Boolean}. Der alte Weg lief bei {@code NULL} in eine NullPointerException
-     * (Unboxing) — also in einen 500er statt in eine Zugriffsentscheidung. Der JDBC-Weg liest
-     * {@code NULL} als „nie gelöscht worden".
+     * According to {@code V1775256894} {@code deleted} is <b>nullable</b>, and {@code SuperModel.deleted}
+     * is a {@code Boolean}. On {@code NULL} the old path ran into a NullPointerException
+     * (unboxing) — that is, into a 500 instead of an access decision. The JDBC path reads
+     * {@code NULL} as "never been deleted".
      *
-     * <p>Das ist die einzige gewollte Verhaltensänderung des Umbaus, und sie geht in die sichere
-     * Richtung: {@code deleted = true} wird weiterhin abgewiesen (Test oben).
+     * <p>That is the only intended behavioural change of the rebuild, and it goes in the safe
+     * direction: {@code deleted = true} is still rejected (test above).
      */
     @Test
     void deletedNull_giltAlsNichtGeloescht_undWirftNicht() {
@@ -151,18 +151,19 @@ class ApiTokenRevocationVertragIT {
         assertEquals("u@x.ch", jdbc.userEmail());
     }
 
-    // ── Der Zweck des Umbaus, gemessen ──────────────────────────────────────────────────────────
+    // ── The purpose of the rebuild, measured ────────────────────────────────────────────────────
 
     /**
-     * Der eigentliche Grund für Karte 659: Mit gebundenem EntityManager — genau das tut
-     * {@code OpenEntityManagerInViewFilter} um die ganze Filterkette herum — hält der JPA-Zugriff
-     * seine Hikari-Verbindung bis zum Requestende, der JDBC-Zugriff nicht.
+     * The actual reason for card 659: with a bound EntityManager — exactly what
+     * {@code OpenEntityManagerInViewFilter} does around the whole filter chain — the JPA access holds
+     * its Hikari connection until the end of the request, the JDBC access does not.
      *
-     * <p><b>Die Reihenfolge ist der Test.</b> Zuerst der JDBC-Weg auf einer frischen Session: er
-     * muss den Pool bei 0 lassen. <i>Danach</i> der JPA-Weg als Positivkontrolle — er muss auf 1
-     * gehen, sonst misst diese Methode gar nichts und die 0 davor wäre wertlos. Umgekehrt gemessen
-     * (erst JPA, dann JDBC) wäre der Test blind: Die JPA-Session hielte die Verbindung ohnehin
-     * schon, und ein zweiter Zugriff — egal welcher Art — fiele nicht mehr auf.
+     * <p><b>The order is the test.</b> First the JDBC path on a fresh session: it
+     * has to leave the pool at 0. <i>Afterwards</i> the JPA path as a positive control — it has to go
+     * to 1, otherwise this method measures nothing at all and the 0 before it would be worthless.
+     * Measured the other way round (JPA first, then JDBC) the test would be blind: the JPA session
+     * would already be holding the connection anyway, and a second access — of whatever kind — would
+     * no longer stand out.
      */
     @Test
     void jdbcWegHaeltKeineVerbindungAmRequest_jpaWegSchon() {
@@ -211,9 +212,9 @@ class ApiTokenRevocationVertragIT {
     }
 
     /**
-     * Gegenprobe zu {@link #markUsed_zaehltHochUndSetztZeitstempel()}: Die Auditspalten bleiben
-     * bewusst unberührt — ein Token-<i>Gebrauch</i> ist keine fachliche Änderung, und der
-     * JPA-Auditor schriebe im Filterkontext „system" über den letzten echten Bearbeiter.
+     * Counter-check to {@link #markUsed_zaehltHochUndSetztZeitstempel()}: the audit columns
+     * deliberately stay untouched — a <i>use</i> of a token is no substantive change, and the
+     * JPA auditor would write "system" over the last real editor in the filter context.
      */
     @Test
     void markUsed_laesstAuditspaltenInRuhe() {
@@ -234,9 +235,9 @@ class ApiTokenRevocationVertragIT {
         assertFalse(lookup.findForValidation("").isPresent());
     }
 
-    // ── Hilfsmittel ─────────────────────────────────────────────────────────────────────────────
+    // ── Helpers ─────────────────────────────────────────────────────────────────────────────────
 
-    /** Legt einen Token an und gibt seinen Hash zurück. */
+    /** Creates a token and returns its hash. */
     private String anlegen(String hash, boolean geloescht, boolean invalidiert, boolean abgelaufen) {
         repository.findByTokenHash(hash).ifPresent(repository::delete);
         ApiToken t = new ApiToken();

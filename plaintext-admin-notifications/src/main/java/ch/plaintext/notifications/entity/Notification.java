@@ -13,8 +13,8 @@ import lombok.EqualsAndHashCode;
 import java.time.LocalDateTime;
 
 /**
- * Eine In-App-Benachrichtigung fuer einen Benutzer (mandantengescoped ueber {@link SuperModel}).
- * {@code gelesenAm == null} bedeutet ungelesen.
+ * An in-app notification for a user (tenant-scoped via {@link SuperModel}).
+ * {@code gelesenAm == null} means unread.
  */
 @Entity
 @Table(name = "notification")
@@ -25,7 +25,7 @@ public class Notification extends SuperModel {
     @Column(name = "empfaenger_username", length = 255, nullable = false)
     private String empfaengerUsername;
 
-    /** Benachrichtigungstyp, z. B. {@code auszahlungen.neu} — entspricht dem Mailtext-Key {@code notif.<typ>}. */
+    /** Notification type, e.g. {@code auszahlungen.neu} — corresponds to the mail text key {@code notif.<typ>}. */
     @Column(name = "typ", length = 200, nullable = false)
     private String typ;
 
@@ -35,11 +35,11 @@ public class Notification extends SuperModel {
     @Column(name = "text", length = 2000, nullable = false)
     private String text;
 
-    /** Optionale Ziel-URL in der App (relativ), oder {@code null}. */
+    /** Optional target URL within the app (relative), or {@code null}. */
     @Column(name = "link", length = 500)
     private String link;
 
-    /** {@code null} = ungelesen. */
+    /** {@code null} = unread. */
     @Column(name = "gelesen_am")
     private LocalDateTime gelesenAm;
 

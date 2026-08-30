@@ -15,8 +15,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Implementierung von {@link TileRegistry}, die Zugriff auf alle registrierten Dashboard-Kacheln
- * bietet – analog zu {@link ch.plaintext.boot.menu.MenuRegistryImpl}.
+ * Implementation of {@link TileRegistry} that provides access to all registered dashboard tiles
+ * – analogous to {@link ch.plaintext.boot.menu.MenuRegistryImpl}.
  *
  * @author plaintext.ch
  */
@@ -46,9 +46,9 @@ public class TileRegistryImpl implements TileRegistry {
     }
 
     /**
-     * Liefert alle Kacheln als {@link TileItemImpl} (ohne Interface-Cast).
+     * Returns all tiles as {@link TileItemImpl} (without the interface cast).
      *
-     * @return Liste der Kachel-Implementierungen
+     * @return list of the tile implementations
      */
     public List<TileItemImpl> getAllTileItemsImpl() {
         Map<String, TileItemImpl> tileBeans = applicationContext.getBeansOfType(TileItemImpl.class);

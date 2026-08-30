@@ -34,11 +34,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests fuer den Seiten-Zugriffsschutz (Karte 308).
+ * Tests for the page access guard (card 308).
  *
- * <p>Die Tests arbeiten mit echten {@link MenuItemImpl}-Objekten und einem echten
- * {@code SecurityProvider}-Stub, damit die Rollen- und Eltern-Logik von {@code isOn()} mitgeprueft
- * wird (siehe {@link PageAccessGuardTestFactory}).
+ * <p>The tests work with real {@link MenuItemImpl} objects and a real {@code SecurityProvider}
+ * stub, so that the role and parent logic of {@code isOn()} is covered as well (see
+ * {@link PageAccessGuardTestFactory}).
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -54,7 +54,7 @@ class PageAccessGuardServiceTest {
     @Mock
     private ExternalContext externalContext;
 
-    // ============================================================ Grundverhalten
+    // ============================================================ basic behaviour
 
     @Test
     void nullUndLeereViewIdWerdenErlaubt() {
@@ -72,7 +72,7 @@ class PageAccessGuardServiceTest {
         assertTrue(service.hasAccessToView("/access-denied.xhtml"));
         assertTrue(service.hasAccessToView("/error.xhtml"));
         assertTrue(service.hasAccessToView("/login.xhtml"));
-        // gleiche Seite, andere Endung / Schreibweise
+        // same page, different extension / case
         assertTrue(service.hasAccessToView("/index.html"));
         assertTrue(service.hasAccessToView("/INDEX.XHTML"));
     }
@@ -81,14 +81,14 @@ class PageAccessGuardServiceTest {
     @DisplayName("Framework-Allowlist: login-totp, myuser, useradmin und die Menuesteuerungs-Anleitung bleiben ohne Menue erreichbar")
     void frameworkAllowlistIstErreichbar() {
         PageAccessGuardService service = strictMitMenues();
-        // Anleitung der Menuesteuerung: seit 29.08.2026 ohne Menuepunkt, per Info-Knopf erreichbar;
-        // ROOT-only erzwingt PlaintextSecurityConfig.
+        // Menu configuration manual: since 29.08.2026 without a menu item, reachable via the info
+        // button; ROOT-only is enforced by PlaintextSecurityConfig.
         assertTrue(service.hasAccessToView("/menuesteuerung-anleitung.xhtml"));
-        // Zweiter TOTP-Schritt: der User ist hier noch nicht voll authentifiziert.
+        // Second TOTP step: the user is not yet fully authenticated at this point.
         assertTrue(service.hasAccessToView("/login-totp.xhtml"));
-        // Eigenes Profil: in der Topbar fuer jeden User verlinkt.
+        // Own profile: linked in the topbar for every user.
         assertTrue(service.hasAccessToView("/myuser.xhtml"));
-        // Benutzerverwaltung: eigenes Gate + harter requestMatcher in PlaintextSecurityConfig.
+        // User administration: gate of its own + hard requestMatcher in PlaintextSecurityConfig.
         assertTrue(service.hasAccessToView("/useradmin.xhtml"));
     }
 
@@ -116,7 +116,7 @@ class PageAccessGuardServiceTest {
                 "Framework-Default muss REPORT bleiben, sonst sperren die Consumer-Apps beim Update aus");
     }
 
-    // ============================================================ Menue-Treffer
+    // ============================================================ menu match
 
     @Test
     void sichtbaresMenueErlaubtZugriff() {
@@ -143,7 +143,7 @@ class PageAccessGuardServiceTest {
         assertFalse(strictMitMenues(menu("", true)).hasAccessToView("/irgendeine-seite.xhtml"));
     }
 
-    // ============================================================ H1/H5: kanonischer Vergleich
+    // ============================================================ H1/H5: canonical comparison
 
     @Test
     @DisplayName("H1: link=\"mandatemenu.html\" schuetzt die ROOT-Menuesteuerung jetzt wirklich")
@@ -237,13 +237,13 @@ class PageAccessGuardServiceTest {
         }
     }
 
-    // ============================================================ H4: Eltern-Rollen
+    // ============================================================ H4: parent roles
 
     @Nested
     @DisplayName("H4: Eltern-Rollen")
     class ElternRollen {
 
-        /** „Root" (roles=ROOT) mit einem Kind ohne eigene roles — der Fall settings.html. */
+        /** "Root" (roles=ROOT) with a child without roles of its own — the settings.html case. */
         private PageAccessGuardService guardFuer(Set<String> benutzerRollen, PageGuardMode mode) {
             MenuItemImpl root = menu("Root", "", "index.html", benutzerRollen, "ROOT");
             MenuItemImpl settings = menu("Settings", "Root", "settings.html", benutzerRollen);
@@ -299,7 +299,7 @@ class PageAccessGuardServiceTest {
         }
     }
 
-    // ============================================================ Aliase
+    // ============================================================ aliases
 
     @Nested
     @DisplayName("View-Aliase (Detailseiten ohne Menueeintrag)")
@@ -345,7 +345,7 @@ class PageAccessGuardServiceTest {
         }
     }
 
-    // ============================================================ konfigurierte Allowlist
+    // ============================================================ configured allowlist
 
     @Test
     void konfigurierteAllowlistErlaubtEinzelneViewsUndPraefixe() {
@@ -360,7 +360,7 @@ class PageAccessGuardServiceTest {
         assertFalse(service.hasAccessToView("/nicht-erlaubt.xhtml"));
     }
 
-    // ============================================================ Hilfsmethoden fuer den Report
+    // ============================================================ helper methods for the report
 
     @Test
     void istZugeordnetErkenntSystemseitenAllowlisteAliaseUndMenues() {
@@ -402,9 +402,9 @@ class PageAccessGuardServiceTest {
         PageAccessGuardService service = strictMitMenues();
         try (MockedStatic<FacesContext> mocked = mockStatic(FacesContext.class)) {
             mocked.when(FacesContext::getCurrentInstance).thenReturn(null);
-            // Sonar java:S2699 (Karte 891): "TutNichts" stand nur im Methodennamen. Ohne Assertion
-            // war der Test auch dann gruen, wenn der Aufruf eine NullPointerException geworfen
-            // haette — genau der Fall, den er abdecken soll. Jetzt steht die Zusage im Code.
+            // Sonar java:S2699 (card 891): "TutNichts" only stood in the method name. Without an
+            // assertion the test was green even if the call had thrown a NullPointerException —
+            // exactly the case it is meant to cover. Now the promise is in the code.
             assertDoesNotThrow(service::redirectToAccessDenied,
                     "ohne FacesContext (z.B. im Cron-Lauf) darf der Aufruf folgenlos bleiben");
         }

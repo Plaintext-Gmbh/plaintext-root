@@ -11,15 +11,15 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Passwort-/Secret-Generator: Länge + Komplexität (Zeichenklassen) frei wählbar.
- * Garantiert mind. ein Zeichen je gewählter Klasse; SecureRandom.
+ * Password/secret generator: length + complexity (character classes) freely selectable.
+ * Guarantees at least one character per selected class; SecureRandom.
  */
 @Component
 public class PasswordGenerator {
 
-    private static final String LOWER = "abcdefghijkmnopqrstuvwxyz";      // ohne l
-    private static final String UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";       // ohne I, O
-    private static final String DIGITS = "23456789";                     // ohne 0, 1
+    private static final String LOWER = "abcdefghijkmnopqrstuvwxyz";      // without l
+    private static final String UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";       // without I, O
+    private static final String DIGITS = "23456789";                     // without 0, 1
     private static final String SYMBOLS = "!@#$%&*+-_=?";
     private static final SecureRandom RNG = new SecureRandom();
 
@@ -31,7 +31,7 @@ public class PasswordGenerator {
         if (digits)  { pool.append(DIGITS);  mandatory.add(pick(DIGITS)); }
         if (symbols) { pool.append(SYMBOLS); mandatory.add(pick(SYMBOLS)); }
         if (pool.length() == 0) {
-            pool.append(LOWER).append(UPPER).append(DIGITS);            // Fallback: keine Klasse gewählt
+            pool.append(LOWER).append(UPPER).append(DIGITS);            // fallback: no class selected
         }
         int len = Math.max(length, Math.max(4, mandatory.size()));
         List<Character> chars = new ArrayList<>(mandatory);

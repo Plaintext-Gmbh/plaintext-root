@@ -18,27 +18,28 @@ import org.springframework.core.env.SystemEnvironmentPropertySource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Loest alle {@code vault:}-Referenzen beim Start EINMAL auf und ersetzt sie in ihrer Quell-Source
- * durch den Klartext-Wert.
+ * Resolves all {@code vault:} references ONCE at startup and replaces them in their source
+ * property source with the plaintext value.
  *
- * <h2>Warum eager und nicht (nur) lazy</h2>
- * <p>Die {@link VaultwardenPropertySource} loest {@code vault:}-Werte beim Zugriff auf und bricht
- * bei einem Fehlschlag ab. Im echten Boot wird sie aber <b>umgangen</b>: Spring Boot ruft
- * {@code ConfigurationPropertySources.attach(environment)} auf und haengt damit eine Source
- * {@code configurationProperties} VOR sie, die Property-Zugriffe fortan selbst beantwortet. Der
- * Roh-Wert gewinnt, und der unaufgeloeste Literal {@code vault:<item>} landet im Ziel-Feld — bei
- * einem {@code String} unbemerkt, denn der Boot laeuft durch (Karte 868, gemessen an guild-INT).
- * Ein Secret-Feld, das den String {@code "vault:guild.remember-me-key"} enthaelt, ist die
- * schlimmste Sorte Ausfall: nichts schlaegt fehl, es ist nur alles wirkungslos.</p>
+ * <h2>Why eager and not (only) lazy</h2>
+ * <p>The {@link VaultwardenPropertySource} resolves {@code vault:} values on access and aborts
+ * on a failure. In a real boot it is <b>bypassed</b>, though: Spring Boot calls
+ * {@code ConfigurationPropertySources.attach(environment)} and thereby hangs a source
+ * {@code configurationProperties} IN FRONT of it, which answers property accesses itself from
+ * then on. The raw value wins, and the unresolved literal {@code vault:<item>} ends up in the
+ * target field — unnoticed with a {@code String}, because the boot runs through (Karte 868,
+ * measured on guild INT). A secret field that contains the string
+ * {@code "vault:guild.remember-me-key"} is the worst kind of failure: nothing fails, everything
+ * is merely without effect.</p>
  *
- * <p>Nach dieser Ersetzung existiert kein {@code vault:}-Roh-Wert mehr, den ein Adapter
- * durchreichen koennte — der Wert ist ein gewoehnlicher String, unabhaengig davon, wer ihn liest.
- * Die lazy Source bleibt als zweite Linie fuer Sources, die sich nicht aufzaehlen lassen.</p>
+ * <p>After this replacement no {@code vault:} raw value is left that an adapter could pass
+ * through — the value is an ordinary string, no matter who reads it. The lazy source remains as
+ * a second line of defence for sources that cannot be enumerated.</p>
  *
  * <h2>Fail-fast</h2>
- * <p>Ist eine Referenz nicht aufloesbar, fliegt die {@link VaultwardenPropertyResolutionException}
- * aus dem {@code EnvironmentPostProcessor} und der Start bricht ab — hier wirkt sie, weil kein
- * Spring-Adapter dazwischen liegt.</p>
+ * <p>If a reference cannot be resolved, the {@link VaultwardenPropertyResolutionException} flies
+ * out of the {@code EnvironmentPostProcessor} and startup aborts — here it takes effect, because
+ * no Spring adapter sits in between.</p>
  */
 @Slf4j
 final class VaultwardenEagerResolution {
@@ -47,15 +48,15 @@ final class VaultwardenEagerResolution {
     }
 
     /**
-     * @param environment Environment, dessen Sources durchsucht und ersetzt werden
-     * @param resolver    Resolver fuer die eigentliche Aufloesung
-     * @return Anzahl der ersetzten Referenzen
+     * @param environment environment whose sources are scanned and replaced
+     * @param resolver    resolver for the actual resolution
+     * @return number of replaced references
      */
     static int resolveAll(ConfigurableEnvironment environment, VaultwardenValueResolver resolver) {
         MutablePropertySources sources = environment.getPropertySources();
         int ersetzt = 0;
 
-        // Kopie: wir ersetzen waehrend der Iteration Sources im selben MutablePropertySources.
+        // Copy: during the iteration we replace sources in the very same MutablePropertySources.
         for (PropertySource<?> source : new ArrayList<>(sourcesAsList(sources))) {
             if (!(source instanceof EnumerablePropertySource<?> aufzaehlbar)) {
                 continue;
@@ -74,20 +75,20 @@ final class VaultwardenEagerResolution {
         return ersetzt;
     }
 
-    /** Alle {@code vault:}-Werte der Source aufloesen (Schluessel bleibt unveraendert). */
+    /** Resolve all {@code vault:} values of the source (the key stays unchanged). */
     private static Map<String, Object> aufloesen(EnumerablePropertySource<?> source,
                                                  VaultwardenValueResolver resolver) {
         Map<String, Object> treffer = new LinkedHashMap<>();
         for (String key : source.getPropertyNames()) {
             if (istBootstrapSchluessel(key)) {
-                // Der Vault-Zugang selbst darf nicht aus dem Vault kommen: der Client wird beim
-                // Aufloesen aus genau diesen Werten gebaut, eine vault:-Referenz hier liefe im
-                // Kreis. Solche Werte bleiben stehen (und fallen als Login-Fehler auf).
+                // The vault access itself must not come from the vault: the client is built from
+                // exactly these values while resolving, so a vault: reference here would run in
+                // circles. Such values are left standing (and show up as a login error).
                 continue;
             }
             Object raw = source.getProperty(key);
             if (VaultwardenValueResolver.isVaultReference(raw)) {
-                // Fail-fast: wirft, wenn nicht aufloesbar — genau hier soll der Start abbrechen.
+                // Fail fast: throws when it cannot be resolved — this is exactly where startup should abort.
                 treffer.put(key, resolver.resolve(key, (String) raw));
             }
         }
@@ -95,10 +96,10 @@ final class VaultwardenEagerResolution {
     }
 
     /**
-     * Baut eine Ersatz-Source <b>desselben Typs</b>. Der Typ traegt die Namens-Semantik: eine
-     * {@link SystemEnvironmentPropertySource} bildet {@code plaintext.foo.bar} auf
-     * {@code PLAINTEXT_FOO_BAR} ab. Eine gewoehnliche {@link MapPropertySource} kann das nicht —
-     * wer hier den Typ verliert, macht die Referenz unauffindbar statt sie aufzuloesen.
+     * Builds a replacement source of the <b>same type</b>. The type carries the naming semantics: a
+     * {@link SystemEnvironmentPropertySource} maps {@code plaintext.foo.bar} onto
+     * {@code PLAINTEXT_FOO_BAR}. An ordinary {@link MapPropertySource} cannot do that — whoever
+     * loses the type here makes the reference unfindable instead of resolving it.
      */
     @SuppressWarnings("unchecked")
     private static PropertySource<?> ersetzeIn(EnumerablePropertySource<?> original,
@@ -111,7 +112,7 @@ final class VaultwardenEagerResolution {
         return new MapPropertySource(original.getName(), kopie);
     }
 
-    /** {@code plaintext.vault.*} in beiden Schreibweisen (Property und Umgebungsvariable). */
+    /** {@code plaintext.vault.*} in both spellings (property and environment variable). */
     private static boolean istBootstrapSchluessel(String key) {
         String k = key.toLowerCase(java.util.Locale.ROOT).replace('_', '.');
         return k.startsWith("plaintext.vault.");

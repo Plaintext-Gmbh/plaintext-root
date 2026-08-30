@@ -84,7 +84,7 @@
                     </f:facet>
                 </p:dialog>
 
-                <!-- Neues Token erstellen -->
+                <!-- Create new token -->
                 <p:panel header="Neues Token erstellen" style="margin-bottom: 20px;">
                     <h:panelGrid columns="2" cellpadding="10" style="width: 100%;">
                         <p:outputLabel value="Name:" for="tokenName"/>
@@ -106,9 +106,9 @@
                             <h:outputText value=" Tage" style="margin-left: 5px;"/>
                         </h:panelGroup>
 
-                        <!-- Karte 312: Zugriffsumfang MUSS beim Erstellen gewählt werden. Ohne diese
-                             Auswahl trugen Tokens gar keinen scope-Claim, und der MCP-Filter wertete
-                             das als Vollzugriff. Default READ — mehr nur, wenn bewusst gewählt. -->
+                        <!-- Card 312: the scope MUST be chosen when the token is created. Without that
+                             choice tokens carried no scope claim at all, and the MCP filter read
+                             that as full access. Default READ; more only when deliberately chosen. -->
                         <p:outputLabel value="Zugriff:" for="tokenScope"/>
                         <h:panelGroup>
                             <p:selectOneMenu id="tokenScope" value="#{apiTokenBean.newTokenScope}"
@@ -120,12 +120,12 @@
                         </h:panelGroup>
 
                         <h:outputText value=""/>
-                        <!-- Karte 504: Die process-Liste MUSS jedes Eingabefeld dieses Formulars nennen.
-                             tokenScope fehlte hier — dadurch durchlief das Feld den JSF-Lebenszyklus nicht,
-                             #{apiTokenBean.newTokenScope} behielt seinen Initialwert READ, und die Maske
-                             stellte still einen READ-Token aus, obwohl ADMIN gewählt war. Die Gültigkeit
-                             stand in der Liste und kam an — deshalb sah es aus wie ein Backend-Fehler.
-                             Wer hier ein Feld ergänzt, ergänzt es auch in dieser Liste (ApiTokenFormularTest). -->
+                        <!-- Card 504: the process list MUST name every input field of this form.
+                             tokenScope was missing here, so the field never ran through the JSF lifecycle,
+                             #{apiTokenBean.newTokenScope} kept its initial value READ, and the screen
+                             silently issued a READ token although ADMIN had been chosen. The validity
+                             was in the list and did arrive, which is why it looked like a backend bug.
+                             Whoever adds a field here adds it to this list too (ApiTokenFormularTest). -->
                         <p:commandButton value="Token erstellen"
                                          icon="pi pi-plus"
                                          action="#{apiTokenBean.createToken()}"
@@ -135,7 +135,7 @@
                     </h:panelGrid>
                 </p:panel>
 
-                <!-- Token Liste -->
+                <!-- Token list -->
                 <p:panel header="Ihre API-Tokens" style="margin-bottom: 20px;">
                     <p:outputPanel id="tokenTable">
 

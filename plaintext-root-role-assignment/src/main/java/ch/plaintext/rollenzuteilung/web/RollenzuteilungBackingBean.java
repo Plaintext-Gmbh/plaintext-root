@@ -34,9 +34,9 @@ public class RollenzuteilungBackingBean implements Serializable {
     private final PlaintextSecurity security;
 
     /**
-     * Rollen-Registry (Modul-Rollen-Registrierung): liefert die von den Modulen deklarierten
-     * Rollen fuer die Auswahl. Optional ({@code null} erlaubt), damit Kontexte ohne Registry
-     * weiter funktionieren.
+     * Role registry (module role registration): supplies the roles declared by the modules for the
+     * selection. Optional ({@code null} allowed), so that contexts without a registry keep
+     * working.
      */
     private final transient PlaintextRoleRegistry roleRegistry;
 
@@ -57,9 +57,9 @@ public class RollenzuteilungBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped): setzt die Rolle, sperrt Nicht-Admins per Redirect aus und
-     * laedt die Daten FRISCH bei jedem GET. Der isPostback-Guard verhindert das Neuladen bei Ajax-Postbacks.
-     * Ersetzt das fruehere @PostConstruct init() + checkAccess().
+     * preRenderView listener (session-scoped): sets the role, locks non-admins out via redirect and
+     * loads the data FRESH on every GET. The isPostback guard prevents a reload on Ajax postbacks.
+     * Replaces the former @PostConstruct init() + checkAccess().
      */
     public void onLoad() {
         admin = security.ifGranted("ROLE_ADMIN") || security.ifGranted("ROLE_ROOT");
@@ -153,17 +153,18 @@ public class RollenzuteilungBackingBean implements Serializable {
     }
 
     /**
-     * Darf der aktuelle Akteur diese Rolle vergeben?
+     * May the current actor grant this role?
      *
-     * <p>Die Rollenzuteilung steht ADMIN und ROOT offen — das ist die Stelle, an der admin die
-     * <b>Modul-Rollen</b> verteilt, und genau dafuer soll sie offen sein. Privilegierte Rollen
-     * ({@code root}, {@code admin}, {@code PROPERTY_*}) bleiben root vorbehalten: sonst koennte ein
-     * admin sich hier die Rolle beschaffen, die ihm die Benutzerverwaltung verwehrt.</p>
+     * <p>Role assignment is open to ADMIN and ROOT — this is the place where an admin hands out the
+     * <b>module roles</b>, and that is exactly what it is meant to be open for. Privileged roles
+     * ({@code root}, {@code admin}, {@code PROPERTY_*}) stay reserved for root: otherwise an admin
+     * could obtain the very role here that the user administration denies them.</p>
      *
-     * <p>Eine bereits gespeicherte Zuteilung derselben Rolle bleibt aenderbar (Bestand).</p>
+     * <p>An assignment of the same role that has already been saved stays editable (existing
+     * data).</p>
      *
-     * @param roleName die zu vergebende Rolle
-     * @return {@code true}, wenn gespeichert werden darf
+     * @param roleName the role to be granted
+     * @return {@code true} if saving is allowed
      */
     private boolean darfVergeben(String roleName) {
         if (security.ifGranted("ROLE_ROOT") || !PrivilegedRoleRules.isPrivileged(roleName)) {
@@ -182,12 +183,12 @@ public class RollenzuteilungBackingBean implements Serializable {
     }
 
     /**
-     * Die waehlbaren Rollen (Authority-Format {@code ROLE_<UPPERCASE>}): Union aus den von den
-     * Modulen DEKLARIERTEN Rollen ({@link PlaintextRoleRegistry}) und den bereits zugeteilten
-     * Rollen aus der Datenbank (Bestand — Rollen ohne Deklaration gehen nicht verloren).
-     * Ersetzt die fruehere hartcodierte Rollenliste.
+     * The selectable roles (authority format {@code ROLE_<UPPERCASE>}): the union of the roles
+     * DECLARED by the modules ({@link PlaintextRoleRegistry}) and the roles already assigned in the
+     * database (existing data — roles without a declaration are not lost).
+     * Replaces the former hard-coded role list.
      *
-     * @return sortierte, deduplizierte Rollennamen
+     * @return sorted, deduplicated role names
      */
     public List<String> getAvailableRoles() {
         TreeSet<String> roles = new TreeSet<>();

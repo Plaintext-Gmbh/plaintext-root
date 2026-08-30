@@ -8,13 +8,13 @@ import jakarta.persistence.Converter;
 import java.util.Set;
 
 /**
- * JPA-Converter fuer die (bereits gehashten) TOTP-Recovery-Codes.
+ * JPA converter for the (already hashed) TOTP recovery codes.
  *
- * <p>Analog zu {@link MyUserSetConverter} werden die Codes als XStream-XML in eine
- * einzelne VARCHAR-Spalte serialisiert. Bewusst NICHT {@code autoApply=true}: der
- * Recovery-Code-Set wird explizit per {@code @Convert} an der Entity annotiert, damit
- * die Zuordnung eindeutig bleibt und nicht versehentlich andere {@code Set<String>}-
- * Felder betrifft.
+ * <p>Analogously to {@link MyUserSetConverter} the codes are serialized as XStream XML into a
+ * single VARCHAR column. Deliberately NOT {@code autoApply=true}: the
+ * recovery code set is annotated explicitly on the entity with {@code @Convert}, so that
+ * the mapping stays unambiguous and does not accidentally affect other {@code Set<String>}
+ * fields.
  */
 @Converter
 public class RecoveryCodesConverter extends MyUserXstreamBaseJPAConverter<Set<String>> {

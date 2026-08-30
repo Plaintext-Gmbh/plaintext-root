@@ -4,36 +4,37 @@
 package ch.plaintext.bus;
 
 /**
- * Abonnent eines Event-Typs auf dem internen Bus. Alle Spring-Beans dieses Typs werden vom
- * Dispatcher automatisch eingesammelt (Standard-Collection-Injection, kein Classpath-Scan nötig —
- * analog {@code PlaintextCron}/{@code CronController}, aber ohne dessen Bean-Wrapping-Zeremonie, da
- * hier kein Zustand pro Mandant im Subscriber selbst gehalten wird).
+ * Subscriber to an event type on the internal bus. All Spring beans of this type are collected
+ * automatically by the dispatcher (standard collection injection, no classpath scan needed —
+ * analogous to {@code PlaintextCron}/{@code CronController}, but without its bean-wrapping
+ * ceremony, since no per-tenant state is held in the subscriber itself here).
  *
- * @param <T> Typ des Events, auf den dieser Subscriber hört
+ * @param <T> type of the event this subscriber listens for
  * @author info@plaintext.ch
  * @since 2026
  */
 public interface PlaintextBusSubscriber<T> {
 
-    /** Der Event-Typ, auf den dieser Subscriber hört (exakte Klasse, keine Subtyp-Erkennung). */
+    /** The event type this subscriber listens for (exact class, no subtype detection). */
     Class<T> eventType();
 
     /**
-     * Zustellungs-Scope dieses Subscribers — bestimmt, welche {@link PlaintextBusEvent#scope()}
-     * zugestellt werden (siehe {@link PlaintextEventBus} für die genaue Matrix). Default
-     * {@link ExecutionScope#MANDAT} (der haeufigste Fall: Business-Module reagieren pro Mandant).
+     * Delivery scope of this subscriber — determines which {@link PlaintextBusEvent#scope()}
+     * values are delivered (see {@link PlaintextEventBus} for the exact matrix). Defaults to
+     * {@link ExecutionScope#MANDAT} (the most common case: business modules react per tenant).
      */
     default ExecutionScope scope() {
         return ExecutionScope.MANDAT;
     }
 
     /**
-     * Wird für jedes zugestellte Event aufgerufen. Der Dispatcher hat vor dem Aufruf bereits einen
-     * zum Event passenden {@code SecurityContext} gesetzt (Mandant, bei {@link ExecutionScope#PERSOENLICH}
-     * auch Benutzer) — Implementierungen dürfen {@code PlaintextSecurityHolder} normal nutzen.
+     * Called for every delivered event. Before the call the dispatcher has already set a
+     * {@code SecurityContext} matching the event (tenant, and for
+     * {@link ExecutionScope#PERSOENLICH} the user as well) — implementations may use
+     * {@code PlaintextSecurityHolder} as usual.
      *
-     * @param payload das Event-Objekt
-     * @param ctx     der volle Envelope (für Metadaten wie {@code at}, falls benötigt)
+     * @param payload the event object
+     * @param ctx     the full envelope (for metadata such as {@code at}, if needed)
      */
     void onEvent(T payload, PlaintextBusEvent<T> ctx);
 }

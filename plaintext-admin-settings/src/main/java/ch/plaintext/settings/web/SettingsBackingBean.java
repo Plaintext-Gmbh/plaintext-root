@@ -39,9 +39,9 @@ public class SettingsBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped statt @ViewScoped): setzt die Rolle, sperrt Nicht-ROOT aus
-     * (Redirect) und lädt die Daten FRISCH bei jedem Seitenaufruf (GET). Der isPostback-Guard verhindert
-     * das Neuladen bei jedem Ajax-Postback. Ersetzt das frühere @PostConstruct init() + checkAccess().
+     * preRenderView listener (session-scoped instead of @ViewScoped): sets the role, locks out non-ROOT
+     * (redirect) and loads the data FRESH on every page call (GET). The isPostback guard prevents
+     * the reload on every Ajax postback. Replaces the former @PostConstruct init() + checkAccess().
      */
     public void onLoad() {
         root = security.ifGranted("ROLE_ROOT");
