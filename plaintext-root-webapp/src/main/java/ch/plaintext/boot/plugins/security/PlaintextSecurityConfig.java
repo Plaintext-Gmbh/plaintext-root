@@ -287,27 +287,8 @@ public class PlaintextSecurityConfig {
                             .includeSubDomains(true)
                             .preload(false)
                             .maxAgeInSeconds(31536000L)); // 1 Jahr
-                    headers.contentSecurityPolicy(csp -> csp
-                            .policyDirectives("default-src 'self'; " +
-                                    // SECURITY (Karte 314, Punkt 3): 'unsafe-eval' entfernt. Weder eigener
-                                    // JS-Code noch PrimeFaces 15 brauchen es (im Repo kein eval()/new Function()).
-                                    // 'unsafe-inline' bleibt vorerst: JSF/PrimeFaces rendert Inline-Handler und
-                                    // Inline-<script>-Bloecke; die Ablösung per Nonce ist ein eigener Umbau
-                                    // (siehe PR-Beschreibung, bewusst zurueckgestellt).
-                                    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; " +
-                                    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; " +
-                                    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org https://server.arcgisonline.com https://raw.githubusercontent.com https://wmts.geo.admin.ch https://unpkg.com; " +
-                                    "font-src 'self' data:; " +
-                                    "connect-src 'self' https://wmts.geo.admin.ch https://s3.amazonaws.com https://*.s3.amazonaws.com; " +
-                                    "worker-src 'self' blob:; " +
-                                    "frame-ancestors 'self'; " +
-                                    "base-uri 'self'; " +
-                                    // SECURITY (Karte 314, Punkt 3): form-action auf 'self' reduziert.
-                                    // Im gesamten Repo existiert kein Formular mit absoluter action-URL
-                                    // auf eine andere Domain; der OIDC-Flow verlaesst die Anwendung per
-                                    // 302-Redirect (GET), nicht per Formular-POST, und ist von
-                                    // form-action daher nicht betroffen.
-                                    "form-action 'self'"));
+                    headers.contentSecurityPolicy(csp -> csp.policyDirectives(
+                            cspPolicy(securityProperties.getCsp().isScriptUnsafeInline())));
                 })
                 .authorizeHttpRequests(authorize -> {
                     authorize
@@ -502,4 +483,60 @@ public class PlaintextSecurityConfig {
         services.setAlwaysRemember(securityProperties.isRememberMeOnOauth());
         return services;
     }
+
+    /**
+     * Baut die Content-Security-Policy zusammen.
+     *
+     * <p>Herausgezogen aus der Filterkette, weil {@code script-src} seit Welle 4 umschaltbar ist
+     * ({@code plaintext.security.csp.script-unsafe-inline}) und dieser eine Unterschied sonst in
+     * einem 20-zeiligen String-Konkat versteckt waere, den kein Test erreicht.
+     *
+     * <p><b>Warum das ueberhaupt ein Schalter ist.</b> Mit {@code 'unsafe-inline'} fuehrt der
+     * Browser jedes {@code <script>} aus, das im Dokument steht — auch ein eingeschleustes. Die
+     * uebrige Policy bleibt davon unberuehrt, aber gegen XSS wirkt sie an dieser Stelle nicht.
+     * Ohne {@code 'unsafe-inline'} laeuft nur JavaScript aus Dateien gleicher Herkunft. Der
+     * Schalter steht auf {@code true} (Bestandsverhalten) und wird app-weise umgelegt, sobald die
+     * jeweilige App kein eigenes Inline-JavaScript mehr hat — geprueft von
+     * {@code PlaintextInlineJsVertragTest} — und {@code joinfaces.primefaces.csp=true} gesetzt
+     * ist, damit PrimeFaces seine eigenen Handler herauszieht.
+     *
+     * <p><b>ACHTUNG, gemessen am 30.08.2026 gegen die laufende root-Anwendung:</b> Sobald
+     * {@code joinfaces.primefaces.csp=true} gesetzt ist, schreibt PrimeFaces auf jeder
+     * Faces-Seite einen EIGENEN {@code Content-Security-Policy}-Header und ERSETZT damit den
+     * hier gebauten — uebrig bleibt {@code script-src 'self' 'nonce-…';}, also weder
+     * {@code default-src} noch {@code frame-ancestors}, {@code form-action}, {@code img-src}
+     * oder {@code connect-src}. Auf Nicht-Faces-Pfaden (REST, Actuator, statische Dateien)
+     * bleibt dieser Header hier in Kraft. Wer den Schalter umlegt, muss PrimeFaces deshalb die
+     * vollstaendige Policy mitgeben ({@code joinfaces.primefaces.csp-policy}) — und dort MUSS
+     * {@code script-src} die LETZTE Direktive sein: PrimeFaces haengt das Nonce-Token schlicht
+     * ans Ende der Zeichenkette, es landet sonst in der falschen Direktive (nachgemessen:
+     * {@code … form-action 'self' 'nonce-…'}).
+     *
+     * @param scriptUnsafeInline {@code true} = {@code script-src} fuehrt {@code 'unsafe-inline'}
+     * @return vollstaendige Policy fuer den {@code Content-Security-Policy}-Header
+     */
+    static String cspPolicy(boolean scriptUnsafeInline) {
+        String unsafeInline = scriptUnsafeInline ? "'unsafe-inline' " : "";
+        return "default-src 'self'; " +
+                // SECURITY (Karte 314, Punkt 3): 'unsafe-eval' entfernt. Weder eigener
+                // JS-Code noch PrimeFaces 15 brauchen es (im Repo kein eval()/new Function()).
+                "script-src 'self' " + unsafeInline + "https://cdn.jsdelivr.net https://unpkg.com; " +
+                // style-src behaelt 'unsafe-inline': die Views tragen Hunderte style="…"-Attribute,
+                // und PrimeFaces schreibt Stile zur Laufzeit. Das ist ein eigener, deutlich
+                // groesserer Umbau — und ein Inline-Stil ist nicht dasselbe Risiko wie Inline-Code.
+                "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; " +
+                "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org https://server.arcgisonline.com https://raw.githubusercontent.com https://wmts.geo.admin.ch https://unpkg.com; " +
+                "font-src 'self' data:; " +
+                "connect-src 'self' https://wmts.geo.admin.ch https://s3.amazonaws.com https://*.s3.amazonaws.com; " +
+                "worker-src 'self' blob:; " +
+                "frame-ancestors 'self'; " +
+                "base-uri 'self'; " +
+                // SECURITY (Karte 314, Punkt 3): form-action auf 'self' reduziert.
+                // Im gesamten Repo existiert kein Formular mit absoluter action-URL
+                // auf eine andere Domain; der OIDC-Flow verlaesst die Anwendung per
+                // 302-Redirect (GET), nicht per Formular-POST, und ist von
+                // form-action daher nicht betroffen.
+                "form-action 'self'";
+    }
+
 }

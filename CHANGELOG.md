@@ -36,6 +36,40 @@ exhaustive.
   `plaintext-root-webapp` oder `plaintext-root-template` einen Null-Schutz im selben Dokument (das
   Benachrichtigungs-Gloeckchen in `includes/topbar.xhtml` hat einen; genau deshalb ist
   `plaintext-admin-notifications` abwaehlbar).
+- **Welle 4 (CSP ohne `'unsafe-inline'`) — Vorarbeit.** `plaintext.security.csp.script-unsafe-inline`
+  (Vorgabe `true` = bisheriges Verhalten) steuert, ob `script-src` das Token `'unsafe-inline'`
+  fuehrt. Solange es drinsteht, fuehrt der Browser JEDES `<script>` aus, das im Dokument steht —
+  auch ein eingeschleustes; die CSP ist an dieser Stelle kein XSS-Schutz. Die Policy wird jetzt in
+  `PlaintextSecurityConfig.cspPolicy(boolean)` gebaut, `PlaintextCspPolicyTest` prueft beide
+  Stellungen und dass sich dabei keine andere Direktive veraendert. **Umgelegt wird app-weise und
+  nicht in diesem PR** — Vorbedingung je App: `joinfaces.primefaces.csp=true` UND kein eigenes
+  Inline-JavaScript mehr im Markup.
+  **Befund fuer den Umschaltschritt (am 30.08.2026 an der laufenden root-Anwendung gemessen, nicht
+  hergeleitet):** mit `joinfaces.primefaces.csp=true` schreibt PrimeFaces auf JEDER Faces-Seite
+  einen eigenen `Content-Security-Policy`-Header und ersetzt den von Spring Security gebauten —
+  uebrig bleibt `script-src 'self' 'nonce-…';`, also weder `default-src` noch `frame-ancestors`,
+  `form-action`, `img-src` oder `connect-src`. Auf Nicht-Faces-Pfaden (REST, Actuator, statische
+  Dateien) bleibt der Spring-Header in Kraft. Das betrifft app, guild, iot und schuetu **heute
+  schon**, denn dort steht `csp: true` seit Langem. Wer umschaltet, muss PrimeFaces die
+  vollstaendige Policy mitgeben (`joinfaces.primefaces.csp-policy`), und dort muss `script-src`
+  die LETZTE Direktive sein — PrimeFaces haengt das Nonce ans Ende der Zeichenkette und es landet
+  sonst in der falschen Direktive (nachgemessen: `… form-action 'self' 'nonce-…'`).
+- Geteilter Test `PlaintextInlineJsVertragTest` (plaintext-root-archtests) mit zwei Regeln:
+  **(1)** `<script>`/`<h:outputScript>` MIT Rumpf statt ausgelagerter `.js`-Datei;
+  **(2)** `on…`-Attribut an einem Nicht-`p:`-Tag. `on…` an `p:`-Komponenten bleibt unbeanstandet:
+  `oncomplete`/`onstart`/`onerror` sind PrimeFaces-Ereignisse des Ajax-Lebenszyklus und gar keine
+  HTML-Attribute, und wo PrimeFaces wirklich einen HTML-Handler erzeugt (`onclick` an
+  `p:commandButton`), zieht der CSP-Modus ihn selbst heraus. Ausnahmen: `<!-- inline-js-ok -->` in
+  derselben Zeile oder Allowlist-Regel `inline-js`.
+  **Zwei Stellungen:** scharf nur mit `-Dplaintext.arch.inline-js=enforce` — so gesetzt im
+  Surefire-Block von `plaintext-root-webapp`. Ohne die Property meldet der Test nur auf
+  `System.err` und besteht. Damit wirft ein root-Release keinen Consumer-Build um, solange app,
+  guild, iot und schuetu ihren Altbestand noch bereinigen; wer durch ist, setzt dieselben zwei
+  Zeilen in seinem webapp-`pom.xml`.
+- `InlineJsLinter` (plaintext-root-common): der Scanner dazu. Blendet vor der Auswertung
+  XML-Kommentare sowie die Ruempfe von `<script>`/`<style>` aus — sonst zaehlen ein
+  `<img src=x onerror=…>` aus einem Erlaeuterungskommentar und eine JS-Eigenschaft wie
+  `xhr.onreadystatechange = …` als Verstoss.
 - i18n-Seed `plaintext-admin-i18n/src/main/resources/i18n/plaintext-root.csv`: 287 englische
   Vorbelegungen fuer jedes `i18n.t('…')` der root-Facelets (Zustandsbericht 29.08.2026, §4 — der
   Seed-Importer lief bisher bei jedem Start leer, familienweit gab es keine Seed-CSV; alle Texte
@@ -82,6 +116,16 @@ exhaustive.
   Startfehler an einer Stelle, die mit keinem der beiden Module zu tun hat. Am Verhalten der Apps
   aendert das nichts: sobald eine Bean da ist, spritzt Spring die Liste wie bisher, ohne sie bleibt
   das bereits initialisierte `new ArrayList<>()` stehen.
+- **root ist frei von Inline-JavaScript** (Welle 4): 15 Inline-Bloecke (13 `<script>` mit Rumpf,
+  2 `<h:outputScript>` mit Rumpf) und 16 echte HTML-Ereignisattribute sind ausgelagert. Neu unter
+  `plaintext-layout/js/`: `menu.js`, `topbar.js`, `global-search.js`, `primefaces-fixes.js`,
+  `pushstate.js`; neu unter der Bibliothek `plaintext-root`: `login.js`, `login-totp.js`,
+  `myuser.js`, `dashboard.js` (root-webapp), `cron.js`, `claudesummary.js`, `secrets.js`.
+  Serverseitige Werte kommen durchgaengig als `data-`-Attribut an ein Element statt als EL im
+  Skriptkoerper (`data-pt-pushstate`, `data-pt-redirect`, `data-pt-copy-target`,
+  `data-pt-delete-color`, `data-pt-config-aktion`, `data-pt-dropdown`, `data-pt-logout-form`).
+  Die 69 `on…`-Attribute an `p:`-Komponenten bleiben unveraendert — sie stehen dem scharfen Header
+  nicht im Weg.
 - `I18nService.importSeedTranslations()` und `I18nExportController` lesen CSV-Zeilen ueber
   `I18nSeedLinter` statt ueber je eine private Kopie des Parsers.
 - `plaintext-root-jpa` haengt nicht mehr an `plaintext-admin-sessions` (Zustandsbericht 29.08.2026,
@@ -91,6 +135,10 @@ exhaustive.
   `plaintext-root-webapp` deklariert `plaintext-admin-sessions` selbst.
 
 ### Fixed
+- Topbar: das Benachrichtigungs-Aufklappmenue reagierte nach 60 Sekunden nicht mehr. Sein
+  `<p:poll interval="60" update="@form"/>` ersetzt Glocke und Liste durch neue Elemente, der
+  Inline-Block hatte seine Zuhoerer aber einmalig an die urspruenglichen Knoten gehaengt. Die
+  ausgelagerte `topbar.js` bindet per Delegation am `document` und ueberlebt jedes Ajax-Update.
 - Session-Beans in `plaintext-admin-requirements` sind wieder serialisierbar:
   `AnforderungSettingsBackingBean.apiSettingsRepository`/`.claudeAutomationService` und
   `HowtoBackingBean.howtoRepository` sind `transient` (Regel `PlaintextSessionBeanSerialisierbarTest`,

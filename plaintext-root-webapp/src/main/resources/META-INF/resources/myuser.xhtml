@@ -6,21 +6,12 @@
                 xmlns="http://www.w3.org/1999/xhtml" template="includes/template.xhtml">
 
     <ui:define name="content">
-        <!-- VOR dem Formular, nicht darin: ein woertliches CDATA-Ende innerhalb von h:form
-             beendet die CDATA-Sektion jeder Ajax-Antwort vorzeitig; der Browser verwirft sie
-             dann stillschweigend (Karte 502, Ursache belegt in Karte 430). Der Block
-             registriert ohnehin nur globale Listener und gehoert nicht ins Formular. -->
-        <script type="text/javascript">
-            //<![CDATA[
-            // Advanced mode toggle via Ctrl+Shift+D
-            document.addEventListener('keydown', function(event) {
-                if (event.ctrlKey && event.shiftKey && event.key === 'D') {
-                    event.preventDefault();
-                    remoteToggleAdvancedMode();
-                }
-            });
-            //]]>
-        </script>
+        <!-- Der Code steht seit Welle 4 (CSP ohne 'unsafe-inline') in einer eigenen Datei. Damit
+             ist auch die alte Falle weg, die ihn hierher vor das Formular gezwungen hat: ein
+             woertliches CDATA-Ende innerhalb von h:form beendet die CDATA-Sektion jeder
+             Ajax-Antwort vorzeitig, und der Browser verwirft sie dann stillschweigend
+             (Karte 502, Ursache belegt in Karte 430). -->
+        <h:outputScript library="plaintext-root" name="js/myuser.js"/>
 
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>

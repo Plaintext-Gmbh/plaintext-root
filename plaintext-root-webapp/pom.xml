@@ -407,6 +407,16 @@
                         <exclude>**/SchlankerKontextTest.java</exclude>
                         <exclude>**/*$*</exclude>
                     </excludes>
+                    <systemPropertyVariables>
+                        <!-- PlaintextInlineJsVertragTest scharf schalten: kein Inline-JavaScript in den
+                             XHTML dieses Reactors (Welle 4, Vorbedingung fuer eine CSP ohne
+                             script-src 'unsafe-inline'). root ist bereinigt und bleibt es.
+                             Ohne diese Zeile laeuft der Test nur meldend — so kommt er bei den
+                             Consumern (app, guild, iot, schuetu) an, ohne deren Build umzuwerfen,
+                             solange dort noch Altbestand liegt. Wer bereinigt ist, setzt dieselben
+                             Zeilen in seinem webapp-pom. -->
+                        <plaintext.arch.inline-js>enforce</plaintext.arch.inline-js>
+                    </systemPropertyVariables>
                 </configuration>
                 <executions>
                     <!--

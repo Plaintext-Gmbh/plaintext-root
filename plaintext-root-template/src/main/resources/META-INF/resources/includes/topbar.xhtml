@@ -87,6 +87,7 @@
                     <ui:fragment rendered="#{i18nService != null and i18nService.i18nEnabled}">
                         <li class="topbar-item" style="position: relative;">
                             <a href="#" id="i18n-lang-button" title="Sprache wechseln"
+                               data-pt-dropdown="i18n-lang-dropdown"
                                aria-haspopup="true" aria-expanded="false">
                                 <i class="topbar-icon #{brandingBean.i18nIcon}" style="font-size: 1.5rem; color: var(--primary-color);"/>
                             </a>
@@ -110,20 +111,6 @@
                                     <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
                                 </h:form>
                             </ul>
-                            <script>
-                                (function() {
-                                    var btn = document.getElementById('i18n-lang-button');
-                                    var dd = document.getElementById('i18n-lang-dropdown');
-                                    if (!btn || !dd) return;
-                                    btn.addEventListener('click', function(e) {
-                                        e.preventDefault(); e.stopPropagation();
-                                        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
-                                    });
-                                    document.addEventListener('click', function(e) {
-                                        if (!btn.contains(e.target) &amp;&amp; !dd.contains(e.target)) dd.style.display = 'none';
-                                    });
-                                })();
-                            </script>
                         </li>
                     </ui:fragment>
 
@@ -132,6 +119,7 @@
                             <h:form id="notifFm" style="margin:0; padding:0; display:contents;">
                                 <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
                                 <a href="#" id="notif-bell-button" title="Benachrichtigungen"
+                                   data-pt-dropdown="notif-dropdown"
                                    aria-haspopup="true" aria-expanded="false">
                                     <i class="topbar-icon pi pi-bell" style="font-size:1.5rem"/>
                                     <ui:fragment rendered="#{notificationTopbarBean.ungelesenCount > 0}">
@@ -179,20 +167,6 @@
                                 </ul>
                                 <p:poll interval="60" update="@form" process="@this"/>
                             </h:form>
-                            <script>
-                                (function() {
-                                    var btn = document.getElementById('notif-bell-button');
-                                    var dd = document.getElementById('notif-dropdown');
-                                    if (!btn || !dd) return;
-                                    btn.addEventListener('click', function(e) {
-                                        e.preventDefault(); e.stopPropagation();
-                                        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
-                                    });
-                                    document.addEventListener('click', function(e) {
-                                        if (!btn.contains(e.target) &amp;&amp; !dd.contains(e.target)) dd.style.display = 'none';
-                                    });
-                                })();
-                            </script>
                         </li>
                     </ui:fragment>
 
@@ -204,6 +178,7 @@
 
                     <li class="topbar-item" style="position:relative;">
                         <a href="#" id="user-menu-button" aria-haspopup="true" aria-expanded="false"
+                           data-pt-dropdown="user-menu-dropdown" data-pt-dropdown-align="edge"
                            style="display:flex; align-items:center; justify-content:center;">
                             <i class="topbar-icon pi pi-user" style="font-size:1.5rem"/>
                         </a>
@@ -225,30 +200,10 @@
                                 </a>
                             </li>
                         </ul>
-                        <script>
-                            (function() {
-                                var btn = document.getElementById('user-menu-button');
-                                var dd = document.getElementById('user-menu-dropdown');
-                                if (!btn || !dd) return;
-                                btn.addEventListener('click', function(e) {
-                                    e.preventDefault(); e.stopPropagation();
-                                    var hidden = dd.style.display === 'none';
-                                    dd.style.display = hidden ? 'block' : 'none';
-                                    if (hidden) {
-                                        dd.style.left = '0'; dd.style.right = 'auto';
-                                        var r = dd.getBoundingClientRect();
-                                        if (r.right > window.innerWidth) dd.style.left = (-(r.right - window.innerWidth + 8)) + 'px';
-                                    }
-                                });
-                                document.addEventListener('click', function(e) {
-                                    if (!btn.contains(e.target) &amp;&amp; !dd.contains(e.target)) dd.style.display = 'none';
-                                });
-                            })();
-                        </script>
                     </li>
 
                     <li class="topbar-item">
-                        <a href="#" title="Abmelden" id="logoutLink"
+                        <a href="#" title="Abmelden" id="logoutLink" data-pt-logout-form="logoutForm"
                            style="display:flex; align-items:center; justify-content:center; padding:8px; cursor:pointer;">
                             <i class="topbar-icon pi pi-sign-out" style="font-size:1.5rem"/>
                         </a>
@@ -260,28 +215,7 @@
             <form id="logoutForm" method="post" action="#{request.contextPath}/logout" style="display:none;">
                 <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
             </form>
-            <script>
-                document.getElementById('logoutLink').addEventListener('click', function(e) {
-                    e.preventDefault();
-                    var form = document.getElementById('logoutForm');
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('POST', form.action, true);
-                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState === 4) {
-                            var loginUrl = form.action.replace('/logout', '/login.html');
-                            // Bei Erfolg folgt der XHR dem 302 -> responseURL zeigt auf /login.html.
-                            // Bei einem Fehler (z.B. 403) bleibt responseURL die /logout-URL -> NICHT dorthin
-                            // navigieren (GET /logout = 404), sondern auf die Login-Seite.
-                            var ok = xhr.status >= 200 &amp;&amp; xhr.status &lt; 400
-                                     &amp;&amp; xhr.responseURL &amp;&amp; xhr.responseURL.indexOf('/logout') === -1;
-                            window.location.href = ok ? xhr.responseURL : loginUrl;
-                        }
-                    };
-                    var csrf = form.querySelector('input[name="_csrf"]');
-                    xhr.send('_csrf=' + encodeURIComponent(csrf.value));
-                });
-            </script>
+            <h:outputScript name="js/topbar.js" library="plaintext-layout"/>
 
             </div>
         </nav>
@@ -389,181 +323,6 @@
         }
     </style>
 
-    <script>
-        //<![CDATA[
-        (function () {
-            var root = document.getElementById('global-search');
-            if (!root) return;
-            var input = document.getElementById('global-search-input');
-            var box = document.getElementById('global-search-results');
-            if (!input || !box) return;
-
-            var ctx = root.getAttribute('data-ctx') || '';
-            var EMPTY = root.getAttribute('data-empty') || 'Keine Treffer';
-            var HINT = root.getAttribute('data-hint') || '';
-            var debounceTimer = null;
-            var activeIndex = -1;
-            var items = [];      // flache Liste der aktuell gerenderten Treffer-Elemente
-            var lastQuery = '';
-
-            function esc(s) {
-                if (s == null) return '';
-                return String(s).replace(/[&<>"']/g, function (c) {
-                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-                });
-            }
-
-            function close() {
-                box.style.display = 'none';
-                box.innerHTML = '';
-                items = [];
-                activeIndex = -1;
-                input.setAttribute('aria-expanded', 'false');
-                root.classList.remove('gs-open'); // Mobile-Vollbreiten-Overlay einklappen (Desktop: no-op)
-            }
-
-            function openBox() {
-                box.style.display = 'block';
-                input.setAttribute('aria-expanded', 'true');
-            }
-
-            function navigate(link) {
-                if (!link) return;
-                var sep = link.charAt(0) === '/' ? '' : '/';
-                window.location.href = ctx + sep + link;
-            }
-
-            function render(groups) {
-                box.innerHTML = '';
-                items = [];
-                activeIndex = -1;
-                if (!groups || groups.length === 0) {
-                    var e = document.createElement('div');
-                    e.className = 'global-search-empty';
-                    e.textContent = EMPTY;
-                    box.appendChild(e);
-                    openBox();
-                    return;
-                }
-                groups.forEach(function (g) {
-                    var title = document.createElement('div');
-                    title.className = 'global-search-group-title';
-                    title.textContent = g.module;
-                    box.appendChild(title);
-                    (g.hits || []).forEach(function (h) {
-                        var a = document.createElement('a');
-                        a.className = 'global-search-item';
-                        a.setAttribute('role', 'option');
-                        a.href = '#';
-                        var iconCls = h.icon ? esc(h.icon) : 'pi pi-angle-right';
-                        a.innerHTML = '<i class="gs-icon ' + iconCls + '"></i>'
-                            + '<span class="gs-text">'
-                            + '<span class="gs-title">' + esc(h.title) + '</span>'
-                            + (h.subtitle ? '<span class="gs-sub">' + esc(h.subtitle) + '</span>' : '')
-                            + '</span>';
-                        var link = h.link;
-                        a.addEventListener('click', function (ev) { ev.preventDefault(); navigate(link); });
-                        box.appendChild(a);
-                        items.push(a);
-                    });
-                });
-                openBox();
-            }
-
-            function setActive(idx) {
-                if (items.length === 0) return;
-                if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].classList.remove('active');
-                activeIndex = (idx + items.length) % items.length;
-                var el = items[activeIndex];
-                el.classList.add('active');
-                el.scrollIntoView({ block: 'nearest' });
-            }
-
-            function doSearch(q) {
-                fetch(ctx + '/api/search?q=' + encodeURIComponent(q), {
-                    headers: { 'Accept': 'application/json' },
-                    credentials: 'same-origin'
-                }).then(function (r) {
-                    if (!r.ok) throw new Error('search failed: ' + r.status);
-                    return r.json();
-                }).then(function (data) {
-                    // Nur rendern, wenn die Antwort noch zur aktuellen Eingabe passt
-                    if (input.value.trim() !== q) return;
-                    render(data && data.groups ? data.groups : []);
-                }).catch(function () { close(); });
-            }
-
-            input.addEventListener('input', function () {
-                var q = input.value.trim();
-                if (debounceTimer) clearTimeout(debounceTimer);
-                if (q.length < 2) {
-                    if (q.length === 0) { close(); }
-                    else {
-                        box.innerHTML = '<div class="global-search-empty">' + esc(HINT) + '</div>';
-                        openBox();
-                    }
-                    lastQuery = q;
-                    return;
-                }
-                lastQuery = q;
-                debounceTimer = setTimeout(function () { doSearch(q); }, 200);
-            });
-
-            input.addEventListener('keydown', function (ev) {
-                if (ev.key === 'ArrowDown') { ev.preventDefault(); setActive(activeIndex + 1); }
-                else if (ev.key === 'ArrowUp') { ev.preventDefault(); setActive(activeIndex - 1); }
-                else if (ev.key === 'Enter') {
-                    if (activeIndex >= 0 && items[activeIndex]) { ev.preventDefault(); items[activeIndex].click(); }
-                } else if (ev.key === 'Escape') {
-                    input.blur(); close();
-                }
-            });
-
-            input.addEventListener('focus', function () {
-                if (items.length > 0) openBox();
-            });
-
-            document.addEventListener('click', function (ev) {
-                if (!root.contains(ev.target)) close();
-            });
-
-            // ── Mobile: eingeklappte Lupe antippen → Vollbreiten-Suchleiste öffnen ──
-            var mq = window.matchMedia('(max-width: 640px)');
-            function isMobile() { return mq.matches; }
-            var boxEl = root.querySelector('.global-search-box');
-            if (boxEl) {
-                boxEl.addEventListener('click', function () {
-                    if (isMobile() && !root.classList.contains('gs-open')) {
-                        root.classList.add('gs-open');
-                        input.focus();
-                    }
-                });
-            }
-            var closeBtn = root.querySelector('.global-search-close');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', function (ev) {
-                    ev.preventDefault(); ev.stopPropagation();
-                    input.value = '';
-                    input.blur();
-                    close();
-                });
-            }
-            // Beim Wechsel zurück auf Desktop-Breite das Overlay sicher einklappen
-            if (mq.addEventListener) {
-                mq.addEventListener('change', function (e) { if (!e.matches) root.classList.remove('gs-open'); });
-            }
-
-            // Globaler Cmd/Ctrl+K → Fokus auf das Suchfeld (auf Mobile zusätzlich Leiste öffnen)
-            document.addEventListener('keydown', function (ev) {
-                if ((ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K')) {
-                    ev.preventDefault();
-                    if (isMobile()) root.classList.add('gs-open');
-                    input.focus();
-                    input.select();
-                }
-            });
-        })();
-        //]]>
-    </script>
+    <h:outputScript name="js/global-search.js" library="plaintext-layout"/>
 
 </ui:composition>

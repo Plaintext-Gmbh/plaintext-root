@@ -101,6 +101,12 @@ joinfaces:
     number-of-views-in-session: 100
   primefaces:
     theme: none
+    # Vorbedingung fuer plaintext.security.csp.script-unsafe-inline=false (siehe dort): mit
+    # csp=true zieht PrimeFaces seine eigenen on…-Handler aus dem Markup und registriert sie
+    # ueber PrimeFaces.csp; seine eigenen Bloecke bekommen einen Nonce. app, guild, iot und
+    # schuetu setzen das seit Langem, die eigene root-Anwendung noch nicht — bewusst NICHT in
+    # diesem PR umgelegt, weil es Laufzeitverhalten aendert und im Browser nachzupruefen ist.
+    # csp: true
 
 # Secure by default: Swagger-UI und OpenAPI-Docs sind aus (verhindert API-Surface-/
 # Versions-Disclosure in PROD). Fuer DEV per Env SPRINGDOC_ENABLED=true einschaltbar.
@@ -139,6 +145,21 @@ plaintext:
     # mit remember-me-on-oauth=true bekommt JEDER Login einen Cookie, deshalb ist die
     # kuerzere Standardgueltigkeit die risikoaermere Voreinstellung.
     remember-me-validity: ${PLAINTEXT_SECURITY_REMEMBER_ME_VALIDITY:7d}
+    csp:
+      # Welle 4: script-src fuehrt bis auf Weiteres 'unsafe-inline' (Vorgabe true = Bestand).
+      # Solange das Token drinsteht, fuehrt der Browser JEDES <script> aus, das im Dokument
+      # steht — auch ein eingeschleustes; die CSP schuetzt an dieser Stelle also nicht.
+      #
+      # Zum Umlegen auf false gehoeren ZWEI Dinge, und beide muessen erfuellt sein:
+      #   1. joinfaces.primefaces.csp=true (siehe unten) — dann zieht PrimeFaces seine eigenen
+      #      Handler aus dem Markup und versieht seine Bloecke mit einem Nonce. Die vier
+      #      Anwendungen (app, guild, iot, schuetu) setzen das seit Langem; root selbst noch
+      #      nicht, das ist die offene Vorbedingung dieser App.
+      #   2. kein eigenes Inline-JavaScript im Markup. Das prueft PlaintextInlineJsVertragTest
+      #      (plaintext-root-archtests), fuer diesen Reactor scharf geschaltet ueber
+      #      plaintext.arch.inline-js=enforce im Surefire-Block von plaintext-root-webapp.
+      # Umgelegt wird app-weise, damit ein Fehlschlag eine App betrifft und nicht die Familie.
+      script-unsafe-inline: ${PLAINTEXT_SECURITY_CSP_SCRIPT_UNSAFE_INLINE:true}
     page-guard:
       # SECURITY (Karte 308): Haertung — Seiten-Zugriffsschutz fail-closed fuer DIESE App:
       # kein Menuetreffer -> verweigern, plus Vererbung der Eltern-Rollen. Voraussetzung ist,
