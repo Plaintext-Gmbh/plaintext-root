@@ -1,0 +1,241 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Woodpecker-Workflow: BROWSER-SMOKE (Playwright)
+#
+#  Entspricht dem Job `playwright` aus .github/workflows/playwright.yaml. Dieser
+#  Workflow haengt NICHT an der geteilten Pipeline und damit auch nicht am
+#  `ci-motor`-Waechter — er lief deshalb nach dem Umschalten auf Woodpecker als
+#  einziger Test-Workflow dieses Repos weiter auf dem NAS-Runner (belegt in den
+#  Runner-Logs vom 30.08.2026).
+#
+#  WAS ER TUT (nachgelesen, nicht aus dem Gedaechtnis): er startet KEINEN Browser
+#  gegen eine deployte Adresse. Es sind ZWEI JAVA-Integrationstests in
+#  plaintext-root-webapp — SelfServicePlaywrightIT (Selbstregistrierung und
+#  Passwort-Reset) und RootPagesPlaywrightIT (die Root-/Admin-Seiten: Menuediagnose,
+#  rootentities, Menue-Eintraege, Mailtexte). Beide fahren die komplette Spring-
+#  Anwendung auf einem zufaelligen Port hoch und bedienen sie mit Chromium.
+#  Node und die Playwright-NPM-Welt kommen darin NICHT vor; die Browser-Bindung
+#  ist com.microsoft.playwright (Java), Version 1.60.0 (plaintext-root-webapp/pom.xml).
+#
+#  Laeuft NUR, wenn `.ci-engine` im Repo-Root das Wort `woodpecker` enthaelt —
+#  siehe .woodpecker/waechter.sh und docs/CI-UMSCHALTEN.md.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── DAS IMAGE IST HIER DIE GANZE ENTSCHEIDUNG ─────────────────────────────────
+# `maven:3.9-eclipse-temurin-25`, das Bild aller anderen Workflows, hat weder einen
+# Browser noch die rund 40 System-Bibliotheken, die Chromium braucht (libnss3,
+# libgbm1, libasound2t64, ...). Drei Wege standen zur Wahl:
+#
+#   1. `maven:3.9-eclipse-temurin-25` + `playwright.CLI install --with-deps chromium`
+#      je Lauf — genau das, was die GitHub-Fassung tut (dort auf `ubuntu-latest`,
+#      also auf fremdem Strom). Kostet ein `apt-get install`
+#      ueber ~40 Pakete PLUS ~150 MB Chromium-Download bei JEDEM Lauf. Auf einem
+#      Agenten mit WOODPECKER_MAX_WORKFLOWS=2 sind das ein bis drei Minuten, in
+#      denen die Haelfte der CI-Kapazitaet nichts tut ausser herunterladen. Der
+#      Cache hilft nicht: der globale woodpecker-m2-Mount deckt /root/.m2 ab, die
+#      Browser landen in ~/.cache/ms-playwright und sterben mit dem Container.
+#
+#   2. `mcr.microsoft.com/playwright:v1.60.0-noble` — hat Browser und Systempakete,
+#      aber nur Node. Kein JDK, kein Maven. Fuer einen JAVA-Test unbrauchbar,
+#      ohne beides nachzuinstallieren.
+#
+#   3. Ein eigenes Image bauen und in eine Registry stellen. Loest das Problem,
+#      schafft aber ein zweites: ein Artefakt, das jemand bauen, versionieren und
+#      bei jedem JDK- oder Playwright-Sprung nachziehen muss.
+#
+# GEWAEHLT: `mcr.microsoft.com/playwright/java:v1.60.0-noble`. Microsoft
+# veroeffentlicht die Playwright-Images sprachspezifisch, und die Java-Variante ist
+# genau Weg 3, nur von Microsoft gepflegt. Am 30.08.2026 aus der Image-Config
+# nachgelesen (Registry-API, nicht geraten):
+#     JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64   (apt-Paket openjdk-25-jdk)
+#     Maven 3.9.12, verlinkt nach /usr/local/bin/mvn
+#     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright         (Chromium fertig entpackt)
+# JDK 25 ist Bedingung — die Projekte bauen auf `release 25`; die Java-Images der
+# Vorgaengerversionen brachten aeltere JDKs mit, und genau deshalb ist der Tag
+# gepinnt statt `latest`.
+#
+# DIE KOPPLUNG, DIE DARAUS ENTSTEHT: der Image-Tag MUSS die Playwright-Version aus
+# plaintext-root-webapp/pom.xml sein. Die Java-Bibliothek verlangt exakt den
+# Chromium-Build ihrer eigenen Version; steht im Bild ein anderer, laedt der Test
+# ihn zur Laufzeit nach (langsam) oder faellt um. Wer die Dependency hebt, hebt
+# den Tag mit. Die verfuegbaren Tags stehen unter
+# https://mcr.microsoft.com/v2/playwright/java/tags/list
+
+when:
+  # WIE AUF GITHUB, MINUS `push:master`.
+  #
+  # Die GitHub-Fassung feuert auf `pull_request`, auf `push:master` und auf
+  # `workflow_dispatch`. Der mittlere Ausloeser faellt hier weg, und zwar aus
+  # derselben Rechnung, die schon in build.yml steht: auf `master` laeuft
+  # deploy.yml (Release + Blue-Green), und der Agent hat ZWEI Slots. Ein
+  # Browser-Lauf von zehn bis zwanzig Minuten neben dem Deploy nimmt die Haelfte
+  # der Kapazitaet fuer eine Aussage, die der PR-Lauf ueber denselben Code schon
+  # getroffen hat. Auf GitHub war das gratis, weil vier Runner bereitstanden.
+  #
+  # Das ist eine bewusste, benannte Abschwaechung: nach einem Squash-Merge wird
+  # der Stand auf master nicht noch einmal im Browser geprueft. Wer sie
+  # zurueckhaben will, legt in der Woodpecker-Oberflaeche einen Cron an und
+  # ergaenzt hier `- event: cron` mit dessen Namen — NICHT `push:master`.
+  - event: pull_request
+  # `manual` = der "Run pipeline"-Knopf. Ohne diesen Eintrag verwirft Woodpecker
+  # den Lauf mit "filtered out all steps" (am 30.08.2026 im schuetu-Probelauf so
+  # passiert). Er ist die Entsprechung des `workflow_dispatch` von GitHub.
+  - event: manual
+
+# ── WARUM NACHEINANDER UND NICHT GLEICHZEITIG ─────────────────────────────────
+# Ohne diese Zeilen startet Woodpecker build.yml und diesen Workflow zusammen —
+# und belegt mit EINEM Pull Request beide Slots des einzigen Agenten. Ein Deploy,
+# der in derselben Minute kommt, wartet dann komplett.
+# So laeuft erst build.yml (Unit-Tests, ~10 min), danach dieser (~10-20 min): ein
+# Slot statt zwei, und ein Browser-Lauf wird gar nicht erst gestartet, wenn schon
+# die Unit-Tests rot sind.
+# UNTERSCHIED ZU GITHUB, DER BENANNT GEHOERT: dort sind es zwei voneinander
+# unabhaengige Workflows; ein roter Build hat den Playwright-Lauf NICHT verhindert.
+# Hier schon. Bei einem roten Build fehlt also die UI-Aussage.
+depends_on:
+  - build
+
+# Voller Klon mit Tags — gleich konfiguriert wie in build.yml, deploy.yml und den
+# beiden Verify-Workflows. Bewusst identisch, damit sich niemand darauf verlaesst,
+# dass "der andere Workflow es schon richtig macht".
+clone:
+  git:
+    image: woodpeckerci/plugin-git
+    settings:
+      partial: false
+      depth: 0
+      tags: true
+
+services:
+  # HIER STEHT MEHR ALS IN DER GITHUB-FASSUNG, UND DAS IST DER PUNKT.
+  # .github/workflows/playwright.yaml hat fuer root KEINE Datenbank — der Job laeuft
+  # dort auf `ubuntu-latest`, also als NORMALER Benutzer, und EmbeddedPg
+  # (plaintext-root-webapp, src/test) startet sich seinen eingebetteten Server dann
+  # selbst. guild und iot brauchen auf ihren self-hosted Runnern schon heute einen
+  # Postgres-Container, weil dort `initdb` als root den Dienst verweigert
+  # (gemessen 02.08.2026, PR #22).
+  #
+  # Der Woodpecker-Step laeuft ebenfalls als root. Ohne die drei
+  # SPRING_DATASOURCE_*-Variablen unten faellt der Lauf also mit einer
+  # initdb-Meldung um, die wie ein Umgebungsproblem des Agenten aussieht und keines
+  # ist. Genau dieselbe Begruendung steht in build.yml.
+  #
+  # WEGWERF-TESTDATENBANK — kein Geheimnis (Karte 812). Sie existiert nur fuer die
+  # Dauer dieses Laufs, ist von aussen nicht erreichbar und traegt keine echten Daten.
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: plaintext_root
+      POSTGRES_USER: plaintext
+      POSTGRES_PASSWORD: plaintext
+
+steps:
+  browser-smoke:
+    image: mcr.microsoft.com/playwright/java:v1.60.0-noble
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plaintext_root
+      SPRING_DATASOURCE_USERNAME: plaintext
+      SPRING_DATASOURCE_PASSWORD: plaintext
+      # Ressourcen-Leitplanke, wortgleich aus build.yml. Hier wiegt sie zusaetzlich,
+      # weil neben der Maven-JVM und dem Surefire-Fork noch ein Chromium im selben
+      # Container laeuft.
+      MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
+    commands:
+      - . .woodpecker/waechter.sh
+
+      # ── BROWSER-WAECHTER ────────────────────────────────────────────────────
+      # Der wichtigste Schritt dieser Datei, und auf GitHub gibt es ihn nicht.
+      # Beide IT-Klassen fangen einen Fehlschlag von Playwright.create() ab und
+      # rufen Assumptions.assumeTrue(false, "Chromium not installed: ...") — die
+      # ganze Klasse UEBERSPRINGT sich dann still, und der Lauf wird GRUEN.
+      # Ein Bild ohne Browser oder ein leergeraeumtes /ms-playwright erzeugt also
+      # kein rotes, sondern ein gruenes Ergebnis ohne einen einzigen Test. Diese
+      # Pruefung dreht das um: fehlt der Browser, bricht der Step hier ab.
+      - >-
+        bash -c 'if [ -z "$PLAYWRIGHT_BROWSERS_PATH" ]; then
+          echo "FEHLER: PLAYWRIGHT_BROWSERS_PATH ist leer." >&2;
+          echo "  Erwartet wird das Image mcr.microsoft.com/playwright/java:v<version>-noble," >&2;
+          echo "  das die Variable auf /ms-playwright setzt. Steht hier ein anderes Bild," >&2;
+          echo "  fehlt der Browser — und die IT-Klasse UEBERSPRINGT sich dann STILL." >&2;
+          exit 1;
+        fi;
+        if ! ls -d "$PLAYWRIGHT_BROWSERS_PATH"/chromium-* >/dev/null 2>&1; then
+          echo "FEHLER: kein Chromium unter $PLAYWRIGHT_BROWSERS_PATH." >&2;
+          echo "  Ohne Browser meldet dieser Lauf sonst GRUEN, ohne etwas geprueft zu haben." >&2;
+          exit 1;
+        fi;
+        echo "Chromium gefunden:"; ls -d "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*;
+        java -version; mvn -v | head -1'
+
+      # Warten, bis Postgres horcht. Woodpecker startet Services und Steps
+      # GLEICHZEITIG und kennt kein `--health-cmd`-Gate; ohne diese Schleife
+      # faellt der Lauf zwei Minuten spaeter mit einer PSQLException um, und die
+      # sieht aus wie ein Testfehler. Wortgleich aus build.yml.
+      - >-
+        bash -c 'for i in $(seq 1 60); do
+          (echo > /dev/tcp/postgres/5432) 2>/dev/null && { echo "postgres bereit nach $i Versuchen"; exit 0; };
+          sleep 2;
+        done;
+        echo "FEHLER: Service-Container postgres nach 120 s nicht erreichbar." >&2;
+        exit 1'
+
+      # Muss VOR dem Test laufen und ist auf GitHub genauso begruendet: legt die
+      # internen Module ins lokale Repository, damit der Reaktor sie beim
+      # `-pl plaintext-root-webapp`-Lauf aufloesen kann.
+      # KOSTEN, EHRLICH BENANNT: das ist derselbe `install`, den build.yml kurz
+      # vorher schon gefahren hat — die beiden Workflows teilen zwar /root/.m2
+      # (globaler Agent-Mount, inklusive ~/.m2/build-cache der
+      # maven-build-cache-extension), aber nicht das Workspace-Volume. Der
+      # Build-Cache faengt den groessten Teil ab, umsonst ist es trotzdem nicht.
+      # Die Alternative waere, den Browser-Test als weiteren STEP in build.yml zu
+      # haengen (Steps teilen das Workspace) — dann faerbt aber ein UI-Fehler den
+      # Build-Workflow rot, und genau das will die GitHub-Fassung ausdruecklich
+      # nicht ("does NOT block merges").
+      # Build-Cache AUS fuer diesen Step: mit Cache-Treffer wird das Webapp-Modul aus
+      # ~/.m2/build-cache "wiederhergestellt" — es gibt dann kein target/test-classes
+      # (PR-Lauf #16: "No tests matching pattern ... were executed") und die bei
+      # prepare-package entpackten Template-Facelets fehlen in target/classes (Lauf #14:
+      # "Facelet includes/template.xhtml not found", Root-Menue weg). Der Cache liegt im
+      # geteilten Volume woodpecker-m2 und ueberlebt Laeufe; der GitHub-Job kennt ihn nicht.
+      - mvn -B -q -DskipTests -Dmaven.build.cache.enabled=false install
+
+      # Wortgleich zum GitHub-Schritt "Run Playwright integration tests".
+      # Wie der GitHub-Schritt, um `test-compile` ergaenzt: dort laeuft der
+      # Reaktor ohne Build-Cache und `install` hat die Testklassen sicher gebaut.
+      # Hier kann die maven-build-cache-extension ein Modul aus dem Cache
+      # wiederherstellen; `test-compile` stellt sicher, dass target/test-classes
+      # wirklich existiert. Faende failsafe die genannten Klassen nicht, waere der
+      # Lauf trotzdem nicht still gruen — `failIfNoSpecifiedTests` steht per
+      # Vorgabe auf true und laesst `-Dit.test=<name>` ins Leere rot werden.
+      # Wortgleich zum GitHub-Job: NUR die Failsafe-Ziele, KEIN test-compile davor. Mit
+      # test-compile lief im PR-Lauf #14 (30.08.2026) die Lifecycle bis compile nochmals
+      # ("Recompiling the module because of changed source code") — danach fehlte
+      # target/classes/META-INF/resources/includes/template.xhtml (aus plaintext-root-template
+      # bei prepare-package entpackt), und jede Seite mit relativem template="includes/…"
+      # (index.xhtml u. a.) lief in "Facelet … not found": Root-Menue weg, drei Tests rot.
+      # Das `install` davor hat die Testklassen schon kompiliert (-DskipTests ueberspringt nur
+      # das Ausfuehren), test-compile ist hier ueberfluessig.
+      - >-
+        mvn -B -pl plaintext-root-webapp -Dmaven.build.cache.enabled=false
+        failsafe:integration-test failsafe:verify
+        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT
+
+  berichte-bei-fehlschlag:
+    image: mcr.microsoft.com/playwright/java:v1.60.0-noble
+    # Ersatz fuer `actions/upload-artifact` mit `if: failure()`. Woodpecker hat
+    # keinen Artefakt-Speicher — die Berichte gehen deshalb ins Step-Log statt in
+    # einen Download. Das ist der ehrliche Ersatz, keine gleichwertige Funktion
+    # (siehe docs/CI-UMSCHALTEN.md, "Was Woodpecker nicht kann").
+    when:
+      - status: [failure]
+    commands:
+      - . .woodpecker/waechter.sh
+      - >-
+        bash -c 'gefunden=0;
+        for f in plaintext-root-webapp/target/failsafe-reports/*.txt plaintext-root-webapp/target/surefire-reports/*.txt; do
+          [ -f "$f" ] || continue;
+          gefunden=1;
+          echo "──────── $f ────────";
+          cat "$f";
+        done;
+        [ "$gefunden" = "1" ] || echo "Keine Testberichte vorhanden — der Lauf ist vor den Tests abgebrochen."'
