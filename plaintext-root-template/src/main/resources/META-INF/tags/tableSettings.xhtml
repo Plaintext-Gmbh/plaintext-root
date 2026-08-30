@@ -1,0 +1,232 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:c="jakarta.tags.core"
+                xmlns:fn="jakarta.tags.functions"
+                xmlns:a="jakarta.faces.passthrough"
+                xmlns:p="http://primefaces.org/ui">
+    <!--
+      pt:tableSettings — der Bedienbereich einer Tabelle: Profile, Spaltenwahl, Spaltenbreiten.
+
+      WARUM ALS TAG UND NICHT ALS KOPIERVORLAGE:
+      Diese Bedienung ist rund 300 Zeilen Markup, davon die Haelfte Ajax-Verdrahtung. Wer sie
+      kopiert, kopiert auch die Fehler mit — und repariert sie danach an einer Stelle. Im Bestand
+      einer einzigen App standen drei Seiten mit derselben Einblendung und drei verschiedenen
+      Standen: eine ohne Breiten-Zuruecksetzen, eine mit einem Profil-Dialog ohne Abbrechen, eine
+      mit layout="grid" am selectManyCheckbox (das in PrimeFaces 15 eine FacesException wirft und
+      die Seite weiss laesst — auf Produktion aufgefallen, nicht im Build).
+
+      DER GEGENPART IN JAVA: ch.plaintext.boot.web.table.TableSettings aus plaintext-root-web.
+      Das Tag rendert nur; alles, was es abfragt, steht dort. Wer das Tag benutzt, braucht also
+      BEIDE Module — plaintext-root-template fuer die Taglib und plaintext-root-web fuer die
+      Klasse. Die Ablage des Benutzerstands stellt die App selbst ueber TableStateStore.
+
+      PFLICHT:
+        anzeige   das TableSettings-Objekt der Seite, z.B. #{projektBackingBean.anzeige}
+        tabelle   Suchausdruck der Tabelle fuer die Ajax-Updates, z.B. ":fm:tbl".
+                  ABSOLUT angeben (fuehrender Doppelpunkt), sonst findet ein Update die Tabelle
+                  nicht, sobald Bereich und Tabelle in verschiedenen NamingContainern liegen.
+
+      OPTIONAL:
+        settingsId    Praefix fuer die eigenen Komponenten-IDs; Vorgabe "anz". Nur noetig, wenn
+                      zwei Bedienbereiche auf derselben Seite stehen.
+        tabelleDomId  DOM-Id der Tabelle fuer das Skript; Vorgabe: tabelle ohne fuehrenden
+                      Doppelpunkt. Nur noetig, wenn "tabelle" kein einfacher Pfad ist
+                      (@widgetVar(...), @form und aehnliche PrimeFaces-Suchausdruecke).
+        legend        Beschriftung des Bereichs; Vorgabe "Anzeige".
+        spalten       Spalten im Kaestchen-Raster; Vorgabe 4.
+
+      Der RUMPF des Tags wird als zusaetzliche Schnellschalter neben "Alle" und "Standard"
+      gerendert — dort gehoeren seitenspezifische Knoepfe hin ("Nur Pflichtspalten", ...).
+
+      WARUM DIE EIGENEN UPDATES RELATIV SIND (":fm:cols" waere falsch):
+      Alle Komponenten dieses Tags liegen im selben NamingContainer wie die Knoepfe, die sie
+      aktualisieren — ein relativer Ausdruck findet sie deshalb immer, auch innerhalb eines
+      p:tabView oder eines beliebig benannten Formulars. Mit fest verdrahteten ":fm:"-Pfaden
+      liess sich der Bereich nicht in einen Reiter stellen; das war der Grund, warum er in einer
+      App aus dem tabView herausgezogen werden musste.
+
+      Ein Tag-File wird beim Baumaufbau inline expandiert — es entsteht KEIN NamingContainer, und
+      die IDs unten liegen wirklich im umgebenden Formular. Genau deshalb funktioniert das hier
+      und mit einer Composite Component nicht.
+    -->
+    <c:set var="ptSettingsId" value="#{empty settingsId ? 'anz' : settingsId}"/>
+    <c:set var="ptTabelleDom" value="#{empty tabelleDomId
+                                       ? (fn:startsWith(tabelle, ':') ? fn:substring(tabelle, 1, -1) : tabelle)
+                                       : tabelleDomId}"/>
+
+    <!-- Die Klammer um alles: sie traegt die data-Attribute und ist zugleich der Suchraum des
+         Skripts. Ohne sie muesste js/table-settings.js die zusammengehoerigen Teile ueber IDs
+         finden — und zwei Bedienbereiche auf einer Seite waeren nicht auseinanderzuhalten. -->
+    <h:panelGroup layout="block" styleClass="pt-tablesettings-wrap"
+                  a:data-pt-tablesettings="#{ptTabelleDom}"
+                  a:data-pt-remote="#{anzeige.mitBreiten ? ptSettingsId.concat('MeldeSpaltenbreite') : ''}">
+
+    <p:fieldset id="#{ptSettingsId}-cols" legend="#{empty legend ? 'Anzeige' : legend}"
+                toggleable="true"
+                collapsed="#{anzeige.colsCollapsed}"
+                styleClass="pt-tablesettings"
+                style="margin-bottom:12px;">
+        <p:ajax event="toggle" process="@this" listener="#{anzeige.onColsToggle}"/>
+
+        <!-- Profile: Breiten und Spaltenauswahl unter einem Namen. Auswaehlen wendet sofort an;
+             jede spaetere Aenderung landet automatisch im aktiven Profil. Ein eigener
+             Sichern-Knopf waere eine zusaetzliche Handlung fuer etwas, das niemand bewusst
+             verwerfen will. -->
+        <h:panelGroup layout="block" styleClass="pt-tablesettings-block">
+            <h:outputText value="Profil:" styleClass="pt-tablesettings-label"/>
+
+            <p:selectOneMenu id="#{ptSettingsId}-profileSelect" value="#{anzeige.selectedProfile}"
+                             style="margin-right:6px; min-width:200px;">
+                <f:selectItems value="#{anzeige.profileNames}"/>
+                <p:ajax event="change" process="@this"
+                        listener="#{anzeige.onProfileSelected()}"
+                        update="#{tabelle} #{ptSettingsId}-cols #{ptSettingsId}-meldung"/>
+            </p:selectOneMenu>
+
+            <p:commandButton value="Neu" icon="pi pi-plus"
+                             process="@this" update="#{ptSettingsId}-profileDialog"
+                             oncomplete="PF('#{ptSettingsId}ProfileDlg').show();"
+                             title="Ein neues Profil aus dem aktuellen Stand anlegen"
+                             style="margin-right:6px;"/>
+
+            <p:commandButton value="Löschen" icon="pi pi-trash"
+                             action="#{anzeige.deleteProfile()}"
+                             process="@this #{ptSettingsId}-profileSelect"
+                             update="#{tabelle} #{ptSettingsId}-profileSelect #{ptSettingsId}-meldung"
+                             rendered="#{anzeige.profileActive}"
+                             styleClass="ui-button-secondary"
+                             title="Nur das Profil entfernen - der aktuelle Stand bleibt"/>
+
+            <h:outputText value="Änderungen an der Anzeige werden im aktiven Profil gesichert."
+                          styleClass="pt-tablesettings-hint"/>
+
+            <h:panelGroup id="#{ptSettingsId}-meldung">
+                <h:outputText value="#{anzeige.meldung}"
+                              rendered="#{not empty anzeige.meldung}"
+                              styleClass="pt-tablesettings-meldung"/>
+            </h:panelGroup>
+
+            <!-- Die Gesamtbreite ist das, worauf sich die Spalten verteilen; leer heisst: Summe
+                 der Spalten, die Tabelle waechst beim Ziehen mit. Nur auf Seiten mit festen
+                 Spaltenbreiten. -->
+            <h:panelGroup layout="block" style="margin-top:10px;"
+                          rendered="#{anzeige.mitBreiten}">
+                <h:outputText value="Gesamtbreite:" styleClass="pt-tablesettings-label"/>
+                <p:inputNumber id="#{ptSettingsId}-totalWidth" value="#{anzeige.gesamtBreite}"
+                               decimalPlaces="0" symbol=" px" symbolPosition="s"
+                               minValue="200" maxValue="20000"
+                               style="width:120px; margin-right:6px;"
+                               title="Breite, auf die sich alle sichtbaren Spalten verteilen">
+                    <p:ajax event="change" process="@this"
+                            listener="#{anzeige.onGesamtBreiteChange()}"
+                            update="#{tabelle}"/>
+                </p:inputNumber>
+
+                <p:commandButton id="#{ptSettingsId}-breitenKnopf"
+                                 value="#{anzeige.breitenKnopfText}"
+                                 icon="pi pi-refresh"
+                                 action="#{anzeige.breitenKnopfGedrueckt()}"
+                                 process="@this"
+                                 update="#{tabelle} #{ptSettingsId}-totalWidth #{ptSettingsId}-breitenKnopf #{ptSettingsId}-meldung"
+                                 styleClass="ui-button-secondary"
+                                 title="Weicht die Angabe von der Summe ab, werden die Spalten darauf umgerechnet - sonst folgt die Breite wieder den Spalten"/>
+
+                <p:commandButton value="Breiten zurücksetzen" icon="pi pi-undo"
+                                 action="#{anzeige.resetColumnWidths()}"
+                                 process="@this"
+                                 update="#{tabelle} #{ptSettingsId}-totalWidth #{ptSettingsId}-meldung"
+                                 styleClass="ui-button-secondary" style="margin-left:6px;"
+                                 title="Alle Spaltenbreiten auf die Vorgaben der Seite zuruecksetzen"/>
+
+                <h:outputText value="Leer lassen heisst: Summe der Spalten."
+                              styleClass="pt-tablesettings-hint"/>
+            </h:panelGroup>
+
+            <!-- Zweite Breite: auf diesen Wert setzt der kleine Knopf im Spaltenkopf eine einzelne
+                 Spalte. Von Hand ziehen trifft nie zweimal denselben Pixelwert — untereinander
+                 stehende Tabellen sahen deshalb nie gleich aus. -->
+            <h:panelGroup layout="block" style="margin-top:8px;"
+                          rendered="#{anzeige.mitBreiten}">
+                <h:outputText value="Spaltenbreite:" styleClass="pt-tablesettings-label"/>
+                <p:inputNumber id="#{ptSettingsId}-targetWidth" value="#{anzeige.zielSpaltenBreite}"
+                               decimalPlaces="0" symbol=" px" symbolPosition="s"
+                               minValue="44" maxValue="4000"
+                               styleClass="pt-tablesettings-zielbreite"
+                               style="width:120px; margin-right:6px;"
+                               title="Breite, auf die der Knopf im Spaltenkopf eine Spalte setzt">
+                    <p:ajax event="change" process="@this"
+                            listener="#{anzeige.onZielSpaltenBreiteChange()}"
+                            update="#{tabelle}"/>
+                </p:inputNumber>
+                <h:outputText value="Der Knopf im Spaltenkopf setzt eine Spalte auf diesen Wert."
+                              styleClass="pt-tablesettings-hint"/>
+            </h:panelGroup>
+        </h:panelGroup>
+
+        <!-- Schnellschalter: die beiden gemeinsamen zuerst, danach die seitenspezifischen aus dem
+             Rumpf des Tags. Die Reihenfolge ist bewusst fix — sie ist der Grund, warum die
+             Bedienung auf jeder Seite gleich aussieht. -->
+        <h:panelGroup layout="block" style="margin-bottom:10px;">
+            <p:commandButton value="Alle" icon="pi pi-check-square"
+                             action="#{anzeige.alleSpaltenEin()}"
+                             update="#{tabelle} #{ptSettingsId}-cols" process="@this"
+                             styleClass="ui-button-secondary" style="margin-right:6px;"/>
+            <p:commandButton value="Standard" icon="pi pi-undo"
+                             action="#{anzeige.standardSpalten()}"
+                             update="#{tabelle} #{ptSettingsId}-cols" process="@this"
+                             styleClass="ui-button-secondary" style="margin-right:6px;"/>
+            <ui:insert/>
+        </h:panelGroup>
+
+        <!-- layout="responsive", NICHT "grid": PrimeFaces 15 prueft den Wert und wirft fuer
+             "grid" eine FacesException beim Rendern. Die Seite blieb damit weiss, und der Build
+             blieb gruen — aufgefallen erst auf Produktion (29.08.2026). -->
+        <p:selectManyCheckbox id="#{ptSettingsId}-colChooser" value="#{anzeige.visibleColumns}"
+                              layout="responsive" columns="#{empty spalten ? 4 : spalten}"
+                              styleClass="ui-noborder">
+            <f:selectItems value="#{anzeige.columnItems}"/>
+            <p:ajax update="#{tabelle}" process="@this" listener="#{anzeige.persist()}"/>
+        </p:selectManyCheckbox>
+    </p:fieldset>
+
+    <p:dialog header="Neues Profil" widgetVar="#{ptSettingsId}ProfileDlg" modal="true"
+              resizable="false" width="380" id="#{ptSettingsId}-profileDialog">
+        <h:panelGroup layout="block" style="padding:8px 0;">
+            <h:outputText value="Name für das neue Profil:" style="margin-right:8px;"/>
+            <p:inputText id="#{ptSettingsId}-newProfileName" value="#{anzeige.newProfileName}"
+                         style="width:100%; margin-top:6px;"/>
+        </h:panelGroup>
+        <f:facet name="footer">
+            <p:commandButton value="Anlegen" icon="pi pi-check"
+                             action="#{anzeige.createProfile()}"
+                             process="@this #{ptSettingsId}-newProfileName"
+                             update="#{ptSettingsId}-profileSelect #{ptSettingsId}-meldung"
+                             oncomplete="PF('#{ptSettingsId}ProfileDlg').hide();"/>
+            <p:commandButton value="Abbrechen" type="button"
+                             styleClass="ui-button-secondary"
+                             onclick="PF('#{ptSettingsId}ProfileDlg').hide();"/>
+        </f:facet>
+    </p:dialog>
+
+    <!-- Setzen-Knopf in jedem Spaltenkopf: setzt die Spalte auf die eingestellte Spaltenbreite.
+         Der Server rendert die Tabelle danach mit den neuen Breiten — kein clientseitiges
+         Nachrechnen noetig, p:dataTable kann resizeMode="expand" von Haus aus.
+
+         Die Anbindung laeuft ueber data-Attribute an diesem Anker und nicht ueber feste IDs im
+         Skript: das haelt js/table-settings.js frei von Annahmen ueber Formularnamen und macht
+         zwei Bedienbereiche auf einer Seite moeglich. Muster: data-pt-dropdown in topbar.js. -->
+    <h:panelGroup rendered="#{anzeige.mitBreiten}">
+        <p:remoteCommand name="#{ptSettingsId}MeldeSpaltenbreite" process="@this"
+                         actionListener="#{anzeige.onSpaltenbreiteGemeldet}"
+                         update="#{tabelle} #{ptSettingsId}-totalWidth"
+                         ignoreAutoUpdate="true"/>
+
+        <h:outputStylesheet library="plaintext-layout" name="css/table-settings.css"/>
+        <h:outputScript library="plaintext-layout" name="js/table-settings.js" target="body"/>
+    </h:panelGroup>
+
+    </h:panelGroup>
+
+</ui:composition>

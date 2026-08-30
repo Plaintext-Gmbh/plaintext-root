@@ -54,4 +54,12 @@
         <source>tags/deleteButton.xhtml</source>
     </tag>
 
+    <!-- Bedienbereich einer Tabelle: Profile, Spaltenwahl, Spaltenbreiten.
+         Braucht zusaetzlich plaintext-root-web (ch.plaintext.boot.web.table.TableSettings) —
+         als einziges Tag dieser Taglib ist es nicht rein deklarativ. -->
+    <tag>
+        <tag-name>tableSettings</tag-name>
+        <source>tags/tableSettings.xhtml</source>
+    </tag>
+
 </facelet-taglib>
