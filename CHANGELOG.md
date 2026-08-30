@@ -88,6 +88,14 @@ exhaustive.
   steht in der Seed. Begruendete Luecken kommen in `BEGRUENDETE_LUECKEN` (heute leer). Ergaenzt
   `PlaintextI18nSeedTest`, der nur die andere Achse prueft (jedes `i18n.t('…')` hat eine
   `en`-Zeile), aber nicht, ob derselbe Schluessel auch auf fr/it vorliegt.
+- ADR-0008 `docs/adr/0008-vertragsbesitz-und-split-packages.md`: Messung des Vertragsbesitzes in
+  `plaintext-root-interfaces` und der Split-Packages der ganzen Familie (Zustandsbericht
+  29.08.2026, §3 — Welle 3). Ergebnis: 41 der 42 Vertraege sind Framework und bleiben; die
+  Fachbegriffe im Modul stehen ausschliesslich in Javadoc-Beispielen, nicht in Signaturen. 29
+  Pakete werden von mehr als einem Modul befuellt, davon sind die meisten das gewollte Muster
+  „Vertrag im Interface-Modul, Implementierung im Fachmodul"; sie bleiben. Familienweit gibt es
+  genau eine Namenskollision (`ForwardedHeaderConfig`, dreimal identisch in app-, guild- und
+  iot-webapp), und die ist folgenlos, weil die drei Kopien nie einen Klassenpfad teilen.
 - i18n-Seed `plaintext-admin-i18n/src/main/resources/i18n/plaintext-root.csv`: 287 englische
   Vorbelegungen fuer jedes `i18n.t('…')` der root-Facelets (Zustandsbericht 29.08.2026, §4 — der
   Seed-Importer lief bisher bei jedem Start leer, familienweit gab es keine Seed-CSV; alle Texte
@@ -200,6 +208,18 @@ exhaustive.
 - `plaintext-root-webapp` misst ehrlich: ausgeschlossen sind nur `RootBootApplication`, die leeren
   `@MenuAnnotation`-Deklarationen und fuenf reine `@Bean`-Verdrahtungen ohne Verzweigung (je Gruppe
   mit Grund in der pom); `PlaintextSecurityConfig` & Co. bleiben drin.
+
+### Deprecated
+- `ch.plaintext.upload.IUploadTarget` (plaintext-root-interfaces) ist `@Deprecated(forRemoval =
+  true)`: der einzige Vertrag des Moduls, der App-Fachlichkeit ist. Kein Modul in root nutzt ihn,
+  beide Implementierungen (`PostkontoUploadTarget`, `RunningUploadTarget`) und der treibende
+  `RootUploadController` liegen in plaintext-app, und guild/iot/schuetu kennen ihn nicht — der
+  Endpunktname `/nosec/root/upload` hatte eine Root-Zustaendigkeit vorgetaeuscht, die es nie gab.
+  Der Nachfolger liegt unter **demselben** voll qualifizierten Namen in `plaintext-app-interfaces`
+  (plaintext-app PR „IUploadTarget nach app-interfaces"), Konsumenten aendern also keine Importe.
+  **Noch nicht entfernt:** app ist auf eine veroeffentlichte root-Version gepinnt; geloescht wird
+  erst, wenn app seinen eigenen Vertrag released hat und auf eine root-Version ohne diese Kopie
+  gepinnt ist. Reihenfolge zwingend: erst app, dann die Loeschung hier.
 
 ## [1.635.0] — 2026-08-29
 
