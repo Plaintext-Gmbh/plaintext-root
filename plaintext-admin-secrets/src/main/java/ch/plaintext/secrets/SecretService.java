@@ -53,8 +53,20 @@ public class SecretService implements SecretResolver {
     }
 
     /**
-     * Secret setzen/anlegen (one-way). LOCAL_DB → AES-GCM in {@code wert_encrypted}; VAULTWARDEN → in den
-     * Tresor schreiben. Metadaten (Name, Backend, Notiz, {@code createdDate}=Neueintragung) in secret_entry.
+     * Secret setzen/anlegen (one-way). LOCAL_DB → AES-GCM in {@code wert_encrypted}; VAULTWARDEN und
+     * HASHICORP → in den jeweiligen Tresor schreiben. Metadaten (Name, Backend, Notiz,
+     * {@code createdDate}=Neueintragung) in secret_entry.
+     *
+     * <p><b>Das Backend hängt am Eintrag, nicht an der Instanz</b> (siehe {@link #resolve(String)}):
+     * Ein einzelner Eintrag kann auf HASHICORP stehen, während alle anderen bleiben, wo sie sind.
+     * Genau das macht das Umhängen eines Secrets einzeln und rückholbar — der Rückweg ist ein
+     * erneutes {@code set} mit dem alten Backend, ohne {@link #migrate(SecretBackendType, String)}
+     * über den ganzen Bestand.</p>
+     *
+     * <p>Karte 855: HASHICORP warf hier bis zum 30.08.2026 {@code UnsupportedOperationException}
+     * („Phase 4"), obwohl {@link HashiCorpVaultBackend#set(String, String, String)} existierte und
+     * {@link #readValue(SecretEntry)} das Backend längst las. Lesen ging, Schreiben nicht — ein
+     * Eintrag liess sich damit nur per Hand in der Datenbank auf HASHICORP stellen.</p>
      */
     @Transactional
     public SecretEntry set(String name, SecretBackendType backend, String value, String note) {
@@ -73,15 +85,19 @@ public class SecretService implements SecretResolver {
         if (note != null) {
             entry.setNote(note);
         }
-        if (backend == SecretBackendType.LOCAL_DB) {
-            entry.setWertEncrypted(value == null ? entry.getWertEncrypted() : crypto.encrypt(value));
-        } else if (backend == SecretBackendType.VAULTWARDEN) {
-            if (value != null && !value.isEmpty()) {
-                vaultwarden.set(name, value, note);
+        // switch über das Enum statt if/else: der Compiler erzwingt, dass ein künftiges Backend hier
+        // behandelt wird, statt still in einen else-Zweig zu fallen.
+        switch (backend) {
+            case LOCAL_DB -> entry.setWertEncrypted(
+                    value == null ? entry.getWertEncrypted() : crypto.encrypt(value));
+            case VAULTWARDEN, HASHICORP -> {
+                // Leerer Wert = nur Metadaten ändern (Notiz, Backend-Wechsel eines schon abgelegten
+                // Werts). Ein Schreibaufruf mit leerem Wert würde den Tresor-Eintrag überschreiben.
+                if (value != null && !value.isEmpty()) {
+                    backendFor(backend).set(name, value, note);
+                }
+                entry.setWertEncrypted(null);
             }
-            entry.setWertEncrypted(null);
-        } else {
-            throw new UnsupportedOperationException("Backend " + backend + " noch nicht implementiert (Phase 4)");
         }
         return entryRepo.save(entry);
     }
