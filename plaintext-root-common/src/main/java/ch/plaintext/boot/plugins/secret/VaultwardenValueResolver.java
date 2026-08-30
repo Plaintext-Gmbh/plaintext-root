@@ -36,6 +36,21 @@ class VaultwardenValueResolver {
     /** Wert-Prefix, das eine Tresor-Referenz kennzeichnet. */
     static final String VAULT_PREFIX = "vault:";
 
+    /**
+     * Zweites Wert-Prefix: derselbe Mechanismus, aber gegen OpenBao statt Vaultwarden
+     * (Karte 995). Syntax: {@code bao:<pfad>} oder {@code bao:<pfad>#<feld>}; ohne Feld gilt
+     * {@code value}.
+     *
+     * <p><b>Additiv, und das ist Absicht:</b> Jeder bestehende {@code vault:}-Wert bleibt
+     * unveraendert und laeuft weiter ueber Vaultwarden. Eine Property wandert einzeln, indem ihr
+     * Wert von {@code vault:} auf {@code bao:} umgeschrieben wird — kein Stichtag, kein
+     * Big-Bang, und der Rueckweg ist dieselbe Zeile rueckwaerts.</p>
+     */
+    static final String BAO_PREFIX = "bao:";
+
+    /** Feld, das eine {@code bao:}-Referenz ohne Selektor liest. */
+    static final String BAO_DEFAULT_FELD = "value";
+
     /** Selektor-Trenner zwischen Item-Name und Feld-Selektor. */
     private static final char SELECTOR_SEP = '#';
 
@@ -68,23 +83,36 @@ class VaultwardenValueResolver {
     }
 
     private final Supplier<VaultwardenSecretService> serviceSupplier;
+    /** Liefert den OpenBao-Client — lazy wie der Vaultwarden-Service, und aus demselben Grund. */
+    private final Supplier<OpenBaoClient> baoSupplier;
     private final Schlaefer schlaefer;
     /** Pro Boot aufgeloeste Werte (Key = kompletter Roh-Wert inkl. {@code vault:}-Prefix). */
     private final Map<String, String> cache = new ConcurrentHashMap<>();
     private volatile VaultwardenSecretService service;
 
     VaultwardenValueResolver(Supplier<VaultwardenSecretService> serviceSupplier) {
-        this(serviceSupplier, Thread::sleep);
+        this(serviceSupplier, () -> null, Thread::sleep);
     }
 
     VaultwardenValueResolver(Supplier<VaultwardenSecretService> serviceSupplier, Schlaefer schlaefer) {
+        this(serviceSupplier, () -> null, schlaefer);
+    }
+
+    VaultwardenValueResolver(Supplier<VaultwardenSecretService> serviceSupplier,
+                             Supplier<OpenBaoClient> baoSupplier, Schlaefer schlaefer) {
         this.serviceSupplier = serviceSupplier;
+        this.baoSupplier = baoSupplier;
         this.schlaefer = schlaefer;
     }
 
-    /** {@code true}, wenn der Wert eine {@code vault:}-Referenz ist. */
+    /** {@code true}, wenn der Wert eine Tresor-Referenz ist — {@code vault:} ODER {@code bao:}. */
     static boolean isVaultReference(Object value) {
-        return value instanceof String s && s.startsWith(VAULT_PREFIX);
+        return value instanceof String s && (s.startsWith(VAULT_PREFIX) || s.startsWith(BAO_PREFIX));
+    }
+
+    /** {@code true} nur fuer {@code bao:} — trennt die beiden Quellen im {@link #resolve}. */
+    static boolean isBaoReference(Object value) {
+        return value instanceof String s && s.startsWith(BAO_PREFIX);
     }
 
     /**
@@ -99,6 +127,12 @@ class VaultwardenValueResolver {
         String cached = cache.get(rawValue);
         if (cached != null) {
             return cached;
+        }
+
+        if (isBaoReference(rawValue)) {
+            String result = resolveBao(propertyName, rawValue);
+            cache.put(rawValue, result);
+            return result;
         }
 
         String spec = rawValue.substring(VAULT_PREFIX.length()).trim();
@@ -128,6 +162,59 @@ class VaultwardenValueResolver {
                 propertyName, itemName, fehlertext(kind, svc)));
         cache.put(rawValue, result);
         return result;
+    }
+
+    /**
+     * Loest eine {@code bao:}-Referenz gegen OpenBao auf.
+     *
+     * <p>Syntax: {@code bao:<pfad>} liest das Feld {@code value}, {@code bao:<pfad>#<feld>} ein
+     * anderes. Bewusst schlichter als die Vaultwarden-Syntax: Dort gibt es Passwort, Username und
+     * Custom-Felder, weil ein Bitwarden-Item diese Struktur hat. Ein KV-v2-Eintrag ist eine flache
+     * Abbildung — ein zweiter Selektor-Dialekt haette nichts abgebildet, was es gibt.</p>
+     *
+     * <p>Fail-fast wie beim Vaultwarden-Zweig: Ein fehlender Eintrag beendet den Start, statt die
+     * Anwendung mit einem leeren Geheimnis weiterlaufen zu lassen. Transiente Stoerungen
+     * (Netz, HTTP 5xx, versiegelter Tresor) werden vorher mehrfach wiederholt — ein versiegelter
+     * OpenBao ist beim Kaltstart der Normalfall, nicht die Ausnahme.</p>
+     */
+    private String resolveBao(String propertyName, String rawValue) {
+        String spec = rawValue.substring(BAO_PREFIX.length()).trim();
+        int sep = spec.indexOf(SELECTOR_SEP);
+        String pfad = (sep >= 0 ? spec.substring(0, sep) : spec).trim();
+        String feld = sep >= 0 ? spec.substring(sep + 1).trim() : BAO_DEFAULT_FELD;
+
+        if (pfad.isEmpty()) {
+            throw new VaultwardenPropertyResolutionException(propertyName, pfad, "leerer OpenBao-Pfad");
+        }
+        if (feld.isEmpty()) {
+            feld = BAO_DEFAULT_FELD;
+        }
+
+        OpenBaoClient client = baoSupplier.get();
+        if (client == null) {
+            throw new VaultwardenPropertyResolutionException(propertyName, pfad,
+                    "OpenBao ist nicht konfiguriert (plaintext.bao.enabled=false oder token-file fehlt)");
+        }
+
+        Optional<String> wert = client.lies(pfad, feld);
+        int versuch = 1;
+        while (wert.isEmpty() && client.letzterFehlerWarTransient() && versuch < BOOT_MAX_VERSUCHE) {
+            long warteMs = BOOT_WARTE_START_MS << (versuch - 1);
+            log.warn("OpenBao-Eintrag '{}' (Property '{}') nicht lesbar ({}). Boot-Retry {}/{} in {}s.",
+                    pfad, propertyName, client.letzterFehler(), versuch, BOOT_MAX_VERSUCHE - 1,
+                    warteMs / 1000);
+            try {
+                schlaefer.schlafe(warteMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            wert = client.lies(pfad, feld);
+            versuch++;
+        }
+
+        return wert.orElseThrow(() -> new VaultwardenPropertyResolutionException(
+                propertyName, pfad, "OpenBao: " + client.letzterFehler()));
     }
 
     /** Menschliche Bezeichnung des Selektors; wirft bei unbekanntem Selektor (Fail-fast). */
