@@ -70,6 +70,24 @@ exhaustive.
   XML-Kommentare sowie die Ruempfe von `<script>`/`<style>` aus — sonst zaehlen ein
   `<img src=x onerror=…>` aus einem Erlaeuterungskommentar und eine JS-Eigenschaft wie
   `xhr.onreadystatechange = …` als Verstoss.
+- i18n-Seed `plaintext-root.csv`: **Franzoesisch und Italienisch** zu allen 287 Schluesseln, dazu
+  25 **Menuetitel** aus den `@MenuAnnotation`-Klassen (en/fr/it) — 312 Schluessel × 3 Zielsprachen
+  = 936 Zeilen. Bisher stand nur `en` in der Seed; wer in der Topbar auf FR oder IT schaltete, las
+  `X_Speichern`, weil `I18nService.translate()` fuer eine fehlende Sprache still einen
+  `X_`-Platzhalter anlegt. `getAvailableLanguages()` bot `de, en, fr, it` schon vorher an, die
+  Inhalte fehlten. Die Menuetitel laufen bereits durch die i18n-Schicht
+  (`PrimefacesMenuItem.getValue()` / `PrimefacesSubmenu.getLabel()` rufen
+  `I18nProvider.translate(title, lang)`), hatten aber keine Vorbelegung — **keine Aenderung an den
+  Menue-Klassen noetig**. Uebersetzt fuer eine Schweizer Vereins- und Geschaeftsanwendung:
+  „Mandant/Mandat" ist der Tenant-Begriff der Anwendung (fr `mandant`, it `mandante`, nicht
+  `mandat` im Sinne von Auftrag). Eigennamen bleiben stehen: `Flyway`, `Swagger`, `Cron`,
+  `Howtos`, `Secrets`, `Magic-Link`, `Deep-Links`, `Root`, `Admin`, `OIDC`, `TOTP`.
+- Test `I18nSeedSprachabdeckungTest` (plaintext-admin-i18n): zu jedem Seed-Schluessel gibt es eine
+  Zeile fuer jede Zielsprache aus `getAvailableLanguages()` ohne `de`; keine `de`- oder fremden
+  Sprachcodes; kein `(Schluessel, Sprache)` doppelt; jeder `@MenuAnnotation`-Titel des Reactors
+  steht in der Seed. Begruendete Luecken kommen in `BEGRUENDETE_LUECKEN` (heute leer). Ergaenzt
+  `PlaintextI18nSeedTest`, der nur die andere Achse prueft (jedes `i18n.t('…')` hat eine
+  `en`-Zeile), aber nicht, ob derselbe Schluessel auch auf fr/it vorliegt.
 - i18n-Seed `plaintext-admin-i18n/src/main/resources/i18n/plaintext-root.csv`: 287 englische
   Vorbelegungen fuer jedes `i18n.t('…')` der root-Facelets (Zustandsbericht 29.08.2026, §4 — der
   Seed-Importer lief bisher bei jedem Start leer, familienweit gab es keine Seed-CSV; alle Texte
@@ -128,6 +146,10 @@ exhaustive.
   nicht im Weg.
 - `I18nService.importSeedTranslations()` und `I18nExportController` lesen CSV-Zeilen ueber
   `I18nSeedLinter` statt ueber je eine private Kopie des Parsers.
+- `I18nServiceSeedImportTest` und `I18nServiceTest` unterscheiden gespeicherte Eintraege jetzt nach
+  `(Label, Sprache)` statt nur nach Label: mit fr/it in der Seed traegt dasselbe Label drei Texte,
+  und „ein gepflegter Eintrag wird nicht ueberschrieben" gilt nur fuer das gepflegte Paar — die
+  fehlenden Sprachen desselben Labels werden sehr wohl vorbelegt.
 - `plaintext-root-jpa` haengt nicht mehr an `plaintext-admin-sessions` (Zustandsbericht 29.08.2026,
   Massnahme 12): das war eine Schichtungsinversion — ein Basismodul haengte an einem Admin-Modul,
   das umgekehrt auf dem Unterbau aufsetzt. Keine Quelle des Moduls nennt `ch.plaintext.sessions`;
