@@ -57,7 +57,7 @@
         <!-- JSF & Primefaces -->
         <primefaces-spring-boot-starter.version>6.1.0</primefaces-spring-boot-starter.version>
         <primefaces.version>15.0.15</primefaces.version>
-        <jakarta.faces.version>4.1.14</jakarta.faces.version>
+        <jakarta.faces.version>4.1.15</jakarta.faces.version>
 
         <!-- Cron & Scheduling -->
         <cron4j.version>2.2.5</cron4j.version>
