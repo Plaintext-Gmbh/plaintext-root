@@ -15,7 +15,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-/** Tests für {@link PlaintextEventBus}: korrekt befüllter Envelope je Scope (Task 004). */
+/** Tests for {@link PlaintextEventBus}: a correctly filled envelope per scope (Task 004). */
 class PlaintextEventBusTest {
 
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);

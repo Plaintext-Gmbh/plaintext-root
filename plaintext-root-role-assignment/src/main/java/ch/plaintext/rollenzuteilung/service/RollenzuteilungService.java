@@ -44,10 +44,10 @@ public class RollenzuteilungService {
     }
 
     /**
-     * Alle jemals zugeteilten Rollennamen (Bestand, mandantenuebergreifend) — dient der
-     * Rollen-Auswahl als Fallback fuer nicht (mehr) deklarierte Rollen.
+     * All role names ever assigned (existing data, across tenants) — serves the role selection as a
+     * fallback for roles that are not (or no longer) declared.
      *
-     * @return distinct roleNames aller Rollenzuteilungen
+     * @return distinct roleNames across all role assignments
      */
     public List<String> getDistinctRoleNames() {
         return repository.findDistinctRoleNames();

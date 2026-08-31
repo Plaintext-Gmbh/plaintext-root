@@ -4,28 +4,28 @@
                 xmlns:c="jakarta.tags.core"
                 xmlns:p="http://primefaces.org/ui">
     <!--
-      pt:colText — die einfachste und haeufigste Spalte: Kopfzeile plus ein Wert.
-      Im Bestand sind das vier bis fuenf Zeilen fuer eine Information; hier ist es eine.
+      pt:colText — the simplest and most frequent column: a header plus one value.
+      In the existing code that is four to five lines for one piece of information; here it is one.
 
-      PFLICHT: header, value
+      REQUIRED: header, value
       OPTIONAL: width, style, colClass, colRendered, bold
 
       ================================================================================
-      ZWEI FALLEN, BEIDE AM 30.08.2026 AN GERENDERTEM HTML GEMESSEN — NICHT VERMUTET:
+      TWO TRAPS, BOTH MEASURED ON RENDERED HTML ON 30 August 2026 — NOT GUESSED:
       ================================================================================
-      1. ATTRIBUTNAMEN LECKEN VON AUSSEN HEREIN. Ein Tag-File sieht die Attribute des
-         umgebenden Tag-Files, wenn es sie nicht selbst gesetzt bekommt. Hiess das Attribut hier
-         "styleClass", erbte JEDE Zelle die styleClass der pt:table — im Pilot stand danach
-         class="token-table" an jedem einzelnen td. Deshalb heissen die optionalen Attribute
-         colClass und colRendered und kollidieren mit keinem Attribut von pt:table.
-         "value" und "header" sind Pflicht und werden immer gesetzt; sie koennen nicht erben.
+      1. ATTRIBUTE NAMES LEAK IN FROM OUTSIDE. A tag file sees the attributes of the
+         surrounding tag file when it is not given them itself. If the attribute here were called
+         "styleClass", EVERY cell would inherit the styleClass of the pt:table — in the pilot,
+         class="token-table" then sat on every single td. That is why the optional attributes are
+         called colClass and colRendered and collide with no attribute of pt:table.
+         "value" and "header" are required and are always set; they cannot inherit.
 
-      2. EIN NICHT GESETZTES ATTRIBUT IST NICHT DASSELBE WIE EIN FEHLENDES. Stand hier
-         sortBy="#{sortBy}" und rief jemand das Tag ohne sortBy auf, legte Facelets trotzdem eine
-         (leere) ValueExpression an — PrimeFaces sah ein gesetztes sortBy und machte die Spalte
-         sortierbar UND filterbar, samt Filter-Eingabefeld im Kopf. Sortierung gehoert deshalb
-         nicht in dieses Tag: Wer sie braucht, schreibt die p:column aus. Ein Tag, das ungefragt
-         Bedienelemente einbaut, waere schlimmer als vier gesparte Zeilen gut sind.
+      2. AN UNSET ATTRIBUTE IS NOT THE SAME AS A MISSING ONE. If this file contained
+         sortBy="#{sortBy}" and somebody called the tag without sortBy, Facelets would still create
+         an (empty) ValueExpression — PrimeFaces saw a set sortBy and made the column
+         sortable AND filterable, complete with a filter input field in the header. Sorting therefore
+         does not belong in this tag: whoever needs it writes the p:column out in full. A tag that
+         builds in controls unasked would be worse than four saved lines are good.
     -->
     <p:column headerText="#{header}"
               rendered="#{empty colRendered ? true : colRendered}"

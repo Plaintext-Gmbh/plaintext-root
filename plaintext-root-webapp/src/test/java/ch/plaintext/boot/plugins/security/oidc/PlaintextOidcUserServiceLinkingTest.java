@@ -16,14 +16,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * SECURITY (Karte 314, Punkt 12) — Kontouebernahme beim OIDC-Account-Linking.
+ * SECURITY (card 314, item 12) — account takeover during OIDC account linking.
  *
- * <p>Findet der {@code PlaintextOidcUserService} kein Konto zum IdP-{@code sub}, sucht er per
- * Benutzername/E-Mail weiter und bindet ein gefundenes BESTEHENDES lokales Konto still an diesen
- * {@code sub}. Laesst der IdP unverifizierte Adressen zu, koennte sich jemand dort mit der Adresse
- * eines bestehenden Benutzers registrieren und danach dessen Konto uebernehmen. Beim erstmaligen
- * Verlinken wird deshalb {@code email_verified=true} verlangt — fail-closed, ein fehlender Claim
- * gilt als "nicht verifiziert".
+ * <p>If the {@code PlaintextOidcUserService} finds no account for the IdP {@code sub}, it keeps
+ * searching by user name/e-mail and silently binds an EXISTING local account it finds to that
+ * {@code sub}. If the IdP allows unverified addresses, somebody could register there with the address
+ * of an existing user and take over that user's account afterwards. On the first
+ * linking {@code email_verified=true} is therefore required — fail-closed, a missing claim
+ * counts as "not verified".
  */
 @DisplayName("OIDC-Linking: email_verified")
 class PlaintextOidcUserServiceLinkingTest {
@@ -67,7 +67,7 @@ class PlaintextOidcUserServiceLinkingTest {
                 () -> requireVerifiedEmail(serviceWith(true), userWithClaim(Boolean.FALSE)));
     }
 
-    /** Fail-closed: ein IdP ohne den Claim wird nicht stillschweigend akzeptiert. */
+    /** Fail-closed: an IdP without the claim is not accepted silently. */
     @Test
     void rejectsMissingClaim() {
         assertThrows(Exception.class,
@@ -75,8 +75,8 @@ class PlaintextOidcUserServiceLinkingTest {
     }
 
     /**
-     * Notausstieg fuer einen IdP, der den Claim nachweislich nicht liefert — damit der Fix keine
-     * realen Anmeldungen aussperrt, ohne dass es eine Stellschraube gaebe.
+     * Emergency exit for an IdP that demonstrably does not deliver the claim — so that the fix does not
+     * lock out real logins without there being an adjusting screw.
      */
     @Test
     void canBeDisabledViaProperty() {

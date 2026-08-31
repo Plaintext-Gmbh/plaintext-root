@@ -19,18 +19,18 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Meldet beim Start, welche in den Mandanten-Listen gespeicherten Eintraege im aktuellen
- * Menuebaum ins Leere zeigen — pro Mandant, mit Nennung der toten Eintraege.
+ * Reports at startup which entries stored in the tenant lists point nowhere in the current menu
+ * tree — per tenant, naming the dead entries.
  *
- * <p><b>Warum.</b> Die Mandanten-Listen speichern Menuepunkte unter ihrem <i>vollen Titel</i>
- * ({@code "Parent | Titel"}). Wird ein Menuepunkt umbenannt, passt der gespeicherte Titel auf
- * nichts mehr: im Blacklist-Modus blendet er nichts mehr aus, im Whitelist-Modus blendet er den
- * umbenannten Punkt still <i>aus</i> — beides ohne jede Rueckmeldung. Erhoben auf
- * app.plaintext.ch: 19 von 123 gespeicherten Titeln zeigten ins Leere.</p>
+ * <p><b>Why.</b> The tenant lists store menu items under their <i>full title</i>
+ * ({@code "Parent | Titel"}). When a menu item is renamed, the stored title no longer matches
+ * anything: in blacklist mode it stops hiding anything, in whitelist mode it silently hides the
+ * renamed item — both without any feedback whatsoever. Measured on app.plaintext.ch: 19 of 123
+ * stored titles pointed nowhere.</p>
  *
- * <p>Das Vorbild ist die bestehende Meldung des {@link ModuleRoleService}
- * („Modul-Rolle konfiguriert fuer unbekannten Modul-Key"): eine Fehlkonfiguration bricht den Start
- * nicht ab, wird aber beim Boot als WARN sichtbar.</p>
+ * <p>The model for this is the existing message from the {@link ModuleRoleService}
+ * ("Modul-Rolle konfiguriert fuer unbekannten Modul-Key"): a misconfiguration does not abort the
+ * startup, but becomes visible as a WARN at boot time.</p>
  *
  * @author info@plaintext.ch
  * @since 1.608.0
@@ -44,9 +44,9 @@ public class MandateMenuStartupReport {
     private final ModuleRoleService moduleRoleService;
 
     /**
-     * @param repository        Quelle der Mandanten-Konfigurationen
-     * @param menuRegistry      liefert die aktuell vorhandenen Menue-Titel
-     * @param moduleRoleService liefert die erkannten Modul-Keys, darf {@code null} sein
+     * @param repository        source of the tenant configurations
+     * @param menuRegistry      supplies the menu titles that currently exist
+     * @param moduleRoleService supplies the detected module keys, may be {@code null}
      */
     public MandateMenuStartupReport(MandateMenuConfigRepository repository,
                                     MenuRegistry menuRegistry,
@@ -57,8 +57,8 @@ public class MandateMenuStartupReport {
     }
 
     /**
-     * Prueft nach dem Start jede Mandanten-Konfiguration gegen den Menuebaum und meldet die toten
-     * Eintraege. Best effort: ein Fehler beim Lesen darf den Start nicht gefaehrden.
+     * After startup, checks every tenant configuration against the menu tree and reports the dead
+     * entries. Best effort: a read error must not endanger the startup.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void berichte() {

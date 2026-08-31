@@ -65,26 +65,26 @@ public class I18nService implements I18nProvider {
         log.info("I18n cache loaded with {} translations", all.size());
     }
 
-    /** Suchmuster des Seed-Importers — dieselben Dateien prueft {@code PlaintextI18nSeedTest} (plaintext-root-archtests). */
+    /** Search pattern of the seed importer — {@code PlaintextI18nSeedTest} (plaintext-root-archtests) checks the same files. */
     public static final String SEED_PATTERN = "classpath*:i18n/*.csv";
 
     /**
-     * Vorbelegung aus den Seed-Dateien ({@value #SEED_PATTERN}) — beim Start, vor dem Laden des
-     * Caches. Format und Lese-Regeln: {@link I18nSeedLinter}.
+     * Pre-population from the seed files ({@value #SEED_PATTERN}) — at startup, before the cache is
+     * loaded. Format and parsing rules: {@link I18nSeedLinter}.
      *
-     * <p><b>Idempotent und nie destruktiv.</b> Eine Zeile wird nur geschrieben, wenn zu
-     * (Label, Sprache) noch kein Eintrag existiert oder der vorhandene ein automatisch erzeugter
-     * {@code X_}-Platzhalter ist ({@link #isPlaceholder}). Ein Text, den jemand unter
-     * Root → Uebersetzungen oder per {@code /api/i18n/import} gepflegt hat, bleibt bei jedem
-     * Deploy stehen — die Seed-Datei ist eine Vorbelegung fuer fehlende Schluessel, keine Quelle
-     * der Wahrheit. Wer einen gepflegten Text zuruecksetzen will, loescht den Eintrag oder setzt
-     * ihn auf einen {@code X_}-Platzhalter; der naechste Start fuellt ihn aus der Seed neu.
+     * <p><b>Idempotent and never destructive.</b> A row is only written when no entry exists yet
+     * for (label, language) or the existing one is an automatically generated
+     * {@code X_} placeholder ({@link #isPlaceholder}). A text that someone maintained under
+     * Root → Uebersetzungen or through {@code /api/i18n/import} survives every
+     * deployment — the seed file is a pre-population for missing keys, not a source
+     * of truth. To reset a maintained text, delete the entry or set
+     * it to an {@code X_} placeholder; the next startup refills it from the seed.
      *
-     * <p>Zustandsbericht 29.08.2026, Welle 2: Bis dahin lief der Importer bei jedem Start leer,
-     * weil familienweit keine Seed-Datei existierte; seither liegt {@code i18n/plaintext-root.csv}
-     * in diesem Modul, und jeder Consumer kann eigene Dateien unter {@code src/main/resources/i18n/}
-     * beilegen. Das Zeilen-Parsing teilt sich der Importer mit dem Test — vorher stand es hier als
-     * private Kopie.
+     * <p>Status report 29.08.2026, wave 2: until then the importer ran empty on every startup,
+     * because no seed file existed anywhere in the project family; since then {@code i18n/plaintext-root.csv}
+     * lives in this module, and every consumer can add its own files under {@code src/main/resources/i18n/}.
+     * The importer shares the row parsing with the test — previously it sat here as a
+     * private copy.
      */
     @Transactional
     public void importSeedTranslations() {
@@ -141,10 +141,10 @@ public class I18nService implements I18nProvider {
     }
 
     /**
-     * Schreibt eine Seed-Zeile, wenn zu (Label, Sprache) nichts oder nur ein {@code X_}-Platzhalter
-     * vorliegt.
+     * Writes a seed row when there is nothing for (label, language) or only an {@code X_}
+     * placeholder.
      *
-     * @return true = angelegt/ersetzt, false = gepflegter Eintrag vorhanden, nicht angefasst
+     * @return true = created/replaced, false = a maintained entry exists and was left untouched
      */
     private boolean importSeedRow(I18nSeedLinter.SeedRow row) {
         Optional<I18nTranslation> existing = repository.findByDefaultLabelAndLanguageCode(row.defaultLabel(), row.languageCode());
@@ -221,15 +221,15 @@ public class I18nService implements I18nProvider {
     }
 
     /**
-     * Ob i18n (Sprachwechsel in der Topbar, uebersetzte Menuetitel, {@code i18n.t()}) fuer den
-     * Mandanten der Session an ist.
+     * Whether i18n (language switch in the topbar, translated menu titles, {@code i18n.t()}) is on
+     * for the session's tenant.
      *
-     * <p>Auftrag Daniel, 29.08.2026: Das Setup speichert den Schalter als
-     * {@code branding.i18n.enabled} je Mandant (BrandingService), diese Methode las aber nur den
-     * alten Schluessel {@code i18n.enabled} — zwei Schluessel, die sich nie sahen (seit R2 des
-     * Zustandsberichts stehen beide einmal in {@link SettingsKeys}). Ergebnis: Der
-     * Sprachwechsel blieb in der Topbar, obwohl er im Setup ausgeschaltet war. Reihenfolge jetzt:
-     * Mandanten-Schalter aus dem Setup, dann der alte Schluessel, sonst an.</p>
+     * <p>Assignment from Daniel, 29.08.2026: the setup stores the switch as
+     * {@code branding.i18n.enabled} per tenant (BrandingService), but this method only read the
+     * old key {@code i18n.enabled} — two keys that never saw each other (since R2 of the
+     * status report both are declared once in {@link SettingsKeys}). Result: the
+     * language switch stayed in the topbar although it was switched off in the setup. The order is
+     * now: tenant switch from the setup, then the old key, otherwise on.</p>
      */
     @Override
     public boolean isI18nEnabled() {

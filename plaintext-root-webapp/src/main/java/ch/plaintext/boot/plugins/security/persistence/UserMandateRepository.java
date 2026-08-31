@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 /**
- * Repository für die zusätzlichen Mandanten-Zuordnungen eines Benutzers
+ * Repository for the additional tenant assignments of a user
  * ({@link UserMandate}).
  *
  * @author mad
@@ -19,31 +19,31 @@ import java.util.List;
 @Repository
 public interface UserMandateRepository extends JpaRepository<UserMandate, Long> {
 
-    /** Alle (auch inaktive) Zuordnungen eines Benutzers. */
+    /** All (including inactive) assignments of a user. */
     List<UserMandate> findByUsername(String username);
 
-    /** Aktive Zuordnungen eines Benutzers. */
+    /** Active assignments of a user. */
     List<UserMandate> findByUsernameAndActiveTrue(String username);
 
-    /** Aktive Zuordnungen für einen Mandanten (alle Benutzer mit diesem Zusatz-Mandant). */
+    /** Active assignments for a tenant (all users with this additional tenant). */
     List<UserMandate> findByMandatAndActiveTrue(String mandat);
 
     /**
-     * Alle Zuordnungen (auch inaktive) zu einem Mandanten, ohne Rücksicht auf
-     * Groß-/Kleinschreibung.
+     * All assignments (including inactive ones) for a tenant, regardless of
+     * upper/lower case.
      *
-     * <p>Mandantennamen sind im Bestand <b>nicht</b> case-konsistent — in {@code user_session}
-     * stand {@code BUTSCHER} groß, während derselbe Mandant überall sonst klein geschrieben ist.
-     * Wer prüfen will, ob einem Mandanten noch Benutzer zugeordnet sind, muss deshalb
-     * case-insensitiv vergleichen; sonst meldet die Prüfung „keine Benutzer betroffen", obwohl
-     * welche zugeordnet sind.</p>
+     * <p>Tenant names are <b>not</b> case-consistent in the existing data — in {@code user_session}
+     * {@code BUTSCHER} was stored in upper case, while the same tenant is written in lower case
+     * everywhere else. Whoever wants to check whether users are still assigned to a tenant must
+     * therefore compare case-insensitively; otherwise the check reports "no users affected" although
+     * some are assigned.</p>
      *
-     * @param mandat der Mandantenname in beliebiger Schreibweise
-     * @return alle Zuordnungen zu diesem Mandanten
+     * @param mandat the tenant name in any spelling
+     * @return all assignments for this tenant
      * @since 1.608.0
      */
     List<UserMandate> findByMandatIgnoreCase(String mandat);
 
-    /** Entfernt alle Zuordnungen eines Benutzers (für vollständiges Neusetzen). */
+    /** Removes all assignments of a user (for a complete re-set). */
     void deleteByUsername(String username);
 }

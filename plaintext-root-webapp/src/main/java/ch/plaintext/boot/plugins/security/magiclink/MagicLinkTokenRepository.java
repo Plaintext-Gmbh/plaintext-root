@@ -16,11 +16,11 @@ public interface MagicLinkTokenRepository extends JpaRepository<MagicLinkToken, 
     Optional<MagicLinkToken> findByTokenHash(String tokenHash);
 
     /**
-     * Loest einen Token atomar ein: setzt {@code consumedAt} genau dann, wenn der Token existiert,
-     * noch nicht eingeloest und nicht abgelaufen ist. Das bedingte UPDATE verhindert TOCTOU-Races
-     * (Doppelklick/Replay): bei zwei parallelen Aufrufen gewinnt genau einer.
+     * Redeems a token atomically: sets {@code consumedAt} exactly when the token exists,
+     * has not yet been redeemed and has not expired. The conditional UPDATE prevents TOCTOU races
+     * (double click/replay): with two parallel calls exactly one wins.
      *
-     * @return Anzahl aktualisierter Zeilen (1 = erfolgreich eingeloest, 0 = ungueltig/abgelaufen/bereits verwendet)
+     * @return number of updated rows (1 = successfully redeemed, 0 = invalid/expired/already used)
      */
     @Modifying
     @Query("UPDATE MagicLinkToken t SET t.consumedAt = :now " +

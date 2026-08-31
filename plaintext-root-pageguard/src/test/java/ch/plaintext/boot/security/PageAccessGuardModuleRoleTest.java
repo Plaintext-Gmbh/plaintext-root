@@ -17,21 +17,21 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Konfigurierbare Modul-Rollen muessen auch den <em>Direktaufruf</em> der Seiten verweigern, nicht
- * nur den Menuepunkt ausblenden.
+ * Configurable module roles must also deny the <em>direct call</em> of the pages, not just hide
+ * the menu item.
  *
- * <p>Der Nachweis ist nicht trivial: Die Kinder eines Modul-Menues deklarieren typischerweise
- * selbst {@code roles = {USER, ADMIN, ROOT}} (so z.B. das Wiki-Modul). Damit greift die
- * Eltern-Vererbung des Guards ausdruecklich <em>nicht</em>
- * ({@code PageAccessGuardService#istSichtbarMitEltern}: eigene {@code roles} sind abschliessend).
- * Der Schutz kann also nur wirken, weil die Modul-Rolle Teil von {@link MenuItemImpl#isOn()}
- * selbst ist — und {@code isOn()} wird vor der Vererbung geprueft.</p>
+ * <p>The proof is not trivial: the children of a module menu typically declare
+ * {@code roles = {USER, ADMIN, ROOT}} themselves (the wiki module, for example). This means the
+ * guard's parent inheritance explicitly does <em>not</em> apply
+ * ({@code PageAccessGuardService#istSichtbarMitEltern}: an item's own {@code roles} are final).
+ * The protection can therefore only work because the module role is part of
+ * {@link MenuItemImpl#isOn()} itself — and {@code isOn()} is checked before the inheritance.</p>
  */
 class PageAccessGuardModuleRoleTest {
 
     private static final String WIKI_SEITE = "/wiki-projekte.xhtml";
 
-    /** Wiki-Modul wie im echten Klassenpfad: Wurzel mit moduleId, Kinder mit eigenen roles. */
+    /** Wiki module as on the real classpath: root with moduleId, children with their own roles. */
     private static List<MenuItemImpl> wikiMenue(Set<String> benutzerRollen) {
         MenuItemImpl wurzel = PageAccessGuardTestFactory.menu("Wiki", "", "wiki.html", benutzerRollen,
                 "USER", "ADMIN", "ROOT");

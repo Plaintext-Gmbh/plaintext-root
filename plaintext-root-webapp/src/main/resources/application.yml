@@ -31,8 +31,8 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     out-of-order: true
-    # PR D: plaintext-root-email entfernt -> dessen bereits angewandte Migrationen (820503557/1777931115)
-    # sind auf bestehenden DBs nicht mehr auflösbar; Validierung darf daran nicht scheitern (analog plaintext-app).
+    # PR D: plaintext-root-email was removed -> its already applied migrations (820503557/1777931115)
+    # can no longer be resolved on existing databases; validation must not fail over that (same as plaintext-app).
     validate-on-migrate: false
 
 logging:
@@ -45,30 +45,30 @@ server:
   forward-headers-strategy: FRAMEWORK
   servlet:
     session:
-      # SECURITY (Karte 612): Haertung — Sitzungen werden AUSSCHLIESSLICH ueber das Cookie
-      # gefuehrt; ohne diese Zeile kann der Container die Kennung an die URL haengen.
-      # Nicht ohne Ruecksprache aendern, Hintergrund in
+      # SECURITY (card 612): hardening — sessions are carried EXCLUSIVELY by the cookie;
+      # without this line the container may append the session id to the URL.
+      # Do not change without asking; background in
       # plaintext-config/docs/SECURITY_ENTSCHEIDE.md.
-      # ACHTUNG (Reichweite): Diese Zeile wirkt NUR in plaintext-root -- jede Anwendung bringt
-      # eine eigene application.yml mit, die diese hier verdeckt. Wirksam fuer ALLE Anwendungen
-      # ist der SessionTrackingConfig-Initializer in plaintext-root-web; diese Zeile bleibt als
-      # Dokumentation an der erwarteten Stelle.
+      # CAUTION (reach): this line takes effect ONLY in plaintext-root -- every application
+      # brings its own application.yml, which shadows this one. What is effective for ALL
+      # applications is the SessionTrackingConfig initializer in plaintext-root-web; this line
+      # stays as documentation in the place where it is expected.
       tracking-modes: cookie
-      # SECURITY (Karte 314, Punkt 1): Session-Lebensdauer explizit statt implizitem
-      # Servlet-Default (30 min). Wert unveraendert 30 min -> kein Verhaltensbruch, aber
-      # jetzt sichtbar und pro Umgebung ueberschreibbar.
+      # SECURITY (card 314, item 1): session lifetime stated explicitly instead of relying on
+      # the implicit servlet default (30 min). The value is unchanged at 30 min -> no change in
+      # behaviour, but it is now visible and overridable per environment.
       timeout: ${PLAINTEXT_SESSION_TIMEOUT:30m}
       cookie:
-        # same-site bleibt bewusst 'lax' und wird NICHT auf 'strict' gezogen: der
-        # OIDC-Ruecklaeufer (Keycloak -> /login/oauth2/code/*) ist eine cross-site
-        # Top-Level-Navigation. Unter 'strict' schickt der Browser JSESSIONID dabei nicht
-        # mit, die in der Session hinterlegte OAuth2-'state' waere weg und jeder
-        # SSO-Login schluege fehl. 'lax' deckt den relevanten CSRF-Fall (cross-site POST)
-        # bereits ab; POSTs sind zusaetzlich CSRF-token-geschuetzt.
+        # same-site deliberately stays 'lax' and is NOT tightened to 'strict': the OIDC
+        # callback (Keycloak -> /login/oauth2/code/*) is a cross-site top-level navigation.
+        # Under 'strict' the browser would not send JSESSIONID along with it, the OAuth2
+        # 'state' held in the session would be gone and every SSO login would fail. 'lax'
+        # already covers the relevant CSRF case (cross-site POST); POSTs are additionally
+        # protected by a CSRF token.
         same-site: lax
         http-only: true
-        # SECURITY (Karte 314, Punkt 1): Cookie nur ueber TLS. Default an; das dev-Profil
-        # unten schaltet es ab, damit der lokale http://localhost-Start weiter funktioniert.
+        # SECURITY (card 314, item 1): cookie over TLS only. On by default; the dev profile
+        # below turns it off so that the local http://localhost start keeps working.
         secure: ${PLAINTEXT_COOKIE_SECURE:true}
 
 management:
@@ -101,15 +101,15 @@ joinfaces:
     number-of-views-in-session: 100
   primefaces:
     theme: none
-    # Vorbedingung fuer plaintext.security.csp.script-unsafe-inline=false (siehe dort): mit
-    # csp=true zieht PrimeFaces seine eigenen on…-Handler aus dem Markup und registriert sie
-    # ueber PrimeFaces.csp; seine eigenen Bloecke bekommen einen Nonce. app, guild, iot und
-    # schuetu setzen das seit Langem, die eigene root-Anwendung noch nicht — bewusst NICHT in
-    # diesem PR umgelegt, weil es Laufzeitverhalten aendert und im Browser nachzupruefen ist.
+    # Precondition for plaintext.security.csp.script-unsafe-inline=false (see there): with
+    # csp=true PrimeFaces pulls its own on… handlers out of the markup and registers them via
+    # PrimeFaces.csp; its own blocks are given a nonce. app, guild, iot and schuetu have set
+    # this for a long time, the root application itself has not — deliberately NOT switched
+    # over in this PR, because it changes runtime behaviour and has to be checked in a browser.
     # csp: true
 
-# Secure by default: Swagger-UI und OpenAPI-Docs sind aus (verhindert API-Surface-/
-# Versions-Disclosure in PROD). Fuer DEV per Env SPRINGDOC_ENABLED=true einschaltbar.
+# Secure by default: Swagger UI and the OpenAPI docs are off (prevents API surface and
+# version disclosure in PROD). Can be switched on for DEV via the env var SPRINGDOC_ENABLED=true.
 springdoc:
   swagger-ui:
     enabled: ${SPRINGDOC_ENABLED:false}
@@ -140,38 +140,38 @@ plaintext:
     # too — intended for this personal-admin use case). Set false for the legacy
     # opt-in behaviour.
     remember-me-on-oauth: ${PLAINTEXT_SECURITY_REMEMBER_ME_ON_OAUTH:true}
-    # SECURITY (Karte 314, Punkt 13): Gueltigkeit des persistenten Remember-Me-Cookies.
-    # Vorher hart 14 Tage im Code. Default jetzt 7 Tage und konfigurierbar; in Verbindung
-    # mit remember-me-on-oauth=true bekommt JEDER Login einen Cookie, deshalb ist die
-    # kuerzere Standardgueltigkeit die risikoaermere Voreinstellung.
+    # SECURITY (card 314, item 13): validity of the persistent remember-me cookie.
+    # Previously hard-coded to 14 days. The default is now 7 days and configurable; combined
+    # with remember-me-on-oauth=true EVERY login gets a cookie, which is why the shorter
+    # default validity is the lower-risk setting.
     remember-me-validity: ${PLAINTEXT_SECURITY_REMEMBER_ME_VALIDITY:7d}
     csp:
-      # Welle 4: script-src fuehrt bis auf Weiteres 'unsafe-inline' (Vorgabe true = Bestand).
-      # Solange das Token drinsteht, fuehrt der Browser JEDES <script> aus, das im Dokument
-      # steht — auch ein eingeschleustes; die CSP schuetzt an dieser Stelle also nicht.
+      # Wave 4: script-src carries 'unsafe-inline' until further notice (default true = status quo).
+      # As long as that token is in there, the browser executes EVERY <script> in the document —
+      # an injected one included; at this point the CSP therefore offers no protection.
       #
-      # Zum Umlegen auf false gehoeren ZWEI Dinge, und beide muessen erfuellt sein:
-      #   1. joinfaces.primefaces.csp=true (siehe unten) — dann zieht PrimeFaces seine eigenen
-      #      Handler aus dem Markup und versieht seine Bloecke mit einem Nonce. Die vier
-      #      Anwendungen (app, guild, iot, schuetu) setzen das seit Langem; root selbst noch
-      #      nicht, das ist die offene Vorbedingung dieser App.
-      #   2. kein eigenes Inline-JavaScript im Markup. Das prueft PlaintextInlineJsVertragTest
-      #      (plaintext-root-archtests), fuer diesen Reactor scharf geschaltet ueber
-      #      plaintext.arch.inline-js=enforce im Surefire-Block von plaintext-root-webapp.
-      # Umgelegt wird app-weise, damit ein Fehlschlag eine App betrifft und nicht die Familie.
+      # Switching it to false takes TWO things, and both have to be in place:
+      #   1. joinfaces.primefaces.csp=true (the commented-out line above) — then PrimeFaces pulls its own handlers
+      #      out of the markup and gives its blocks a nonce. The four applications (app, guild,
+      #      iot, schuetu) have set this for a long time; root itself has not yet, and that is
+      #      the open precondition for this app.
+      #   2. no inline JavaScript of our own in the markup. PlaintextInlineJsVertragTest checks
+      #      that (plaintext-root-archtests), armed for this reactor via
+      #      plaintext.arch.inline-js=enforce in the surefire block of plaintext-root-webapp.
+      # The switch is made app by app, so that a failure hits one app and not the whole family.
       script-unsafe-inline: ${PLAINTEXT_SECURITY_CSP_SCRIPT_UNSAFE_INLINE:true}
     page-guard:
-      # SECURITY (Karte 308): Haertung — Seiten-Zugriffsschutz fail-closed fuer DIESE App:
-      # kein Menuetreffer -> verweigern, plus Vererbung der Eltern-Rollen. Voraussetzung ist,
-      # dass alle Views einem Menueeintrag oder Alias zugeordnet sind (siehe
-      # MenuLinkInvariantTest); der Framework-Default in PlaintextSecurityProperties ist
-      # deshalb der Einfuehrungsmodus REPORT. Nicht ohne Ruecksprache aendern.
+      # SECURITY (card 308): hardening — page access guard fail-closed for THIS app: no menu
+      # match -> deny, plus inheritance of the parent roles. This requires that every view is
+      # mapped to a menu entry or an alias (see MenuLinkInvariantTest); the framework default
+      # in PlaintextSecurityProperties is therefore the introductory mode REPORT.
+      # Do not change without asking.
       mode: ${PLAINTEXT_SECURITY_PAGE_GUARD_MODE:STRICT}
 
 ---
-# SECURITY (Karte 314, Punkt 1): dev laeuft ueber http://localhost — ein Secure-Cookie
-# wuerde dort gar nicht erst gesetzt und der Login schlaege fehl. Nur hier abschalten,
-# die Voreinstellung oben bleibt secure=true.
+# SECURITY (card 314, item 1): dev runs over http://localhost — a secure cookie would not
+# even be set there and the login would fail. Switch it off here only; the default above
+# stays secure=true.
 spring:
   config:
     activate:

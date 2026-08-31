@@ -67,9 +67,9 @@ public class JdbcClientRegistrationRepository implements ClientRegistrationRepos
                 .issuerUri(issuer)
                 .userNameAttributeName("preferred_username")
                 .clientName(config.getName())
-                // end_session_endpoint fuer RP-Initiated-Logout (OidcClientInitiatedLogoutSuccessHandler
-                // liest das nur aus configurationMetadata -- da wir hier ohne OIDC-Discovery manuell
-                // registrieren, muessen wir es wie die anderen Keycloak-Endpunkte oben hart hinterlegen).
+                // end_session_endpoint for RP-initiated logout (OidcClientInitiatedLogoutSuccessHandler
+                // only reads it from configurationMetadata -- since we register manually here, without
+                // OIDC discovery, we have to hard-code it like the other Keycloak endpoints above).
                 .providerConfigurationMetadata(Map.of("end_session_endpoint", issuer + "/protocol/openid-connect/logout"))
                 .build();
     }
@@ -79,10 +79,10 @@ public class JdbcClientRegistrationRepository implements ClientRegistrationRepos
     }
 
     /**
-     * Entfernt abschliessende Schraegstriche ohne regulaeren Ausdruck.
+     * Removes trailing slashes without a regular expression.
      *
-     * <p>Karte 458 (java:S5852): {@code replaceAll("/+$", "")} laeuft bei vielen aufeinander
-     * folgenden Schraegstrichen in quadratisches Backtracking. Diese Schleife ist linear.</p>
+     * <p>Card 458 (java:S5852): {@code replaceAll("/+$", "")} runs into quadratic backtracking on
+     * many consecutive slashes. This loop is linear.</p>
      */
     private static String ohneEndSchraegstriche(String wert) {
         int ende = wert.length();

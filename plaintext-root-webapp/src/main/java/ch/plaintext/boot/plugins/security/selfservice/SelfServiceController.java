@@ -181,9 +181,9 @@ public class SelfServiceController {
     // ---------- Helpers ----------
 
     /**
-     * Verstecktes CSRF-Eingabefeld für die HTML-POST-Formulare. Ohne dieses Feld weist Spring Security
-     * den POST mit 403 ab (die Self-Service-Pfade sind permitAll, aber NICHT CSRF-befreit) — der Browser
-     * landet dann auf einer Fehler-/Login-Seite statt auf der Bestätigung.
+     * Hidden CSRF input field for the HTML POST forms. Without this field Spring Security rejects
+     * the POST with a 403 (the self-service paths are permitAll, but NOT exempt from CSRF) — the browser
+     * then lands on an error/login page instead of on the confirmation.
      */
     private static String csrfField(HttpServletRequest request) {
         CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
@@ -215,10 +215,10 @@ public class SelfServiceController {
     }
 
     private static String escape(String s) {
-        // org.springframework.web.util.HtmlUtils.htmlEscape wird von CodeQL als XSS-Sanitizer erkannt
-        // (und ist für den HTML-Kontext korrekt). Ersetzt die handgeschriebene Variante, die dieselben
-        // Meta-Zeichen neutralisierte, aber vom Code-Scanning nicht als Sanitizer modelliert wurde
-        // (java/xss High-Alert auf der html()-Ausgabe).
+        // org.springframework.web.util.HtmlUtils.htmlEscape is recognized by CodeQL as an XSS sanitizer
+        // (and is correct for the HTML context). It replaces the hand-written variant, which neutralized the same
+        // meta characters but was not modelled as a sanitizer by the code scanning
+        // (java/xss high alert on the html() output).
         return s == null ? "" : org.springframework.web.util.HtmlUtils.htmlEscape(s);
     }
 

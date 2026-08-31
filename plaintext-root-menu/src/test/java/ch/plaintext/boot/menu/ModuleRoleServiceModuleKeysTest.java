@@ -12,12 +12,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Der {@link ModuleRoleService} schreibt neben den geforderten Rollen auch die <b>Modul-Keys</b> an
- * jeden Menuepunkt.
+ * Besides the required roles, the {@link ModuleRoleService} also writes the <b>module keys</b>
+ * onto every menu item.
  *
- * <p>Damit sprechen die beiden Zustaendigen dasselbe Vokabular: admin steuert ueber die Modul-Rollen,
- * WER ein Modul benutzen darf; root steuert ueber die Mandanten-Listen, WELCHE Module zu einem
- * Mandanten gehoeren. Beide identifizieren ein Modul ueber denselben Key.</p>
+ * <p>That way the two parties in charge speak the same vocabulary: through the module roles admin
+ * controls WHO may use a module; through the tenant lists root controls WHICH modules belong to a
+ * tenant. Both identify a module through the same key.</p>
  */
 @DisplayName("ModuleRoleService fuellt die Modul-Keys")
 class ModuleRoleServiceModuleKeysTest {

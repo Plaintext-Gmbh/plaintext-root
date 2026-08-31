@@ -9,15 +9,15 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
- * Macht das i18n-Modul ausserhalb von plaintext-root nutzbar - dasselbe Muster
- * wie {@code CronModuleConfiguration} bzw. {@code SettingsModuleConfiguration}:
- * Konsumenten scannen ihr eigenes Package, nicht {@code ch.plaintext}; diese
- * AutoConfiguration registriert Beans (u.a. die EL-Bean {@code #{i18n}}),
- * Entity ({@code I18nTranslation}) und Repository des Moduls explizit.
- * Geladen wird sie ueber die imports-Datei; vom Component-Scan der Webapp ist
- * sie als AutoConfiguration ausgeschlossen.
+ * Makes the i18n module usable outside plaintext-root - the same pattern
+ * as {@code CronModuleConfiguration} and {@code SettingsModuleConfiguration}:
+ * consumers scan their own package, not {@code ch.plaintext}; this
+ * auto-configuration explicitly registers the module's beans (among them the EL bean
+ * {@code #{i18n}}), entity ({@code I18nTranslation}) and repository.
+ * It is loaded through the imports file; as an auto-configuration it is
+ * excluded from the web application's component scan.
  *
- * @since 1.505.0 (vorher reine @Configuration ohne Registrierungsweg)
+ * @since 1.505.0 (previously a plain @Configuration with no registration path)
  */
 @AutoConfiguration
 @ComponentScan("ch.plaintext.i18n")

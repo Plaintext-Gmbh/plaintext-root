@@ -10,13 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Beide Stellungen von {@code plaintext.security.csp.script-unsafe-inline} (Welle 4).
+ * Both positions of {@code plaintext.security.csp.script-unsafe-inline} (wave 4).
  *
- * <p>Der Schalter entscheidet, ob der Browser ein {@code <script>} ausfuehrt, das im Dokument
- * steht — also auch ein eingeschleustes. Genau deshalb wird hier nicht nur geprueft, dass das
- * Token verschwindet, sondern auch, dass die uebrige Policy dabei unveraendert bleibt: ein
- * Umbau, der versehentlich {@code img-src} oder {@code form-action} mitnimmt, macht entweder die
- * Karten kaputt oder reisst eine andere Tuer auf, und beides faellt im Betrieb erst spaet auf.
+ * <p>The switch decides whether the browser executes a {@code <script>} that stands in the
+ * document — that is, an injected one as well. Precisely for that reason this test does not only
+ * check that the token disappears, but also that the rest of the policy stays unchanged in the
+ * process: a rework that accidentally takes {@code img-src} or {@code form-action} along either
+ * breaks the maps or opens another door, and both only become apparent late in production.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -48,9 +48,9 @@ class PlaintextCspPolicyTest {
     }
 
     /**
-     * Der Schalter fasst NUR {@code script-src} an. {@code style-src} behaelt sein
-     * {@code 'unsafe-inline'} bewusst — die Views tragen Hunderte {@code style="…"}-Attribute,
-     * das ist ein eigener Umbau.
+     * The switch touches ONLY {@code script-src}. {@code style-src} deliberately keeps its
+     * {@code 'unsafe-inline'} — the views carry hundreds of {@code style="…"} attributes,
+     * that is a rework of its own.
      */
     @Test
     void alleUebrigenDirektivenBleibenGleich() {

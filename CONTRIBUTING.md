@@ -51,12 +51,12 @@ generated from commit messages. What matters is the content:
 
 ### What happens to your PR in CI
 
-- The pipeline (`.github/workflows/ci-cd.yaml`) runs build and tests. For pull
+- The pipeline (`.woodpecker/build.yml`) runs build and tests. For pull
   requests it runs in `ci-only` mode — it never deploys.
 - GitHub does not hand repository secrets to workflows triggered from a fork.
   Steps that would need them are skipped; that is expected and not a failure of
   your change.
-- The Playwright UI check (`.github/workflows/playwright.yaml`) is informational
+- The Playwright UI check (`.woodpecker/playwright.yml`) is informational
   and does not block a merge.
 
 ## Development Setup
@@ -104,7 +104,7 @@ mvn clean verify -DskipITs      # skip the integration tests
 
 `SelfServicePlaywrightIT` and `RootPagesPlaywrightIT` in `plaintext-root-webapp`
 drive the real application in a headless Chromium. They run in CI
-(`.github/workflows/playwright.yaml`, informational only). To run them locally you
+(`.woodpecker/playwright.yml`, informational only). To run them locally you
 need the Chromium build that Playwright downloads into `~/.cache/ms-playwright`
 — once per machine:
 

@@ -1,32 +1,32 @@
 #!/bin/sh
 # ─────────────────────────────────────────────────────────────────────────────
-#  CI-Motor-Waechter fuer Woodpecker
+#  CI engine guard for Woodpecker
 #
-#  Wird von JEDEM Woodpecker-Step als ERSTES Kommando GESOURCT:
+#  SOURCED by EVERY Woodpecker step as its FIRST command:
 #      - .woodpecker/waechter.sh
-#  (der fuehrende Punkt ist Absicht: das `exit 0` unten beendet dann den Step
-#  selbst — mit Erfolg, aber ohne irgendetwas getan zu haben.)
+#  (the leading dot is deliberate: the `exit 0` below then ends the step
+#  itself — successfully, but without having done anything.)
 #
-#  Er liest `.ci-engine` im Repo-Root. Genau ein Wort:
-#      github      -> GitHub Actions faehrt dieses Repo, Woodpecker steigt aus
-#      woodpecker  -> Woodpecker faehrt, die Steps laufen durch
-#  Fehlt die Datei, gilt `github` — ein Repo ohne Datei aendert sich damit nicht.
+#  It reads `.ci-engine` in the repo root. Exactly one word:
+#      github      -> GitHub Actions drives this repo, Woodpecker bows out
+#      woodpecker  -> Woodpecker drives, the steps run through
+#  If the file is missing, `github` applies — a repo without the file thus does not change.
 #
-#  WARUM EIN SOURCE UND KEIN `when:`-FILTER: Woodpecker kann `when` nur gegen
-#  Ereignis, Branch, Pfad und Umgebungsvariablen auswerten, nicht gegen den
-#  INHALT einer Datei im Repo. Eine Repo-Variable in der Woodpecker-Oberflaeche
-#  koennte das — dann stuende der Umschalter aber in einer Datenbank auf dem NAS
-#  und nicht im Git, und genau das soll er nicht: das Umschalten ist ein Commit,
-#  den man im Log wiederfindet und zurueckdrehen kann.
+#  WHY A SOURCE AND NOT A `when:` FILTER: Woodpecker can evaluate `when` only against
+#  event, branch, path and environment variables, not against the
+#  CONTENT of a file in the repo. A repo variable in the Woodpecker UI
+#  could do it — but then the switch would sit in a database on the NAS
+#  and not in git, and that is exactly what it must not do: switching is a commit
+#  that can be found again in the log and turned back.
 #
-#  WARUM `exit 0` UND NICHT `exit 1`: nicht zustaendig ist kein Fehler. Ein roter
-#  Lauf je Push waere nach zwei Tagen Hintergrundrauschen, und ein rotes
-#  Woodpecker-Symbol neben einem gruenen GitHub-Lauf ist genau die Verwirrung,
-#  die der Umschalter vermeiden soll.
+#  WHY `exit 0` AND NOT `exit 1`: not being responsible is not an error. A red
+#  run per push would be background noise after two days, and a red
+#  Woodpecker symbol next to a green GitHub run is precisely the confusion
+#  the switch is meant to avoid.
 # ─────────────────────────────────────────────────────────────────────────────
 
 if [ -f .ci-engine ]; then
-    # tr -d: Zeilenumbruch und ein versehentliches CR aus einem Windows-Editor raus.
+    # tr -d: strip the line break and an accidental CR from a Windows editor.
     CI_MOTOR="$(head -1 .ci-engine | tr -d '[:space:]')"
 else
     CI_MOTOR=github
@@ -42,16 +42,16 @@ case "$CI_MOTOR" in
         echo " GitHub Actions faehrt dieses Repo. Woodpecker tut hier nichts —"
         echo " kein Build, kein Release, kein Deploy. Der Step endet mit Erfolg."
         echo " Umschalten: .ci-engine auf 'woodpecker' setzen."
-        echo " Bedienung:  docs/CI-UMSCHALTEN.md"
+        echo " Bedienung:  docs/CI.md"
         echo "════════════════════════════════════════════════════════════════"
         exit 0
         ;;
     *)
-        # HART ROT. Ein Tippfehler ('woodpecke', 'Woodpecker ') wuerde sonst BEIDE
-        # Systeme stilllegen: der Waechter auf der GitHub-Seite liest dieselbe Datei
-        # und steigt bei allem ausser 'github' aus. Ein Repo, in dem nichts mehr
-        # deployt und trotzdem alles gruen ist, ist der teuerste aller Zustaende —
-        # deshalb wird hier abgebrochen statt geraten.
+        # HARD RED. A typo ('woodpecke', 'Woodpecker ') would otherwise shut BOTH
+        # systems down: the guard on the GitHub side reads the same file
+        # and bows out on anything but 'github'. A repo in which nothing deploys
+        # any more and everything is nevertheless green is the costliest of all states —
+        # which is why this aborts instead of guessing.
         echo "FEHLER: .ci-engine enthaelt '${CI_MOTOR}' — weder 'github' noch 'woodpecker'." >&2
         echo "        Die Datei enthaelt genau EIN Wort. Solange sie falsch ist," >&2
         echo "        deployt WEDER GitHub NOCH Woodpecker." >&2

@@ -22,22 +22,22 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * H3-Härtung für {@code /nosec/api/claude/**}: nimmt den API-Token aus einem HTTP-Header
- * entgegen — {@code Authorization: Bearer <token>} (bevorzugt) oder {@code X-Claude-Token} —
- * und reicht ihn als {@code token}-Request-Parameter an den {@link ClaudeAutomationController}
- * weiter (Request-Wrapper, KEINE Controller-Signatur-Änderung nötig).
+ * H3 hardening for {@code /nosec/api/claude/**}: accepts the API token from an HTTP header
+ * — {@code Authorization: Bearer <token>} (preferred) or {@code X-Claude-Token} — and passes
+ * it on to the {@link ClaudeAutomationController} as the {@code token} request parameter
+ * (request wrapper, NO change to the controller signature required).
  *
- * <p><b>Übergangsphase:</b> der bisherige Klartext-Token als URL-/Query-Parameter
- * ({@code ?token=...}) wird weiterhin akzeptiert, damit bestehende Clients (watch-claude.sh,
- * Goal-System) nicht brechen — aber mit WARN-Log als DEPRECATED markiert. Fahrplan:
+ * <p><b>Transitional phase:</b> the previous cleartext token as a URL/query parameter
+ * ({@code ?token=...}) is still accepted so that existing clients (watch-claude.sh,
+ * goal system) do not break — but is marked DEPRECATED with a WARN log. Roadmap:
  * <ol>
- *   <li>Jetzt: Header bevorzugt, URL-Token akzeptiert + WARN (dieser Stand)</li>
- *   <li>Nach Client-Umstellung: URL-Token ablehnen (Filter: 401 statt Durchreichen)</li>
- *   <li>Follow-up: Klartext-Spalte {@code api_token} entfernen (nur noch Hash)</li>
+ *   <li>Now: header preferred, URL token accepted + WARN (this state)</li>
+ *   <li>After the clients have been migrated: reject the URL token (filter: 401 instead of passing it on)</li>
+ *   <li>Follow-up: drop the cleartext column {@code api_token} (hash only)</li>
  * </ol></p>
  *
- * <p>Ist BEIDES vorhanden, gewinnt der Header (der modernere Client). Der Token selbst wird
- * NIE geloggt.</p>
+ * <p>If BOTH are present, the header wins (the more modern client). The token itself is
+ * NEVER logged.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -50,12 +50,12 @@ public class ClaudeTokenRequestFilter implements Filter {
     static final String CLAUDE_TOKEN_HEADER = "X-Claude-Token";
 
     /**
-     * Zustandsbericht 29.08.2026 (H2): Die Uebergangsphase ist beendet. Ein Token im
-     * Query-String landet im nginx-Access-Log, via fluent-bit in Graylog, im Browserverlauf und
-     * im Referer — jeder mit Log-Lesezugriff kennt ihn danach. Standard ist deshalb
-     * <b>ablehnen</b> (401). Wer einen alten Client uebergangsweise weiterlaufen lassen muss,
-     * setzt {@code plaintext.claude.url-token-fallback=true} — und bekommt weiterhin die
-     * DEPRECATED-Warnung im Log.
+     * Status report 29.08.2026 (H2): the transitional phase is over. A token in the query
+     * string ends up in the nginx access log, via fluent-bit in Graylog, in the browser
+     * history and in the Referer — everyone with read access to the logs knows it afterwards.
+     * The default is therefore to <b>reject</b> (401). Anyone who has to keep an old client
+     * running for the time being sets {@code plaintext.claude.url-token-fallback=true} — and
+     * still gets the DEPRECATED warning in the log.
      */
     private final boolean urlTokenFallback;
 
@@ -83,7 +83,7 @@ public class ClaudeTokenRequestFilter implements Filter {
 
         String urlToken = httpRequest.getParameter(TOKEN_PARAM);
         if (urlToken != null && !urlToken.isBlank()) {
-            // Token NIE mitloggen.
+            // NEVER log the token.
             if (!urlTokenFallback) {
                 log.warn("ABGELEHNT: Klartext-Token als URL-Parameter an {} — nur noch "
                                 + "'Authorization: Bearer <token>' oder '{}'-Header "
@@ -105,9 +105,9 @@ public class ClaudeTokenRequestFilter implements Filter {
     }
 
     /**
-     * Token aus {@code Authorization: Bearer ...} (bevorzugt) oder {@code X-Claude-Token} lesen.
+     * Reads the token from {@code Authorization: Bearer ...} (preferred) or {@code X-Claude-Token}.
      *
-     * @return Token oder {@code null}, wenn kein (nicht-leerer) Header-Token vorhanden ist
+     * @return the token, or {@code null} if no (non-empty) header token is present
      */
     private String extractHeaderToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
@@ -125,9 +125,9 @@ public class ClaudeTokenRequestFilter implements Filter {
     }
 
     /**
-     * Reicht den Header-Token als {@code token}-Parameter an Spring MVC durch
-     * ({@code @RequestParam String token} im Controller). Überschreibt einen ggf.
-     * zusätzlich vorhandenen URL-Token (Header gewinnt).
+     * Passes the header token on to Spring MVC as the {@code token} parameter
+     * ({@code @RequestParam String token} in the controller). Overrides a URL token that may
+     * additionally be present (the header wins).
      */
     static class TokenParameterRequestWrapper extends HttpServletRequestWrapper {
 

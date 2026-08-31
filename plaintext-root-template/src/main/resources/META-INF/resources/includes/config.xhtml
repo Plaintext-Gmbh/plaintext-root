@@ -4,11 +4,11 @@
                 xmlns:ui="http://java.sun.com/jsf/facelets"
                 xmlns:p="http://primefaces.org/ui">
 
-    <!-- Die serverseitigen Werte kommen als data-Attribute an dieses div und NICHT mehr als
-         Inline-Script im Formular: ein woertliches CDATA-Ende innerhalb von h:form beendet die
-         CDATA-Sektion jeder Ajax-Antwort vorzeitig, der Browser verwirft sie dann stillschweigend
-         (Karte 502, Ursache belegt in Karte 430). Das div liegt ausserhalb des Formulars und wird
-         von keinem Ajax-Update angefasst. -->
+    <!-- The server side values arrive as data attributes on this div and NO LONGER as an
+         inline script inside the form: a literal CDATA end inside h:form terminates the
+         CDATA section of every Ajax response early, and the browser then silently discards it
+         (card 502, cause documented in card 430). The div sits outside the form and is
+         touched by no Ajax update. -->
     <div id="layout-config" class="layout-config"
          data-component-theme="#{userPreferencesBackingBean.componentTheme}"
          data-dark-mode="#{userPreferencesBackingBean.darkMode}"

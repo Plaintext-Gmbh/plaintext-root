@@ -4,9 +4,9 @@
 package ch.plaintext.secrets;
 
 /**
- * Backend, in dem Secrets liegen. {@link #VAULTWARDEN} = bestehende Vaultwarden-Integration
- * (root-common), {@link #LOCAL_DB} = AES-GCM-verschlüsselt in der App-DB, {@link #HASHICORP} =
- * HashiCorp Vault (Phase 4).
+ * Backend in which secrets are stored. {@link #VAULTWARDEN} = existing Vaultwarden integration
+ * (root-common), {@link #LOCAL_DB} = AES-GCM-encrypted in the app DB, {@link #HASHICORP} =
+ * HashiCorp Vault (phase 4).
  */
 public enum SecretBackendType {
     VAULTWARDEN,

@@ -32,17 +32,17 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Reine, testbare TOTP-Kernlogik (RFC 6238): Secret-Generierung, {@code otpauth://}-URI +
- * QR-Data-URI fuer die Einrichtung, zeitfenster-tolerante Code-Pruefung sowie Erzeugung und
- * Hashing von Einmal-Recovery-Codes.
+ * Pure, testable TOTP core logic (RFC 6238): secret generation, {@code otpauth://} URI +
+ * QR data URI for the setup, time-window tolerant code checking as well as generation and
+ * hashing of one-time recovery codes.
  *
- * <p>Der Service haelt <b>keinen</b> User-Zustand und keine Session – er rechnet nur. Das
- * Einloesen eines Recovery-Codes (Entfernen aus dem gespeicherten Set) passiert bewusst in
- * {@link TotpAuthenticationService}, wo es transaktional/atomar gegen die Entity laeuft.
+ * <p>The service holds <b>no</b> user state and no session - it only computes. Redeeming
+ * a recovery code (removing it from the stored set) deliberately happens in
+ * {@link TotpAuthenticationService}, where it runs transactionally/atomically against the entity.
  *
- * <p><b>Recovery-Codes werden nie im Klartext gespeichert.</b> Analog zu
- * {@code HashedOneTimeTokenService} wird SHA-256 (Hex) verwendet; der Klartext wird dem User
- * genau einmal bei der Einrichtung angezeigt.
+ * <p><b>Recovery codes are never stored in clear text.</b> Analogously to
+ * {@code HashedOneTimeTokenService} SHA-256 (hex) is used; the clear text is shown to the user
+ * exactly once during the setup.
  */
 @Service
 @Slf4j
@@ -50,10 +50,10 @@ public class TotpService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    /** Zeichen fuer Recovery-Codes: ohne leicht verwechselbare Zeichen (0/O, 1/I/L). */
+    /** Characters for recovery codes: without easily confusable characters (0/O, 1/I/L). */
     private static final char[] RECOVERY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789".toCharArray();
     private static final int RECOVERY_CODE_GROUP = 4;
-    private static final int RECOVERY_CODE_GROUPS = 3; // -> Format XXXX-XXXX-XXXX
+    private static final int RECOVERY_CODE_GROUPS = 3; // -> format XXXX-XXXX-XXXX
 
     private final PlaintextSecurityProperties.TotpProperties properties;
     private final SecretGenerator secretGenerator = new DefaultSecretGenerator();
@@ -64,24 +64,24 @@ public class TotpService {
         this.properties = securityProperties.getTotp();
         CodeGenerator codeGenerator = new DefaultCodeGenerator();
         DefaultCodeVerifier verifier = new DefaultCodeVerifier(codeGenerator, timeProvider);
-        // Toleranz gegen Uhr-Drift: +/- N 30-Sekunden-Fenster (RFC 6238 empfiehlt 1).
+        // Tolerance against clock drift: +/- N 30-second windows (RFC 6238 recommends 1).
         verifier.setAllowedTimePeriodDiscrepancy(Math.max(0, properties.getAllowedTimePeriodDiscrepancy()));
         this.codeVerifier = verifier;
     }
 
     /**
-     * Erzeugt ein frisches Base32-TOTP-Secret. Wird bei der Einrichtung generiert und erst
-     * nach erfolgreicher Code-Bestaetigung persistiert/aktiviert.
+     * Generates a fresh Base32 TOTP secret. It is generated during the setup and only
+     * persisted/activated after a successful code confirmation.
      */
     public String generateSecret() {
         return secretGenerator.generate();
     }
 
     /**
-     * Baut die {@code otpauth://}-URI (Standard-Format, das Authenticator-Apps per QR lesen).
+     * Builds the {@code otpauth://} URI (standard format that authenticator apps read via QR).
      *
-     * @param secret  Base32-Secret
-     * @param account Kontobezeichnung (i.d.R. Username/E-Mail)
+     * @param secret  Base32 secret
+     * @param account account designation (usually username/e-mail)
      */
     public String buildOtpAuthUri(String secret, String account) {
         QrData data = qrData(secret, account);
@@ -89,8 +89,8 @@ public class TotpService {
     }
 
     /**
-     * Erzeugt einen QR-Code als {@code data:image/png;base64,...}-URI, direkt in ein
-     * {@code <img src="...">} einbettbar (kein separater Endpunkt, kein Ablegen auf Platte).
+     * Generates a QR code as a {@code data:image/png;base64,...} URI, directly embeddable into an
+     * {@code <img src="...">} (no separate endpoint, no storing on disk).
      */
     public String generateQrCodeDataUri(String secret, String account) {
         QrData data = qrData(secret, account);
@@ -109,15 +109,15 @@ public class TotpService {
                 .label(account)
                 .secret(secret)
                 .issuer(properties.getIssuer())
-                .algorithm(HashingAlgorithm.SHA1) // Authenticator-App-Standard
+                .algorithm(HashingAlgorithm.SHA1) // authenticator app standard
                 .digits(6)
                 .period(30)
                 .build();
     }
 
     /**
-     * Prueft einen 6-stelligen TOTP-Code gegen das Secret innerhalb des konfigurierten
-     * Zeitfensters. {@code false} bei null/leer/ungueltig – nie eine Exception nach aussen.
+     * Checks a 6-digit TOTP code against the secret within the configured
+     * time window. {@code false} on null/empty/invalid - never an exception to the outside.
      */
     public boolean verifyCode(String secret, String code) {
         if (secret == null || secret.isBlank() || code == null || code.isBlank()) {
@@ -127,9 +127,9 @@ public class TotpService {
     }
 
     /**
-     * Generiert {@code n} Recovery-Codes im Klartext (Format {@code XXXX-XXXX-XXXX}).
-     * Die Klartext-Liste wird dem User genau einmal angezeigt; gespeichert werden nur die
-     * Hashes ({@link #hashRecoveryCode(String)}).
+     * Generates {@code n} recovery codes in clear text (format {@code XXXX-XXXX-XXXX}).
+     * The clear-text list is shown to the user exactly once; only the hashes are stored
+     * ({@link #hashRecoveryCode(String)}).
      */
     public List<String> generateRecoveryCodes() {
         int count = Math.max(1, properties.getRecoveryCodeCount());
@@ -141,8 +141,8 @@ public class TotpService {
     }
 
     /**
-     * Hasht eine ganze Klartext-Liste in ein Set gehashter Codes (fuer die Persistenz).
-     * Vergleich/Einloesung ist gross-/kleinschreibungs- und bindestrich-unabhaengig.
+     * Hashes a whole clear-text list into a set of hashed codes (for persistence).
+     * Comparison/redemption is case- and hyphen-insensitive.
      */
     public Set<String> hashRecoveryCodes(List<String> plaintextCodes) {
         Set<String> hashed = new LinkedHashSet<>();
@@ -153,9 +153,9 @@ public class TotpService {
     }
 
     /**
-     * Hasht einen einzelnen Recovery-Code (normalisiert: Bindestriche entfernt, uppercase)
-     * mit SHA-256 (Hex). Deterministisch, damit ein eingegebener Code den gespeicherten
-     * Hash treffen kann.
+     * Hashes a single recovery code (normalized: hyphens removed, uppercase)
+     * with SHA-256 (hex). Deterministic, so that an entered code can match the stored
+     * hash.
      */
     public String hashRecoveryCode(String code) {
         String normalized = normalizeRecoveryCode(code);
@@ -168,7 +168,7 @@ public class TotpService {
         }
     }
 
-    /** Normalisiert Eingabe (Bindestriche/Whitespace weg, uppercase). */
+    /** Normalizes the input (hyphens/whitespace removed, uppercase). */
     public static String normalizeRecoveryCode(String code) {
         if (code == null) {
             return "";

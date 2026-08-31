@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** TOTP-Secret at rest: verschluesselt mit Schluessel, Altbestand im Klartext bleibt lesbar. */
+/** TOTP secret at rest: encrypted with a key, legacy values in plain text stay readable. */
 class TotpSecretCryptoTest {
 
     private final TotpSecretConverter converter = new TotpSecretConverter();

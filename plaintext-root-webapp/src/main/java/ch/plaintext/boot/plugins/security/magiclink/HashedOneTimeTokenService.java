@@ -28,14 +28,14 @@ import java.util.Base64;
 import java.util.HexFormat;
 
 /**
- * OneTimeTokenService mit SHA-256-Hashing: Klartext-Token wird nie in der DB gespeichert.
- * Bei deaktiviertem Magic-Link-Feature wird ein Dummy-Token zurueckgegeben (kein DB-Eintrag),
- * der beim Einloesen sicher fehlschlaegt – ohne User-Enumeration.
+ * OneTimeTokenService with SHA-256 hashing: the clear-text token is never stored in the DB.
+ * When the magic-link feature is deactivated, a dummy token is returned (no DB entry)
+ * that fails safely on redemption - without user enumeration.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@AllowRawScheduled // System-Waechter: stuendlicher Cleanup abgelaufener Einmal-Token direkt am Token-Service
+@AllowRawScheduled // System guard: hourly cleanup of expired one-time tokens directly at the token service
 public class HashedOneTimeTokenService implements OneTimeTokenService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -85,11 +85,11 @@ public class HashedOneTimeTokenService implements OneTimeTokenService {
         String tokenHash = hashToken(rawToken);
         Instant now = Instant.now();
 
-        // Atomares bedingtes UPDATE statt READ->CHECK->UPDATE: verhindert TOCTOU-Race
-        // (Doppelklick/Replay) – bei parallelen Aufrufen loest genau einer den Token ein.
+        // Atomic conditional UPDATE instead of READ->CHECK->UPDATE: prevents a TOCTOU race
+        // (double click/replay) - with parallel calls exactly one redeems the token.
         int updated = tokenRepository.consumeToken(tokenHash, now);
         if (updated == 0) {
-            // Bewusst keine Unterscheidung unbekannt/abgelaufen/verwendet – keine Info-Leakage
+            // Deliberately no distinction unknown/expired/used - no information leakage
             throw new InvalidOneTimeTokenException("Ungueltiger, abgelaufener oder bereits verwendeter Magic-Link-Token");
         }
 

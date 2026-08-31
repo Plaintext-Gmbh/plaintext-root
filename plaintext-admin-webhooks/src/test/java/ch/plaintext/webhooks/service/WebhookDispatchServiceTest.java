@@ -31,8 +31,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests für {@link WebhookDispatchService}: HMAC-Signatur, Backoff-Progression bis GIVEN_UP,
- * und dass {@link WebhookDispatchService#onDomainEvent} nur abonnierte, aktive Endpoints benachrichtigt.
+ * Tests for {@link WebhookDispatchService}: HMAC signature, backoff progression up to GIVEN_UP,
+ * and that {@link WebhookDispatchService#onDomainEvent} only notifies subscribed, active endpoints.
  */
 class WebhookDispatchServiceTest {
 
@@ -135,7 +135,7 @@ class WebhookDispatchServiceTest {
             service.retry(delivery);
             assertEquals(WebhookDeliveryStatus.FAILED, delivery.getStatus(), "Versuch " + (i + 1));
         }
-        service.retry(delivery); // 6. Versuch
+        service.retry(delivery); // 6th attempt
         assertEquals(WebhookDeliveryStatus.GIVEN_UP, delivery.getStatus());
         assertNull(delivery.getNextAttemptAt());
         assertEquals(6, delivery.getAttempts());

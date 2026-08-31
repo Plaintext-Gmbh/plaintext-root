@@ -6,9 +6,9 @@
       xmlns:p="http://primefaces.org/ui"
       lang="#{empty languageBean ? 'en' : languageBean.languageCode}"
       data-theme="#{userPreferencesBackingBean.darkMode}">
-<!-- Phase 1 Punkt 4 (schuetu-Fork aufloesen): f:view traegt die App-Locale, wenn die App eine
-     languageBean stellt (schuetu-Mehrsprachigkeit). Ohne Bean ist locale null = Default-
-     Verhalten, fuer alle uebrigen Apps aendert sich nichts. -->
+<!-- Phase 1, item 4 (dissolve the schuetu fork): f:view carries the app locale when the app
+     provides a languageBean (schuetu multi-language support). Without that bean the locale is
+     null = default behaviour, and nothing changes for all the other apps. -->
 <f:view locale="#{empty languageBean ? null : languageBean.locale}">
 
 <h:head>
@@ -81,10 +81,10 @@
 <h:body styleClass="#{userPreferencesBackingBean.inputStyleClass}">
     <div class="layout-wrapper layout-topbar-#{userPreferencesBackingBean.topbarTheme} layout-menu-#{userPreferencesBackingBean.menuTheme} #{userPreferencesBackingBean.menuMode} #{userPreferencesBackingBean.menuStaticClass}">
         <ui:include src="/includes/topbar.xhtml"/>
-        <!-- App-Hook (Phase 1 Punkt 4): Apps legen bei Bedarf eine EIGENE kleine
-             /includes/app-template-extra.xhtml in den Classpath (z.B. schuetus Sprach-
-             Umschalter) — der Default hier ist leer. So braucht keine App mehr einen
-             Komplett-Fork dieses Templates. -->
+        <!-- App hook (phase 1, item 4): where needed, apps put their OWN small
+             /includes/app-template-extra.xhtml on the classpath (e.g. schuetu's language
+             switcher); the default here is empty. That way no app needs a
+             complete fork of this template any more. -->
         <ui:include src="/includes/app-template-extra.xhtml"/>
         <ui:include src="/includes/config.xhtml"/>
 
@@ -99,12 +99,12 @@
             <ui:include src="/includes/footer.xhtml"/>
         </div>
 
-        <!-- Phase 1 JSF-Quick-Wins (Daniel, 28.08.2026): EIN globales Growl + EIN globaler
-             ConfirmDialog fuer alle Seiten. Seitenlokale Growls duerfen (vorerst) bestehen
-             bleiben — doppelte Anzeige stoert nicht und die Seiten koennen ihre Kopien
-             release-weise abbauen. Das eigene kleine Formular ist noetig, weil die
-             ConfirmDialog-Buttons innerhalb eines Formulars liegen muessen und das Template
-             keine Annahme ueber Seiten-Formulare treffen darf. -->
+        <!-- Phase 1 JSF quick wins (Daniel, 28 August 2026): ONE global growl + ONE global
+             ConfirmDialog for all pages. Page local growls may (for the time being) stay
+             in place; a duplicate display does no harm and the pages can remove their
+             copies release by release. The separate small form is necessary because the
+             ConfirmDialog buttons have to sit inside a form and the template
+             may make no assumption about the forms of a page. -->
         <h:form id="globalMessagesForm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
             <p:growl id="globalGrowl" widgetVar="globalGrowl" showDetail="true" life="5000"/>
@@ -128,10 +128,10 @@
     <h:outputStylesheet name="css/primeicons.css" library="plaintext-layout"/>
     <h:outputStylesheet name="css/primeflex.min.css" library="plaintext-layout"/>
     <h:outputStylesheet name="css/#{userPreferencesBackingBean.layout}.css" library="plaintext-layout"/>
-    <!-- Karte 478: Buttons kleben nie buendig aneinander. Bewusst VOR mobile-responsive.css, damit
-         dessen Viewport-Regeln weiterhin die Kaskade gewinnen. -->
+    <!-- Card 478: buttons never sit flush against one another. Deliberately BEFORE mobile-responsive.css,
+         so that its viewport rules still win the cascade. -->
     <h:outputStylesheet name="css/button-spacing.css" library="plaintext-layout"/>
-    <!-- Zentrales Mobile-Responsive-CSS: MUSS als letztes laden (gewinnt die Kaskade), deckelt Dialoge/Inputs auf den Viewport. -->
+    <!-- Central mobile responsive CSS: MUST load last (wins the cascade), caps dialogs/inputs to the viewport. -->
     <h:outputStylesheet name="css/mobile-responsive.css" library="plaintext-layout"/>
 
 </h:body>

@@ -1,64 +1,63 @@
-# Page Access Guard: `STRICT` für die root-App, `REPORT` als Framework-Default
+# Page Access Guard: `STRICT` for the root app, `REPORT` as the framework default
 
 * **Status:** accepted
-* **Date:** 2026-08-29 (nachträglich festgehalten; Verhalten seit root 1.429.0, Karte 308)
+* **Date:** 2026-08-29 (recorded retroactively; behaviour in place since root 1.429.0, card 308)
 * **Deciders:** Daniel Marthaler
-* **Informed:** alle Bearbeiter der Konsumenten-Apps
+* **Informed:** everyone working on the consumer apps
 
 ## Context
 
-Der Zugriffsschutz einer JSF-View wurde lange nur über die Menü-Sichtbarkeit *gerendert*: wer
-den Menüpunkt nicht sah, fand die Seite nicht — aufrufen konnte er sie trotzdem
-(`mandatemenudetail` hatte nicht einmal einen Menüpunkt und war damit völlig offen). Der
-Page Access Guard (`plaintext-root-pageguard`) leitet die Entscheidung seit 1.429.0 aus
-derselben Quelle ab, an der die Sichtbarkeit hängt — `@MenuAnnotation(roles = …)` plus
-Mandanten-Sichtbarkeit — und setzt sie in einem Filter **vor** dem `FacesServlet` durch.
+For a long time a JSF view's access protection was merely *rendered* through menu visibility:
+whoever did not see the menu item did not find the page — but could open it all the same
+(`mandatemenudetail` did not even have a menu item and was therefore wide open). Since 1.429.0
+the page access guard (`plaintext-root-pageguard`) derives the decision from the same source that
+visibility hangs on — `@MenuAnnotation(roles = …)` plus tenant visibility — and enforces it in a
+filter **ahead of** the `FacesServlet`.
 
-Die offene Frage war der Umgang mit Views, die **keinem** Menüpunkt zugeordnet sind
-(Detail-/Edit-Seiten). Fail-closed sperrt sie aus; fail-open lässt die Lücke von vorher.
+The open question was how to treat views that map to **no** menu item at all (detail and edit
+pages). Fail-closed locks them out; fail-open keeps the gap that existed before.
 
 ## Decision
 
-Zwei Modi unter `plaintext.security.page-guard.mode`:
+Two modes under `plaintext.security.page-guard.mode`:
 
-* **`REPORT` ist der Framework-Default.** Kanonischer Link-Vergleich, Verweigern bei
-  Exception, Allowlist und Aliase gelten; eine View ohne Zuordnung wird **erlaubt und mit
-  WARN protokolliert**, der `PageAccessGuardStartupReport` listet sie beim Boot.
-* **Die root-App selbst läuft in `STRICT`** (gesetzt in ihrer `application.yml`): View ohne
-  Zuordnung → verweigern, Eltern-Rollen werden vererbt. Ein Menüpunkt mit eigenen `roles`
-  bleibt abschliessend, damit eine bewusst breite Seite unter einem engen Elternmenü möglich
-  ist (`notifications.html`).
-* Unabhängig vom Guard bleiben die harten `requestMatchers` in `PlaintextSecurityConfig`
-  (`ROOT_ONLY_PAGES`, `ADMIN_PAGES`) — zweite Schicht, menü-unabhängig.
+* **`REPORT` is the framework default.** Canonical link comparison, deny on exception, allowlist
+  and aliases all apply; a view without a mapping is **allowed and logged with WARN**, and the
+  `PageAccessGuardStartupReport` lists it at boot.
+* **The root app itself runs in `STRICT`** (set in its own `application.yml`): a view without a
+  mapping → deny, and parent roles are inherited. A menu item with `roles` of its own stays
+  final, so that a deliberately broad page underneath a narrow parent menu remains possible
+  (`notifications.html`).
+* Independently of the guard, the hard `requestMatchers` in `PlaintextSecurityConfig`
+  (`ROOT_ONLY_PAGES`, `ADMIN_PAGES`) remain — a second layer, independent of the menu.
 
 ## Consequences
 
-* **Positiv:** Die root-App ist fail-closed; `MenuLinkInvariantTest` erzwingt beim Build, dass
-  jede View eine Regel hat (Menüpunkt, Alias oder Allowlist).
-* **Positiv:** Die Konsumenten (app, guild, schuetu, iot) bekommen beim Framework-Update
-  zuerst ihre Lückenliste ins Log statt ausgesperrte Detail-Seiten — und stellen dann
-  gezielt auf `STRICT` um.
-* **Negativ:** Solange eine App in `REPORT` bleibt, ist die Lücke dort nur *sichtbar*, nicht
-  geschlossen. Der Default ist bewusst der schwächere Modus; die Umstellung ist Arbeit je
-  App.
-* **Negativ:** Jede App bringt eine eigene `application.yml` mit, die die von root verdeckt.
-  Der `STRICT`-Eintrag von root wirkt deshalb **nur** in root — das muss man wissen, sonst
-  glaubt man, das Framework sei überall fail-closed.
-* **Neutral:** `PageGuardProperties` war bis 1.491.0 eine innere Klasse von
-  `PlaintextSecurityProperties`; der Präfix `plaintext.security.page-guard` ist beim
-  Herauslösen gleich geblieben (`PageGuardAutoConfigurationTest` pinnt das).
+* **Positive:** the root app is fail-closed; `MenuLinkInvariantTest` enforces at build time that
+  every view has a rule (menu item, alias or allowlist).
+* **Positive:** on a framework update the consumers (app, guild, schuetu, iot) first get their
+  list of gaps in the log instead of locked-out detail pages — and can then switch to `STRICT`
+  deliberately.
+* **Negative:** as long as an app stays on `REPORT`, the gap there is only *visible*, not closed.
+  The default is deliberately the weaker mode; the switchover is work for each app.
+* **Negative:** every app brings an `application.yml` of its own that shadows root's. Root's
+  `STRICT` entry therefore takes effect **only** in root — you have to know that, or you will
+  believe the framework is fail-closed everywhere.
+* **Neutral:** until 1.491.0 `PageGuardProperties` was an inner class of
+  `PlaintextSecurityProperties`; the prefix `plaintext.security.page-guard` stayed the same when
+  it was extracted (`PageGuardAutoConfigurationTest` pins that).
 
 ## Alternatives considered
 
 | Option | Why not? |
 | --- | --- |
-| `STRICT` als Framework-Default | Hätte in jeder Konsumenten-App beim Bump alle Detail-/Edit-Views ohne Menüpunkt ausgesperrt — Ausfall statt Warnung. |
-| Nur die harten `requestMatchers` pflegen | Eine Liste je Seite von Hand; genau so ist `mandatemenudetail` durchgerutscht. Der Guard leitet aus der Quelle ab, die ohnehin gepflegt wird. |
-| Prüfung nur im `preRenderView` (JSF-Ebene) | Läuft erst in RENDER_RESPONSE, nach Actions; der Filter greift vor dem `FacesServlet`. Der `preRenderView`-Bean bleibt als zweite Schicht. |
+| `STRICT` as the framework default | Would have locked out every detail/edit view without a menu item in every consumer app on the next bump — an outage instead of a warning. |
+| Maintaining only the hard `requestMatchers` | A hand-written list entry per page; that is exactly how `mandatemenudetail` slipped through. The guard derives from the source that is maintained anyway. |
+| Checking only in `preRenderView` (JSF level) | Runs only in RENDER_RESPONSE, after the actions; the filter takes effect ahead of the `FacesServlet`. The `preRenderView` bean stays as a second layer. |
 
 ## References
 
 * `docs/security/PAGE_ACCESS_GUARD.md`
 * `plaintext-root-pageguard`: `PageGuardMode`, `PageGuardProperties`, `PageAccessGuardService`
-* `plaintext-root-webapp/src/main/resources/application.yml` (`page-guard.mode: STRICT`, Karte 308)
-* CHANGELOG 1.635.0 (Modul-Herauslösung, Auto-Configuration)
+* `plaintext-root-webapp/src/main/resources/application.yml` (`page-guard.mode: STRICT`, card 308)
+* CHANGELOG 1.635.0 (module extraction, auto-configuration)

@@ -20,67 +20,66 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 915: Eine session-scoped Bean, die {@code Serializable} zusagt, muss es auch sein.
+ * Card 915: a session-scoped bean that promises {@code Serializable} has to be serializable too.
  *
- * <p><b>Warum es diesen Test gibt.</b> Acht Backing-Beans trugen
- * {@code @Scope("session") implements Serializable} und hielten {@code GuildSecurity} — ein
- * {@code @Component} ohne {@code Serializable} — in einem nicht-transienten Feld. Die Klasse sagt
- * damit zu, serialisierbar zu sein, und haelt ein Feld, das es nicht ist: bei Session-Serialisierung
- * wirft das {@code NotSerializableException}.
+ * <p><b>Why this test exists.</b> Eight backing beans carried
+ * {@code @Scope("session") implements Serializable} and held {@code GuildSecurity} — a
+ * {@code @Component} without {@code Serializable} — in a non-transient field. The class thereby
+ * promises to be serializable while holding a field that is not: on session serialization that
+ * throws {@code NotSerializableException}.
  *
- * <p><b>Warum es heute nicht aufgefallen ist.</b> Der eingebettete Tomcat serialisiert Sessions nur
- * bei eingeschalteter Persistenz; {@code application.yml} setzt unter {@code session:} lediglich
- * {@code cookie.*}. Der Fehler ist damit latent und wird scharf, sobald jemand Session-Persistenz
- * ueber einen Neustart, Session-Replikation oder einen externen Store einschaltet — also durch eine
- * Konfigurationsaenderung, die harmlos aussieht. Genau deshalb ist ein Test noetig und nicht ein
- * Ticket „bei Gelegenheit": ohne ihn faellt der Rueckfall erst im Betrieb auf.
+ * <p><b>Why it has not shown up so far.</b> The embedded Tomcat only serializes sessions when
+ * persistence is switched on; under {@code session:} the {@code application.yml} merely sets
+ * {@code cookie.*}. The defect is therefore latent and goes live as soon as somebody switches on
+ * session persistence across a restart, session replication or an external store — that is, through
+ * a configuration change that looks harmless. Precisely for that reason a test is needed rather than
+ * a ticket "when there is time": without it the regression would only surface in production.
  *
- * <p><b>Was der Test prueft.</b> Ausschliesslich ein nicht-transientes Feld, dessen Typ eine
- * <em>Spring-Bean</em> ist ({@code @Component}, {@code @Service}, {@code @Repository},
- * {@code @Controller}) und {@code Serializable} nicht implementiert. Das Kriterium ist strukturell
- * und nicht am Namen abgelesen — ein Suffix wie {@code ...Service} ist Gewohnheit, keine
- * Zusicherung. Fuer eine Spring-Bean ist die Antwort <em>immer</em> {@code transient}: der Kontext
- * injiziert sie nach einer Deserialisierung neu, es geht kein Zustand verloren.
+ * <p><b>What the test checks.</b> Exclusively a non-transient field whose type is a
+ * <em>Spring bean</em> ({@code @Component}, {@code @Service}, {@code @Repository},
+ * {@code @Controller}) and does not implement {@code Serializable}. The criterion is structural and
+ * not read off the name — a suffix such as {@code ...Service} is a habit, not a promise. For a
+ * Spring bean the answer is <em>always</em> {@code transient}: after a deserialization the context
+ * injects it anew, no state is lost.
  *
- * <p><b>Ein Feldtyp, der SELBST session-scoped ist, ist ausgenommen.</b> Er ist kein zustandsloser
- * Dienst, sondern ein Zustandstraeger — und wird er mit
- * {@code @Scope(value = "session", proxyMode = ScopedProxyMode.TARGET_CLASS)} injiziert, haelt das
- * Feld ohnehin nur einen Proxy, dessen Serialisierbarkeit an der Zielklasse haengt
- * (aufgefallen an {@code GameSelectionHolder} in schuetu).
+ * <p><b>A field type that is SESSION-SCOPED ITSELF is exempt.</b> It is not a stateless service but
+ * a state carrier — and if it is injected with
+ * {@code @Scope(value = "session", proxyMode = ScopedProxyMode.TARGET_CLASS)}, the field only holds
+ * a proxy anyway, whose serializability depends on the target class
+ * (noticed on {@code GameSelectionHolder} in schuetu).
  *
- * <p><b>{@code final}-Felder sind ausgenommen, und das ist kein Schlupfloch.</b> Bei
- * Konstruktor-Injektion (Lombok {@code @RequiredArgsConstructor}) ist {@code transient} die
- * <em>falsche</em> Antwort: bei einer Deserialisierung laeuft kein Konstruktor, das Feld bliebe
- * dauerhaft {@code null}, und weil es {@code final} ist, kann auch niemand es nachtraeglich setzen.
- * Aus einer {@code NotSerializableException} wuerde eine {@code NullPointerException} — kein
- * Fortschritt. Die Sanierung ist dort eine Designfrage und gehoert nicht in einen mechanischen
- * Durchgang (Bestand in root: Karte 915).
+ * <p><b>{@code final} fields are exempt, and that is no loophole.</b> With constructor injection
+ * (Lombok {@code @RequiredArgsConstructor}) {@code transient} is the <em>wrong</em> answer: on a
+ * deserialization no constructor runs, the field would stay {@code null} forever, and because it is
+ * {@code final} nobody can set it afterwards either. A {@code NotSerializableException} would turn
+ * into a {@code NullPointerException} — no progress. Fixing that is a design question there and does
+ * not belong in a mechanical sweep (inventory in root: card 915).
  *
- * <p><b>Bekannte Luecke:</b> Ein ueber ein <em>Interface</em> typisiertes Dienst-Feld traegt keine
- * Stereotyp-Annotation — das Interface ist nicht die Bean, die Implementierung ist es. Solche Felder
- * (z. B. {@code IKontaktService}, {@code MailSender}) erfasst dieser Test nicht; ein Rueckfall
- * wuerde dort nicht auffallen. Die Luecke zu schliessen hiesse, von einem Interface auf seine
- * Implementierungen zu schauen — das traegt nur, solange alle im Classpath liegen. Ein Kriterium,
- * das in einem Teil der Faelle raet, ist schlechter als eine benannte Grenze.
+ * <p><b>Known gap:</b> a service field typed via an <em>interface</em> carries no stereotype
+ * annotation — the interface is not the bean, the implementation is. This test does not catch such
+ * fields (e.g. {@code IKontaktService}, {@code MailSender}); a regression there would go unnoticed.
+ * Closing the gap would mean looking from an interface to its implementations — which only holds as
+ * long as all of them are on the classpath. A criterion that guesses in some of the cases is worse
+ * than a named limit.
  *
- * <p><b>Bewusst NICHT geprueft werden Felder, die Zustand halten</b> ({@code selected : Buchung} und
- * rund 70 weitere in guild). Sie sind ebenfalls nicht serialisierbar, aber dort ist {@code transient}
- * die <em>falsche</em> Antwort; richtig ist, den Typ serialisierbar zu machen — eine Aenderung an
- * Entitaeten mit eigener Kollateralfrage. Andernfalls waere dieser Test auf Monate rot und damit
- * wirkungslos (dieselbe Abwaegung wie in Karte 860).
+ * <p><b>Deliberately NOT checked are fields that hold state</b> ({@code selected : Buchung} and
+ * roughly 70 more in guild). They are not serializable either, but there {@code transient} is the
+ * <em>wrong</em> answer; the right one is to make the type serializable — a change to entities with
+ * collateral questions of its own. Otherwise this test would be red for months and thereby
+ * ineffective (the same trade-off as in card 860).
  *
- * <p><b>Zustandsbericht 29.08.2026, Paket R2 — geteilt statt kopiert.</b> Der Test lag als Kopie in
- * root, guild und schuetu; jede Fassung mit eigenem Basispaket. Jetzt liegt er hier in
- * {@code plaintext-root-archtests} und laeuft im Consumer via {@code <dependenciesToScan>}:
+ * <p><b>Status report 29.08.2026, package R2 — shared instead of copied.</b> The test existed as a
+ * copy in root, guild and schuetu; every version with its own base package. Now it lives here in
+ * {@code plaintext-root-archtests} and runs in the consumer via {@code <dependenciesToScan>}:
  * <ul>
- *   <li><b>Basispaket:</b> Standard {@code ch.plaintext} — damit sieht ArchUnit im Consumer auch
- *       die root-Beans aus den Jars. Das ist gewollt: root ist mit diesem Test gruen, ein Consumer
- *       bekommt so keine fremden Verstoesse, aber eine Positivkontrolle, die nie leer laeuft. Wer
- *       enger pruefen will, setzt {@code -Dplaintext.arch.basePackage=ch.plaintext.guild}
+ *   <li><b>Base package:</b> default {@code ch.plaintext} — this way ArchUnit also sees the root
+ *       beans from the jars inside a consumer. That is intended: root is green with this test, so a
+ *       consumer gets no foreign violations, but a positive control that never runs empty. Whoever
+ *       wants to check more narrowly sets {@code -Dplaintext.arch.basePackage=ch.plaintext.guild}
  *       (Surefire {@code systemPropertyVariables}).</li>
- *   <li><b>Ausnahmen:</b> Allowlist des Reactors ({@code plaintext-arch-allowlist.txt}, Regel
- *       {@code session-bean}, Ziel {@code Klasse.feld}, Begruendung Pflicht — {@link ArchAllowlist}).
- *       root fuehrt keine Allowlist.</li>
+ *   <li><b>Exceptions:</b> the reactor's allowlist ({@code plaintext-arch-allowlist.txt}, rule
+ *       {@code session-bean}, target {@code Klasse.feld}, justification mandatory — {@link ArchAllowlist}).
+ *       root keeps no allowlist.</li>
  * </ul>
  *
  * @author info@plaintext.ch
@@ -90,27 +89,27 @@ class PlaintextSessionBeanSerialisierbarTest {
 
     static final String ALLOWLIST_REGEL = "session-bean";
 
-    /** Systemeigenschaft fuer ein engeres Basispaket im Consumer; Standard {@code ch.plaintext}. */
+    /** System property for a narrower base package in the consumer; default {@code ch.plaintext}. */
     static final String BASE_PACKAGE_PROPERTY = "plaintext.arch.basePackage";
 
     private static final String BASE_PACKAGE = System.getProperty(BASE_PACKAGE_PROPERTY, "ch.plaintext");
 
     /**
-     * <b>Nicht</b> ueber {@code DO_NOT_INCLUDE_JARS} eingegrenzt — das war in guild der erste Versuch
-     * und er war falsch: die webapp bindet auch die <em>eigenen</em> Module als Jars ein, der Test sah
-     * danach {@code 0} Beans und wurde gruen, weil er nichts mehr prueft. Aufgedeckt hat das
-     * ausschliesslich die Positivkontrolle in {@link #derTestSiehtEtwas()}.
+     * <b>Not</b> narrowed via {@code DO_NOT_INCLUDE_JARS} — that was the first attempt in guild and it
+     * was wrong: the webapp also pulls in its <em>own</em> modules as jars, after which the test saw
+     * {@code 0} beans and turned green because it no longer checked anything. Only the positive
+     * control in {@link #derTestSiehtEtwas()} uncovered that.
      */
     private static final JavaClasses KLASSEN = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages(BASE_PACKAGE);
 
     /**
-     * Positivkontrolle, und sie ist kein Beiwerk: der Haupttest ist ein „nichts gefunden"-Test, und
-     * der ist ohne Nachweis der Sichtbarkeit wertlos. Ein zu scharfer Importfilter — etwa ein
-     * falsches Paket oder ein fehlendes Kompilat — laesst ihn gruen werden, weil er nichts mehr
-     * prueft. Diese Zahl deckt genau das auf; die Schwelle liegt bewusst tief, aber ueber Null,
-     * denn genau die Null war der Fehlerfall.
+     * Positive control, and it is no accessory: the main test is a "nothing found" test, and without
+     * proof of visibility such a test is worthless. An import filter that is too strict — a wrong
+     * package, say, or a missing compilation output — lets it turn green because it no longer checks
+     * anything. This number uncovers exactly that; the threshold lies deliberately low, but above
+     * zero, because zero was precisely the failure case.
      */
     @Test
     @DisplayName("Positivkontrolle: der Test sieht session-scoped Serializable-Beans ueberhaupt")
@@ -150,7 +149,7 @@ class PlaintextSessionBeanSerialisierbarTest {
             }
         }
 
-        // Die Liste steht ausdruecklich in der Fehlermeldung: sie ist die Arbeitsanweisung.
+        // The list is deliberately part of the error message: it is the work instruction.
         assertTrue(verstoesse.isEmpty(),
                 () -> "%d nicht-serialisierbare Felder in session-scoped Serializable-Beans.\n".formatted(verstoesse.size())
                         + "Dienst -> 'transient' davorschreiben; Zustand -> Typ serialisierbar machen.\n"
@@ -167,9 +166,9 @@ class PlaintextSessionBeanSerialisierbarTest {
     }
 
     /**
-     * Traegt der Typ eine Spring-Stereotyp-Annotation? Das ist das strukturelle Merkmal, an dem ein
-     * neu injizierbarer Dienst von einem zustandstragenden Feld zu unterscheiden ist — im Gegensatz
-     * zu einem Namenssuffix, das nichts zusichert.
+     * Does the type carry a Spring stereotype annotation? That is the structural characteristic by
+     * which a re-injectable service can be told apart from a state-carrying field — as opposed to a
+     * name suffix, which promises nothing.
      */
     private static boolean istSpringBean(JavaClass typ) {
         return typ.getAnnotations().stream()

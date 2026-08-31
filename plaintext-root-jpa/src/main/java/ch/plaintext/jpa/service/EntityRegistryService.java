@@ -128,11 +128,11 @@ public class EntityRegistryService {
     }
 
     /**
-     * Security-sensible Entities (Auth/Token/Audit), die NIE in der generischen mandantenscopenden
-     * Datenverwaltung auftauchen duerfen (Karte 307, K2.2) — auch wenn sie ein mandat-Feld haben.
-     * Ein mandat-FELD bedeutet nicht, dass das Repository eine mandantenscopende findByMandat-METHODE hat;
-     * zusammen mit dem fail-closed in JpaEntityService (K2.1) wird so ein Cross-Mandant-Dump verhindert.
-     * Match case-insensitiv gegen den Simple-Class-Namen.
+     * Security-sensitive entities (auth/token/audit) that must NEVER show up in the generic
+     * tenant-scoped data management (Karte 307, K2.2) — not even when they have a mandat field.
+     * A mandat FIELD does not mean that the repository has a tenant-scoping findByMandat METHOD;
+     * together with the fail-closed behaviour in JpaEntityService (K2.1) this prevents a
+     * cross-tenant dump. Matched case-insensitively against the simple class name.
      */
     private static final java.util.Set<String> SECURITY_SENSITIVE_ENTITIES = java.util.Set.of(
             "passwordresettoken", "registrationtoken", "magiclinktoken", "notification",

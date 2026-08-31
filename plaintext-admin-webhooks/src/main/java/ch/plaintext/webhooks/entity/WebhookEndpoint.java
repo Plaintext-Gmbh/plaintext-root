@@ -11,11 +11,11 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Admin-verwalteter Ziel-Endpoint für ausgehende Webhooks (mandantengescoped). {@link #eventTypes}
- * ist eine Komma-Liste der abonnierten {@code PlaintextDomainEvent#eventType()}-Werte (z. B.
- * {@code rechnung.created,rechnung.status_changed}). Das Signing-Secret liegt AES-256-GCM
- * verschlüsselt vor ({@link ch.plaintext.webhooks.service.WebhookCrypto}) — es wird bei der Anlage
- * einmalig im Klartext angezeigt und danach nie wieder ausgelesen.
+ * Admin-managed target endpoint for outgoing webhooks (tenant-scoped). {@link #eventTypes} is a
+ * comma-separated list of the subscribed {@code PlaintextDomainEvent#eventType()} values (e.g.
+ * {@code rechnung.created,rechnung.status_changed}). The signing secret is stored AES-256-GCM
+ * encrypted ({@link ch.plaintext.webhooks.service.WebhookCrypto}) — it is shown in plain text once
+ * when the endpoint is created and never read out again afterwards.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -38,7 +38,7 @@ public class WebhookEndpoint extends SuperModel {
     @Column(name = "event_types", length = 2000, nullable = false)
     private String eventTypes;
 
-    /** AES-256-GCM base64(iv||ct||tag) — nie im Klartext persistiert. */
+    /** AES-256-GCM base64(iv||ct||tag) — never persisted in plain text. */
     @Column(name = "signing_secret_encrypted", length = 2000, nullable = false)
     private String signingSecretEncrypted;
 }

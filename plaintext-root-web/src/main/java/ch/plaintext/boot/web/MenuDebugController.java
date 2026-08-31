@@ -19,10 +19,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * SECURITY (Karte 314, Punkt 5): Diagnose-Endpunkt, nur im dev-Profil registriert.
- * Er legt die vollstaendige Seiten-/Rollenmatrix der Anwendung offen und war bis dahin fuer JEDEN
- * eingeloggten Benutzer erreichbar. Zusaetzlich greift in der SecurityConfig
- * {@code /debug/** -> hasRole("ROOT")}.
+ * SECURITY (Card 314, item 5): diagnostic endpoint, registered only in the dev profile.
+ * It exposes the application's complete page/role matrix and used to be reachable for EVERY
+ * logged-in user. On top of that, {@code /debug/** -> hasRole("ROOT")} applies in the
+ * SecurityConfig.
  */
 @Profile("dev")
 @Controller

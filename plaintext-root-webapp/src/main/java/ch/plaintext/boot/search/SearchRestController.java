@@ -21,11 +21,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * REST-Endpunkt der globalen Suche (Cmd+K). Liefert die nach Modul gruppierten Treffer als JSON.
+ * REST endpoint of the global search (Cmd+K). Returns the hits grouped by module as JSON.
  * <p>
- * Läuft hinter der normalen Anwendungs-Authentifizierung – <b>keine Security-Config-Änderung
- * nötig</b> (alle {@code /api/**}-Endpunkte sind bereits authentifiziert). Das Frontend übernimmt
- * Debounce; dieser Endpunkt ist read-only über die bestehenden Registries/Daten.
+ * Runs behind the normal application authentication - <b>no security config change
+ * needed</b> (all {@code /api/**} endpoints are already authenticated). The frontend handles
+ * debouncing; this endpoint is read-only over the existing registries/data.
  *
  * @author plaintext.ch
  */
@@ -66,15 +66,15 @@ public class SearchRestController {
         return ResponseEntity.ok(new SearchResponse(groups));
     }
 
-    /** Antwort-Wurzel: {@code { "groups": [...] }}. */
+    /** Response root: {@code { "groups": [...] }}. */
     public record SearchResponse(List<GroupDto> groups) {
     }
 
-    /** Eine Modul-Gruppe: {@code { "module": "...", "hits": [...] }}. */
+    /** One module group: {@code { "module": "...", "hits": [...] }}. */
     public record GroupDto(String module, List<HitDto> hits) {
     }
 
-    /** Ein Treffer: {@code { "title", "subtitle", "link", "icon" }}. */
+    /** One hit: {@code { "title", "subtitle", "link", "icon" }}. */
     public record HitDto(String title, String subtitle, String link, String icon) {
     }
 }

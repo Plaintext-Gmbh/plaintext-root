@@ -21,21 +21,23 @@ public interface ISetupConfigService {
     boolean isMagicLinkEnabled(String mandat);
 
     /**
-     * Ob Sitzungsinformationen (Tabelle {@code USER_SESSION}) für diesen Mandanten aufgezeichnet
-     * werden (Karte 627). Fehlt eine Konfiguration, gilt {@code true}: ohne Schalter wurde bisher
-     * immer aufgezeichnet, und das Bestandsverhalten soll sich nicht still ändern.
+     * Whether session information (table {@code USER_SESSION}) is recorded for this tenant
+     * (Card 627). If no configuration exists, {@code true} applies: without a switch everything
+     * was always recorded so far, and the existing behavior should not change silently.
      */
     boolean isSessionTrackingEnabled(String mandat);
 
     /**
-     * Ob das TOTP/2FA-Feature system-weit (in mindestens einer Mandanten-Konfiguration) über die
-     * Root→Setup-UI aktiviert wurde. Ergänzt die statische Property {@code plaintext.security.totp.enabled}.
+     * Whether the TOTP/2FA feature has been enabled system-wide (in at least one tenant
+     * configuration) through the Root → Setup UI. Complements the static property
+     * {@code plaintext.security.totp.enabled}.
      */
     boolean isTotpEnabledAnywhere();
 
     /**
-     * Das system-weit konfigurierte GLOBAL-Systemmailkonto für Auth-Mails (PW-Reset/Login-Link/Registrierung),
-     * oder {@code null}, wenn keines gewählt ist. GLOBAL-Konten sind systemweit (nur ROOT) – daher ohne Mandant.
+     * The system-wide configured GLOBAL system mail account for auth mails (password reset / login
+     * link / registration), or {@code null} if none is selected. GLOBAL accounts are system-wide
+     * (ROOT only) – hence without a tenant.
      */
     Long getSystemMailAccountId();
 }

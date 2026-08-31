@@ -50,13 +50,13 @@ public class MandateBackingBean implements Serializable {
     @Autowired
     private transient MandateMenuConfigRepository mandateMenuConfigRepository;
 
-    /** Die zweite Auspraegung der Mandantenzugehoerigkeit: zugeordnete Zusatz-Mandate. */
+    /** The second form of tenant membership: assigned additional tenants. */
     @Autowired
     private transient UserMandateRepository userMandateRepository;
 
     private List<String> mandate = new ArrayList<>();
     private List<MyUserEntity> users = new ArrayList<>();
-    private List<MyUserEntity> filteredUsers; // Für die Tabellen-Filter-Funktion
+    private List<MyUserEntity> filteredUsers; // For the table filter function
     private String selectedMandat;
     private String newMandatName;
 
@@ -71,14 +71,14 @@ public class MandateBackingBean implements Serializable {
     }
 
     private void loadMandate() {
-        // Behalte manuell erstellte Mandate
+        // Keep manually created tenants
         List<String> existingMandate = new ArrayList<>(mandate);
 
         mandate.clear();
         Set<String> allMandate = plaintextSecurity.getAllMandate();
         mandate.addAll(allMandate);
 
-        // Füge manuell erstellte Mandate hinzu, die noch nicht in der DB sind
+        // Add manually created tenants that are not in the DB yet
         for (String mandat : existingMandate) {
             if (!mandate.contains(mandat)) {
                 mandate.add(mandat);
@@ -120,14 +120,14 @@ public class MandateBackingBean implements Serializable {
         }
 
         try {
-            // Prüfe ob Mandat bereits in der Datenbank existiert
+            // Check whether the tenant already exists in the database
             if (mandateMenuConfigRepository.existsByMandateName(mandatKey)) {
                 context.addMessage(null,
                         new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Mandat existiert bereits in der Datenbank."));
                 return;
             }
 
-            // Erstelle MandateMenuConfig Entity und speichere in DB
+            // Create a MandateMenuConfig entity and store it in the DB
             MandateMenuConfig config = new MandateMenuConfig();
             config.setMandateName(mandatKey);
             mandateMenuConfigRepository.save(config);
@@ -135,7 +135,7 @@ public class MandateBackingBean implements Serializable {
 
             newMandatName = "";
 
-            // Lade Mandate neu, um sicherzustellen, dass alle Quellen berücksichtigt werden
+            // Reload the tenants to make sure that all sources are taken into account
             loadMandate();
 
             context.addMessage(null,
@@ -155,9 +155,9 @@ public class MandateBackingBean implements Serializable {
         try {
             userRepository.save(user);
 
-            // Wenn der aktuell angemeldete Benutzer sein eigenes Mandat ändert, aktualisiere die Sitzung
+            // If the currently logged-in user changes their own tenant, refresh the session
             if (plaintextSecurity.getId().equals(user.getId())) {
-                // Neu laden des aktuellen Benutzers
+                // Reload the current user
                 loadMandate();
             }
 
@@ -175,24 +175,24 @@ public class MandateBackingBean implements Serializable {
     }
 
     /**
-     * Entfernt einen Mandanten aus der <b>Verwaltung des Frameworks</b> — er verschwindet aus der
-     * Auswahlliste, weil seine Menuekonfiguration ({@code mandate_menu_config}) geloescht wird.
-     * Fachdaten der Anwendung bleiben unangetastet.
+     * Removes a tenant from the <b>administration of the framework</b> — it disappears from the
+     * selection list, because its menu configuration ({@code mandate_menu_config}) is deleted.
+     * Business data of the application stays untouched.
      *
-     * <p><b>Warum nicht mehr.</b> Vorher entfernte diese Methode den Mandanten nur aus einer
-     * {@code ArrayList} in der Session, ohne einen einzigen Repository-Aufruf, und meldete trotzdem
-     * „Mandat geloescht" — nach dem naechsten {@link #reload()} war er wieder da. Eine echte
-     * Voll-Loeschung kann root hier aber gar nicht leisten: die Fachdaten eines Mandanten liegen in
-     * den Anwendungen (in plaintext-app etwa ueber acht Tabellen verteilt), und das Framework kennt
-     * diese Tabellen nicht. Statt eine Voll-Loeschung vorzutaeuschen, tut die Aktion jetzt genau
-     * das, was root besitzt — und sagt es auch.</p>
+     * <p><b>Why not more.</b> Previously this method removed the tenant only from an
+     * {@code ArrayList} in the session, without a single repository call, and still reported
+     * "tenant deleted" — after the next {@link #reload()} it was back. A real
+     * full deletion is something root cannot perform here at all: the business data of a tenant lies
+     * in the applications (in plaintext-app spread over eight tables, for instance), and the framework
+     * does not know these tables. Instead of feigning a full deletion, the action now does exactly
+     * what root owns — and says so.</p>
      *
-     * <p><b>Mandantenzugehoerigkeit gibt es in zwei Auspraegungen</b>, und beide werden geprueft:
-     * der Heimat-Mandant in der Rollen-Property {@code PROPERTY_MANDAT_<NAME>}
-     * ({@code MyUserEntity.getMandat()}) und die Zusatz-Mandate in der Tabelle
-     * {@code user_mandate}. Die frühere Pruefung kannte nur die erste und meldete deshalb „keine
-     * Benutzer betroffen", obwohl welche zugeordnet waren. Beide Vergleiche laufen
-     * case-insensitiv — Mandantennamen sind im Bestand nicht case-konsistent.</p>
+     * <p><b>Tenant membership comes in two forms</b>, and both are checked:
+     * the home tenant in the role property {@code PROPERTY_MANDAT_<NAME>}
+     * ({@code MyUserEntity.getMandat()}) and the additional tenants in the table
+     * {@code user_mandate}. The earlier check knew only the first one and therefore reported "no
+     * users affected" although some were assigned. Both comparisons run
+     * case-insensitively — tenant names are not case-consistent in the existing data.</p>
      */
     @Transactional
     public void deleteMandat() {
@@ -245,11 +245,11 @@ public class MandateBackingBean implements Serializable {
     }
 
     /**
-     * Wie viele Benutzer dem Mandanten zugeordnet sind — in <b>beiden</b> Auspraegungen und
-     * case-insensitiv.
+     * How many users are assigned to the tenant — in <b>both</b> forms and
+     * case-insensitively.
      *
-     * @param mandat der zu pruefende Mandant
-     * @return Anzahl betroffener Benutzer (Heimat-Mandant plus Zusatz-Mandat, ohne Dubletten)
+     * @param mandat the tenant to check
+     * @return number of affected users (home tenant plus additional tenant, without duplicates)
      */
     int zugeordneteBenutzer(String mandat) {
         Set<String> betroffen = new HashSet<>();
@@ -273,13 +273,13 @@ public class MandateBackingBean implements Serializable {
     }
 
     /**
-     * Der Zaehlschluessel eines Betroffenen: der kleingeschriebene Benutzername, damit derselbe
-     * Benutzer in beiden Auspraegungen nur einmal zaehlt. Ohne Namen bleibt der Datensatz einzeln
-     * gezaehlt — er darf nicht verschwinden, nur weil er unvollstaendig ist.
+     * The counting key of an affected record: the lower-cased user name, so that the same
+     * user counts only once across both forms. Without a name the record stays counted
+     * individually — it must not disappear merely because it is incomplete.
      *
-     * @param username Benutzername, darf leer sein
-     * @param datensatz der Datensatz, fuer den Ersatzschluessel
-     * @return Zaehlschluessel
+     * @param username user name, may be empty
+     * @param datensatz the record, for the substitute key
+     * @return counting key
      */
     private static String kennung(String username, Object datensatz) {
         if (username == null || username.isBlank()) {
@@ -288,15 +288,15 @@ public class MandateBackingBean implements Serializable {
         return username.toLowerCase();
     }
 
-    /** Loescht die Menuekonfiguration des Mandanten, falls vorhanden. */
+    /** Deletes the menu configuration of the tenant, if there is one. */
     private void entferneMenuekonfiguration(String mandat) {
         mandateMenuConfigRepository.findByMandateNameIgnoreCase(mandat)
                 .ifPresent(mandateMenuConfigRepository::delete);
     }
 
     /**
-     * Gibt eine sortierte Kopie aller Mandate zurück.
-     * Die Kopie stellt sicher, dass JSF/PrimeFaces die Änderungen in SelectItems erkennt.
+     * Returns a sorted copy of all tenants.
+     * The copy makes sure that JSF/PrimeFaces notices the changes in SelectItems.
      */
     public List<String> getAllMandate() {
         List<String> sortedMandate = new ArrayList<>(mandate);

@@ -25,8 +25,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Der Handler delegiert das Bauen/Versenden des Magic-Links an {@link MagicLinkService}
- * und antwortet immer neutral – die Mail-/Link-Logik selbst wird in {@link MagicLinkServiceTest} geprueft.
+ * The handler delegates building/sending the magic link to {@link MagicLinkService}
+ * and always answers neutrally - the mail/link logic itself is checked in {@link MagicLinkServiceTest}.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -77,9 +77,9 @@ class MagicLinkGenerationSuccessHandlerTest {
 
         handler.handle(request, response, token);
 
-        // Keine Delegation – kein Enumeration
+        // No delegation - no enumeration
         verify(magicLinkService, never()).sendForExistingToken(any(), any(), any());
-        // Immer gleicher Redirect
+        // Always the same redirect
         verify(response).sendRedirect("/login.xhtml?magic_link_sent=true");
     }
 

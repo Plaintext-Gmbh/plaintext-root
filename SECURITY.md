@@ -35,5 +35,3 @@ Plaintext Root includes several built-in security features:
 - **API token authentication** for REST endpoints
 - **Secure cookie handling** for theme preferences
 - **Page access guards** for menu-based navigation security
-- **Authenticated config encryption** (AES/GCM with PBKDF2-HMAC-SHA256, see
-  [docs/CRYPTO.md](docs/CRYPTO.md))

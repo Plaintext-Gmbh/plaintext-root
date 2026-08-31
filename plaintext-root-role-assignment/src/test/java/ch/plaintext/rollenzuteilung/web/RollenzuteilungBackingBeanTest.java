@@ -44,7 +44,7 @@ class RollenzuteilungBackingBeanTest {
         List<String> roles = beanWithRegistry.getAvailableRoles();
 
         assertNotNull(roles);
-        // Union aus deklarierten Rollen und DB-Bestand, dedupliziert und sortiert
+        // Union of the declared roles and the existing data in the DB, deduplicated and sorted
         assertEquals(List.of("ROLE_ADMIN", "ROLE_POSTKONTO", "ROLE_ROOT", "ROLE_USER"), roles);
     }
 

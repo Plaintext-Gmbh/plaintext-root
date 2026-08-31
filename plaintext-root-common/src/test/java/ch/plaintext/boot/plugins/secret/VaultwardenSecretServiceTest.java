@@ -16,9 +16,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit-Tests fuer {@link VaultwardenSecretService}: fail-safe Item-Matching (exakt vor enthaelt),
- * Deaktivierung, null/blank-Eingaben, Getter-Filter auf nicht-leere Werte, Exception-Kapselung und
- * die Rotations-Vorbedingungen. Der {@link VaultwardenClient} wird gemockt (kein Netz).
+ * Unit tests for {@link VaultwardenSecretService}: fail-safe item matching (exact before
+ * contains), deactivation, null/blank inputs, the getter filter on non-empty values, exception
+ * encapsulation and the rotation preconditions. The {@link VaultwardenClient} is mocked (no network).
  */
 class VaultwardenSecretServiceTest {
 
@@ -40,7 +40,7 @@ class VaultwardenSecretServiceTest {
         assertThat(new VaultwardenSecretService(props(false), mock(VaultwardenClient.class)).isEnabled()).isFalse();
     }
 
-    // ── Item-Matching / Getter ────────────────────────────────────────────────
+    // ── Item matching / getter ────────────────────────────────────────────────
 
     @Test
     void getPasswordExakterNameGewinntVorEnthaelt() {
@@ -50,7 +50,7 @@ class VaultwardenSecretServiceTest {
                 item("2", "Paperless", "u2", "exakt-pw", Map.of())));
 
         VaultwardenSecretService svc = new VaultwardenSecretService(props(true), client);
-        // "paperless" matcht exakt Item 2 (case-insensitive) trotz vorherigem enthaelt-Kandidaten.
+        // "paperless" matches item 2 exactly (case-insensitive) despite an earlier contains candidate.
         assertThat(svc.getPassword("paperless")).contains("exakt-pw");
     }
 
@@ -109,7 +109,7 @@ class VaultwardenSecretServiceTest {
         assertThat(svc.getPassword("Gibtsnicht")).isEmpty();
     }
 
-    // ── Deaktiviert / ungueltige Eingaben ─────────────────────────────────────
+    // ── Deactivated / invalid inputs ──────────────────────────────────────────
 
     @Test
     void deaktivierterVaultLiefertEmptyUndFragtClientNie() {

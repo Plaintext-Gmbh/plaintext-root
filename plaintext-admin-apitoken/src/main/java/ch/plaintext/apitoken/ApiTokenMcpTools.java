@@ -23,36 +23,36 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * MCP-Tools zum <b>regulären</b> Ausstellen, Auflisten und Widerrufen von API-Tokens (Karte 349,
- * Entscheid „Weg B").
+ * MCP tools for <b>regularly</b> issuing, listing and revoking API tokens (card 349,
+ * decision "path B").
  *
- * <p><b>Warum es das braucht:</b> Bisher gab es zum Ausstellen eines API-Tokens nur die JSF-UI
- * (Login nötig). Maschinelle Zugänge — auch die MCP-Zugänge selbst — wurden deshalb direkt mit dem
- * Signing-Key gemintet und hatten <em>keine</em> {@code api_token}-Zeile. Ein Umstellen des
- * Bearer-Filters auf {@code plaintext.mcp.bearer-filter.validation: DATABASE} hätte genau diese
- * Zugänge ausgesperrt. Über dieses Tool bekommt jeder ausgestellte Token den regulären Weg über
- * {@link ApiTokenService#createToken(Long, String, String, String, int, String)}: DB-Zeile mit
- * SHA-256-Hash, explizitem Scope, Ablaufdatum — und ist damit auch widerrufbar.</p>
+ * <p><b>Why this is needed:</b> until now the only way to issue an API token was the JSF UI
+ * (login required). Machine accesses — including the MCP accesses themselves — were therefore
+ * minted directly with the signing key and had <em>no</em> {@code api_token} row. Switching the
+ * bearer filter to {@code plaintext.mcp.bearer-filter.validation: DATABASE} would have locked out
+ * exactly those accesses. Through this tool every issued token takes the regular path via
+ * {@link ApiTokenService#createToken(Long, String, String, String, int, String)}: a DB row with
+ * SHA-256 hash, explicit scope, expiry date — and is thereby revocable as well.</p>
  *
- * <p><b>Autorisierung (bewusst eng):</b></p>
+ * <p><b>Authorization (deliberately narrow):</b></p>
  * <ul>
- *   <li>Der Aufrufer muss über den {@link McpBearerTokenFilter} authentisiert sein — der legt
- *       {@code PROPERTY_MYUSERID_*}, {@code PROPERTY_MANDAT_*}, die echten Benutzerrollen und die
- *       {@code SCOPE_*}-Authorities des Tokens in den SecurityContext.</li>
- *   <li>Es braucht {@code SCOPE_ADMIN} <b>und</b> die Rolle {@code ADMIN} oder {@code ROOT}. Beides
- *       zusammen, weil beides Unterschiedliches absichert: Der Scope verhindert, dass ein READ-Token
- *       sich selbst zu einem ADMIN-Token hochschreibt (Rechteausweitung über die Ausstellung); die
- *       Rolle verhindert, dass ein beliebiger Benutzer maschinelle Zugänge anlegt.</li>
- *   <li>Ausgestellt wird <b>ausschliesslich für den aufrufenden Benutzer im eigenen Mandanten</b>.
- *       Ein {@code userId}-Parameter wäre ein Impersonation-Vektor — wer für andere ausstellen will,
- *       nimmt die UI.</li>
- *   <li>Der {@code scope} ist ein <b>Pflichtparameter</b> ohne stillen Default. Ein Default auf ADMIN
- *       war genau der Fehler aus Karte 312 (fehlender Claim ⇒ Vollzugriff).</li>
+ *   <li>The caller must be authenticated through the {@link McpBearerTokenFilter} — which puts
+ *       {@code PROPERTY_MYUSERID_*}, {@code PROPERTY_MANDAT_*}, the real user roles and the
+ *       token's {@code SCOPE_*} authorities into the SecurityContext.</li>
+ *   <li>It requires {@code SCOPE_ADMIN} <b>and</b> the role {@code ADMIN} or {@code ROOT}. Both
+ *       together, because each safeguards something different: the scope prevents a READ token
+ *       from writing itself up into an ADMIN token (privilege escalation via issuing); the
+ *       role prevents an arbitrary user from creating machine accesses.</li>
+ *   <li>Tokens are issued <b>exclusively for the calling user within their own tenant</b>.
+ *       A {@code userId} parameter would be an impersonation vector — whoever wants to issue for
+ *       others uses the UI.</li>
+ *   <li>The {@code scope} is a <b>mandatory parameter</b> with no silent default. A default of ADMIN
+ *       was exactly the bug from card 312 (missing claim ⇒ full access).</li>
  * </ul>
  *
- * <p>{@link ConditionalOnClass} auf die MCP-Annotation: Das Bean lädt nur in Apps mit eigenem
- * spring-ai-MCP-Server (app/guild/schuetu/iot). Apps ohne MCP — z.B. plaintext-root selbst —
- * bleiben unberührt, die Dependency ist optional und damit nicht transitiv.</p>
+ * <p>{@link ConditionalOnClass} on the MCP annotation: the bean only loads in apps with their own
+ * spring-ai MCP server (app/guild/schuetu/iot). Apps without MCP — e.g. plaintext-root itself —
+ * stay untouched, the dependency is optional and therefore not transitive.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -64,9 +64,9 @@ import java.util.Set;
 public class ApiTokenMcpTools {
 
     /**
-     * Gültige Scope-Werte. {@code WRITE} ist seit Karte 545 der Name des Schreibrechts;
-     * {@code EINTRAGEN} bleibt im Übergangsfenster gültig (gleiche Authorities, siehe
-     * {@link McpBearerTokenFilter}) und fällt mit Stufe 3 der Karte weg.
+     * Valid scope values. Since card 545, {@code WRITE} is the name of the write permission;
+     * {@code EINTRAGEN} stays valid during the transition window (same authorities, see
+     * {@link McpBearerTokenFilter}) and is dropped with stage 3 of the card.
      */
     private static final Set<String> ERLAUBTE_SCOPES = Set.of("READ", "WRITE", "EINTRAGEN", "ADMIN");
     private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
@@ -87,9 +87,9 @@ public class ApiTokenMcpTools {
                     + "eindeutig sein — bestehenden zuerst per revoke_api_token widerrufen)") String tokenName,
             @McpToolParam(description = "Berechtigungsumfang, PFLICHT: READ, WRITE oder ADMIN "
                     + "(EINTRAGEN = Altname von WRITE, uebergangsweise noch gueltig)") String scope,
-            // Karte 520: Der Code liest den Parameter ausdruecklich als weglassbar
-            // ("validityDays == null ? DEFAULT_VALIDITY_DAYS : validityDays" drei Zeilen weiter
-            // unten), das Schema fuehrte ihn aber als Pflicht.
+            // Card 520: the code explicitly reads the parameter as optional
+            // ("validityDays == null ? DEFAULT_VALIDITY_DAYS : validityDays" three lines further
+            // down), but the schema listed it as mandatory.
             @McpToolParam(required = false, description = "Gueltigkeit in Tagen (7-365, leer = 90)")
             Integer validityDays) {
 
@@ -177,7 +177,7 @@ public class ApiTokenMcpTools {
         boolean vorhanden = apiTokenService.getAllTokens(aufrufer.userId(), aufrufer.mandat()).stream()
                 .anyMatch(t -> tokenId.equals(t.getId()));
         if (!vorhanden) {
-            // Bewusst keine Auskunft darueber, ob die Id anderswo existiert.
+            // Deliberately no information about whether the id exists elsewhere.
             return "FEHLER: Token " + tokenId + " nicht gefunden (oder gehoert nicht dir).";
         }
 
@@ -188,10 +188,10 @@ public class ApiTokenMcpTools {
     }
 
     /**
-     * Prüft die Autorisierung des Aufrufers und liefert dessen Identität aus dem SecurityContext.
+     * Checks the caller's authorization and returns their identity from the SecurityContext.
      *
-     * @throws ZugriffVerweigert wenn keine Authentication vorliegt, {@code SCOPE_ADMIN} bzw. die Rolle
-     *                           ADMIN/ROOT fehlt, oder Identität/Mandant nicht bestimmbar sind
+     * @throws ZugriffVerweigert if no Authentication is present, {@code SCOPE_ADMIN} or the role
+     *                           ADMIN/ROOT is missing, or identity/tenant cannot be determined
      */
     private Aufrufer aufruferPruefen() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -216,22 +216,22 @@ public class ApiTokenMcpTools {
     }
 
     /**
-     * Bestimmt den Mandanten des Aufrufers — den <b>seines Tokens</b>, nicht irgendeinen aus dem
-     * Kontext (Karte 670).
+     * Determines the caller's tenant — the one <b>of their token</b>, not just any one from the
+     * context (card 670).
      *
-     * <p>Warum das eine eigene Methode braucht: Im Kontext liegen regelmässig zwei
-     * {@code PROPERTY_MANDAT_*}-Authorities, weil derselbe Mandant im Token klein und in
-     * {@code my_user_entity.roles} gross geschrieben steht. Ein {@code findFirst()} über die
-     * ungeordnete Authority-Menge zog davon mal die eine, mal die andere; am 11.08.2026 lieferte
-     * derselbe Token im Abstand von 40 Minuten zwei verschiedene Mandanten, wodurch 28
-     * Token-Zeilen zeitweise weder auflistbar noch widerrufbar waren.
+     * <p>Why this needs a method of its own: the context regularly holds two
+     * {@code PROPERTY_MANDAT_*} authorities, because the same tenant is spelled lower case in the
+     * token and upper case in {@code my_user_entity.roles}. A {@code findFirst()} over the
+     * unordered authority set pulled sometimes the one, sometimes the other; on 11.08.2026 the
+     * same token returned two different tenants 40 minutes apart, which left 28
+     * token rows temporarily neither listable nor revocable.
      *
-     * <p>{@link McpBearerTokenFilter#TOKEN_MANDAT_PREFIX} kommt aus genau einer Quelle und deshalb
-     * genau einmal vor. Der Rückfall auf {@code PROPERTY_MANDAT_} gilt der Übergangszeit: Zwischen
-     * root-Release und Rollout in app/guild/schuetu kann ein älterer Filter im Consumer laufen, der
-     * die neue Authority noch nicht setzt — ohne Rückfall bräche dort jedes Token-Werkzeug mit
-     * „Mandant nicht bestimmbar" ab. Der Rückfall erbt die alte Mehrdeutigkeit; das ist bewusst der
-     * kleinere Schaden und endet mit dem Rollout.
+     * <p>{@link McpBearerTokenFilter#TOKEN_MANDAT_PREFIX} comes from exactly one source and
+     * therefore occurs exactly once. The fallback to {@code PROPERTY_MANDAT_} serves the transition
+     * period: between the root release and the rollout in app/guild/schuetu an older filter may run
+     * in the consumer that does not yet set the new authority — without the fallback every token
+     * tool would abort there with "Mandant nicht bestimmbar". The fallback inherits the old
+     * ambiguity; that is deliberately the lesser harm and ends with the rollout.
      */
     private String mandatBestimmen(Set<String> authorities) {
         return praefixWert(authorities, McpBearerTokenFilter.TOKEN_MANDAT_PREFIX)
@@ -247,10 +247,10 @@ public class ApiTokenMcpTools {
                 .findFirst();
     }
 
-    /** Identität des Aufrufers, aus dem vom Bearer-Filter befüllten SecurityContext gelesen. */
+    /** Identity of the caller, read from the SecurityContext populated by the bearer filter. */
     private record Aufrufer(Long userId, String mandat, String email) {}
 
-    /** Interner Abbruch mit fertiger, an den MCP-Client zurückgegebener Meldung. */
+    /** Internal abort carrying a ready-made message that is returned to the MCP client. */
     private static class ZugriffVerweigert extends RuntimeException {
         ZugriffVerweigert(String message) {
             super(message);

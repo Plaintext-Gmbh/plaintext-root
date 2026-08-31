@@ -35,9 +35,9 @@ public class ClaudeSummaryBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped): laedt die Anforderung anhand des viewParam {@code id} bei jedem GET.
-     * viewParams sind vor preRenderView gesetzt, daher ist {@code anforderungId} hier verfuegbar. Der isPostback-Guard
-     * verhindert das Neuladen bei Ajax-Postbacks. Ersetzt das fruehere init() + @PostConstruct postConstruct().
+     * preRenderView listener (session-scoped): loads the requirement from the {@code id} viewParam on every GET.
+     * viewParams are set before preRenderView, therefore {@code anforderungId} is available here. The isPostback
+     * guard prevents a reload on Ajax postbacks. Replaces the former init() + @PostConstruct postConstruct().
      */
     public void onLoad() {
         FacesContext ctx = FacesContext.getCurrentInstance();

@@ -16,9 +16,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests fuer den Rollen-Registry-Mechanismus (Modul-Rollen-Registrierung): Einsammeln der
- * Provider-Beans, Deduplizierung ueber den normalisierten Namen, Beschreibungs-Merge und
- * Verhalten ohne Provider.
+ * Tests for the role registry mechanism (module role registration): collecting the provider
+ * beans, deduplication by the normalized name, the description merge and the behaviour
+ * without any provider.
  */
 class PlaintextRoleRegistryTest {
 

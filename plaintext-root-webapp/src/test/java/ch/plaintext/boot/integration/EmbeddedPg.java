@@ -13,37 +13,37 @@ import java.sql.Statement;
 import java.util.Locale;
 
 /**
- * Eingebettetes PostgreSQL für die Integrationstests — Ersatz für Testcontainers.
+ * Embedded PostgreSQL for the integration tests — a replacement for Testcontainers.
  *
- * <p><b>Warum (Karte 451, Entscheidung Daniels vom 02.08.2026):</b> Die Testklassen starteten je
- * einen {@code PostgreSQLContainer} und brauchten dafür den Docker-Daemon des Runners. Genau
- * dieser Zugang — {@code /var/run/docker.sock} im GitHub-Runner-Container, gemountet als root —
- * ist die offene Lücke: Wer einen Job ausführen darf, mountet darüber jedes Verzeichnis des Hosts.
- * Ein eingebettetes PostgreSQL läuft als normaler Prozess im Testlauf und braucht keinen Daemon.
+ * <p><b>Why (card 451, Daniel's decision of 02.08.2026):</b> the test classes each started
+ * a {@code PostgreSQLContainer} and needed the runner's Docker daemon for it. Exactly
+ * that access — {@code /var/run/docker.sock} in the GitHub runner container, mounted as root —
+ * is the open gap: whoever may run a job can mount any directory of the host through it.
+ * An embedded PostgreSQL runs as an ordinary process within the test run and needs no daemon.
  *
- * <p><b>Ein Server, eine Datenbank je Testklasse.</b> Der Server startet einmal pro JVM; jede
- * Testklasse bekommt über {@link #registrieren} ihre eigene, frisch angelegte Datenbank. Damit
- * bleibt die Isolation erhalten, die vorher aus „ein Container je Klasse" kam — ohne deren Kosten.
+ * <p><b>One server, one database per test class.</b> The server starts once per JVM; every
+ * test class gets its own, freshly created database via {@link #registrieren}. That
+ * preserves the isolation that previously came from "one container per class" — without its cost.
  *
- * <p><b>Bewusst in Kauf genommen:</b> Die eingebetteten Binaries stehen auf PostgreSQL 17, die
- * CI-Datenbank lief auf 18. Daniel am 02.08.2026: „mit dem risiko, dass die db nicht 1:1 ist kann
- * ich leben". Weicht ein Test wegen eines Versionsunterschieds ab, gehört das in die Karte — nicht
- * stillschweigend weggeräumt.
+ * <p><b>Deliberately accepted:</b> the embedded binaries are on PostgreSQL 17, the
+ * CI database ran on 18. Daniel on 02.08.2026: "I can live with the risk that the db is not
+ * 1:1." If a test deviates because of a version difference, that belongs in the card — not
+ * to be tidied away silently.
  */
 public final class EmbeddedPg {
 
     /**
-     * Reicht die CI eine Datenbank herein, wird DIESE benutzt statt eines eigenen Servers.
+     * If the CI hands in a database, THAT one is used instead of a server of our own.
      *
-     * <p><b>Warum (gemessen am 02.08.2026, PR #22):</b> Die GitHub-Runner laufen als <b>root</b>
-     * — und {@code initdb} verweigert den Dienst als root
-     * ({@code Process [/tmp/embedded-pg/.../initdb …] failed}). Ein eingebetteter Server ist dort
-     * also gar nicht startbar, solange {@code User=root} gilt (genau der zweite Punkt der
-     * Karte 451). Die Pipeline stellt ohnehin schon eine Datenbank bereit und reicht sie als
-     * {@code SPRING_DATASOURCE_URL} herein; die wird hier genutzt.
+     * <p><b>Why (measured on 02.08.2026, PR #22):</b> the GitHub runners run as <b>root</b>
+     * — and {@code initdb} refuses to work as root
+     * ({@code Process [/tmp/embedded-pg/.../initdb …] failed}). An embedded server therefore
+     * cannot be started there at all as long as {@code User=root} holds (exactly the second point of
+     * card 451). The pipeline already provides a database anyway and hands it in as
+     * {@code SPRING_DATASOURCE_URL}; that is what is used here.
      *
-     * <p>Lokal — ohne diese Variable — startet der eingebettete Server wie bisher. Beide Wege
-     * brauchen <b>keinen Docker-Daemon im Testprozess</b>, und darum geht es in Karte 451.
+     * <p>Locally — without this variable — the embedded server starts as before. Both ways
+     * need <b>no Docker daemon in the test process</b>, and that is what card 451 is about.
      */
     private static final String EXTERNE_URL = umgebung("SPRING_DATASOURCE_URL");
     private static final String EXTERNER_USER = wertOder(umgebung("SPRING_DATASOURCE_USERNAME"), "plaintext");
@@ -79,10 +79,10 @@ public final class EmbeddedPg {
     }
 
     /**
-     * Legt eine frische Datenbank für diese Testklasse an und trägt die Verbindungsdaten ein.
+     * Creates a fresh database for this test class and registers the connection details.
      *
-     * @param registry Spring-Registry aus der {@code @DynamicPropertySource}-Methode
-     * @param datenbank Name der Testdatenbank, üblicherweise der Klassenname in Kleinbuchstaben
+     * @param registry Spring registry from the {@code @DynamicPropertySource} method
+     * @param datenbank name of the test database, usually the class name in lower case
      */
     public static void registrieren(DynamicPropertyRegistry registry, String datenbank) {
         final String db = datenbank.toLowerCase(Locale.ROOT);
@@ -90,8 +90,8 @@ public final class EmbeddedPg {
         final String user;
         final String pw;
         if (EXTERNE_URL != null) {
-            // Eigene Datenbank auf dem gereichten Server — damit bleibt die Isolation je
-            // Testklasse erhalten, die vorher aus "ein Container je Klasse" kam.
+            // Our own database on the handed-in server — this preserves the isolation per
+            // test class that previously came from "one container per class".
             anlegen(EXTERNE_URL, EXTERNER_USER, EXTERNES_PW, db);
             url = EXTERNE_URL.replaceFirst("/[^/?]+(\\?|$)", "/" + db + "$1");
             user = EXTERNER_USER;

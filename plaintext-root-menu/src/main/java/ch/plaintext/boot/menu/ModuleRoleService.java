@@ -22,24 +22,24 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Setzt die konfigurierbaren Modul-Rollen durch ({@link ModuleRoleProperties}): Ein Modul, dem in
- * der Anwendungs-Konfiguration eine Rolle zugeordnet ist, verschwindet fuer Benutzer ohne diese
- * Rolle komplett — Menuepunkte, Dashboard-Kacheln und (ueber {@link MenuItemImpl#isOn()}) auch der
- * Direktaufruf der Seiten via {@code PageAccessGuard}.
+ * Enforces the configurable module roles ({@link ModuleRoleProperties}): a module that has a role
+ * assigned to it in the application configuration disappears completely for users without that
+ * role — menu items, dashboard tiles and (through {@link MenuItemImpl#isOn()}) direct page access
+ * via the {@code PageAccessGuard} as well.
  *
- * <p><b>Ein Schalter, drei Wirkungen.</b> Der Guard und der Menue-Renderer fragen beide
- * {@link MenuItemImpl#isOn()}; die Kacheln fragen {@link #isAllowedForLink(String, String,
- * SecurityProvider)}. Die Rollenpruefung muss deshalb nur an einer Stelle sitzen, damit Menue,
- * Kachel und Seitenzugriff konsistent verschwinden.</p>
+ * <p><b>One switch, three effects.</b> The guard and the menu renderer both ask
+ * {@link MenuItemImpl#isOn()}; the tiles ask {@link #isAllowedForLink(String, String,
+ * SecurityProvider)}. The role check therefore has to sit in one place only, so that menu, tile
+ * and page access disappear consistently.</p>
  *
- * <p><b>Modul-Zugehoerigkeit</b> wird aus vorhandenen Metadaten abgeleitet, das Modul selbst wird
- * nicht angefasst: Fuer jeden Menuepunkt werden die Kandidaten-Keys gesammelt (eigene
- * {@code moduleId}, die {@code moduleId} jedes Elternmenues, sowie die
- * {@linkplain MenuItemImpl#getEffectiveMenuId() Menu-Root-Id} des obersten Elternmenues). Passt
- * einer davon auf einen konfigurierten Key, gilt dessen Rolle.</p>
+ * <p><b>Module membership</b> is derived from existing metadata, the module itself is left
+ * untouched: for every menu item the candidate keys are collected (its own {@code moduleId}, the
+ * {@code moduleId} of every parent menu, as well as the
+ * {@linkplain MenuItemImpl#getEffectiveMenuId() Menu-Root-Id} of the topmost parent menu). If one
+ * of them matches a configured key, that key's role applies.</p>
  *
- * <p>{@code ROLE_ADMIN} und {@code ROLE_ROOT} umgehen die Pruefung immer — unveraendertes
- * Verhalten. Module ohne Eintrag verhalten sich exakt wie bisher.</p>
+ * <p>{@code ROLE_ADMIN} and {@code ROLE_ROOT} always bypass the check — unchanged behaviour.
+ * Modules without an entry behave exactly as before.</p>
  *
  * @author info@plaintext.ch
  * @since 1.604.0
@@ -47,27 +47,27 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 public class ModuleRoleService implements SmartInitializingSingleton {
 
-    /** Schutz gegen Zyklen in der Menue-Hierarchie. */
+    /** Protection against cycles in the menu hierarchy. */
     private static final int MAX_PARENT_TIEFE = 10;
 
     private final ApplicationContext applicationContext;
     private final ModuleRoleProperties properties;
 
     /**
-     * Kanonischer Menue-Link -&gt; geforderte Rollen; fuer die Kacheln.
+     * Canonical menu link -&gt; required roles; for the tiles.
      *
-     * <p>Die drei Nachschlagetabellen werden in {@link #resolve(Collection)} als fertige,
-     * unveraenderliche Momentaufnahme gebaut und danach in einem Zug veroeffentlicht. Ein
-     * {@code volatile}-Feld wuerde zwar die Referenz sicher publizieren, aber nichts darueber
-     * aussagen, ob am dahinterliegenden Objekt noch geschrieben wird — deshalb
-     * {@link AtomicReference} als ausdruecklich thread-sicherer Halter fuer den Schnappschuss.</p>
+     * <p>The three lookup tables are built in {@link #resolve(Collection)} as a finished,
+     * immutable snapshot and are then published in one go. A {@code volatile} field would publish
+     * the reference safely, but would say nothing about whether the object behind it is still
+     * being written to — hence {@link AtomicReference} as an explicitly thread-safe holder for the
+     * snapshot.</p>
      */
     private final AtomicReference<Map<String, List<String>>> rolesByLink = new AtomicReference<>(Map.of());
 
-    /** Menue-Titel -&gt; geforderte Rollen; Fallback fuer Kacheln ohne passenden Link. */
+    /** Menu title -&gt; required roles; fallback for tiles without a matching link. */
     private final AtomicReference<Map<String, List<String>>> rolesByMenuTitle = new AtomicReference<>(Map.of());
 
-    /** Alle im Klassenpfad erkannten Modul-Keys (fuer Startup-Report und Doku-Hinweis). */
+    /** All module keys detected on the classpath (for the startup report and doc hint). */
     private final AtomicReference<Set<String>> knownModuleKeys = new AtomicReference<>(Set.of());
 
     private volatile boolean resolved;
@@ -78,9 +78,9 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Loest die Modul-Zugehoerigkeit einmalig auf und meldet die erkannten Modul-Keys. Laeuft
-     * bewusst erst nach der Instanziierung aller Singletons: die {@link MenuItemImpl}-Beans werden
-     * von {@link MenuRegistryPostProcessor} per {@code registerSingleton} beigesteuert.
+     * Resolves the module membership once and reports the detected module keys. Deliberately
+     * runs only after all singletons have been instantiated: the {@link MenuItemImpl} beans are
+     * contributed by the {@link MenuRegistryPostProcessor} via {@code registerSingleton}.
      */
     @Override
     public void afterSingletonsInstantiated() {
@@ -113,14 +113,14 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Darf der aktuelle Benutzer eine Dashboard-Kachel sehen, soweit es die Modul-Rollen betrifft?
-     * Die Kachel wird ueber ihren Link dem Menue zugeordnet, ersatzweise ueber ihren
-     * {@code menuTitle} — dieselbe Kopplung, die auch die mandatsspezifische Sichtbarkeit nutzt.
+     * May the current user see a dashboard tile, as far as the module roles are concerned? The
+     * tile is assigned to the menu via its link, alternatively via its {@code menuTitle} — the
+     * same coupling that the tenant-specific visibility uses.
      *
-     * @param link             Link der Kachel (z.B. {@code wiki.html})
-     * @param menuTitle        Menue-Titel der Kachel, darf leer sein
-     * @param securityProvider Rollen-Lookup, darf {@code null} sein
-     * @return {@code true}, wenn keine Modul-Rolle gefordert ist oder der Benutzer sie haelt
+     * @param link             link of the tile (e.g. {@code wiki.html})
+     * @param menuTitle        menu title of the tile, may be empty
+     * @param securityProvider role lookup, may be {@code null}
+     * @return {@code true} if no module role is required or the user holds it
      */
     public boolean isAllowedForLink(String link, String menuTitle, SecurityProvider securityProvider) {
         if (properties.isEmpty()) {
@@ -135,10 +135,10 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Alle im Klassenpfad erkannten Modul-Keys — die gueltige Auswahl fuer
+     * All module keys detected on the classpath — the valid choice for
      * {@code plaintext.menu.module-roles.<key>}.
      *
-     * @return erkannte Modul-Keys, alphabetisch (nie {@code null})
+     * @return the detected module keys, alphabetically (never {@code null})
      */
     public Set<String> getKnownModuleKeys() {
         ensureResolved();
@@ -146,12 +146,12 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Rollenpruefung inklusive admin/root-Bypass. Statisch, damit {@link MenuItemImpl#isOn()} sie
-     * auch ohne Spring-Kontext (Unit-Tests) mit bereits aufgeloesten Rollen anwenden kann.
+     * Role check including the admin/root bypass. Static, so that {@link MenuItemImpl#isOn()} can
+     * apply it with already resolved roles even without a Spring context (unit tests).
      *
-     * @param required         geforderte Rollen (GROSS, ohne Prefix), darf leer/{@code null} sein
-     * @param securityProvider Rollen-Lookup, darf {@code null} sein
-     * @return {@code true}, wenn der Zugriff erlaubt ist
+     * @param required         required roles (UPPERCASE, without prefix), may be empty/{@code null}
+     * @param securityProvider role lookup, may be {@code null}
+     * @return {@code true} if access is allowed
      */
     public static boolean holdsAny(List<String> required, SecurityProvider securityProvider) {
         if (required == null || required.isEmpty()) {
@@ -160,7 +160,7 @@ public class ModuleRoleService implements SmartInitializingSingleton {
         if (securityProvider == null) {
             return true;
         }
-        // admin und root behalten IMMER Zugriff - unveraendertes Verhalten.
+        // admin and root ALWAYS keep access - unchanged behaviour.
         if (hasRole(securityProvider, "ROOT") || hasRole(securityProvider, "ADMIN")) {
             return true;
         }
@@ -173,38 +173,38 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Rollenabfrage mit und ohne {@code ROLE_}-Prefix. {@code SpringSecurityProvider} kennt beide
-     * Schreibweisen; eine eigene {@link SecurityProvider}-Implementierung einer App muss das aber
-     * nicht — deshalb wird hier beides gefragt, statt sich auf eine Konvention zu verlassen.
+     * Role lookup with and without the {@code ROLE_} prefix. {@code SpringSecurityProvider} knows
+     * both spellings; an application's own {@link SecurityProvider} implementation need not — so
+     * both are asked here instead of relying on a convention.
      *
-     * @param securityProvider Rollen-Lookup, nicht {@code null}
-     * @param role             Rollenname GROSS und ohne {@code ROLE_}-Prefix
-     * @return {@code true}, wenn der Benutzer die Rolle in einer der beiden Schreibweisen haelt
+     * @param securityProvider role lookup, not {@code null}
+     * @param role             role name in UPPERCASE and without the {@code ROLE_} prefix
+     * @return {@code true} if the user holds the role in either spelling
      */
     /**
-     * Fragt eine Rolle ab — <b>unabhaengig davon, wie sie in der Konfiguration geschrieben ist</b>.
+     * Asks for a role — <b>regardless of how it is spelled in the configuration</b>.
      *
-     * <p><b>Warum das noetig ist (Meldung Daniel, 26.08.2026: „Auszahlungen fuer Jasmin in Mandat
-     * trimstein geht nicht mehr").</b> Rollen stehen in der Datenbank klein ({@code auszahlungen},
-     * {@code wiki}); {@code MyUserDetailsService} macht daraus beim Anmelden
-     * {@code "ROLE_" + role.toUpperCase()}, also {@code ROLE_AUSZAHLUNGEN}. Die Schluessel-Werte
-     * aus {@code plaintext.menu.module-roles} sind dagegen klein geschrieben — und
-     * {@code SpringSecurityProvider.hasRole} vergleicht bewusst mit Beachtung der Schreibweise
-     * (siehe {@code SpringSecurityProviderTest.hasRole_shouldBeCaseSensitive}).
+     * <p><b>Why this is necessary (report from Daniel, 26.08.2026: "Auszahlungen for Jasmin in
+     * tenant trimstein no longer works").</b> Roles are stored in lower case in the database
+     * ({@code auszahlungen}, {@code wiki}); at login {@code MyUserDetailsService} turns them into
+     * {@code "ROLE_" + role.toUpperCase()}, that is {@code ROLE_AUSZAHLUNGEN}. The key values from
+     * {@code plaintext.menu.module-roles}, in contrast, are written in lower case — and
+     * {@code SpringSecurityProvider.hasRole} compares case-sensitively on purpose (see
+     * {@code SpringSecurityProviderTest.hasRole_shouldBeCaseSensitive}).
      *
-     * <p>Die Folge war schlimmer als „ein Modul fehlt": ein Modul hinter einer Rolle war fuer
-     * jeden ausser ROOT/ADMIN <b>dauerhaft</b> unsichtbar, auch fuer die Person, der man die
-     * Rolle ausdruecklich zugewiesen hatte. Der Riegel liess sich schliessen, aber nicht mehr
-     * oeffnen. Dass es lange niemandem auffiel, liegt am ROOT/ADMIN-Vorbehalt in
-     * {@link #holdsAny(List, SecurityProvider)} — wer den Riegel einrichtet, ist Admin und sieht
-     * das Modul weiter.
+     * <p>The consequence was worse than "a module is missing": a module behind a role was
+     * <b>permanently</b> invisible to everyone except ROOT/ADMIN, including the very person the
+     * role had explicitly been assigned to. The gate could be closed, but no longer opened. That
+     * nobody noticed for a long time is down to the ROOT/ADMIN exemption in
+     * {@link #holdsAny(List, SecurityProvider)} — whoever sets up the gate is an admin and keeps
+     * seeing the module.
      *
-     * <p><b>Warum hier und nicht in {@code SpringSecurityProvider}.</b> Dessen Verhalten ist
-     * ausdruecklich getestet, und die Menue-Annotationen im Bestand schreiben ihre Rollen gross
-     * ({@code "POSTKONTO"}, {@code "ROOT"}) — die Konvention des Systems ist also die
-     * Grossschreibung. Ein zentral aufgeweichter Rollenvergleich waere eine viel groessere
-     * Aenderung an einem Sicherheitsbaustein, um einen Konfigurationsfall zu heilen. Normalisiert
-     * wird deshalb genau dort, wo die frei geschriebene Konfiguration hereinkommt.
+     * <p><b>Why here and not in {@code SpringSecurityProvider}.</b> Its behaviour is explicitly
+     * tested, and the existing menu annotations write their roles in upper case
+     * ({@code "POSTKONTO"}, {@code "ROOT"}) — so the convention of the system is upper case.
+     * Centrally softening the role comparison would be a far bigger change to a security building
+     * block, just to cure a configuration case. Normalisation therefore happens exactly where the
+     * freely written configuration comes in.
      */
     private static boolean hasRole(SecurityProvider securityProvider, String role) {
         if (role == null || role.isBlank()) {
@@ -218,8 +218,8 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Loest die Modul-Zugehoerigkeit aller registrierten Menuepunkte einmalig auf und schreibt die
-     * geforderten Rollen an die Menuepunkte. Idempotent und thread-sicher.
+     * Resolves the module membership of all registered menu items once and writes the required
+     * roles onto the menu items. Idempotent and thread-safe.
      */
     public void ensureResolved() {
         if (resolved) {
@@ -246,14 +246,14 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Loest die Modul-Zugehoerigkeit fuer alle Menuepunkte auf, schreibt die geforderten Rollen an
-     * die Menuepunkte und baut die Nachschlagetabellen fuer die Kacheln.
+     * Resolves the module membership for all menu items, writes the required roles onto the menu
+     * items and builds the lookup tables for the tiles.
      *
-     * <p>Im Normalbetrieb ruft {@link #ensureResolved()} diese Methode mit den registrierten
-     * Menuepunkt-Beans auf; oeffentlich, damit Tests und Anwendungen sie ohne Spring-Kontext mit
-     * einer selbst gebauten Menuestruktur benutzen koennen.</p>
+     * <p>In normal operation {@link #ensureResolved()} calls this method with the registered menu
+     * item beans; public so that tests and applications can use it without a Spring context, with
+     * a menu structure they build themselves.</p>
      *
-     * @param items alle registrierten Menuepunkte
+     * @param items all registered menu items
      */
     public void resolve(Collection<MenuItemImpl> items) {
         Map<String, String> configured = properties.canonicalModuleRoles();
@@ -267,9 +267,9 @@ public class ModuleRoleService implements SmartInitializingSingleton {
             Set<String> candidates = moduleKeysOf(item, byTitle);
             keys.addAll(candidates);
 
-            // Dieselbe Ableitung dient zwei Zwecken: admin steuert ueber die Modul-Rollen, WER ein
-            // Modul benutzen darf; root steuert ueber die Mandanten-Listen, WELCHE Module zu einem
-            // Mandanten gehoeren. Beide sprechen damit dasselbe Modul-Vokabular.
+            // The same derivation serves two purposes: through the module roles admin controls
+            // WHO may use a module; through the tenant lists root controls WHICH modules belong to
+            // a tenant. Both therefore speak the same module vocabulary.
             item.setModuleKeys(List.copyOf(candidates));
 
             List<String> required = requiredRolesOf(candidates, configured);
@@ -284,12 +284,12 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Die geforderten Rollen eines Menuepunkts: fuer jeden Kandidaten-Key die konfigurierte Rolle,
-     * in Fundreihenfolge und ohne Dubletten.
+     * The required roles of a menu item: for every candidate key the configured role, in the
+     * order they were found and without duplicates.
      *
-     * @param candidates Kandidaten-Keys des Menuepunkts
-     * @param configured konfigurierte Zuordnung Modul-Key -&gt; Rolle
-     * @return geforderte Rollen, ggf. leer (nie {@code null})
+     * @param candidates candidate keys of the menu item
+     * @param configured configured mapping module key -&gt; role
+     * @return the required roles, possibly empty (never {@code null})
      */
     private static List<String> requiredRolesOf(Set<String> candidates, Map<String, String> configured) {
         List<String> required = new ArrayList<>();
@@ -303,13 +303,13 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Traegt einen rollenpflichtigen Menuepunkt in die Nachschlagetabellen der Kacheln ein — ueber
-     * seinen kanonischen Link und ersatzweise ueber seinen Titel.
+     * Enters a role-requiring menu item into the lookup tables of the tiles — via its canonical
+     * link and, failing that, via its title.
      *
-     * @param item        der Menuepunkt
-     * @param required    seine geforderten Rollen; ist die Liste leer, passiert nichts
-     * @param byLink      Tabelle Link -&gt; Rollen, wird ergaenzt
-     * @param byMenuTitle Tabelle Titel -&gt; Rollen, wird ergaenzt
+     * @param item        the menu item
+     * @param required    its required roles; if the list is empty nothing happens
+     * @param byLink      table link -&gt; roles, is extended
+     * @param byMenuTitle table title -&gt; roles, is extended
      */
     private static void indexRequiredRoles(MenuItemImpl item, List<String> required,
                                            Map<String, List<String>> byLink,
@@ -345,12 +345,12 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Die Modul-Keys, unter denen ein Menuepunkt ansprechbar ist: die eigene {@code moduleId}, die
-     * {@code moduleId} jedes Elternmenues und die Menu-Root-Id des obersten Elternmenues.
+     * The module keys under which a menu item can be addressed: its own {@code moduleId}, the
+     * {@code moduleId} of every parent menu and the menu root id of the topmost parent menu.
      *
-     * @param item    der Menuepunkt
-     * @param byTitle Index Titel -&gt; Menuepunkte, fuer den Aufstieg zum Elternmenue
-     * @return Kandidaten-Keys in kanonischer Form (nie {@code null})
+     * @param item    the menu item
+     * @param byTitle index title -&gt; menu items, for climbing up to the parent menu
+     * @return the candidate keys in canonical form (never {@code null})
      */
     static Set<String> moduleKeysOf(MenuItemImpl item, Map<String, List<MenuItemImpl>> byTitle) {
         Set<String> keys = new LinkedHashSet<>();
@@ -372,7 +372,7 @@ public class ModuleRoleService implements SmartInitializingSingleton {
             depth++;
         }
 
-        // Fallback fuer Module ohne moduleId: die Menu-Root-Id des obersten Menuepunkts.
+        // Fallback for modules without a moduleId: the menu root id of the topmost menu item.
         addKey(keys, topmost.getEffectiveMenuId());
         return keys;
     }
@@ -385,12 +385,12 @@ public class ModuleRoleService implements SmartInitializingSingleton {
     }
 
     /**
-     * Kanonische Form eines Menue-Links: kleingeschrieben, ohne fuehrenden Slash, ohne Query und
-     * ohne die Endungen {@code .xhtml}, {@code .jsf}, {@code .html}, {@code .htm} — dieselbe
-     * Normalisierung wie im {@code PageAccessGuardService}.
+     * Canonical form of a menu link: lower-cased, without a leading slash, without the query and
+     * without the extensions {@code .xhtml}, {@code .jsf}, {@code .html}, {@code .htm} — the same
+     * normalisation as in the {@code PageAccessGuardService}.
      *
-     * @param link roher Link, darf {@code null} sein
-     * @return kanonischer Link, nie {@code null}
+     * @param link the raw link, may be {@code null}
+     * @return the canonical link, never {@code null}
      */
     static String canonicalLink(String link) {
         if (link == null) {

@@ -15,22 +15,22 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Wertet fuer jeden registrierten Menuepunkt die vier Sichtbarkeits-Filter <b>einzeln</b> aus und
- * benennt zu jedem Nein den Grund.
+ * Evaluates the four visibility filters <b>individually</b> for every registered menu item and
+ * names the reason behind each no.
  *
- * <p><b>Warum es das braucht.</b> {@code MenuItemImpl.isOn()} verknuepft vier unabhaengige Filter
- * mit UND und liefert einen einzigen Wahrheitswert. Fehlt ein Menuepunkt, ist damit nicht zu
- * erkennen, welcher der vier ihn wegnimmt — Rolle, Modul-Rolle, deaktiviertes Modul oder die
- * Mandanten-Liste. Diese Auswertung macht die vier Antworten sichtbar.</p>
+ * <p><b>Why this is needed.</b> {@code MenuItemImpl.isOn()} combines four independent filters with
+ * AND and yields a single truth value. When a menu item is missing, there is no way to tell which
+ * of the four takes it away — role, module role, a deactivated module or the tenant list. This
+ * analysis makes all four answers visible.</p>
  *
- * <p><b>Keine zweite Wahrheit.</b> Die Ja/Nein-Werte kommen aus denselben Methoden, die auch das
- * Menue und der {@code PageAccessGuard} benutzen ({@link MenuItemImpl#isRoleVisible()} und die
- * drei Geschwister). Hier entsteht nur der <i>Text</i> dazu; damit kann die Diagnose nicht von der
- * tatsaechlichen Entscheidung abdriften.</p>
+ * <p><b>No second truth.</b> The yes/no values come from the very same methods the menu and the
+ * {@code PageAccessGuard} use ({@link MenuItemImpl#isRoleVisible()} and its three siblings). Only
+ * the <i>text</i> is produced here, so the diagnostics cannot drift away from the actual
+ * decision.</p>
  *
- * <p><b>Impersonate.</b> Die Menuepunkte tragen den {@code SecurityProvider} der laufenden Session,
- * und die Impersonation tauscht die {@code Authentication} in genau dieser Session aus. Die
- * Auswertung zeigt deshalb ohne Zutun die Sicht des impersonierten Benutzers.</p>
+ * <p><b>Impersonation.</b> The menu items carry the {@code SecurityProvider} of the running
+ * session, and impersonation swaps the {@code Authentication} in exactly that session. The
+ * analysis therefore shows the impersonated user's view without any extra effort.</p>
  *
  * @author info@plaintext.ch
  * @since 1.608.0
@@ -41,18 +41,18 @@ public class MenuDiagnoseService {
     private final MandateMenuVisibilityService visibilityService;
 
     /**
-     * @param visibilityService liefert den Klartext-Grund des Mandantenfilters
+     * @param visibilityService supplies the plain-text reason given by the tenant filter
      */
     public MenuDiagnoseService(MandateMenuVisibilityService visibilityService) {
         this.visibilityService = visibilityService;
     }
 
     /**
-     * Wertet alle Menuepunkte aus, alphabetisch nach vollem Titel.
+     * Analyses all menu items, alphabetically by full title.
      *
-     * @param items   die registrierten Menuepunkte
-     * @param mandant der Mandant, dessen Liste geprueft wird
-     * @return eine Zeile je Menuepunkt (nie {@code null})
+     * @param items   the registered menu items
+     * @param mandant the tenant whose list is checked
+     * @return one row per menu item (never {@code null})
      */
     public List<MenuDiagnoseZeile> analysiereAlle(Collection<MenuItemImpl> items, String mandant) {
         List<MenuDiagnoseZeile> zeilen = new ArrayList<>();
@@ -67,16 +67,15 @@ public class MenuDiagnoseService {
     }
 
     /**
-     * Wertet einen einzelnen Menuepunkt aus.
+     * Analyses a single menu item.
      *
-     * <p>Die <b>Entscheidung</b> trifft der Menuepunkt selbst und damit fuer den Mandanten der
-     * laufenden Session. Der Parameter {@code mandant} dient dem <b>Grundtext</b>: er benennt die
-     * Liste, in der nachzusehen ist. Der Aufrufer uebergibt deshalb denselben Mandanten, den auch
-     * die Session traegt.</p>
+     * <p>The <b>decision</b> is made by the menu item itself, and therefore for the tenant of the
+     * running session. The {@code mandant} parameter serves the <b>reason text</b>: it names the
+     * list to look in. Callers therefore pass the same tenant the session carries.</p>
      *
-     * @param item    der Menuepunkt
-     * @param mandant der Mandant, dessen Liste geprueft wird
-     * @return die Diagnose-Zeile
+     * @param item    the menu item
+     * @param mandant the tenant whose list is checked
+     * @return the diagnostics row
      */
     public MenuDiagnoseZeile analysiere(MenuItemImpl item, String mandant) {
         boolean rolleOk = item.isRoleVisible();
@@ -96,10 +95,10 @@ public class MenuDiagnoseService {
     }
 
     /**
-     * Welche Rollen der Menuepunkt verlangt — die Frage, die der erste Filter stellt.
+     * Which roles the menu item requires — the question the first filter asks.
      *
-     * @param item der Menuepunkt
-     * @return Klartext, z.B. {@code "Rolle ADMIN oder ROOT fehlt"}
+     * @param item the menu item
+     * @return plain text, e.g. {@code "Rolle ADMIN oder ROOT fehlt"}
      */
     private static String rolleGrund(MenuItemImpl item) {
         List<String> verlangt = new ArrayList<>();
@@ -127,10 +126,10 @@ public class MenuDiagnoseService {
     }
 
     /**
-     * Welche konfigurierte Modul-Rolle fehlt.
+     * Which configured module role is missing.
      *
-     * @param item der Menuepunkt
-     * @return Klartext, z.B. {@code "Modul-Rolle WIKI fehlt (plaintext.menu.module-roles)"}
+     * @param item the menu item
+     * @return plain text, e.g. {@code "Modul-Rolle WIKI fehlt (plaintext.menu.module-roles)"}
      */
     private static String modulRolleGrund(MenuItemImpl item) {
         List<String> rollen = item.getModuleRoles();
@@ -141,10 +140,10 @@ public class MenuDiagnoseService {
     }
 
     /**
-     * Welches Modul abgeschaltet ist.
+     * Which module is switched off.
      *
-     * @param item der Menuepunkt
-     * @return Klartext, z.B. {@code "Modul 'wiki' ist deaktiviert (Root | Module)"}
+     * @param item the menu item
+     * @return plain text, e.g. {@code "Modul 'wiki' ist deaktiviert (Root | Module)"}
      */
     private static String modulGrund(MenuItemImpl item) {
         String modulId = item.getModuleId();
@@ -153,13 +152,13 @@ public class MenuDiagnoseService {
     }
 
     /**
-     * Der Grund des Mandantenfilters — oder, wenn er den Punkt durchlaesst, der Hinweis auf die
-     * Root-Zweig-Ausnahme (damit sichtbar bleibt, dass hier NICHT die Liste entschieden hat).
+     * The reason given by the tenant filter — or, when it lets the item through, the note about the
+     * root-branch exemption (so it stays visible that the list was NOT what decided here).
      *
-     * @param item      der Menuepunkt
-     * @param mandant   der Mandant
-     * @param mandantOk Ergebnis des Mandantenfilters
-     * @return Klartext, ggf. leer
+     * @param item      the menu item
+     * @param mandant   the tenant
+     * @param mandantOk result of the tenant filter
+     * @return plain text, possibly empty
      */
     private String mandantGrund(MenuItemImpl item, String mandant, boolean mandantOk) {
         if (item.isRootBranchExemptFromMandate()) {

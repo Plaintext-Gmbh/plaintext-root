@@ -12,16 +12,16 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Datei-Download aus einer JSF-Aktion heraus — EINE Implementierung statt zwoelf Kopien
- * (Massnahme 9, 29.08.2026).
+ * File download from within a JSF action — ONE implementation instead of twelve copies
+ * (measure 9, 29.08.2026).
  *
- * <p>Der Block „responseReset, Content-Type, Content-Length, Content-Disposition, Cache-Header,
- * write, responseComplete" stand in jeder Backing Bean mit Download noch einmal, jedes Mal mit
- * kleinen Abweichungen (Umlaute im Dateinamen, fehlendes {@code responseComplete}, fehlender
- * Cache-Header). Hier steht er einmal, inklusive RFC-5987-Dateiname ({@code filename*}), damit
- * „Beleg Müller.pdf" in jedem Browser so heisst.</p>
+ * <p>The block "responseReset, Content-Type, Content-Length, Content-Disposition, cache headers,
+ * write, responseComplete" was repeated in every backing bean with a download, each time with
+ * small deviations (umlauts in the file name, a missing {@code responseComplete}, a missing
+ * cache header). Here it exists once, including the RFC 5987 file name ({@code filename*}), so
+ * that "Beleg Müller.pdf" is named that way in every browser.</p>
  *
- * <p>Ausserhalb einer JSF-Anfrage (kein {@link FacesContext}) passiert nichts — wie bei
+ * <p>Outside a JSF request (no {@link FacesContext}) nothing happens — just as in
  * {@link FacesMessages}.</p>
  *
  * @author info@plaintext.ch
@@ -34,12 +34,12 @@ public final class JsfDownload {
     private JsfDownload() {
     }
 
-    /** Als Anhang senden („Speichern unter"). */
+    /** Send as an attachment ("Save as"). */
     public static void send(byte[] daten, String contentType, String dateiname) {
         sende(daten, contentType, dateiname, "attachment");
     }
 
-    /** Im Browser anzeigen (PDF, Bild), Dateiname fuer „Speichern unter" trotzdem gesetzt. */
+    /** Display in the browser (PDF, image); the file name for "Save as" is set nonetheless. */
     public static void sendInline(byte[] daten, String contentType, String dateiname) {
         sende(daten, contentType, dateiname, "inline");
     }
@@ -69,8 +69,8 @@ public final class JsfDownload {
     }
 
     /**
-     * {@code attachment; filename="ascii"; filename*=UTF-8''kodiert} — der ASCII-Teil fuer alte
-     * Clients, der kodierte fuer alle, die RFC 5987 koennen (alle aktuellen Browser).
+     * {@code attachment; filename="ascii"; filename*=UTF-8''kodiert} — the ASCII part for old
+     * clients, the encoded one for everything that speaks RFC 5987 (all current browsers).
      */
     static String contentDisposition(String disposition, String name) {
         String ascii = name.replaceAll("[^\\x20-\\x7E]", "_").replace("\"", "'");

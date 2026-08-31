@@ -22,22 +22,21 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * Karte 557: {@code set_secret} hatte weder {@code @PreAuthorize} noch eine manuelle Prüfung — jedes
- * gültige MCP-Token bekommt mindestens {@code SCOPE_READ}, damit konnte ein reines Lesetoken Secrets
- * <b>überschreiben</b>. Das Werkzeug ist one-way (Werte werden nie zurückgelesen): ein Überschreiben
- * zerstört den Wert, und der Schaden fällt erst auf, wenn sich der betroffene Dienst das nächste Mal
- * anmeldet.
+ * Card 557: {@code set_secret} had neither {@code @PreAuthorize} nor a manual check — every
+ * valid MCP token gets at least {@code SCOPE_READ}, so a pure read token could <b>overwrite</b>
+ * secrets. The tool is one-way (values are never read back): an overwrite destroys the value, and
+ * the damage only becomes apparent the next time the affected service logs in.
  *
- * <p><b>Warum die Prüfung im Rumpf steht und nicht als Annotation:</b> Ein MCP-Aufruf läuft nicht über
- * den üblichen Web-Pfad. Ob {@code @PreAuthorize} hier greift, hängt daran, dass Methodensicherheit in
- * der jeweiligen Anwendung eingeschaltet ist und das Bean tatsächlich proxied wird — beides ist von
- * hier aus nicht garantiert, und eine still wirkungslose Annotation sähe genauso aus wie eine
- * wirksame. Dieselbe Entscheidung wurde in {@code ApiTokenMcpTools} getroffen.
+ * <p><b>Why the check is in the body and not an annotation:</b> an MCP call does not go through the
+ * usual web path. Whether {@code @PreAuthorize} takes effect here depends on method security being
+ * enabled in the respective application and on the bean actually being proxied — neither is
+ * guaranteed from here, and a silently ineffective annotation would look exactly like an effective
+ * one. The same decision was made in {@code ApiTokenMcpTools}.
  *
- * <p><b>Warum Scope UND Rolle:</b> Die Token-Ausstellung in der Oberfläche steht laut
- * {@code ApiTokenMenu} den Rollen {@code USER, ADMIN, ROOT} offen, und der Scope ist dort frei
- * wählbar. Eine reine {@code SCOPE_ADMIN}-Prüfung könnte sich also jedes Mitglied selbst
- * ausstellen — sie ist gegen genau den Fall wirkungslos, den diese Karte schliesst.
+ * <p><b>Why scope AND role:</b> according to {@code ApiTokenMenu}, issuing tokens in the UI is open
+ * to the roles {@code USER, ADMIN, ROOT}, and the scope is freely selectable there. A pure
+ * {@code SCOPE_ADMIN} check could therefore be issued by any member to themselves — it is
+ * ineffective against exactly the case this card closes.
  */
 class SecretsMcpToolsScopeTest {
 
@@ -55,7 +54,7 @@ class SecretsMcpToolsScopeTest {
                 new UsernamePasswordAuthenticationToken("u@x.ch", "n/a", granted));
     }
 
-    /** Der eigentliche Befund der Karte: vor dem Fix schrieb dieser Aufruf das Secret. */
+    /** The actual finding of the card: before the fix this call wrote the secret. */
     @Test
     void readToken_darfKeinSecretSchreiben() {
         authMit("SCOPE_READ", "ROLE_USER");
@@ -66,7 +65,7 @@ class SecretsMcpToolsScopeTest {
         assertTrue(antwort.startsWith("FEHLER"), "Antwort war: " + antwort);
     }
 
-    /** Schreibrecht allein genügt nicht — set_secret verlangt ADMIN. */
+    /** Write permission alone is not enough — set_secret requires ADMIN. */
     @Test
     void writeToken_darfKeinSecretSchreiben() {
         authMit("SCOPE_READ", "SCOPE_WRITE", "SCOPE_EINTRAGEN", "ROLE_USER");
@@ -78,8 +77,8 @@ class SecretsMcpToolsScopeTest {
     }
 
     /**
-     * Der Fall, den eine reine Scope-Prüfung offenliesse: Ein gewöhnliches Mitglied kann sich in der
-     * Oberfläche selbst ein Token mit Scope ADMIN ausstellen ({@code ApiTokenMenu}: USER/ADMIN/ROOT).
+     * The case a pure scope check would leave open: an ordinary member can issue themselves a token
+     * with scope ADMIN in the UI ({@code ApiTokenMenu}: USER/ADMIN/ROOT).
      */
     @Test
     void adminScopeOhneAdminRolle_darfKeinSecretSchreiben() {
@@ -101,7 +100,7 @@ class SecretsMcpToolsScopeTest {
         assertTrue(antwort.startsWith("FEHLER"), "Antwort war: " + antwort);
     }
 
-    /** Gegenprobe: Ohne sie wäre der Test auch grün, wenn set_secret gar nichts mehr täte. */
+    /** Cross-check: without it the test would also be green if set_secret did nothing at all. */
     @Test
     void adminScopeMitAdminRolle_darfSchreiben() {
         authMit("SCOPE_READ", "SCOPE_WRITE", "SCOPE_ADMIN", "ROLE_ADMIN");
@@ -112,7 +111,7 @@ class SecretsMcpToolsScopeTest {
         assertTrue(antwort.startsWith("OK"), "Antwort war: " + antwort);
     }
 
-    /** ROOT ist der zweite zulässige Weg — sonst schlösse der Fix den Root-Benutzer aus. */
+    /** ROOT is the second permitted route — otherwise the fix would lock out the root user. */
     @Test
     void adminScopeMitRootRolle_darfSchreiben() {
         authMit("SCOPE_READ", "SCOPE_ADMIN", "ROLE_ROOT");

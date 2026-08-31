@@ -45,9 +45,9 @@ public class SetupConfigService implements ISetupConfigService {
 
     @Override
     public boolean isRootUserEnabled(String mandat) {
-        // SECURITY (Karte 306): Fehlt eine Konfiguration (frische Installation), ist der
-        // Root-Bootstrap-User AUS. Bestandsinstallationen haben eine persistierte Row und
-        // liefern deren gespeicherten Wert -> ihr Zugang bleibt unangetastet.
+        // SECURITY (card 306): if a configuration is missing (fresh installation), the
+        // root bootstrap user is OFF. Existing installations have a persisted row and
+        // return its stored value -> their access stays untouched.
         return repository.findByMandat(mandat)
                 .map(SetupConfig::isRootUserEnabled)
                 .orElse(false);
@@ -76,7 +76,7 @@ public class SetupConfigService implements ISetupConfigService {
 
     @Override
     public boolean isSessionTrackingEnabled(String mandat) {
-        // Karte 627: Fehlt eine Konfiguration, wird aufgezeichnet — so war es vor dem Schalter.
+        // Card 627: if a configuration is missing, recording happens — that is how it was before the switch.
         return repository.findByMandat(mandat)
                 .map(SetupConfig::isSessionTrackingEnabled)
                 .orElse(true);
@@ -84,7 +84,7 @@ public class SetupConfigService implements ISetupConfigService {
 
     @Override
     public Long getSystemMailAccountId() {
-        // GLOBAL-Systemkonto ist system-weit (nur ROOT konfiguriert es) -> erste Konfiguration mit gesetztem Wert.
+        // The GLOBAL system account is system-wide (only ROOT configures it) -> first configuration with a value set.
         return repository.findFirstBySystemMailAccountIdNotNull()
                 .map(SetupConfig::getSystemMailAccountId)
                 .orElse(null);

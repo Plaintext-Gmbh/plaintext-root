@@ -19,24 +19,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilter Linter-Guard gegen den Facelets-EL-Fallstrick in ALLEN {@code src/main/resources/**}
- * {@code .xhtml} des jeweiligen Reactors.
+ * Shared linter guard against the Facelets EL pitfall in ALL {@code src/main/resources/**}
+ * {@code .xhtml} of the respective reactor.
  *
- * <p>Ausloeser (real in {@code setup.xhtml} aufgetreten): ein gerades {@code "} in einem inline-EL
- * im Body-Text — z. B. {@code #{i18n.t('... „Global – System" ...')}} — sprengt den Facelets-
- * Textparser ({@code ELText.findVarLength}) mit "EL Expression Unbalanced" und die komplette Seite
- * endet in einem 500 / Whitelabel-Error. Der Test verhindert, dass so etwas erneut unbemerkt
- * hinzukommt.
+ * <p>Trigger (which really happened in {@code setup.xhtml}): a straight {@code "} inside an inline EL
+ * in body text — e.g. {@code #{i18n.t('... „Global – System" ...')}} — blows up the Facelets text
+ * parser ({@code ELText.findVarLength}) with "EL Expression Unbalanced" and the complete page ends
+ * in a 500 / whitelabel error. The test prevents such a thing from being added again unnoticed.
  *
- * <p><b>Zustandsbericht 29.08.2026, Paket R2:</b> Dieser Test lag bisher als lokale Kopie in
- * {@code plaintext-root-webapp/src/test} (und in guild/schuetu nochmals). Jetzt liegt er wie die
- * uebrigen Regeln in {@code src/main/java} von {@code plaintext-root-archtests} und laeuft im
- * Consumer via Surefire {@code <dependenciesToScan>} ab dessen Reactor-Wurzel ueber jedes
- * Modul-{@code src/main/resources} ({@link ReactorLayout}). Consumer ohne eigene XHTML bestehen.
+ * <p><b>Status report 29.08.2026, package R2:</b> this test used to be a local copy in
+ * {@code plaintext-root-webapp/src/test} (and once more in guild/schuetu). Now, like the other
+ * rules, it lives in {@code src/main/java} of {@code plaintext-root-archtests} and runs in the
+ * consumer via Surefire {@code <dependenciesToScan>} from that consumer's reactor root over every
+ * module's {@code src/main/resources} ({@link ReactorLayout}). Consumers without XHTML of their own pass.
  *
- * <p><b>Ausnahmen:</b> {@code <!-- el-quote-ok -->} in derselben Zeile (praktisch nie noetig — es
- * ist immer ein echter Fehler); ganze Dateien ueber die Allowlist des Reactors
- * ({@code plaintext-arch-allowlist.txt}, Regel {@code facelets-el}, siehe {@link ArchAllowlist}).
+ * <p><b>Exceptions:</b> {@code <!-- el-quote-ok -->} on the same line (practically never needed — it
+ * is always a genuine defect); whole files via the reactor's allowlist
+ * ({@code plaintext-arch-allowlist.txt}, rule {@code facelets-el}, see {@link ArchAllowlist}).
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -48,8 +47,8 @@ class PlaintextFaceletsElLinterTest {
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
     /**
-     * Scannt jedes {@code src/main/resources} aller Reactor-Module und schlaegt bei jedem geraden
-     * {@code "} in einem inline-Body-EL mit Datei + Zeile fehl.
+     * Scans every {@code src/main/resources} of all reactor modules and fails with file + line on
+     * every straight {@code "} inside an inline body EL.
      */
     @Test
     void keinGeradesQuoteInInlineElVonXhtml() {
@@ -87,23 +86,23 @@ class PlaintextFaceletsElLinterTest {
     void linterErkenntGeradesQuoteUndRespektiertKontextUndOptOut(@TempDir Path tmp) throws IOException {
         Path res = Files.createDirectories(tmp.resolve("META-INF/resources"));
 
-        // ECHTE Verstoesse: gerades " in inline-Body-EL.
+        // REAL violations: straight " inside an inline body EL.
         Files.writeString(res.resolve("bad.xhtml"),
                 "<small>#{i18n.t('Sichtbarkeit „Global – System\" in der Mailbox')}</small>");
         Files.writeString(res.resolve("badMultiline.xhtml"),
                 "<h:panelGroup>\n    #{i18n.t('Lege ein Konto mit Sichtbarkeit „X\" an')}\n</h:panelGroup>");
 
-        // KEINE Verstoesse:
-        // (a) EL im Attributwert – dort ist " der Attribut-Delimiter, harmlos und ueberall ueblich.
+        // NO violations:
+        // (a) EL in an attribute value - there " is the attribute delimiter, harmless and common everywhere.
         Files.writeString(res.resolve("okAttr.xhtml"),
                 "<p:confirm header=\"#{i18n.t('Bestätigung')}\" message=\"#{i18n.t('Wirklich löschen?')}\"/>");
-        // (b) Body-EL mit korrekten deutschen Typografie-Quotes.
+        // (b) Body EL with correct German typographic quotes.
         Files.writeString(res.resolve("okTypografie.xhtml"),
                 "<small>#{i18n.t('Sichtbarkeit „Global – System“ in der Mailbox')}</small>");
-        // (c) Gerades " im normalen Body-Text ausserhalb eines EL-Ausdrucks.
+        // (c) Straight " in ordinary body text outside an EL expression.
         Files.writeString(res.resolve("okPlainText.xhtml"),
                 "<small>Sichtbarkeit \"Global\" ist ok #{bean.wert}</small>");
-        // (d) Begruendetes Opt-out in derselben Zeile.
+        // (d) Justified opt-out on the same line.
         Files.writeString(res.resolve("okOptOut.xhtml"),
                 "<small>#{i18n.t('Rest \" Rest')}</small> <!-- el-quote-ok -->");
 

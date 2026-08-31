@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 
-/** Loescht gelesene Benachrichtigungen aelter als {@link #RETENTION_DAYS} Tage. Mandantenuebergreifend
- * (kein Sinn in einer Mandant-fuer-Mandant-Wiederholung), daher {@link #isGlobal()} = {@code true}. */
+/** Deletes read notifications older than {@link #RETENTION_DAYS} days. Cross-tenant
+ * (a tenant-by-tenant repetition makes no sense), hence {@link #isGlobal()} = {@code true}. */
 @Component
 @Scope("prototype")
 @RequiredArgsConstructor

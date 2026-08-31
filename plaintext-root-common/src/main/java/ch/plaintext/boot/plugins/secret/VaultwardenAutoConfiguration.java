@@ -12,14 +12,14 @@ import org.springframework.context.annotation.Configuration;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Auto-Configuration des Vaultwarden-Secret-Clients.
+ * Auto-configuration of the Vaultwarden secret client.
  *
- * <p>Wird ueber
+ * <p>Is inherited automatically by all consumer apps through
  * {@code META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports}
- * automatisch von allen Consumer-Apps geerbt (wie {@code MenuAutoConfiguration}).
- * Die Beans werden IMMER registriert; ob tatsaechlich auf den Tresor zugegriffen
- * wird, entscheidet {@code plaintext.vault.enabled} — der Service ist fail-safe und
- * liefert bei {@code enabled=false} schlicht {@link java.util.Optional#empty()}.</p>
+ * (like {@code MenuAutoConfiguration}). The beans are ALWAYS registered; whether the vault
+ * is actually accessed is decided by {@code plaintext.vault.enabled} — the service is
+ * fail-safe and simply returns {@link java.util.Optional#empty()} when
+ * {@code enabled=false}.</p>
  */
 @Configuration
 @EnableConfigurationProperties(VaultwardenProperties.class)

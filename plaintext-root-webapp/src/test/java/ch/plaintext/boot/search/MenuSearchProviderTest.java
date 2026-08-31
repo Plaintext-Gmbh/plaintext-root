@@ -65,7 +65,7 @@ class MenuSearchProviderTest {
 
     @Test
     void trefferNurUeberParentBekommtNiedrigenScore() {
-        // Titel enthaelt "fak" NICHT, aber der Parent schon.
+        // The title does NOT contain "fak", but the parent does.
         MenuRegistry.MenuItem rechnung = item("Ausgangsrechnung", "Fakturierung", "rechnung.html", true);
         MenuRegistry registry = mock(MenuRegistry.class);
         when(registry.getAllMenuItems()).thenReturn(List.of(rechnung));
@@ -78,7 +78,7 @@ class MenuSearchProviderTest {
 
     @Test
     void mehrereTeileMatchenUeberParentUndTitel() {
-        // Multi-Token ("Teile"): jedes Teil muss irgendwo im Pfad "Parent + Titel" vorkommen.
+        // Multi-token ("parts"): every part has to occur somewhere in the path "parent + title".
         MenuRegistry.MenuItem settings = item("Settings", "Root", "settings.html", true);
         MenuRegistry registry = mock(MenuRegistry.class);
         when(registry.getAllMenuItems()).thenReturn(List.of(settings));
@@ -124,7 +124,7 @@ class MenuSearchProviderTest {
 
     @Test
     void groberDeckelVorDemSortieren() {
-        // limit*3 als grober Deckel: mehr passende Items als 3*limit → Schleife bricht ab.
+        // limit*3 as a rough cap: more matching items than 3*limit → the loop breaks off.
         java.util.List<MenuRegistry.MenuItem> viele = new java.util.ArrayList<>();
         for (int i = 0; i < 30; i++) {
             viele.add(item("Kontakte " + i, "Stammdaten", "kontakte" + i + ".html", true));
@@ -134,7 +134,7 @@ class MenuSearchProviderTest {
 
         MenuSearchProvider p = new MenuSearchProvider(registry);
         List<SearchHit> hits = p.search("kontakte", 5);
-        // Deckel = limit*3 = 15.
+        // Cap = limit*3 = 15.
         assertEquals(15, hits.size());
     }
 
@@ -175,8 +175,8 @@ class MenuSearchProviderTest {
 
     @Test
     void praefixSchlaegtTeiltreffer() {
-        MenuRegistry.MenuItem rechnungen = item("Rechnungen", "", "rechnungen.html", true);      // "rech" als Präfix
-        MenuRegistry.MenuItem vorrechnungen = item("Vorrechnungen", "", "vorrechnungen.html", true); // "rech" nur als Teil
+        MenuRegistry.MenuItem rechnungen = item("Rechnungen", "", "rechnungen.html", true);      // "rech" as a prefix
+        MenuRegistry.MenuItem vorrechnungen = item("Vorrechnungen", "", "vorrechnungen.html", true); // "rech" only as a part
         MenuRegistry registry = mock(MenuRegistry.class);
         when(registry.getAllMenuItems()).thenReturn(List.of(rechnungen, vorrechnungen));
 

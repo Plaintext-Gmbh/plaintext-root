@@ -23,37 +23,38 @@ import java.io.IOException;
 import java.util.Collection;
 
 /**
- * Baut aus einem bereits geprueften {@link UserDetails} eine vollwertige Browser-Session — und zwar
- * <b>auf demselben Weg wie der Form-Login</b>.
+ * Builds a fully-fledged browser session from an already validated {@link UserDetails} — and does so
+ * <b>along the same path as the form login</b>.
  *
- * <p><b>Warum es diese Klasse gibt (Karte 309, Security-Audit 24.07.2026):</b> {@code AutoLoginController}
- * und {@code TokenLoginController} bauten den {@link SecurityContext} bisher jeweils selbst zusammen und
- * riefen direkt {@link SecurityContextRepository#saveContext}. Damit wurden gleich drei Schutzmechanismen
- * uebersprungen, die beim Form-/OAuth-/OTT-Login automatisch greifen:</p>
+ * <p><b>Why this class exists (card 309, security audit 24.07.2026):</b> {@code AutoLoginController}
+ * and {@code TokenLoginController} used to assemble the {@link SecurityContext} themselves and
+ * called {@link SecurityContextRepository#saveContext} directly. That skipped no fewer than three
+ * protective mechanisms that apply automatically on the form/OAuth/OTT login:</p>
  * <ol>
- *   <li><b>Session-Fixation:</b> ohne {@link ChangeSessionIdAuthenticationStrategy} behaelt die Session
- *       ihre Id. Ein Angreifer, der dem Opfer vorab eine bekannte Session-Id unterschiebt, besitzt in
- *       dem Moment eine voll authentifizierte Session, in dem das Opfer seinen Auto-/Token-Login-Link
- *       oeffnet.</li>
- *   <li><b>Account-Lockout:</b> {@code MyUserDetailsService} setzt {@code accountNonLocked} anhand des
- *       {@code AccountLockoutService}, aber niemand wertete das Flag auf diesen Pfaden aus — ein wegen
- *       Brute-Force gesperrter Account blieb ueber Auto-/Token-Login offen.</li>
- *   <li><b>Zweiter Faktor (TOTP):</b> das 2FA-Gate sitzt im {@link PlaintextAuthenticationSuccessHandler},
- *       der nur an {@code formLogin}/{@code oauth2Login}/{@code oneTimeTokenLogin} verdrahtet ist. Wer
- *       die {@code Authentication} daran vorbei erzeugt, loggt TOTP-User ohne zweiten Faktor ein.</li>
+ *   <li><b>Session fixation:</b> without {@link ChangeSessionIdAuthenticationStrategy} the session keeps
+ *       its id. An attacker who plants a known session id on the victim in advance owns a fully
+ *       authenticated session the moment the victim opens their auto/token login
+ *       link.</li>
+ *   <li><b>Account lockout:</b> {@code MyUserDetailsService} sets {@code accountNonLocked} based on the
+ *       {@code AccountLockoutService}, but nobody evaluated the flag on these paths — an account
+ *       locked because of brute force stayed open via auto/token login.</li>
+ *   <li><b>Second factor (TOTP):</b> the 2FA gate sits in the {@link PlaintextAuthenticationSuccessHandler},
+ *       which is only wired to {@code formLogin}/{@code oauth2Login}/{@code oneTimeTokenLogin}. Whoever
+ *       creates the {@code Authentication} past it logs TOTP users in without a second factor.</li>
  * </ol>
  *
- * <p><b>Stand nach Karte 560 (05.08.2026):</b> Beide urspruenglichen Aufrufer sind entfernt —
- * {@code AutoLoginController} mit Karte 30, {@code TokenLoginController} mit Karte 560. Die Klasse
- * bleibt trotzdem: Sie ist der einzige Ort, an dem ein Login-Weg ausserhalb von Spring Securitys
- * eigenen Filtern korrekt finalisiert wird, und genau das Fehlen einer solchen Stelle war die
- * Ursache der drei Luecken oben. Wer kuenftig einen Login-Weg baut, benutzt sie — statt den
- * {@link SecurityContext} wieder selbst zusammenzusetzen.</p>
+ * <p><b>State after card 560 (05.08.2026):</b> both original callers have been removed —
+ * {@code AutoLoginController} with card 30, {@code TokenLoginController} with card 560. The class
+ * stays nonetheless: it is the only place where a login path outside Spring Security's
+ * own filters is finalized correctly, and precisely the absence of such a place was the
+ * cause of the three gaps above. Whoever builds a login path in the future uses it — instead of
+ * assembling the {@link SecurityContext} themselves again.</p>
  *
- * <p>Die Loesung ist bewusst <em>kein</em> Nachbau der einzelnen Pruefungen, sondern die Delegation an
- * genau dieselben Komponenten: {@link AccountStatusUserDetailsChecker}, {@link SessionAuthenticationStrategy}
- * und {@link PlaintextAuthenticationSuccessHandler}. So kann kein kuenftiges Gate (z.B. der erzwungene
- * Passwortwechsel aus Karte 306) wieder nur an einem der Login-Wege haengen.</p>
+ * <p>The solution is deliberately <em>not</em> a reimplementation of the individual checks, but the
+ * delegation to exactly the same components: {@link AccountStatusUserDetailsChecker},
+ * {@link SessionAuthenticationStrategy} and {@link PlaintextAuthenticationSuccessHandler}. This way no
+ * future gate (e.g. the enforced password change from card 306) can end up hanging off only one of
+ * the login paths again.</p>
  */
 @Component
 @Slf4j
@@ -71,19 +72,19 @@ public class SessionLoginFinalizer {
     }
 
     /**
-     * Prueft den Account-Status, erneuert die Session-Id, persistiert den {@link SecurityContext} und
-     * uebergibt anschliessend an den {@link PlaintextAuthenticationSuccessHandler} (2FA-Gate, erzwungener
-     * Passwortwechsel, Startseiten-Redirect, Login-Event).
+     * Checks the account status, renews the session id, persists the {@link SecurityContext} and
+     * then hands over to the {@link PlaintextAuthenticationSuccessHandler} (2FA gate, enforced
+     * password change, start page redirect, login event).
      *
-     * <p>Der Handler schreibt den Redirect selbst; der aufrufende Controller gibt danach {@code null}
-     * zurueck (die Response ist dann bereits committed).</p>
+     * <p>The handler writes the redirect itself; the calling controller returns {@code null}
+     * afterwards (the response is already committed by then).</p>
      *
-     * @param userDetails geprueftes Benutzerprofil (Herkunft: Form-Login bzw. ApiToken)
-     * @param authorities Authorities, die die Session bekommen soll — als eigener Parameter, damit ein
-     *                    Aufrufer sie kuenftig einschraenken kann, ohne die Session-Logik zu duplizieren
-     * @param quelle      Kurzbezeichnung des Login-Wegs fuers Logging
-     * @throws org.springframework.security.authentication.LockedException   Account gesperrt (Lockout)
-     * @throws org.springframework.security.authentication.DisabledException Account deaktiviert
+     * @param userDetails validated user profile (origin: form login resp. ApiToken)
+     * @param authorities authorities the session shall receive — as a parameter of its own, so that a
+     *                    caller can narrow them in the future without duplicating the session logic
+     * @param quelle      short designation of the login path for logging
+     * @throws org.springframework.security.authentication.LockedException   account locked (lockout)
+     * @throws org.springframework.security.authentication.DisabledException account disabled
      */
     public void finalizeLogin(UserDetails userDetails,
                               Collection<? extends GrantedAuthority> authorities,
@@ -91,13 +92,13 @@ public class SessionLoginFinalizer {
                               HttpServletRequest request,
                               HttpServletResponse response) throws IOException, ServletException {
 
-        // (1) Account-Status: gesperrt/deaktiviert/abgelaufen -> Exception, kein Login.
+        // (1) Account status: locked/disabled/expired -> exception, no login.
         userDetailsChecker.check(userDetails);
 
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
 
-        // (2) Session-Fixation-Schutz: neue Session-Id, bevor der Context gespeichert wird.
+        // (2) Session fixation protection: new session id before the context is saved.
         sessionAuthenticationStrategy.onAuthentication(authToken, request, response);
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
@@ -107,7 +108,7 @@ public class SessionLoginFinalizer {
 
         log.info("{}: Session aufgebaut fuer {} (Session-Id erneuert)", quelle, userDetails.getUsername());
 
-        // (3) 2FA-Gate / Passwortwechsel / Startseite / Login-Event — identisch zum Form-Login.
+        // (3) 2FA gate / password change / start page / login event — identical to the form login.
         successHandler.onAuthenticationSuccess(request, response, authToken);
     }
 }

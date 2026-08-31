@@ -23,9 +23,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Auftrag Daniel, 29.08.2026: Der Setup-Schalter „Sprachwechsel anzeigen" ({@code branding.i18n.enabled}
- * je Mandant) muss den Sprachwechsel wirklich abschalten. Vorher las {@code isI18nEnabled()} nur
- * den alten globalen Schluessel {@code i18n.enabled} — das Topbar-Symbol blieb trotz „aus".
+ * Assignment from Daniel, 29.08.2026: the setup switch "Sprachwechsel anzeigen" ({@code branding.i18n.enabled}
+ * per tenant) must really switch the language selector off. Previously {@code isI18nEnabled()} read
+ * only the old global key {@code i18n.enabled} — the topbar icon stayed even when set to "off".
  */
 @DisplayName("I18nService.isI18nEnabled: Setup-Schalter des Mandanten gilt")
 class I18nServiceI18nEnabledTest {
@@ -78,7 +78,7 @@ class I18nServiceI18nEnabledTest {
     @Test
     @DisplayName("Ohne jeden Wert: an (Standard)")
     void ohneWerteAn() {
-        // Ausdruecklich null: ein Mockito-Mock liefert fuer Boolean sonst false, nicht "kein Wert".
+        // Explicitly null: otherwise a Mockito mock returns false for Boolean, not "no value".
         when(settings.getBoolean(SettingsKeys.I18N_ENABLED, "guild42")).thenReturn(null);
         when(settings.getBoolean(SettingsKeys.I18N_ENABLED_LEGACY)).thenReturn(null);
 

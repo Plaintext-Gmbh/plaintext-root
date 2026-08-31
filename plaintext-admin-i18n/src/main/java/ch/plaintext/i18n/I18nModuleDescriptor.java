@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Meldet das Übersetzungen-Modul an die zentrale Modul-Verwaltung (Task #016). */
+/** Registers the translations module with the central module management (Task #016). */
 @Component
 public class I18nModuleDescriptor implements ModuleDescriptor {
     @Override

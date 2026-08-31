@@ -34,8 +34,8 @@ import java.util.List;
  * Root Entity Management Backing Bean
  * Allows root users to manage all entities across all mandates.
  *
- * <p>Die gesamte Verwaltungslogik steht in {@link AbstractEntityBackingBean}; hier nur, was den
- * Root vom Admin unterscheidet: alle Entitaeten ueber alle Mandanten, dazu JSON-Export/-Import.
+ * <p>The entire management logic lives in {@link AbstractEntityBackingBean}; only what sets the
+ * Root apart from the Admin is here: all entities across all tenants, plus JSON export/import.
  *
  * @author info@plaintext.ch
  * @since 2024

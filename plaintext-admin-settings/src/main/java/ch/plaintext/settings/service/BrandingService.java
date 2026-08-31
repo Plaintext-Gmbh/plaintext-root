@@ -28,13 +28,13 @@ public class BrandingService {
     private static final String KEY_I18N_ICON = "branding.i18n.icon";
 
     /**
-     * SECURITY (Karte 314, Punkt 14): {@code image/svg+xml} ist NICHT mehr erlaubt.
+     * SECURITY (card 314, item 14): {@code image/svg+xml} is NO longer allowed.
      *
-     * <p>Ein SVG ist ein XML-Dokument und darf {@code <script>} sowie Event-Handler enthalten.
-     * Das Logo wurde ueber {@code GET /api/branding/logo} same-origin und mit genau dem
-     * gespeicherten Content-Type ausgeliefert — ein hochgeladenes SVG war damit gespeichertes
-     * XSS im Anwendungs-Origin. Ein Sanitizer (jsoup o.ae.) waere die aufwendigere Alternative;
-     * fuer ein Logo genuegen die Rasterformate, deshalb faellt SVG ersatzlos weg.</p>
+     * <p>An SVG is an XML document and may contain {@code <script>} as well as event handlers.
+     * The logo was served via {@code GET /api/branding/logo} same-origin and with exactly the
+     * stored content type — an uploaded SVG was therefore stored XSS in the application origin.
+     * A sanitizer (jsoup or similar) would be the more elaborate alternative; the raster formats
+     * are enough for a logo, so SVG is dropped without a replacement.</p>
      */
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "image/png", "image/webp", "image/jpeg"
@@ -68,10 +68,10 @@ public class BrandingService {
         if (imageData.length > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("Datei zu gross (max. 2 MB)");
         }
-        // SECURITY (Karte 314, Punkt 14): der Content-Type kommt vom Client und ist frei
-        // waehlbar. Ohne Inhaltspruefung liesse sich ein SVG (oder HTML) als "image/png"
-        // deklariert hochladen und spaeter same-origin ausliefern. Deshalb zusaetzlich die
-        // Magic Bytes gegen den behaupteten Typ pruefen.
+        // SECURITY (card 314, item 14): the content type comes from the client and can be
+        // chosen freely. Without a content check, an SVG (or HTML) could be uploaded declared
+        // as "image/png" and later served same-origin. Therefore additionally check the
+        // magic bytes against the claimed type.
         if (!matchesMagicBytes(contentType, imageData)) {
             throw new IllegalArgumentException("Dateiinhalt passt nicht zum Bildformat " + contentType
                     + ". Erlaubt: PNG, WEBP, JPEG");
@@ -111,8 +111,8 @@ public class BrandingService {
     }
 
     /**
-     * Anwendungsname aus den Settings ({@code branding.app.name}); leer, wenn nicht gesetzt.
-     * Verwendet u.a. vom Titel-Default des Templates.
+     * Application name from the settings ({@code branding.app.name}); empty when not set.
+     * Used among other things by the template's title default.
      */
     public String getAppName(String mandat) {
         return settingsService.getString(KEY_APP_NAME, mandat);
@@ -147,7 +147,7 @@ public class BrandingService {
     public boolean isI18nEnabled(String mandat) {
         Boolean val = settingsService.getBoolean(SettingsKeys.I18N_ENABLED, mandat);
         if (val == null) {
-            // Fallback: alten Key pruefen (Rueckwaertskompatibilitaet)
+            // Fallback: check the old key (backwards compatibility)
             val = settingsService.getBoolean(SettingsKeys.I18N_ENABLED_LEGACY, mandat);
         }
         return val == null || val;
@@ -178,12 +178,12 @@ public class BrandingService {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 14): prueft den tatsaechlichen Dateiinhalt (Magic Bytes) gegen
-     * den vom Client behaupteten Content-Type.
+     * SECURITY (card 314, item 14): checks the actual file content (magic bytes) against
+     * the content type claimed by the client.
      *
-     * @param contentType der behauptete Content-Type
-     * @param data        die hochgeladenen Bytes
-     * @return {@code true}, wenn der Inhalt zum Typ passt
+     * @param contentType the claimed content type
+     * @param data        the uploaded bytes
+     * @return {@code true} if the content matches the type
      */
     static boolean matchesMagicBytes(String contentType, byte[] data) {
         if (data == null || data.length < 12) {
@@ -204,12 +204,12 @@ public class BrandingService {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 14): darf dieser gespeicherte Content-Type ausgeliefert werden?
-     * Deckt Alt-Bestand ab — vor diesem Fix hochgeladene SVG-Logos liegen weiterhin in der
-     * Datenbank und duerfen nicht mehr same-origin gerendert werden.
+     * SECURITY (card 314, item 14): may this stored content type be served?
+     * Covers legacy data — SVG logos uploaded before this fix are still in the
+     * database and must no longer be rendered same-origin.
      *
-     * @param contentType der gespeicherte Content-Type
-     * @return {@code true}, wenn die Auslieferung erlaubt ist
+     * @param contentType the stored content type
+     * @return {@code true} if serving it is allowed
      */
     public static boolean isDeliverableContentType(String contentType) {
         return contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType);

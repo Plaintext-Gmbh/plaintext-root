@@ -41,26 +41,25 @@ public class UserPreference implements SimpleStorable<UserPreference>, Serializa
     private Set<String> hiddenColors = new HashSet<>();
 
     /**
-     * Je Tabelle die Spalten, die dieser Benutzer sehen will (Auftrag Daniel, 25.08.2026:
-     * „gerne oben noch eine Auswahl mit Checkbox, dass man sich pro Benutzer die Auswahl der
-     * Spalten speichern kann").
+     * Per table, the columns this user wants to see (request by Daniel, 25.08.2026:
+     * "at the top I would also like a checkbox selection, so that the choice of columns can be
+     * stored per user").
      *
-     * <p>Schluessel ist eine Tabellen-Kennung ({@code "useradmin"}), Wert die sichtbaren
-     * Spaltenschluessel. Bewusst als Karte und nicht als eigenes Feld je Tabelle: die naechste
-     * Tabelle, die das braucht, kommt ohne Aenderung an dieser Klasse aus.
+     * <p>The key is a table identifier ({@code "useradmin"}), the value the visible column keys.
+     * Deliberately a map and not a separate field per table: the next table that needs this gets
+     * by without any change to this class.
      *
-     * <p>Ein <b>fehlender</b> Eintrag heisst „noch nie etwas ausgewaehlt" und muss von der
-     * jeweiligen Tabelle als ihre Voreinstellung ausgelegt werden — nicht als „alle Spalten aus".
-     * Gespeichert wird als JSON ({@code SimpleStorableConverter}), ein neues Feld ist fuer
-     * bestehende Datensaetze deshalb unkritisch.
+     * <p>A <b>missing</b> entry means "nothing has ever been selected" and has to be interpreted
+     * by the respective table as its default — not as "all columns off". Storage is JSON
+     * ({@code SimpleStorableConverter}), so a new field is uncritical for existing records.
      */
     private Map<String, List<String>> tabellenSpalten = new HashMap<>();
 
     /**
-     * Null-sicherer Getter (ersetzt den Lombok-Getter): Alt-Datensaetze, die VOR diesem Feld
-     * gespeichert wurden, kommen aus der XStream-Deserialisierung mit {@code null} zurueck —
-     * der Feld-Initializer laeuft dort nie. In guild-PROD fuehrte das am 28.08.2026 zu einem
-     * 500 auf der Benutzerverwaltung (NPE in UserPreferencesBackingBean.tabellenSpalten).
+     * Null-safe getter (replaces the Lombok getter): old records that were stored BEFORE this
+     * field existed come back from the XStream deserialization with {@code null} — the field
+     * initializer never runs there. In guild PROD this led to a 500 on the user administration
+     * on 28.08.2026 (NPE in UserPreferencesBackingBean.tabellenSpalten).
      */
     public Map<String, List<String>> getTabellenSpalten() {
         if (tabellenSpalten == null) {
@@ -70,25 +69,25 @@ public class UserPreference implements SimpleStorable<UserPreference>, Serializa
     }
 
     /**
-     * Karte 937: Breite des Wiki-Seitenbaums in Pixeln, {@code 0} = Vorgabe des Layouts.
+     * Karte 937: width of the wiki page tree in pixels, {@code 0} = the layout's default.
      *
-     * <p><b>Warum hier und nicht in einer eigenen Ablage von app.</b> Das ist Layout-Zustand je
-     * Benutzer — genau wie {@link #menuStatic} eine Zeile darueber. Eine zweite Ablage fuer
-     * Benutzereinstellungen waere ein konkurrierendes Muster: wer sie spaeter sucht, faende zwei
-     * Orte und muesste raten, welcher gilt.
+     * <p><b>Why here and not in a store of app's own.</b> This is per-user layout state — exactly
+     * like {@link #menuStatic} one line above. A second store for user settings would be a
+     * competing pattern: whoever looks for it later would find two places and would have to guess
+     * which one applies.
      *
-     * <p><b>Warum Pixel und nicht Prozent:</b> Ein Baum braucht eine Mindestbreite, damit
-     * Seitentitel lesbar bleiben; die haengt an der Schriftgroesse, nicht an der Fensterbreite. Die
-     * Oberflaeche begrenzt den Wert beim Laden zusaetzlich auf das aktuelle Fenster — sonst ist die
-     * am grossen Monitor eingestellte Breite auf dem Notebook unbrauchbar.
+     * <p><b>Why pixels and not percent:</b> a tree needs a minimum width for page titles to stay
+     * readable; that depends on the font size, not on the window width. While loading, the UI
+     * additionally clamps the value to the current window — otherwise the width set on the large
+     * monitor is unusable on the notebook.
      */
     private int wikiTreeWidth = 0;
 
     /**
-     * Karte 937: Breite der Mail-Liste in Pixeln, {@code 0} = Vorgabe des Layouts.
+     * Karte 937: width of the mail list in pixels, {@code 0} = the layout's default.
      *
-     * <p>Getrennt vom Wiki-Wert mit Absicht: Die beiden Ansichten haben nichts miteinander zu tun,
-     * und ein gemeinsamer Wert wuerde beim Verschieben der einen die andere mitverstellen.
+     * <p>Deliberately kept separate from the wiki value: the two views have nothing to do with each
+     * other, and a shared value would move the one whenever the other is dragged.
      */
     private int mailListWidth = 0;
 

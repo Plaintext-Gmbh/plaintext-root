@@ -19,22 +19,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Karte 632: Beim Start auf einen vorübergehend nicht erreichbaren Vault warten, statt zu sterben.
+ * Card 632: At startup, wait for a temporarily unreachable vault instead of dying.
  *
- * <p><b>Der Fall, den das verhindert:</b> Vaultwarden riegelt mit HTTP 429 ab, der Schlüssel kommt
- * nicht, die Anwendung stirbt — und {@code restart: always} startet sie sofort neu, wo sie erneut
- * anklopft und die Sperre verlängert. Am 08.08.2026 kam {@code plaintext-app-prod-blue} so auf
- * {@code RestartCount 11} und war eine Stunde nicht erreichbar.</p>
+ * <p><b>The case this prevents:</b> Vaultwarden locks down with HTTP 429, the key does not
+ * arrive, the application dies — and {@code restart: always} restarts it immediately, whereupon it
+ * knocks again and extends the lockout. On 08.08.2026 {@code plaintext-app-prod-blue} reached
+ * {@code RestartCount 11} this way and was unreachable for an hour.</p>
  *
- * <p>Die Tests setzen die Wartezeit auf 0 s, damit sie nicht real schlafen — geprüft wird die
- * <b>Entscheidung</b>, ob wiederholt wird, nicht die Dauer.</p>
+ * <p>The tests set the wait time to 0 s so that they do not really sleep — what is checked is the
+ * <b>decision</b> whether to retry, not the duration.</p>
  */
 class JwtTokenServiceVaultWartenTest {
 
     private static final String VAULT_ITEM = "plaintext.jwt-signing-key";
     private static final String FELD = "private_key_pem";
 
-    /** Baut einen PEM-Block, wie ihn der Vault liefert. */
+    /** Builds a PEM block the way the vault delivers it. */
     private static String pemBlock(String typ, byte[] der) {
         return "-----BEGIN " + typ + "-----\n"
                 + java.util.Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(der)
@@ -68,8 +68,8 @@ class JwtTokenServiceVaultWartenTest {
         when(vault.getField(any(), any())).thenAnswer(a -> {
             String feld = a.getArgument(1);
             if (FELD.equals(feld)) {
-                // Die ersten beiden Anläufe laufen ins Leere — so verhält sich der Client während
-                // der 429-Sperre: Er klopft gar nicht erst an und liefert leer zurück.
+                // The first two attempts come up empty — that is how the client behaves during
+                // the 429 lockout: it does not even knock and returns empty.
                 return privatAbrufe.incrementAndGet() < 3 ? Optional.empty() : Optional.of(privatPem);
             }
             return Optional.of(publicPem);
@@ -92,7 +92,7 @@ class JwtTokenServiceVaultWartenTest {
 
         IllegalStateException e = assertThrows(IllegalStateException.class, service::init);
         assertTrue(e.getMessage().contains("Cannot initialize JWT service without RSA keys"));
-        // Genau drei Versuche, dann Schluss — kein endloses Warten, das den Container haengen liesse.
+        // Exactly three attempts, then stop — no endless waiting that would leave the container hanging.
         verify(vault, org.mockito.Mockito.times(3)).getField(any(), any());
     }
 
@@ -101,7 +101,7 @@ class JwtTokenServiceVaultWartenTest {
     void ohneVaultKonfigurationSofortScheitern() {
         VaultwardenSecretService vault = mock(VaultwardenSecretService.class);
         JwtTokenService service = service(vault, 8);
-        // Kein Vault-Item: Warten wuerde den unvermeidlichen Fehler nur verzoegern.
+        // No vault item: waiting would only delay the inevitable error.
         ReflectionTestUtils.setField(service, "privateKeyVaultItem", "");
 
         assertThrows(IllegalStateException.class, service::init);
@@ -117,7 +117,7 @@ class JwtTokenServiceVaultWartenTest {
         JwtTokenService service = service(vault, 8);
 
         assertThrows(IllegalStateException.class, service::init);
-        // isEnabled()==false -> gar kein Feldzugriff, und kein zweiter Anlauf.
+        // isEnabled()==false -> no field access at all, and no second attempt.
         verify(vault, never()).getField(any(), any());
     }
 

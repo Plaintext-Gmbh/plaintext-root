@@ -9,13 +9,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation, um Klassen als Dashboard-Kacheln zu markieren – analog zu
- * {@link ch.plaintext.boot.menu.MenuAnnotation}. Die annotierte Klasse wird beim Start
- * automatisch gefunden und als Kachel auf der Startseite registriert.
+ * Annotation for marking classes as dashboard tiles – the counterpart to
+ * {@link ch.plaintext.boot.menu.MenuAnnotation}. The annotated class is discovered automatically
+ * at startup and registered as a tile on the home page.
  * <p>
- * Die Sichtbarkeit folgt demselben Mechanismus wie die Menüs: Rollen plus der
- * {@link ch.plaintext.MenuVisibilityProvider} (mandatsspezifische Menüsteuerung). Eine Kachel
- * ist also nur sichtbar, wenn das zugehörige Menü für den Mandanten aktiv ist.
+ * Visibility follows the same mechanism as the menus: roles plus the
+ * {@link ch.plaintext.MenuVisibilityProvider} (tenant-specific menu visibility). A tile is
+ * therefore only visible if the associated menu is active for the tenant.
  *
  * @author plaintext.ch
  */
@@ -24,72 +24,72 @@ import java.lang.annotation.Target;
 public @interface DashboardTile {
 
     /**
-     * Eindeutige technische ID der Kachel. Über diese ID kann ein
-     * {@link DashboardTileDataProvider} die Kachel mit dynamischen Inhalten anreichern.
+     * Unique technical ID of the tile. A {@link DashboardTileDataProvider} uses this ID to enrich
+     * the tile with dynamic content.
      *
-     * @return die Kachel-ID
+     * @return the tile ID
      */
     String id() default "";
 
     /**
-     * Titel/Überschrift der Kachel.
+     * Title/heading of the tile.
      *
-     * @return der Titel
+     * @return the title
      */
     String title() default "Dashboard";
 
     /**
-     * Icon der Kachel (PrimeFaces-Icon-Klasse, z. B. {@code pi pi-map}).
+     * Icon of the tile (PrimeFaces icon class, e.g. {@code pi pi-map}).
      *
-     * @return die Icon-Klasse
+     * @return the icon class
      */
     String icon() default "";
 
     /**
-     * Optionale Bild-URL, die als Kopfbild der Kachel angezeigt wird. Externe Bilder müssen in
-     * der CSP erlaubt sein – im Zweifel leer lassen und ein Icon verwenden.
+     * Optional image URL shown as the tile's header image. External images have to be allowed in
+     * the CSP – when in doubt leave it empty and use an icon.
      *
-     * @return die Bild-URL
+     * @return the image URL
      */
     String image() default "";
 
     /**
-     * Haupt-Link der Kachel (z. B. {@code bieler-map.html}). Wenn kein Provider explizite Aktionen
-     * setzt, wird daraus eine Standard-Aktion erzeugt.
+     * Main link of the tile (e.g. {@code bieler-map.html}). If no provider sets explicit actions,
+     * a default action is derived from it.
      *
-     * @return der Navigations-Link
+     * @return the navigation link
      */
     String link() default "";
 
     /**
-     * Reihenfolge der Kachel (kleinere Werte erscheinen zuerst).
+     * Order of the tile (lower values appear first).
      *
-     * @return die Sortierreihenfolge
+     * @return the sort order
      */
     int order() default 100;
 
     /**
-     * Rollen, die diese Kachel sehen dürfen (leer = für alle sichtbar).
+     * Roles that are allowed to see this tile (empty = visible to everyone).
      *
-     * @return Array von Rollennamen
+     * @return array of role names
      */
     String[] roles() default {};
 
     /**
-     * Voller Menü-Titel, gegen den die mandatsspezifische Sichtbarkeit geprüft wird
-     * (z. B. {@code "Lauftage"} oder {@code "Root | Mandate"}). So teilen sich Kachel und Menü
-     * dieselbe Sichtbarkeitsregel – ohne zusätzliche Tabelle.
+     * Full menu title against which the tenant-specific visibility is checked
+     * (e.g. {@code "Lauftage"} or {@code "Root | Mandate"}). Tile and menu thus share the same
+     * visibility rule – without an extra table.
      * <p>
-     * <strong>Faktisch verpflichtend:</strong> Der Wert muss exakt einem registrierten Menü-Titel
-     * (inkl. Hierarchie, siehe {@link ch.plaintext.MenuRegistry#getAllMenuTitles()}) entsprechen.
-     * Nur dann ist die Kachel-Sichtbarkeit nachvollziehbar an die Menü-Sichtbarkeit gekoppelt: Wird
-     * das Menü für einen Mandanten ausgeblendet, verschwindet auch die Kachel.
+     * <strong>Effectively mandatory:</strong> the value has to match a registered menu title
+     * exactly (including the hierarchy, see {@link ch.plaintext.MenuRegistry#getAllMenuTitles()}).
+     * Only then is tile visibility traceably coupled to menu visibility: if the menu is hidden for
+     * a tenant, the tile disappears along with it.
      * <p>
-     * Ist der Wert leer, fällt die Prüfung auf {@link #title()} zurück; passt der Titel zu keinem
-     * registrierten Menü-Titel, bleibt die Kachel im Blacklist-Standard sichtbar (fail-open). Ein
-     * solcher Mismatch wird beim Start vom {@code TileVisibilityValidator} als WARN protokolliert.
+     * If the value is empty, the check falls back to {@link #title()}; if that title matches no
+     * registered menu title, the tile stays visible under the blacklist default (fail-open). Such
+     * a mismatch is logged as a WARN at startup by the {@code TileVisibilityValidator}.
      *
-     * @return der Menü-Titel für die Sichtbarkeitsprüfung
+     * @return the menu title used for the visibility check
      */
     String menuTitle() default "";
 }

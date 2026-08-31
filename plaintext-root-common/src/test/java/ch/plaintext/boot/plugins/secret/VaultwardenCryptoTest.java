@@ -20,16 +20,16 @@ import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
 
 /**
- * Deterministische Krypto-Tests OHNE Netz und OHNE Secrets — CI-tauglich.
+ * Deterministic crypto tests WITHOUT a network and WITHOUT secrets — CI-capable.
  *
- * <p>Die Erwartungswerte wurden mit der Python-Referenz ({@code hashlib.pbkdf2_hmac},
- * {@code hmac}) berechnet, gegen die der Live-PoC den Tresor verifiziert hat.</p>
+ * <p>The expected values were computed with the Python reference ({@code hashlib.pbkdf2_hmac},
+ * {@code hmac}) against which the live PoC verified the vault.</p>
  */
 class VaultwardenCryptoTest {
 
     private static final HexFormat HEX = HexFormat.of();
 
-    // --- PBKDF2-HMAC-SHA256 (weit publizierte Testvektoren) ---
+    // --- PBKDF2-HMAC-SHA256 (widely published test vectors) ---
 
     @Test
     void pbkdf2_matchesReferenceVectors() {
@@ -49,7 +49,7 @@ class VaultwardenCryptoTest {
                 .isEqualTo("c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a");
     }
 
-    /** Deckt Bitwarden-Schritt 2+3 ab: masterKey -> masterPasswordHash(Base64). */
+    /** Covers Bitwarden steps 2+3: masterKey -> masterPasswordHash(Base64). */
     @Test
     void masterPasswordHash_matchesPythonReference() {
         byte[] masterKey = VaultwardenCrypto.pbkdf2Sha256(
@@ -88,7 +88,7 @@ class VaultwardenCryptoTest {
                 .isEqualTo(VaultwardenCrypto.hkdfExpandSha256(prk, "mac", 32));
     }
 
-    // --- decryptSymmetric: Round-Trip (encrypt -> decrypt) + MAC + PKCS7 ---
+    // --- decryptSymmetric: round trip (encrypt -> decrypt) + MAC + PKCS7 ---
 
     @Test
     void decryptSymmetric_roundTrip() throws Exception {
@@ -103,7 +103,7 @@ class VaultwardenCryptoTest {
     @Test
     void decryptSymmetric_pkcs7FullBlockPadding() throws Exception {
         byte[] key64 = randomBytes(64);
-        // Laenge exakt 16 -> PKCS7 fuegt einen kompletten 16er-Padding-Block an
+        // length exactly 16 -> PKCS7 appends a complete 16-byte padding block
         byte[] plaintext = "0123456789abcdef".getBytes(StandardCharsets.UTF_8);
         String encString = encryptType2(key64, plaintext);
         byte[] decrypted = VaultwardenCrypto.decryptSymmetric(EncString.parse(encString), key64);
@@ -114,7 +114,7 @@ class VaultwardenCryptoTest {
     void decryptSymmetric_tamperedMacIsRejected() throws Exception {
         byte[] key64 = randomBytes(64);
         String encString = encryptType2(key64, "hello".getBytes(StandardCharsets.UTF_8));
-        // MAC-Teil kippen
+        // flip the MAC part
         String[] parts = encString.substring(2).split("\\|");
         byte[] mac = Base64.getDecoder().decode(parts[2]);
         mac[0] ^= 0x01;
@@ -133,7 +133,7 @@ class VaultwardenCryptoTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
-    // --- Testseitige Encrypt-Referenz (spiegelt Bitwardens EncString type2) ---
+    // --- Test-side encrypt reference (mirrors Bitwarden's EncString type 2) ---
 
     private static String encryptType2(byte[] key64, byte[] plaintext) throws Exception {
         byte[] encKey = Arrays.copyOfRange(key64, 0, 32);

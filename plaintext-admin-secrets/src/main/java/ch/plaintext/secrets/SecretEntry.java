@@ -14,10 +14,10 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Ein verwaltetes Secret. Der WERT wird nie im Klartext gehalten:
- * {@link SecretBackendType#LOCAL_DB} → {@link #wertEncrypted} (AES-GCM), sonst lebt der Wert im
- * externen Backend und hier stehen nur Metadaten (Name, Notiz, {@code createdDate} = Neueintragung).
- * {@code createdDate}/{@code mandat}/{@code deleted} kommen aus {@link SuperModel}.
+ * A managed secret. The VALUE is never held in plaintext:
+ * {@link SecretBackendType#LOCAL_DB} → {@link #wertEncrypted} (AES-GCM), otherwise the value lives in
+ * the external backend and only metadata is kept here (name, note, {@code createdDate} = first entry).
+ * {@code createdDate}/{@code mandat}/{@code deleted} come from {@link SuperModel}.
  */
 @Entity
 @Table(name = "secret_entry")
@@ -35,11 +35,11 @@ public class SecretEntry extends SuperModel {
     @Column(name = "note", length = 2000)
     private String note;
 
-    /** Nur LOCAL_DB: AES-GCM base64(iv||ct||tag). NIE im UI anzeigen (one-way). */
+    /** LOCAL_DB only: AES-GCM base64(iv||ct||tag). NEVER display in the UI (one-way). */
     @Column(name = "wert_encrypted", length = 8000)
     private String wertEncrypted;
 
-    /** Live aus dem Backend geladener Kommentar (Vaultwarden) — nicht persistiert. */
+    /** Comment loaded live from the backend (Vaultwarden) — not persisted. */
     @Transient
     private String comment;
 }

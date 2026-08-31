@@ -15,9 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verdrahtung im echten Spring-Kontext: {@code plaintext.menu.module-roles} muss binden, den
- * {@link ModuleRoleService} als Bean liefern und die im Klassenpfad gefundenen Menuepunkte
- * ({@code MenuRegistryPostProcessor}) auffuellen.
+ * Wiring in a real Spring context: {@code plaintext.menu.module-roles} must bind, supply the
+ * {@link ModuleRoleService} as a bean and populate the menu items found on the classpath
+ * ({@code MenuRegistryPostProcessor}).
  */
 class ModuleRoleWiringTest {
 

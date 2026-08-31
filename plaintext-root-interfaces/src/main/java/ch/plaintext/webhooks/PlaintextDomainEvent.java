@@ -6,17 +6,17 @@ package ch.plaintext.webhooks;
 import java.util.Map;
 
 /**
- * Generisches Domain-Event für den Webhook-Dispatcher ({@code plaintext-admin-webhooks}). Fachliche
- * Module (root/app/guild) veröffentlichen es via {@code ApplicationEventPublisher.publishEvent(...)}
- * — kein Cross-Modul-Aufruf nötig, der Dispatcher hört als
- * {@code @TransactionalEventListener(phase = AFTER_COMMIT)} zu, sofern das Modul
- * {@code plaintext-admin-webhooks} auf dem Klassenpfad ist (sonst passiert einfach nichts).
+ * Generic domain event for the webhook dispatcher ({@code plaintext-admin-webhooks}). Business
+ * modules (root/app/guild) publish it via {@code ApplicationEventPublisher.publishEvent(...)} — no
+ * cross-module call needed; the dispatcher listens as a
+ * {@code @TransactionalEventListener(phase = AFTER_COMMIT)}, provided the module
+ * {@code plaintext-admin-webhooks} is on the classpath (otherwise nothing happens at all).
  *
- * @param eventType  z. B. {@code rechnung.created}, {@code member.created}
- * @param entityType z. B. {@code Rechnung}
- * @param entityId   ID der betroffenen Entity als String
- * @param mandant    Mandant, dessen Webhook-Endpoints benachrichtigt werden
- * @param payload    Kernfelder für den Empfänger (bewusst schlank halten, keine Personendaten-Dumps)
+ * @param eventType  e.g. {@code rechnung.created}, {@code member.created}
+ * @param entityType e.g. {@code Rechnung}
+ * @param entityId   ID of the affected entity as a string
+ * @param mandant    tenant whose webhook endpoints are notified
+ * @param payload    core fields for the recipient (keep it deliberately slim, no dumps of personal data)
  *
  * @author info@plaintext.ch
  * @since 2026

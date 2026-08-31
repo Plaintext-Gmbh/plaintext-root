@@ -33,20 +33,20 @@ import com.google.gson.JsonPrimitive;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * HTTP- und Krypto-Orchestrierung des Bitwarden/Vaultwarden-Flows.
+ * HTTP and crypto orchestration of the Bitwarden/Vaultwarden flow.
  *
- * <p>Haelt userKey, orgKeys und die entschluesselten Login-Items im Speicher
- * (mit TTL); loggt bei Ablauf neu ein und synchronisiert neu. Thread-safe ueber
- * ein einziges {@code synchronized ensureFresh()}. ALLE Fehler sind fail-safe:
- * es wird geloggt (nie Secret-Werte) und mit Leerdaten weitergemacht — der
- * App-Boot darf niemals daran scheitern.</p>
+ * <p>Keeps the userKey, the orgKeys and the decrypted login items in memory
+ * (with a TTL); logs in again on expiry and re-synchronizes. Thread-safe through
+ * a single {@code synchronized ensureFresh()}. ALL errors are fail-safe: they are
+ * logged (never secret values) and processing continues with empty data — the app
+ * boot must never fail because of it.</p>
  *
- * <p>Nur JDK/JCA + Gson — kein BouncyCastle (KDF=0 = PBKDF2).</p>
+ * <p>Only JDK/JCA + Gson — no BouncyCastle (KDF=0 = PBKDF2).</p>
  */
 @Slf4j
 class VaultwardenClient {
 
-    // Wiederverwendete JSON-/Form-Keys und HTTP-Header (Pascal-/camelCase-tolerant).
+    // Reused JSON/form keys and HTTP headers (tolerant of Pascal/camelCase).
     private static final String ORGANIZATION_ID_PASCAL = "OrganizationId";
     private static final String ORGANIZATION_ID = "organizationId";
     private static final String HEADER_AUTHORIZATION = "Authorization";
@@ -62,15 +62,15 @@ class VaultwardenClient {
     private final VaultwardenProperties props;
     private final HttpClient http;
     /**
-     * STABILE Geraete-UUID: deterministisch aus Email + App-Name abgeleitet (bzw. der explizit
-     * konfigurierte Wert). Bleibt ueber Neustarts/Redeploys gleich, sodass Vaultwarden den Login
-     * nicht als „neues Geraet" wertet und keine „New Device Logged In"-Mail schickt.
+     * STABLE device UUID: derived deterministically from email + app name (or the explicitly
+     * configured value). Stays the same across restarts/redeploys, so that Vaultwarden does not
+     * rate the login as a "new device" and does not send a "New Device Logged In" mail.
      */
     private final String deviceIdentifier;
-    /** Anzeigename des Geraets ({@code deviceName}), inkl. App-Name zur Unterscheidung im Vault. */
+    /** Display name of the device ({@code deviceName}), including the app name to tell them apart in the vault. */
     private final String deviceName;
 
-    // --- gecachter, entschluesselter Zustand (guarded by this) ---
+    // --- cached, decrypted state (guarded by this) ---
     private byte[] userKey;                       // 64B (enc32||mac32)
     private String accessToken;
     private final Map<String, byte[]> orgKeys = new HashMap<>();
@@ -79,45 +79,45 @@ class VaultwardenClient {
     private Instant cacheExpiry = Instant.EPOCH;
 
     /**
-     * Zahl der aufeinanderfolgenden fehlgeschlagenen Vaultwarden-Zugriffe — steuert den Backoff
-     * (Karte 395). Wird bei jedem Erfolg auf 0 zurueckgesetzt.
+     * Number of consecutive failed Vaultwarden accesses — drives the backoff
+     * (Karte 395). Reset to 0 on every success.
      */
     private int fehlversucheInFolge = 0;
 
-    // --- Diagnose des letzten Refresh-Versuchs (fuer den Boot-Retry im Resolver) -------------
-    // Ohne diese Unterscheidung sieht ein Consumer nach einem Fehlschlag nur eine leere
-    // Item-Liste und kann "Vaultwarden war gerade nicht erreichbar/429" nicht von "das Item
-    // gibt es wirklich nicht" trennen — genau daran scheiterte die Deploy-Diagnose am
+    // --- diagnosis of the last refresh attempt (for the boot retry in the resolver) ---------
+    // Without this distinction a consumer only sees an empty item list after a failure and
+    // cannot tell "Vaultwarden was momentarily unreachable/429" apart from "that item
+    // really does not exist" — that is exactly where the deploy diagnosis failed on
     // 21.08.2026 (guild 1.372.0 / app snapshot-dev).
 
-    /** {@code true}, wenn der LETZTE Login/Sync-Versuch fehlgeschlagen ist (transient). */
+    /** {@code true} when the LAST login/sync attempt failed (transient). */
     private boolean letzterRefreshGescheitert = false;
-    /** {@code true}, wenn der letzte Fehlschlag ein erkanntes Rate-Limit (HTTP 429) war. */
+    /** {@code true} when the last failure was a recognized rate limit (HTTP 429). */
     private boolean letzterFehlerWarRateLimit = false;
-    /** Secret-freie Meldung des letzten Fehlschlags (fuer Log und Fail-fast-Exception). */
+    /** Secret-free message of the last failure (for the log and the fail-fast exception). */
     private String letzteFehlermeldung = "";
 
-    /** Backoff nach dem ersten Fehlschlag; verdoppelt sich je weiterem bis {@link #BACKOFF_MAX_SEK}. */
+    /** Backoff after the first failure; doubles with every further one up to {@link #BACKOFF_MAX_SEK}. */
     private static final int BACKOFF_START_SEK = 30;
-    /** Obergrenze des Backoffs — 15 Minuten. Danach wird weiter periodisch, aber selten versucht. */
+    /** Upper bound of the backoff — 15 minutes. After that attempts continue periodically, but rarely. */
     private static final int BACKOFF_MAX_SEK = 900;
     /**
-     * Backoff nach einem HTTP 429. Deutlich laenger als der normale Einstieg: Ein Rate-Limit laeuft
-     * nur ab, wenn man es NICHT weiter fuettert — jeder Versuch waehrend der Sperre verlaengert sie.
+     * Backoff after an HTTP 429. Considerably longer than the normal entry value: a rate limit
+     * only expires if it is NOT fed any further — every attempt during the block extends it.
      */
     private static final int BACKOFF_RATE_LIMIT_SEK = 300;
 
     /**
-     * Zeitquelle fuer Cache-Ablauf und Backoff.
+     * Time source for cache expiry and backoff.
      *
-     * <p>Karte 608: Vorher stand hier ueberall {@code Instant.now()}. Die Tests mussten deshalb
-     * mit {@code Thread.sleep(1300)} echte Zeit verstreichen lassen, um einen Backoff zu
-     * ueberspringen — zwei Sekunden Wartezeit je Lauf, und Sonar meldet {@code Thread.sleep} in
-     * Tests zu Recht (java:S2925): Ein Test, der auf die Uhr wartet, ist auf einem langsamen
-     * Runner flaky und auf einem schnellen langsam.
+     * <p>Karte 608: previously {@code Instant.now()} was used everywhere here. The tests
+     * therefore had to let real time pass with {@code Thread.sleep(1300)} in order to skip a
+     * backoff — two seconds of waiting per run, and Sonar rightly reports {@code Thread.sleep}
+     * in tests (java:S2925): a test that waits for the clock is flaky on a slow runner and slow
+     * on a fast one.
      *
-     * <p>Im Betrieb ist es unveraendert {@link Clock#systemUTC()}; nur der Test setzt eine
-     * eigene Uhr ein und stellt sie vor.</p>
+     * <p>In production it is unchanged {@link Clock#systemUTC()}; only the test injects a clock
+     * of its own and moves it forward.</p>
      */
     private final Clock clock;
 
@@ -133,7 +133,7 @@ class VaultwardenClient {
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
         String app = appName == null || appName.isBlank() ? "plaintext" : appName.trim();
-        // Explizit konfiguriert? sonst stabil aus Email+App ableiten (nicht random → keine Device-Mails).
+        // Explicitly configured? otherwise derive it stably from email+app (not random → no device mails).
         String configured = props.getDeviceIdentifier();
         this.deviceIdentifier = configured != null && !configured.isBlank()
                 ? configured.trim()
@@ -150,44 +150,44 @@ class VaultwardenClient {
     }
 
     /**
-     * Liefert die aktuell entschluesselten Login-Items (fail-safe: nie {@code null},
-     * bei Fehlern leer). Aktualisiert Login/Sync bei abgelaufenem Cache.
+     * Returns the currently decrypted login items (fail-safe: never {@code null},
+     * empty on errors). Refreshes login/sync when the cache has expired.
      */
     synchronized List<VaultwardenItem> getItems() {
         ensureFresh();
         return cachedItems != null ? cachedItems : List.of();
     }
 
-    /** Invalidiert den Cache (z.B. nach einer Rotation). */
+    /** Invalidates the cache (e.g. after a rotation). */
     synchronized void invalidate() {
         cachedItems = null;
         cacheExpiry = Instant.EPOCH;
     }
 
     // ------------------------------------------------------------------
-    // Rotation (Schreibrichtung) — Bitwarden-kompatibler PUT auf den ciphers-Endpunkt
+    // Rotation (write direction) — Bitwarden-compatible PUT to the ciphers endpoint
     // ------------------------------------------------------------------
 
     /**
-     * Setzt das Passwort des benannten Login-Items neu (Rotation) und laesst ALLE
-     * uebrigen Felder unveraendert.
+     * Sets a new password on the named login item (rotation) and leaves ALL other
+     * fields untouched.
      *
-     * <p>Ablauf:</p>
+     * <p>Procedure:</p>
      * <ol>
-     *   <li>Login + Sync sicherstellen; Item ueber den entschluesselten Namen finden
-     *       (exakt-dann-enthaelt, wie im Read-Flow).</li>
-     *   <li>Aktuellen Cipher-Stand via {@code GET /api/ciphers/{id}} holen und den
-     *       passenden Schluessel (per-Cipher-Key ueber org/user-Key) ableiten.</li>
-     *   <li>Nur {@code login.password} durch {@link VaultwardenCrypto#encryptSymmetric}
-     *       ersetzen; alle anderen EncString-Felder (name, username, uris, notes,
-     *       fields, totp) unveraendert durchreichen (sie bleiben verschluesselt —
-     *       KEIN Re-Encrypt, sonst Datenverlust).</li>
-     *   <li>{@code PUT /api/ciphers/{id}} mit dem CipherRequestModel; bei 2xx Cache
-     *       invalidieren und {@code true} liefern.</li>
+     *   <li>Ensure login + sync; find the item by its decrypted name
+     *       (exact match, then contains, as in the read flow).</li>
+     *   <li>Fetch the current cipher state via {@code GET /api/ciphers/{id}} and derive
+     *       the matching key (per-cipher key via the org/user key).</li>
+     *   <li>Replace only {@code login.password} using {@link VaultwardenCrypto#encryptSymmetric};
+     *       pass all other EncString fields (name, username, uris, notes,
+     *       fields, totp) through unchanged (they stay encrypted —
+     *       NO re-encrypt, that would mean data loss).</li>
+     *   <li>{@code PUT /api/ciphers/{id}} with the CipherRequestModel; on 2xx invalidate
+     *       the cache and return {@code true}.</li>
      * </ol>
      *
-     * <p>Fail-safe: bei jedem Fehler {@code false} + {@code log.warn} (nie Secrets),
-     * es wird keine Exception nach aussen gereicht.</p>
+     * <p>Fail-safe: on any error {@code false} + {@code log.warn} (never secrets);
+     * no exception is passed to the outside.</p>
      */
     synchronized boolean rotatePassword(String itemName, String newPassword) {
         if (itemName == null || itemName.isBlank() || newPassword == null) {
@@ -203,14 +203,14 @@ class VaultwardenClient {
             }
             String baseUrl = trimUrl(props.getUrl());
 
-            // aktuellen Cipher-Stand frisch holen (nicht aus dem TTL-Cache)
+            // fetch the current cipher state fresh (not from the TTL cache)
             JsonObject cipher = getCipher(baseUrl, match.id());
             if (cipher == null) {
                 log.warn("Rotation: Cipher {} nicht abrufbar", match.id());
                 return false;
             }
 
-            // passenden Schluessel ableiten (identisch zum Read-Flow)
+            // derive the matching key (identical to the read flow)
             String orgId = getStr(cipher, ORGANIZATION_ID_PASCAL, ORGANIZATION_ID);
             byte[] baseKey = (orgId != null) ? orgKeys.get(orgId) : userKey;
             if (baseKey == null) {
@@ -223,7 +223,7 @@ class VaultwardenClient {
                 itemKey = VaultwardenCrypto.decryptSymmetric(EncString.parse(cipherKeyStr), baseKey);
             }
 
-            // NUR das Passwort neu verschluesseln; alles andere durchreichen
+            // re-encrypt ONLY the password; pass everything else through
             String newPasswordEnc = VaultwardenCrypto.encryptSymmetric(
                     newPassword.getBytes(StandardCharsets.UTF_8), itemKey);
             JsonObject request = buildCipherRequest(cipher, newPasswordEnc);
@@ -246,7 +246,7 @@ class VaultwardenClient {
         }
     }
 
-    /** Findet ein gecachtes Login-Item ueber den entschluesselten Namen (exakt, dann enthaelt). */
+    /** Finds a cached login item by its decrypted name (exact match, then contains). */
     private VaultwardenItem findByName(String itemName) {
         List<VaultwardenItem> items = cachedItems != null ? cachedItems : List.of();
         String needle = itemName.trim();
@@ -264,7 +264,7 @@ class VaultwardenClient {
         return null;
     }
 
-    /** Holt den aktuellen Roh-Cipher via {@code GET /api/ciphers/{id}}. */
+    /** Fetches the current raw cipher via {@code GET /api/ciphers/{id}}. */
     private JsonObject getCipher(String baseUrl, String id) throws IOException, InterruptedException {
         HttpRequest req = baseRequest(baseUrl + "/api/ciphers/" + URLEncoder.encode(id, StandardCharsets.UTF_8))
                 .header(HEADER_AUTHORIZATION, BEARER_PREFIX + accessToken)
@@ -278,7 +278,7 @@ class VaultwardenClient {
         return JsonParser.parseString(resp.body()).getAsJsonObject();
     }
 
-    /** Sendet das aktualisierte CipherRequestModel via {@code PUT /api/ciphers/{id}}. */
+    /** Sends the updated CipherRequestModel via {@code PUT /api/ciphers/{id}}. */
     private int putCipher(String baseUrl, String id, String body) throws Exception {
         HttpRequest req = baseRequest(baseUrl + "/api/ciphers/" + URLEncoder.encode(id, StandardCharsets.UTF_8))
                 .header(HEADER_CONTENT_TYPE, MEDIA_TYPE_JSON)
@@ -293,9 +293,9 @@ class VaultwardenClient {
     }
 
     /**
-     * Baut aus dem Roh-Cipher das Bitwarden-{@code CipherRequestModel} (camelCase) und
-     * ersetzt dabei ausschliesslich {@code login.password}. Alle anderen EncString-Felder
-     * werden unveraendert (verschluesselt) uebernommen — kein Feld wird neu verschluesselt.
+     * Builds the Bitwarden {@code CipherRequestModel} (camelCase) from the raw cipher and
+     * replaces {@code login.password} and nothing else. All other EncString fields are taken
+     * over unchanged (encrypted) — no field is re-encrypted.
      */
     private static JsonObject buildCipherRequest(JsonObject cipher, String newPasswordEnc) {
         JsonObject req = new JsonObject();
@@ -306,12 +306,12 @@ class VaultwardenClient {
         req.add("folderId", jsonOrNull(getStr(cipher, "FolderId", "folderId")));
         req.add(ORGANIZATION_ID, jsonOrNull(getStr(cipher, ORGANIZATION_ID_PASCAL, ORGANIZATION_ID)));
         req.addProperty("reprompt", intOr(cipher, 0, "Reprompt", "reprompt"));
-        // per-Cipher-Key unveraendert durchreichen (wird org/user-Key-verschluesselt gehalten)
+        // pass the per-cipher key through unchanged (it is kept org/user-key encrypted)
         String cipherKey = getStr(cipher, "Key", "key");
         if (cipherKey != null) {
             req.addProperty("key", cipherKey);
         }
-        // optimistic concurrency: aktuellen Stand mitgeben
+        // optimistic concurrency: send the current revision along
         String rev = getStr(cipher, "RevisionDate", "revisionDate");
         if (rev != null) {
             req.addProperty("lastKnownRevisionDate", rev);
@@ -324,7 +324,7 @@ class VaultwardenClient {
         return req;
     }
 
-    /** Baut das {@code login}-Objekt: nur {@code password} ersetzen, Rest verschluesselt durchreichen. */
+    /** Builds the {@code login} object: replace only {@code password}, pass the rest through encrypted. */
     private static JsonObject buildLoginRequest(JsonObject cipher, String newPasswordEnc) {
         JsonObject login = new JsonObject();
         JsonObject loginSrc = getObj(cipher, "Login", KEY_LOGIN);
@@ -342,7 +342,7 @@ class VaultwardenClient {
         return login;
     }
 
-    /** Uebernimmt die {@code uris}-Liste (uri + match) unveraendert. */
+    /** Takes over the {@code uris} list (uri + match) unchanged. */
     private static JsonArray buildUris(JsonArray urisSrc) {
         JsonArray uris = new JsonArray();
         for (JsonElement el : urisSrc) {
@@ -360,7 +360,7 @@ class VaultwardenClient {
         return uris;
     }
 
-    /** Uebernimmt die {@code fields}-Liste (name/value) unveraendert; {@code null} falls keine da. */
+    /** Takes over the {@code fields} list (name/value) unchanged; {@code null} if there are none. */
     private static JsonArray buildFieldsRequest(JsonObject cipher) {
         JsonArray fieldsSrc = getArr(cipher, "Fields", KEY_FIELDS);
         if (fieldsSrc == null) {
@@ -398,7 +398,7 @@ class VaultwardenClient {
     }
 
     // ------------------------------------------------------------------
-    // interne Orchestrierung
+    // internal orchestration
     // ------------------------------------------------------------------
 
     private void ensureFresh() {
@@ -419,7 +419,7 @@ class VaultwardenClient {
             log.debug("Vaultwarden-Sync ok: {} Login-Items, {} Org-Keys",
                     cachedItems.size(), orgKeys.size());
         } catch (Exception e) {
-            // fail-safe: keinen Boot/Consumer brechen; letzte Daten behalten
+            // fail-safe: do not break any boot/consumer; keep the last data
             if (cachedItems == null) {
                 cachedItems = List.of();
             }
@@ -429,38 +429,38 @@ class VaultwardenClient {
         }
     }
 
-    /** {@code true}, wenn der letzte Login/Sync-Versuch fehlgeschlagen ist (transiente Stoerung). */
+    /** {@code true} when the last login/sync attempt failed (transient disturbance). */
     synchronized boolean istLetzterRefreshGescheitert() {
         return letzterRefreshGescheitert;
     }
 
-    /** {@code true}, wenn der letzte Fehlschlag ein erkanntes Rate-Limit (HTTP 429) war. */
+    /** {@code true} when the last failure was a recognized rate limit (HTTP 429). */
     synchronized boolean warLetzterFehlerRateLimit() {
         return letzterFehlerWarRateLimit;
     }
 
-    /** Secret-freie Meldung des letzten Fehlschlags; leer nach einem Erfolg. */
+    /** Secret-free message of the last failure; empty after a success. */
     synchronized String letzteFehlermeldung() {
         return letzteFehlermeldung;
     }
 
     /**
-     * Wartezeit bis zum naechsten Vaultwarden-Versuch nach einem Fehlschlag (Karte 395) — und die
-     * Log-Meldung dazu.
+     * Waiting time until the next Vaultwarden attempt after a failure (Karte 395) — and the log
+     * message that goes with it.
      *
-     * <p><b>Warum das noetig wurde:</b> Vorher wurde nach einem Fehlschlag spaetestens nach 60
-     * Sekunden erneut versucht, und zwar unbegrenzt oft. Bei einem HTTP 429 („Too many login
-     * requests") ist das Dauerfeuer — und zwar selbstverstaerkend: Jeder Versuch waehrend der
-     * Sperre haelt sie am Leben. Am 01.08.2026 hat eine einzige fehlkonfigurierte INT-Instanz im
-     * Crashloop auf diesem Weg den Start ANDERER Anwendungen verhindert, weil Vaultwarden fuer
-     * alle abriegelte.</p>
+     * <p><b>Why this became necessary:</b> previously a retry followed at most 60 seconds after
+     * a failure, and it did so without any limit. With an HTTP 429 ("Too many login
+     * requests") that is continuous fire — and self-reinforcing at that: every attempt during
+     * the block keeps it alive. On 01.08.2026 a single misconfigured INT instance in a crash
+     * loop prevented OTHER applications from starting this way, because Vaultwarden locked
+     * everyone out.</p>
      *
-     * <p>Deshalb: exponentiell ab {@value #BACKOFF_START_SEK}s bis {@value #BACKOFF_MAX_SEK}s, und
-     * bei einem erkannten Rate-Limit sofort {@value #BACKOFF_RATE_LIMIT_SEK}s — ein Rate-Limit
-     * laeuft nur ab, wenn man es in Ruhe laesst.</p>
+     * <p>Hence: exponentially from {@value #BACKOFF_START_SEK}s up to {@value #BACKOFF_MAX_SEK}s,
+     * and on a recognized rate limit immediately {@value #BACKOFF_RATE_LIMIT_SEK}s — a rate limit
+     * only expires if it is left alone.</p>
      *
-     * <p>Die Meldung steht bewusst auf WARN und nennt die Wartezeit: Ein stiller Backoff sieht im
-     * Log aus wie ein haengender Dienst.</p>
+     * <p>The message is deliberately at WARN and states the waiting time: a silent backoff looks
+     * like a hanging service in the log.</p>
      */
     private int backoffSekunden(Exception e) {
         fehlversucheInFolge++;
@@ -475,7 +475,7 @@ class VaultwardenClient {
                             + "— weitere Versuche wuerden die Sperre nur verlaengern. Fehlversuch Nr. {}.",
                     meldung, wartezeit, fehlversucheInFolge);
         } else {
-            // 30, 60, 120, 240, ... bis BACKOFF_MAX_SEK
+            // 30, 60, 120, 240, ... up to BACKOFF_MAX_SEK
             long exponentiell = (long) BACKOFF_START_SEK << Math.min(fehlversucheInFolge - 1, 20);
             wartezeit = (int) Math.min(exponentiell, BACKOFF_MAX_SEK);
             log.warn("Vaultwarden-Zugriff fehlgeschlagen ({}). Fahre fail-safe fort, "
@@ -486,7 +486,7 @@ class VaultwardenClient {
     }
 
     // ------------------------------------------------------------------
-    // Schritt 1-6: Login (prelogin -> KDF -> token -> userKey)
+    // Steps 1-6: login (prelogin -> KDF -> token -> userKey)
     // ------------------------------------------------------------------
 
     private void login() throws Exception {
@@ -529,7 +529,7 @@ class VaultwardenClient {
         this.accessToken = newAccessToken;
         long ttlSec = Math.min((long) Math.max(1, props.getLoginTtlMinutes()) * 60, Math.max(60, expiresIn) - 30);
         this.loginExpiry = Instant.now(clock).plusSeconds(Math.max(30, ttlSec));
-        // masterKey/stretched sind lokale Variablen -> GC-faehig nach Ableitung
+        // masterKey/stretched are local variables -> eligible for GC after derivation
         log.info("Vaultwarden-Login ok fuer {} (KDF=PBKDF2, {} Iterationen)", emailLower, iterations);
     }
 
@@ -569,7 +569,7 @@ class VaultwardenClient {
     }
 
     // ------------------------------------------------------------------
-    // Schritt 7-11: Sync + Entschluesselung
+    // Steps 7-11: sync + decryption
     // ------------------------------------------------------------------
 
     private List<VaultwardenItem> sync() throws Exception {
@@ -592,7 +592,7 @@ class VaultwardenClient {
         return decryptCiphers(root);
     }
 
-    /** 8. Entschluesselt den RSA-PrivateKey aus dem Profil ({@code null}, wenn keiner vorhanden). */
+    /** 8. Decrypts the RSA private key from the profile ({@code null} when there is none). */
     private PrivateKey extractPrivateKey(JsonObject profile) {
         String privEnc = profile == null ? null : getStr(profile, "PrivateKey", "privateKey");
         if (privEnc == null) {
@@ -602,7 +602,7 @@ class VaultwardenClient {
         return VaultwardenCrypto.rsaPrivateKeyFromPkcs8(der);
     }
 
-    /** 9. Entschluesselt alle Org-Keys per RSA-PrivateKey in {@link #orgKeys} (fail-safe je Org). */
+    /** 9. Decrypts all org keys with the RSA private key into {@link #orgKeys} (fail-safe per org). */
     private void loadOrgKeys(JsonObject profile, PrivateKey privateKey) {
         orgKeys.clear();
         JsonArray orgs = getArr(profile, "Organizations", "organizations");
@@ -625,7 +625,7 @@ class VaultwardenClient {
         }
     }
 
-    /** 10./11. Entschluesselt alle Login-Ciphers (fail-safe je Cipher). */
+    /** 10./11. Decrypts all login ciphers (fail-safe per cipher). */
     private List<VaultwardenItem> decryptCiphers(JsonObject root) {
         List<VaultwardenItem> items = new ArrayList<>();
         JsonArray ciphers = getArr(root, "Ciphers", "ciphers");
@@ -644,18 +644,18 @@ class VaultwardenClient {
         return List.copyOf(items);
     }
 
-    /** Entschluesselt ein einzelnes Login-Cipher (type==1). Andere Typen: {@code null}. */
+    /** Decrypts a single login cipher (type==1). Other types: {@code null}. */
     private VaultwardenItem decryptCipher(JsonObject cipher) {
         int type = intOr(cipher, 0, "Type", "type");
         if (type != 1) {
-            return null; // nur Login-Items
+            return null; // login items only
         }
         String orgId = getStr(cipher, ORGANIZATION_ID_PASCAL, ORGANIZATION_ID);
         byte[] baseKey = (orgId != null) ? orgKeys.get(orgId) : userKey;
         if (baseKey == null) {
-            return null; // Org-Key fehlt -> nicht entschluesselbar
+            return null; // org key missing -> cannot be decrypted
         }
-        // pro-Cipher-Key (moderne Bitwarden-Ciphers)
+        // per-cipher key (modern Bitwarden ciphers)
         byte[] itemKey = baseKey;
         String cipherKeyStr = getStr(cipher, "Key", "key");
         if (cipherKeyStr != null) {
@@ -695,7 +695,7 @@ class VaultwardenClient {
     }
 
     // ------------------------------------------------------------------
-    // HTTP-Helfer
+    // HTTP helpers
     // ------------------------------------------------------------------
 
     private HttpRequest.Builder baseRequest(String url) {
@@ -719,7 +719,7 @@ class VaultwardenClient {
     }
 
     // ------------------------------------------------------------------
-    // JSON- / Encoding-Helfer (tolerant gegenueber Pascal-/camelCase)
+    // JSON / encoding helpers (tolerant of Pascal/camelCase)
     // ------------------------------------------------------------------
 
     private static JsonElement get(JsonObject o, String... names) {
@@ -803,7 +803,7 @@ class VaultwardenClient {
         return u;
     }
 
-    /** Kurzer, secret-freier Ausschnitt fuer Fehlermeldungen. */
+    /** Short, secret-free excerpt for error messages. */
     private static String shortBody(String body) {
         if (body == null) {
             return "";

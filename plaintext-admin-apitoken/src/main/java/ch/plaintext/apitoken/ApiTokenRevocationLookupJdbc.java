@@ -14,18 +14,18 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * {@link ApiTokenRevocationLookup} über {@link JdbcTemplate} — Verbindung auf, lesen, sofort
- * zurück.
+ * {@link ApiTokenRevocationLookup} via {@link JdbcTemplate} — open the connection, read, hand it
+ * back immediately.
  *
- * <p>Die Klasse liegt bewusst in diesem Modul und nicht in {@code plaintext-root-webapp} (wo
- * {@code McpUserRolesImpl} steht): Tabelle, Entity, Repository und der einzige Aufrufer
- * ({@link ApiTokenService}) gehören alle zu {@code plaintext-admin-apitoken}. Bei
- * {@code McpUserRoles} lag die Tabelle {@code my_user_entity} in einem anderen Modul als der
- * Filter — nur deshalb brauchte es dort die Aufteilung über ein Interface-Modul.
+ * <p>The class deliberately sits in this module and not in {@code plaintext-root-webapp} (where
+ * {@code McpUserRolesImpl} lives): table, entity, repository and the only caller
+ * ({@link ApiTokenService}) all belong to {@code plaintext-admin-apitoken}. With
+ * {@code McpUserRoles} the table {@code my_user_entity} was in a different module than the
+ * filter — that was the only reason the split via an interface module was needed there.
  *
- * <p><b>Fachlich identisch zum bisherigen JPA-Weg</b> ({@code apiTokenRepository.findByTokenHash}
- * plus die beiden Feldprüfungen in {@code validateVerifiedToken}); festgehalten im Vertragstest
- * {@code ApiTokenRevocationVertragIT}, der beide Wege gegen denselben Datenbestand stellt.
+ * <p><b>Functionally identical to the previous JPA path</b> ({@code apiTokenRepository.findByTokenHash}
+ * plus the two field checks in {@code validateVerifiedToken}); pinned down by the contract test
+ * {@code ApiTokenRevocationVertragIT}, which puts both paths against the same data set.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -45,14 +45,14 @@ public class ApiTokenRevocationLookupJdbc implements ApiTokenRevocationLookup {
         if (tokenHash == null || tokenHash.isEmpty()) {
             return Optional.empty();
         }
-        // token_hash trägt uk_api_token_hash (unique) — höchstens eine Zeile. queryForList statt
-        // queryForObject, damit "kein Treffer" ein leeres Optional ist und keine Exception.
+        // token_hash carries uk_api_token_hash (unique) — at most one row. queryForList instead of
+        // queryForObject, so that "no match" is an empty Optional and not an exception.
         List<TokenZustand> treffer = jdbc.query(
                 "SELECT id, deleted, invalidated, user_email FROM api_token WHERE token_hash = ?",
-                // deleted ist NULLABLE (V1775256894); getBoolean() liefert für NULL false — das ist
-                // die gewollte Lesart "nie gelöscht worden". Der JPA-Weg lief bei NULL in eine
-                // NullPointerException (Unboxing von Boolean), also in einen 500er statt in eine
-                // Zugriffsentscheidung; siehe Vertragstest.
+                // deleted is NULLABLE (V1775256894); getBoolean() returns false for NULL — that is
+                // the intended reading "never having been deleted". On NULL the JPA path ran into a
+                // NullPointerException (unboxing of Boolean), i.e. into a 500 instead of an
+                // access decision; see the contract test.
                 (rs, zeile) -> new TokenZustand(rs.getLong("id"), rs.getBoolean("deleted"),
                         rs.getBoolean("invalidated"), rs.getString("user_email")),
                 tokenHash);
@@ -64,11 +64,11 @@ public class ApiTokenRevocationLookupJdbc implements ApiTokenRevocationLookup {
         if (jti == null || jti.isEmpty()) {
             return false;
         }
-        // Karte 664: Die Abfrage fragt direkt nach dem gesuchten Zustand, statt eine Zeile zu laden
-        // und sie hier auszuwerten — der Aufruf sitzt im Auth-Pfad jedes MCP-Requests.
-        // invalidated ist NOT NULL (V1775256894), deshalb genügt die WHERE-Bedingung; deleted wird
-        // bewusst NICHT geprüft: invalidateToken() setzt beide Flags, und ein Datensatz, der nur
-        // aufgeräumt (deleted) und nicht widerrufen wurde, ist kein Widerruf.
+        // Card 664: the query asks directly for the state in question instead of loading a row
+        // and evaluating it here — the call sits in the auth path of every MCP request.
+        // invalidated is NOT NULL (V1775256894), so the WHERE condition suffices; deleted is
+        // deliberately NOT checked: invalidateToken() sets both flags, and a record that was only
+        // tidied away (deleted) and not revoked is not a revocation.
         Integer treffer = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM api_token WHERE jti = ? AND invalidated = TRUE",
                 Integer.class, jti);

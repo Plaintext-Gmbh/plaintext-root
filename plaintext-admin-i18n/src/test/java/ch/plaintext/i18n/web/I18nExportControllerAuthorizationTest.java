@@ -29,14 +29,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * SECURITY-Karte 304: {@code /api/i18n/export} und {@code /api/i18n/import} waren nur
- * {@code authenticated()} — ein beliebiger {@code ROLE_USER} konnte damit global (die Entity hat
- * keine {@code mandat}-Spalte) Uebersetzungen ueberschreiben, die anschliessend auf Admin-Seiten
- * gerendert werden, bzw. alle Labels exportieren.
+ * SECURITY card 304: {@code /api/i18n/export} and {@code /api/i18n/import} were only
+ * {@code authenticated()} — any {@code ROLE_USER} could therefore globally (the entity has
+ * no {@code mandat} column) overwrite translations that are subsequently rendered on admin pages,
+ * or export all labels.
  * <p>
- * Dieser Test prueft die <b>zweite Verteidigungslinie im Controller</b> ohne Servlet-Container.
- * Die Filter-Chain-Regel ({@code /api/i18n/** -> hasAnyRole("ADMIN","ROOT")}) wird zusaetzlich
- * end-to-end in {@code SecurityTest} (plaintext-root-webapp) abgedeckt.
+ * This test checks the <b>second line of defence in the controller</b> without a servlet container.
+ * The filter chain rule ({@code /api/i18n/** -> hasAnyRole("ADMIN","ROOT")}) is additionally
+ * covered end-to-end in {@code SecurityTest} (plaintext-root-webapp).
  */
 class I18nExportControllerAuthorizationTest {
 
@@ -91,7 +91,7 @@ class I18nExportControllerAuthorizationTest {
 
     @Test
     void importAlsAnonymerPrincipalWirdMit403Abgelehnt() {
-        // AnonymousAuthenticationToken ist isAuthenticated()==true, traegt aber nur ROLE_ANONYMOUS
+        // AnonymousAuthenticationToken has isAuthenticated()==true but carries only ROLE_ANONYMOUS
         SecurityContextHolder.getContext().setAuthentication(
                 new AnonymousAuthenticationToken("key", "anonymousUser",
                         AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")));
@@ -118,8 +118,8 @@ class I18nExportControllerAuthorizationTest {
 
     @Test
     void importAlsRootFunktioniert() {
-        // Die konsumierende Seite i18n-translations.xhtml haengt unter dem ROOT-Menue;
-        // ein root-User ohne admin-Rolle darf nicht ausgesperrt werden.
+        // The consuming page i18n-translations.xhtml hangs under the ROOT menu;
+        // a root user without the admin role must not be locked out.
         alsBenutzerMitRollen("root", "ROLE_ROOT");
         when(i18nService.saveTranslation(anyString(), anyString(), anyString()))
                 .thenReturn(new I18nTranslation());
@@ -132,10 +132,10 @@ class I18nExportControllerAuthorizationTest {
     }
 
     /**
-     * Dokumentiert die Arbeitsteilung: der Import filtert HTML NICHT (kein Input-Sanitizing),
-     * der Schutz sitzt bewusst an der Ausgabe (kein {@code escape="false"} in Views, s.
-     * {@code EscapeFalseInvariantTest}). Wuerde hier gefiltert, waeren legitime Uebersetzungen
-     * mit {@code <} oder {@code &} kaputt.
+     * Documents the division of labour: the import does NOT filter HTML (no input sanitising),
+     * the protection deliberately sits at the output (no {@code escape="false"} in views, see
+     * {@code EscapeFalseInvariantTest}). If filtering happened here, legitimate translations
+     * containing {@code <} or {@code &} would be broken.
      */
     @Test
     void importSpeichertHtmlPayloadUnveraendert() {

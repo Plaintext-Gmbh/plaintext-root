@@ -16,11 +16,11 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * AES-256-GCM Ver-/Entschlüsselung für die Webhook-Signing-Secrets (müssen — anders als ein reines
- * Passwort-Hash — zum Signieren jedes ausgehenden Requests wiederherstellbar sein, daher
- * Verschlüsselung statt Hashing). Gleiches Muster + gleicher Env-Key wie
- * {@code plaintext-admin-secrets}' {@code SecretCrypto}, hier dupliziert, da kein Modul quer auf
- * {@code plaintext-admin-secrets} referenziert.
+ * AES-256-GCM encryption/decryption for the webhook signing secrets (unlike a pure password hash
+ * they must be recoverable in order to sign every outgoing request, hence encryption instead of
+ * hashing). Same pattern + same env key as {@code plaintext-admin-secrets}' {@code SecretCrypto},
+ * duplicated here because no module references {@code plaintext-admin-secrets} across module
+ * boundaries.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -40,7 +40,7 @@ public class WebhookCrypto {
         this(environment != null && isProduction(environment));
     }
 
-    /** Test-Konstruktor: erzwingt den Dev-Fallback ohne Spring-Kontext. */
+    /** Test constructor: forces the dev fallback without a Spring context. */
     WebhookCrypto() {
         this(false);
     }
@@ -48,16 +48,16 @@ public class WebhookCrypto {
     private WebhookCrypto(boolean production) {
         byte[] raw = ladeKey();
         if (raw == null) {
-            // SECURITY (Karte 376, urspruenglich Punkt 8 der Sammelkarte 314): Der Dev-Fallback
-            // leitet den Schluessel aus sha256("plaintext-dev-fallback-" + HOSTNAME) ab. HOSTNAME
-            // wird weder im Dockerfile noch in der compose.yaml gesetzt — der Wert ist dann der
-            // konstante String "null" und der Schluessel damit oeffentlich berechenbar. Wer die
-            // verschluesselten Webhook-Signing-Secrets in die Haende bekommt, kann sie lesen und
-            // anschliessend gueltige Signaturen erzeugen.
+            // SECURITY (card 376, originally item 8 of collective card 314): The dev fallback
+            // derives the key from sha256("plaintext-dev-fallback-" + HOSTNAME). HOSTNAME is set
+            // neither in the Dockerfile nor in compose.yaml — the value is then the constant
+            // string "null" and the key is therefore publicly computable. Anyone who gets hold of
+            // the encrypted webhook signing secrets can read them and subsequently produce valid
+            // signatures.
             //
-            // Dieselbe Pruefung steht in SecretCrypto (plaintext-admin-secrets). Sie ist hier
-            // dupliziert, weil kein Modul quer auf jenes referenziert — ein Fix in nur einer der
-            // beiden Klassen liesse die Luecke offen.
+            // The same check exists in SecretCrypto (plaintext-admin-secrets). It is duplicated
+            // here because no module references that one across module boundaries — a fix in only
+            // one of the two classes would leave the hole open.
             if (production) {
                 throw new IllegalStateException(ENV_KEY + " ist in PROD Pflicht (base64, 32 Byte). "
                         + "Der deterministische Dev-Fallback-Schluessel ist oeffentlich berechenbar "
@@ -70,7 +70,7 @@ public class WebhookCrypto {
         this.key = new SecretKeySpec(raw, "AES");
     }
 
-    /** Produktivumgebung = aktives Spring-Profil {@code prod} (so setzt es das Dockerfile). */
+    /** Production environment = active Spring profile {@code prod} (that is how the Dockerfile sets it). */
     private static boolean isProduction(Environment environment) {
         for (String profile : environment.getActiveProfiles()) {
             if ("prod".equalsIgnoreCase(profile)) {
@@ -102,7 +102,7 @@ public class WebhookCrypto {
         }
     }
 
-    /** Klartext → base64(iv||ciphertext||tag). */
+    /** Plain text → base64(iv||ciphertext||tag). */
     public String encrypt(String plaintext) {
         if (plaintext == null) {
             return null;
@@ -122,7 +122,7 @@ public class WebhookCrypto {
         }
     }
 
-    /** base64(iv||ciphertext||tag) → Klartext. */
+    /** base64(iv||ciphertext||tag) → plain text. */
     public String decrypt(String encoded) {
         if (encoded == null) {
             return null;

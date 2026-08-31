@@ -21,29 +21,28 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * MCP-Tool zum Setzen von Secrets. Bewusst nur <b>set</b> (one-way — Werte werden nie ausgelesen).
+ * MCP tool for setting secrets. Deliberately only <b>set</b> (one-way — values are never read out).
  *
- * <p>{@link ConditionalOnClass} auf die MCP-Annotation: das Bean lädt NUR in Apps, die selbst einen
- * spring-ai-MCP-Server haben (guild/iot/…). Apps ohne MCP bleiben unberührt (die optionale Dependency
- * ist nicht transitiv, und die Condition verhindert das Laden dieser Klasse).</p>
+ * <p>{@link ConditionalOnClass} on the MCP annotation: the bean loads ONLY in apps that have a
+ * spring-ai MCP server of their own (guild/iot/…). Apps without MCP stay untouched (the optional
+ * dependency is not transitive, and the condition prevents this class from being loaded).</p>
  *
- * <p><b>Autorisierung (Karte 557):</b> Bis zum 05.08.2026 hatte dieses Werkzeug <em>keine</em>
- * Zugriffskontrolle — weder Annotation noch Prüfung im Rumpf. Da jedes gültige MCP-Token mindestens
- * {@code SCOPE_READ} erhält, konnte ein reines Lesetoken Secrets überschreiben. Verlangt werden jetzt
- * {@code SCOPE_ADMIN} <b>und</b> die Rolle {@code ADMIN} oder {@code ROOT}:</p>
+ * <p><b>Authorization (card 557):</b> until 2026-08-05 this tool had <em>no</em> access control —
+ * neither an annotation nor a check in the body. Since every valid MCP token gets at least
+ * {@code SCOPE_READ}, a pure read token could overwrite secrets. What is now required is
+ * {@code SCOPE_ADMIN} <b>and</b> the role {@code ADMIN} or {@code ROOT}:</p>
  * <ul>
- *   <li>Der <b>Scope</b> verhindert, dass ein Lese- oder Schreibtoken an den Secret-Speicher kommt.</li>
- *   <li>Die <b>Rolle</b> ist nötig, weil die Token-Ausstellung in der Oberfläche laut
- *       {@code ApiTokenMenu} den Rollen {@code USER, ADMIN, ROOT} offensteht und der Scope dort frei
- *       wählbar ist — ein gewöhnliches Mitglied könnte sich sonst selbst ein ADMIN-Token ausstellen
- *       und die Prüfung damit umgehen. Dieselbe Begründung wie in {@code ApiTokenMcpTools}.</li>
+ *   <li>The <b>scope</b> prevents a read or write token from reaching the secret store.</li>
+ *   <li>The <b>role</b> is necessary because, according to {@code ApiTokenMenu}, issuing tokens in the
+ *       UI is open to the roles {@code USER, ADMIN, ROOT} and the scope is freely selectable there —
+ *       otherwise an ordinary member could issue themselves an ADMIN token and thereby bypass the
+ *       check. Same rationale as in {@code ApiTokenMcpTools}.</li>
  * </ul>
  *
- * <p><b>Warum im Rumpf und nicht per {@code @PreAuthorize}:</b> Ein MCP-Aufruf läuft nicht über den
- * üblichen Web-Pfad; ob eine Annotation greift, hängt daran, dass Methodensicherheit in der
- * konsumierenden Anwendung eingeschaltet ist und das Bean proxied wird. Eine still wirkungslose
- * Annotation sähe von aussen genauso aus wie eine wirksame — die Prüfung im Rumpf kann nicht
- * ausfallen.</p>
+ * <p><b>Why in the body and not via {@code @PreAuthorize}:</b> an MCP call does not go through the
+ * usual web path; whether an annotation takes effect depends on method security being enabled in the
+ * consuming application and on the bean being proxied. A silently ineffective annotation would look
+ * from the outside exactly like an effective one — the check in the body cannot fail to run.</p>
  */
 @Slf4j
 @Component
@@ -66,10 +65,10 @@ public class SecretsMcpTools {
             @McpToolParam(description = "Secret name / key") String name,
             @McpToolParam(description = "Backend: VAULTWARDEN, LOCAL_DB or HASHICORP") String backend,
             @McpToolParam(description = "The secret value to store (write-only)") String value,
-            // Karte 520: Die Beschreibung verspricht "Optional", das Schema fuehrte den Parameter
-            // aber als Pflicht (@McpToolParam ist per Default required). Wer die Notiz weglassen
-            // wollte, musste einen Leerstring oder die Zeichenkette "null" schicken — beides landet
-            // als Notiz am Secret. SecretService.set() vertraegt null ausdruecklich ("if (note != null)").
+            // Card 520: the description promises "Optional", but the schema listed the parameter
+            // as mandatory (@McpToolParam is required by default). Anyone wanting to omit the note
+            // had to send an empty string or the string "null" — both end up as the note on the
+            // secret. SecretService.set() explicitly tolerates null ("if (note != null)").
             @McpToolParam(required = false, description = "Optional free-text note/comment") String note) {
         String verweigert = autorisierungPruefen();
         if (verweigert != null) {
@@ -144,10 +143,10 @@ public class SecretsMcpTools {
     }
 
     /**
-     * Prüft den Aufrufer gegen den vom Bearer-Filter befüllten SecurityContext.
+     * Checks the caller against the SecurityContext populated by the bearer filter.
      *
-     * @return {@code null}, wenn der Aufruf zulässig ist — sonst die fertige Fehlermeldung für den
-     *         MCP-Client. Die Meldung nennt bewusst nur die fehlende Voraussetzung und keine Werte.
+     * @return {@code null} if the call is permitted — otherwise the ready-made error message for the
+     *         MCP client. The message deliberately names only the missing precondition and no values.
      */
     private String autorisierungPruefen() {
         return autorisierungPruefen("set_secret");

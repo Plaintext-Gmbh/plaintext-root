@@ -13,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Weiterleitung nach dem Login auf einen gemerkten Deep-Link (Karte 345).
+ * Redirect after the login to a remembered deep link (card 345).
  *
- * <p>Der Handler haengt {@code contextPath + "/"} vor die zurueckgegebene Seite — die Rueckgabe
- * darf deshalb keinen fuehrenden Slash haben und muss ein Pfad der eigenen Anwendung bleiben.
+ * <p>The handler prepends {@code contextPath + "/"} to the returned page — the return value
+ * must therefore not have a leading slash and has to stay a path of our own application.
  */
 class PlaintextAuthenticationSuccessHandlerDeepLinkTest {
 

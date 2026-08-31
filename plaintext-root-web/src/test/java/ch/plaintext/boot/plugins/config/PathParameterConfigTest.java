@@ -25,11 +25,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests fuer den PathParameterFilter (Karte 612).
+ * Tests for the PathParameterFilter (Card 612).
  *
- * <p>Die Faelle bilden die Messungen vom 07.08.2026 ab: Ein Semikolon in der URL fuehrte bei
- * angemeldeten Requests zu einem 400 ohne Logzeile, bei anonymen zu einem Login-Redirect auf
- * eigentlich oeffentlichen Seiten.
+ * <p>The cases mirror the measurements from 07.08.2026: a semicolon in the URL led to a 400
+ * without a log line for authenticated requests, and to a login redirect on pages that were
+ * actually public for anonymous ones.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -66,7 +66,7 @@ class PathParameterConfigTest {
         return location.getValue();
     }
 
-    // --- Registrierung ---------------------------------------------------------------------
+    // --- Registration ----------------------------------------------------------------------
 
     @Test
     void filterRegistration_shouldRunBeforeSpringSecurityAndHtmlRewrite() {
@@ -74,12 +74,13 @@ class PathParameterConfigTest {
                 new PathParameterConfig().pathParameterFilter();
 
         assertNotNull(registration.getFilter());
-        // Karte 612: Die Reihenfolge muss ZWEI Bedingungen zugleich erfuellen --
-        //   nach  ForwardedHeaderFilter (+10), sonst baut sendRedirect() die Weiterleitung mit
-        //         dem Connector-Schema (http) statt dem der urspruenglichen Anfrage (https)
-        //   vor   htmlRewriteFilter (+30), sonst kommt /login.html;jsessionid=... dort ungereinigt
-        //         an und endet nicht auf .html
-        // Spring Security liegt weiterhin weit dahinter (-100).
+        // Card 612: the order has to satisfy TWO conditions at once --
+        //   after   ForwardedHeaderFilter (+10), otherwise sendRedirect() builds the redirect
+        //           with the connector's scheme (http) instead of the one of the original
+        //           request (https)
+        //   before  htmlRewriteFilter (+30), otherwise /login.html;jsessionid=... arrives there
+        //           uncleaned and does not end in .html
+        // Spring Security still sits far behind that (-100).
         assertEquals(Ordered.HIGHEST_PRECEDENCE + 20, registration.getOrder());
         assertTrue(registration.getOrder() > Ordered.HIGHEST_PRECEDENCE + 10,
                 "muss nach dem ForwardedHeaderFilter laufen, sonst degradiert der Redirect auf http");
@@ -88,7 +89,7 @@ class PathParameterConfigTest {
         assertTrue(registration.getUrlPatterns().contains("/*"));
     }
 
-    // --- Normalfall: nichts tun ------------------------------------------------------------
+    // --- Normal case: do nothing -----------------------------------------------------------
 
     @Test
     void doFilter_shouldPassThroughUrlsWithoutSemicolon() throws Exception {
@@ -109,7 +110,7 @@ class PathParameterConfigTest {
         verify(chain).doFilter(request, response);
     }
 
-    // --- Der Anlassfall aus Karte 612 ------------------------------------------------------
+    // --- The triggering case from Card 612 -------------------------------------------------
 
     @Test
     void doFilter_shouldRedirectRootWithJsessionidToRoot() throws Exception {
@@ -150,7 +151,7 @@ class PathParameterConfigTest {
 
     @Test
     void doFilter_shouldAlsoHandleSemicolonWithoutJsessionid() throws Exception {
-        // Gemessen: auch ";foo=bar" loeste den 400 aus - nicht nur die Sitzungskennung.
+        // Measured: ";foo=bar" triggered the 400 as well - not just the session id.
         get("/actuator/health;foo=bar", null);
 
         filter.doFilter(request, response, chain);
@@ -168,7 +169,7 @@ class PathParameterConfigTest {
         assertEquals("/", capturedRedirect());
     }
 
-    // --- Nicht-GET: kein Redirect, aber bereinigter Pfad ------------------------------------
+    // --- Non-GET: no redirect, but a cleaned-up path ---------------------------------------
 
     @Test
     void doFilter_shouldNotRedirectPostButCleanThePath() throws Exception {
@@ -205,12 +206,12 @@ class PathParameterConfigTest {
         assertEquals("/a/b", wrapped.getRequestURI());
     }
 
-    // --- Sicherheit ------------------------------------------------------------------------
+    // --- Security --------------------------------------------------------------------------
 
     @Test
     void doFilter_shouldNotProduceProtocolRelativeOpenRedirect() throws Exception {
-        // "//boese.example/x" waere eine protokollrelative URL - der Browser landete auf einem
-        // fremden Host. Ein solcher Pfad wird auf die Wurzel zurueckgefuehrt.
+        // "//boese.example/x" would be a protocol-relative URL - the browser would end up on a
+        // foreign host. Such a path is folded back to the root.
         get("//boese.example/x;jsessionid=ABC", null);
 
         filter.doFilter(request, response, chain);
@@ -228,7 +229,7 @@ class PathParameterConfigTest {
 
     @Test
     void maskParameterValues_shouldHideTheSessionId() {
-        // Die Sitzungskennung ist ein Zugang ohne Passwort - sie darf nicht ins Log.
+        // The session id is access without a password - it must not end up in the log.
         String masked = PathParameterConfig.PathParameterFilter
                 .maskParameterValues("/;jsessionid=C252CABB81F6399C");
 
@@ -244,7 +245,7 @@ class PathParameterConfigTest {
         assertEquals("/", PathParameterConfig.PathParameterFilter.stripPathParameters(";x=1"));
     }
 
-    // --- Lebenszyklus ----------------------------------------------------------------------
+    // --- Lifecycle -------------------------------------------------------------------------
 
     @Test
     void initAndDestroy_shouldNotThrow() {

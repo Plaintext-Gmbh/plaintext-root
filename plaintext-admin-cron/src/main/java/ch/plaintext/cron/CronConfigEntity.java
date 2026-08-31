@@ -57,7 +57,7 @@ public class CronConfigEntity {
         return cron.isGlobal();
     }
 
-    /** Delegiert an {@link SuperCron#getScope()} (Task 005) — {@code MANDAT} als Fallback ohne Cron. */
+    /** Delegates to {@link SuperCron#getScope()} (Task 005) — {@code MANDAT} as the fallback when there is no cron. */
     public ExecutionScope getScope() {
         if (cron == null) {
             return ExecutionScope.MANDAT;

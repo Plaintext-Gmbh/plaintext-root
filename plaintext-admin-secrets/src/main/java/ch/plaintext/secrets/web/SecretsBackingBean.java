@@ -20,8 +20,8 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Backing-Bean für {@code secrets.xhtml}: Liste der verwalteten Secrets (ohne Werte — one-way),
- * Setzen/Anlegen, Backend-Settings und Passwort-Generator auf einer Seite.
+ * Backing Bean for {@code secrets.xhtml}: list of the managed secrets (without values — one-way),
+ * setting/creating, backend settings and password generator on a single page.
  */
 @Component("secretsBean")
 @Scope("session")
@@ -35,24 +35,24 @@ public class SecretsBackingBean implements Serializable {
     private List<SecretEntry> secrets;
     private boolean devFallbackKey;
 
-    // Formular: Secret setzen/anlegen
+    // Form: set/create a secret
     private String name;
     private SecretBackendType backendType = SecretBackendType.VAULTWARDEN;
     private String value;
     private String note;
 
-    // Settings: aktives Backend
+    // Settings: active backend
     private SecretBackendType activeBackend;
     private String backendConfig;
-    private boolean configured;        // ist bereits ein Backend fix konfiguriert? (dann gesperrt)
-    private transient SecretHealth health;   // Live-Test des aktiven Backends
+    private boolean configured;        // is a backend already firmly configured? (then locked)
+    private transient SecretHealth health;   // live test of the active backend
 
-    // Migration (Backend wechseln + alle Secrets zügeln)
+    // Migration (switch backend + move all secrets)
     private boolean migrateMode;
     private SecretBackendType migrateTarget;
     private String migrateConfig;
 
-    // Passwort-Generator
+    // Password generator
     private int genLength = 24;
     private boolean genLower = true;
     private boolean genUpper = true;
@@ -77,7 +77,7 @@ public class SecretsBackingBean implements Serializable {
         return SecretBackendType.values();
     }
 
-    // EL-taugliche Getter fürs Record SecretHealth (Records haben keine isXxx/getXxx-Accessoren).
+    // EL-compatible getters for the record SecretHealth (records have no isXxx/getXxx accessors).
     public boolean isHealthOk() {
         return health != null && health.ok();
     }
@@ -86,7 +86,7 @@ public class SecretsBackingBean implements Serializable {
         return health == null ? null : health.detail();
     }
 
-    /** Secret setzen/anlegen (one-way). Der Wert wird nach dem Speichern sofort verworfen. */
+    /** Set/create a secret (one-way). The value is discarded immediately after saving. */
     public void save() {
         try {
             if (name == null || name.isBlank()) {
@@ -115,7 +115,7 @@ public class SecretsBackingBean implements Serializable {
         }
     }
 
-    /** Erst-Konfiguration des Backends. Danach ist es gesperrt — Wechsel nur noch via Migration. */
+    /** Initial configuration of the backend. Afterwards it is locked — a switch only via migration. */
     public void saveBackend() {
         try {
             if (configured) {
@@ -131,7 +131,7 @@ public class SecretsBackingBean implements Serializable {
         }
     }
 
-    /** Öffnet den Migrations-Bereich (Backend wechseln). Vorbelegt mit einem anderen als dem aktiven. */
+    /** Opens the migration area (switch backend). Pre-filled with one other than the active one. */
     public void startMigrate() {
         migrateMode = true;
         migrateConfig = null;
@@ -150,7 +150,7 @@ public class SecretsBackingBean implements Serializable {
         migrateConfig = null;
     }
 
-    /** Migriert alle Secrets zum gewählten Ziel-Backend und schaltet dieses aktiv. */
+    /** Migrates all secrets to the selected target backend and switches that one active. */
     public void migrate() {
         try {
             if (migrateTarget == null) {
@@ -171,7 +171,7 @@ public class SecretsBackingBean implements Serializable {
         }
     }
 
-    /** Lädt einen bestehenden Eintrag ins Setzen-Formular, um seinen Wert im Backend zu ändern. */
+    /** Loads an existing entry into the set form in order to change its value in the backend. */
     public void edit(SecretEntry entry) {
         name = entry.getName();
         backendType = entry.getBackendType();
@@ -180,7 +180,7 @@ public class SecretsBackingBean implements Serializable {
         info("Eintrag '" + entry.getName() + "' geladen — neuen Wert eingeben und speichern.");
     }
 
-    /** Generiert ein Passwort und schreibt es ins Wert-Feld (zum direkten Setzen). */
+    /** Generates a password and writes it into the value field (for setting it directly). */
     public void generate() {
         generated = secretService.generatePassword(genLength, genLower, genUpper, genDigits, genSymbols);
         value = generated;

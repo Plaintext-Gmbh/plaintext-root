@@ -10,23 +10,23 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Schreibt Einträge ins generische {@link DestructiveActionAudit}-Log. Jede App (root/app/guild/
- * iot/schuetu) nutzt diese Bean direkt (kein Cross-Service-Call nötig — jede App schreibt in ihre
- * eigene, lokale Kopie der Tabelle, siehe Migration).
+ * Writes entries into the generic {@link DestructiveActionAudit} log. Every app (root/app/guild/
+ * iot/schuetu) uses this bean directly (no cross-service call needed — each app writes into its
+ * own local copy of the table, see the migration).
  *
- * <p>Best-effort wie beim Vorbild {@code ImpersonationAudit}: ein Fehler beim Schreiben des
- * Audit-Logs darf die eigentliche (bereits ausgeführte) destruktive Aktion NIE nachträglich
- * blockieren oder scheitern lassen.</p>
+ * <p>Best effort, following the example of {@code ImpersonationAudit}: a failure while writing
+ * the audit log must NEVER retroactively block or break the destructive action itself, which has
+ * already been carried out.</p>
  *
- * <p><b>Warum {@link Propagation#REQUIRES_NEW} (Karte 332):</b> Mit dem vorherigen {@code REQUIRED}
- * lief der Audit-Insert in der Transaktion des Aufrufers mit. Scheiterte er, markierte das die
- * <em>fremde</em> Transaktion als {@code rollback-only} — der {@code catch}-Block unten schluckte die
- * Exception zwar, aber beim Commit bekam der Aufrufer trotzdem ein irreführendes „Transaction silently
- * rolled back because it has been marked as rollback-only" und seine fachliche Änderung war weg.
- * Genau so brach {@code delete_email_account} ab, nachdem eine fehlende ID-Generierung der
- * Audit-Tabelle jeden Insert scheitern liess. Mit einer eigenen Transaktion bleibt ein Audit-Fehler
- * strukturell auf das Audit-Log beschränkt — das Best-effort-Versprechen dieser Klasse hält dann auch
- * dann noch, wenn die Audit-Tabelle selbst kaputt oder gar nicht vorhanden ist.</p>
+ * <p><b>Why {@link Propagation#REQUIRES_NEW} (Karte 332):</b> with the previous {@code REQUIRED}
+ * the audit insert ran inside the caller's transaction. When it failed, that marked the
+ * <em>foreign</em> transaction as {@code rollback-only} — the {@code catch} block below did swallow
+ * the exception, but on commit the caller still got a misleading "Transaction silently
+ * rolled back because it has been marked as rollback-only" and its business change was gone.
+ * That is exactly how {@code delete_email_account} aborted, after a missing ID generation on the
+ * audit table made every insert fail. With a transaction of its own, an audit failure stays
+ * structurally confined to the audit log — this class then keeps its best-effort promise even
+ * when the audit table itself is broken or missing altogether.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -39,11 +39,11 @@ public class DestructiveActionAuditService {
     private final DestructiveActionAuditRepository repo;
 
     /**
-     * @param channel    {@code UI} oder {@code MCP}
-     * @param actionType frei wählbarer Aktions-Bezeichner, z. B. {@code RECHNUNG_HARD_DELETE}
-     * @param entityType betroffener Entity-Typ, z. B. {@code Rechnung}
-     * @param entityIds  betroffene IDs/Anzahl als Text, oder {@code null}
-     * @param detail     Freitext (Kontext, Bestätigungsphrase, Fehlermeldung), oder {@code null}
+     * @param channel    {@code UI} or {@code MCP}
+     * @param actionType freely chosen action identifier, e.g. {@code RECHNUNG_HARD_DELETE}
+     * @param entityType affected entity type, e.g. {@code Rechnung}
+     * @param entityIds  affected IDs/count as text, or {@code null}
+     * @param detail     free text (context, confirmation phrase, error message), or {@code null}
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logDestructiveAction(String channel, String actionType, String entityType,

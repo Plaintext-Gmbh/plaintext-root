@@ -30,43 +30,43 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Drei Regeln fuer Inline-Scripts in Facelets — geteilt, weil jede von ihnen schon einmal einen
- * ganzen Tag gekostet hat und keine von ihnen sich von aussen bemerkbar macht.
+ * Three rules for inline scripts in Facelets — shared, because each of them has already cost a
+ * whole day and none of them makes itself noticed from the outside.
  *
- * <p>Der Test liegt in {@code src/main/java} des Moduls {@code plaintext-root-archtests} und wandert
- * damit ins publizierte Jar. Consumer (app, iot, schuetu, guild) lassen ihn ueber Surefire
- * {@code <dependenciesToScan>} gegen ihre eigenen Facelets laufen — die Regel steht einmal,
- * nicht fuenfmal. Gemessen am 23.08.2026 sind alle fuenf Repositories sauber.</p>
+ * <p>The test lives in {@code src/main/java} of the module {@code plaintext-root-archtests} and
+ * thereby ends up in the published jar. Consumers (app, iot, schuetu, guild) let it run via Surefire
+ * {@code <dependenciesToScan>} against their own Facelets — the rule exists once,
+ * not five times. Measured on 23.08.2026 all five repositories are clean.</p>
  *
- * <p><b>Verhaeltnis zu den Kopien.</b> Er loest {@code ch.plaintext.webapp.AjaxAntwortLesbarTest}
- * in plaintext-root-webapp ab, der nur Regel 1 kannte: innerhalb <b>eines</b> Repositories, das in
- * einem Zug gebaut und zurueckgedreht wird, ist eine zweite Kopie derselben Regel nur die Stelle,
- * an der die beiden auseinanderlaufen. Die Fassung in plaintext-app bleibt bewusst bestehen —
- * dort gilt die Begruendung aus {@code AjaxZielAufloesbarTest}: app wird getrennt gebaut und
- * getrennt zurueckgedreht, und eine Regel, die mit einem root-Rollback verschwindet, ist an dem
- * Tag weg, an dem man sie braucht.</p>
+ * <p><b>Relation to the copies.</b> It supersedes {@code ch.plaintext.webapp.AjaxAntwortLesbarTest}
+ * in plaintext-root-webapp, which only knew rule 1: within <b>one</b> repository that is built and
+ * rolled back in one go, a second copy of the same rule is merely the place where the two drift
+ * apart. The version in plaintext-app deliberately stays — there the reasoning from
+ * {@code AjaxZielAufloesbarTest} applies: app is built separately and rolled back separately, and a
+ * rule that disappears with a root rollback is gone on the very day it is needed.</p>
  *
- * <h2>Regel 1 — kein woertliches CDATA-Ende innerhalb von {@code h:form} (Karten 430, 502)</h2>
- * <p>Jede PrimeFaces-Antwort verpackt das aktualisierte Formular in
- * {@code <update id="…"><![CDATA[ … ]]></update>}. Steht im Formular irgendwo die Zeichenfolge
- * {@code ]]>} — typischerweise am Ende eines Inline-Scripts —, beendet sie diese aeussere Sektion
- * vorzeitig. Der XML-Parser des Browsers bricht ab, PrimeFaces verwirft die <b>komplette</b>
- * Antwort und meldet das nur ueber das jQuery-Ereignis {@code pfAjaxError}, das niemand abhoert.</p>
+ * <h2>Rule 1 — no literal CDATA end inside {@code h:form} (cards 430, 502)</h2>
+ * <p>Every PrimeFaces response wraps the updated form in
+ * {@code <update id="…"><![CDATA[ … ]]></update>}. If the character sequence {@code ]]>} appears
+ * anywhere in the form — typically at the end of an inline script — it terminates that outer section
+ * prematurely. The browser's XML parser aborts, PrimeFaces discards the <b>complete</b> response and
+ * reports it only via the jQuery event {@code pfAjaxError}, which nobody listens to.</p>
  *
- * <h2>Regel 2 — ein {@code script}-Block ohne CDATA muss wohlgeformtes XML sein (Karte 502)</h2>
- * <p>Facelets parst die Datei sonst gar nicht mehr, und die Seite liefert HTTP 500. Gemessen wird
- * das hier am XML-Parser selbst statt an einer Zeichenliste: {@code &amp;&amp;} ist in einem Block
- * ohne CDATA <b>richtig</b> (der Parser loest es zu {@code &&} auf, so steht es in root's
- * topbar.xhtml), ein rohes {@code &&} oder {@code <} dagegen falsch. Eine Suche nach dem Zeichen
- * {@code &} wuerde beides gleich behandeln und die richtige Schreibweise anmahnen.</p>
+ * <h2>Rule 2 — a {@code script} block without CDATA must be well-formed XML (card 502)</h2>
+ * <p>Otherwise Facelets no longer parses the file at all and the page returns HTTP 500. This is
+ * measured here with the XML parser itself instead of with a character list: {@code &amp;&amp;} is
+ * <b>correct</b> in a block without CDATA (the parser resolves it to {@code &&}, which is how it
+ * stands in root's topbar.xhtml), whereas a raw {@code &&} or {@code <} is wrong. A search for the
+ * character {@code &} would treat both alike and object to the correct spelling.</p>
  *
- * <h2>Regel 3 — keine XML-Entity innerhalb einer CDATA-Sektion (Karte 502, dritter Anlauf)</h2>
- * <p>Die Umkehrung von Regel 2: In einer CDATA-Sektion loest der Parser Entities <b>nicht</b> auf.
- * Wer dort {@code &amp;amp;&amp;amp;} statt {@code &&} schreibt, liefert dem Browser die Entity
- * woertlich aus; der bricht das ganze Script mit einem SyntaxError ab. Genau daran ist der
- * Kontakt-Deep-Link aus der globalen Suche gescheitert: HTTP 200, kein Serverlog, sichtbar war
- * allein, dass der Dialog nicht aufging. Ausgenommen ist die Entity, die <b>als Zeichenkette</b>
- * dasteht ({@code '&amp;amp;'}) — eine Escaping-Tabelle meint genau das und ist richtig.</p>
+ * <h2>Rule 3 — no XML entity inside a CDATA section (card 502, third attempt)</h2>
+ * <p>The inverse of rule 2: inside a CDATA section the parser does <b>not</b> resolve entities.
+ * Whoever writes {@code &amp;amp;&amp;amp;} there instead of {@code &&} delivers the entity to the
+ * browser verbatim; the browser then aborts the whole script with a SyntaxError. That is exactly
+ * what broke the contact deep link coming from the global search: HTTP 200, no server log, the only
+ * visible symptom being that the dialog did not open. Exempt is the entity that stands there
+ * <b>as a character string</b> ({@code '&amp;amp;'}) — an escaping table means exactly that and is
+ * correct.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -76,20 +76,20 @@ class PlaintextAjaxAntwortLesbarTest {
     private static final String CDATA_START = "<!" + "[CDATA[";
     private static final String CDATA_ENDE = "]" + "]>";
 
-    /** XML-Entities, die innerhalb einer CDATA-Sektion nichts verloren haben. */
+    /** XML entities that have no business inside a CDATA section. */
     private static final Pattern ENTITY = Pattern.compile("&(amp|lt|gt|quot|apos|#\\d+);");
 
     private static final Pattern FORM_START = Pattern.compile("<h:form\\b");
     private static final Pattern FORM_ENDE = Pattern.compile("</h:form>");
     private static final Pattern SCRIPT_START = Pattern.compile("<script\\b[^>]*>");
 
-    /** Verzeichnisse, in die der Scan gar nicht erst absteigt. */
+    /** Directories the scan does not even descend into. */
     private static final Set<String> UNINTERESSANT = Set.of("target", "node_modules", ".git");
 
-    /** Einmal je Lauf gesucht — alle drei Regeln arbeiten auf derselben Liste. */
+    /** Collected once per run — all three rules work on the same list. */
     private static List<Path> FACELETS;
 
-    // ── Regel 1 ──────────────────────────────────────────────
+    // ── Rule 1 ───────────────────────────────────────────────
 
     @Test
     void keinCdataEndeInnerhalbEinesFormulars() throws IOException {
@@ -111,10 +111,9 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Gegenprobe zur Suche selbst. Ohne diesen Fall waere die Regel oben auch dann gruen, wenn
-     * {@link #cdataEndenInFormular} grundsaetzlich nichts findet — und genau das waere in einem
-     * geteilten Test die gefaehrlichste Variante: fuenf Repositories haetten dann eine Zusicherung,
-     * die nichts zusichert.
+     * Counter-check on the search itself. Without this case the rule above would be green even if
+     * {@link #cdataEndenInFormular} finds nothing at all — and in a shared test that would be the
+     * most dangerous variant: five repositories would then hold a promise that promises nothing.
      */
     @Test
     void dieSucheFindetDenFehlerUeberhaupt() {
@@ -130,7 +129,7 @@ class PlaintextAjaxAntwortLesbarTest {
                         + "Genau darauf beruht die Abhilfe in myuser.xhtml und cron.xhtml.");
     }
 
-    /** Belegt den Mechanismus am XML-Parser, statt ihn nur zu behaupten. */
+    /** Demonstrates the mechanism on the XML parser instead of merely asserting it. */
     @Test
     void einCdataEndeImInhaltMachtDieAntwortUnlesbar() {
         String kaputt = huelle("<form id=\"fm\"><script>var x = 1;" + CDATA_ENDE + "</script></form>");
@@ -148,7 +147,7 @@ class PlaintextAjaxAntwortLesbarTest {
         }
     }
 
-    // ── Regel 2 ──────────────────────────────────────────────
+    // ── Rule 2 ───────────────────────────────────────────────
 
     @Test
     void scriptOhneCdataIstWohlgeformtesXml() throws IOException {
@@ -173,9 +172,9 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Gegenprobe: genau der Fehler, der PROD lahmgelegt hat, muss anschlagen — und die
-     * <b>richtige</b> Schreibweise darf es nicht. Der zweite Fall ist der wichtigere: eine Regel,
-     * die korrekten Code anmahnt, wird im naechsten Modul abgeschaltet.
+     * Counter-check: exactly the defect that took PROD down has to trip the rule — and the
+     * <b>correct</b> spelling must not. The second case is the more important one: a rule that
+     * objects to correct code gets switched off in the next module.
      */
     @Test
     void dieWohlgeformtheitsPruefungTrenntRichtigVonFalsch() {
@@ -197,7 +196,7 @@ class PlaintextAjaxAntwortLesbarTest {
                 "Ein Block MIT CDATA darf hier nicht anschlagen — dort sind Rohzeichen erlaubt.");
     }
 
-    // ── Regel 3 ──────────────────────────────────────────────
+    // ── Rule 3 ───────────────────────────────────────────────
 
     @Test
     void keineEntityInnerhalbEinerCdataSektion() throws IOException {
@@ -227,9 +226,9 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Gegenprobe: Die Suche muss genau den Fehler finden, der den Deep-Link lahmgelegt hat — und
-     * eine Entity ausserhalb der CDATA-Sektion (etwa in einem {@code onclick}-Attribut, wo sie
-     * richtig und noetig ist) darf nicht anschlagen.
+     * Counter-check: the search has to find exactly the defect that took the deep link down — and an
+     * entity outside the CDATA section (in an {@code onclick} attribute, say, where it is correct and
+     * necessary) must not trip it.
      */
     @Test
     void dieEntitySucheFindetGenauDenDeepLinkFehler() {
@@ -245,7 +244,7 @@ class PlaintextAjaxAntwortLesbarTest {
                 "Ausserhalb einer CDATA-Sektion ist die Entity richtig und noetig (Attributwerte werden "
                         + "vom Parser aufgeloest) — hier darf die Regel nicht zuschlagen.");
 
-        // Die Ausnahme: eine Escaping-Tabelle meint die Entity als Zeichenkette (so in root's topbar).
+        // The exception: an escaping table means the entity as a character string (as in root's topbar).
         String escapeTabelle = "{ '&': '&amp;', '<': '&lt;' }";
         Matcher t = ENTITY.matcher(escapeTabelle);
         assertTrue(t.find(), "Die Entity muss im Text ueberhaupt vorkommen.");
@@ -255,9 +254,9 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Belegt den Mechanismus am XML-Parser: Ausserhalb einer CDATA-Sektion wird die Entity
-     * aufgeloest, innerhalb bleibt sie woertlich stehen — und genau dieses woertliche
-     * {@code &amp;amp;&amp;amp;} landet dann im JavaScript des Browsers.
+     * Demonstrates the mechanism on the XML parser: outside a CDATA section the entity is resolved,
+     * inside it stays verbatim — and exactly that verbatim {@code &amp;amp;&amp;amp;} then ends up in
+     * the browser's JavaScript.
      */
     @Test
     void inCdataBleibtDieEntityWoertlichStehen() throws Exception {
@@ -271,9 +270,9 @@ class PlaintextAjaxAntwortLesbarTest {
                         + "\"&amp;amp;&amp;amp;\" als JavaScript ausgeliefert und bricht das ganze Script ab.");
     }
 
-    // ── Suchen ───────────────────────────────────────────────
+    // ── Searches ─────────────────────────────────────────────
 
-    /** Positionen aller {@code ]]>}, die innerhalb eines {@code h:form}-Bereichs liegen. */
+    /** Positions of all {@code ]]>} that lie within an {@code h:form} region. */
     private static List<Integer> cdataEndenInFormular(String text) {
         List<int[]> bereiche = new ArrayList<>();
         Matcher start = FORM_START.matcher(text);
@@ -296,7 +295,7 @@ class PlaintextAjaxAntwortLesbarTest {
         return treffer;
     }
 
-    /** Inhaltsbereiche aller CDATA-Sektionen (ohne die Marker selbst). */
+    /** Content regions of all CDATA sections (without the markers themselves). */
     private static List<int[]> cdataBloecke(String text) {
         List<int[]> ergebnis = new ArrayList<>();
         int a = text.indexOf(CDATA_START);
@@ -311,7 +310,7 @@ class PlaintextAjaxAntwortLesbarTest {
         return ergebnis;
     }
 
-    /** Inhaltsbereiche aller {@code <script>}-Elemente, die KEINE CDATA-Sektion enthalten. */
+    /** Content regions of all {@code <script>} elements that contain NO CDATA section. */
     private static List<int[]> scriptBloeckeOhneCdata(String text) {
         List<int[]> ergebnis = new ArrayList<>();
         Matcher m = SCRIPT_START.matcher(text);
@@ -329,8 +328,8 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Die Meldung des XML-Parsers zum Inhalt eines script-Blocks, oder {@code null}, wenn er
-     * wohlgeformt ist. Genau diese Pruefung macht Facelets beim Laden der Seite.
+     * The XML parser's message about the content of a script block, or {@code null} if it is
+     * well-formed. Exactly this check is what Facelets performs when loading the page.
      */
     private static String parserFehler(String inhalt) {
         try {
@@ -342,8 +341,8 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Ob die Fundstelle unmittelbar von Anfuehrungszeichen eingefasst ist, also als
-     * JavaScript-Zeichenkette dasteht ({@code '&amp;amp;'}) statt als Operator im Code.
+     * Whether the hit is immediately enclosed in quotes, i.e. stands there as a JavaScript character
+     * string ({@code '&amp;amp;'}) rather than as an operator in the code.
      */
     private static boolean istZeichenkette(String inhalt, int von, int bis) {
         if (von == 0 || bis >= inhalt.length()) {
@@ -354,7 +353,7 @@ class PlaintextAjaxAntwortLesbarTest {
         return (davor == '\'' || davor == '"') && davor == danach;
     }
 
-    // ── Hilfsmittel ──────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────
 
     private static String huelle(String inhalt) {
         return "<partial-response><changes><update id=\"fm\">" + CDATA_START + inhalt + CDATA_ENDE
@@ -365,7 +364,7 @@ class PlaintextAjaxAntwortLesbarTest {
         return Files.readString(datei, StandardCharsets.UTF_8);
     }
 
-    /** Pfad relativ zur Repo-Wurzel, damit die Meldung in jedem Consumer gleich aussieht. */
+    /** Path relative to the repository root, so that the message looks the same in every consumer. */
     private static String anzeige(Path datei) {
         Path wurzel = repoWurzel();
         return wurzel != null && datei.startsWith(wurzel)
@@ -374,12 +373,12 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Alle Facelets des Reactors. Gesucht wird ab der Repo-Wurzel; wird die nicht gefunden
-     * (isolierter Modul-Build), reicht das Arbeitsverzeichnis. Ein Consumer ohne eigene Views
-     * findet nichts — dann ist auch nichts zu pruefen.
+     * All Facelets of the reactor. The search starts at the repository root; if that is not found
+     * (isolated module build), the working directory is enough. A consumer without views of its own
+     * finds nothing — then there is nothing to check either.
      *
-     * <p>Einmal je Lauf, danach aus {@link #FACELETS}: die drei Regeln brauchen dieselbe Liste,
-     * und ein Verzeichnisbaum ist nach einem Vollbuild kein billiger Aufruf mehr.</p>
+     * <p>Once per run, afterwards from {@link #FACELETS}: the three rules need the same list, and
+     * after a full build walking a directory tree is no longer a cheap call.</p>
      */
     private static synchronized List<Path> facelets() throws IOException {
         if (FACELETS == null) {
@@ -392,15 +391,15 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Der Verzeichnisbaum ab {@code start}, ohne {@code target}, {@code node_modules} und
+     * The directory tree below {@code start}, without {@code target}, {@code node_modules} and
      * {@code .git}.
      *
-     * <p>Bewusst {@link Files#walkFileTree} und nicht {@link Files#walk}: letzteres steigt in
-     * jeden dieser Baeume ab und filtert erst hinterher — nach einem Vollbuild von plaintext-app
-     * sind das Zehntausende Eintraege, dreimal. Und es wirft eine {@code UncheckedIOException},
-     * sobald ein Verzeichnis nicht lesbar ist; dann faellt in <b>allen</b> Consumern ein Test aus
-     * einem Grund durch, der mit der Regel nichts zu tun hat. {@code visitFileFailed} laesst
-     * solche Eintraege hier einfach aus.</p>
+     * <p>Deliberately {@link Files#walkFileTree} and not {@link Files#walk}: the latter descends into
+     * every one of those trees and filters only afterwards — after a full build of plaintext-app
+     * those are tens of thousands of entries, three times over. And it throws an
+     * {@code UncheckedIOException} as soon as a directory is unreadable; a test would then fail in
+     * <b>all</b> consumers for a reason that has nothing to do with the rule. {@code visitFileFailed}
+     * simply skips such entries here.</p>
      */
     private static List<Path> suche(Path start) throws IOException {
         String sep = java.io.File.separator;
@@ -431,7 +430,7 @@ class PlaintextAjaxAntwortLesbarTest {
         return List.copyOf(treffer);
     }
 
-    /** Repo-Wurzel = erstes Verzeichnis nach oben, das einen Maven-Reactor (pom.xml mit modules) hat. */
+    /** Repository root = first directory upwards that holds a Maven reactor (pom.xml with modules). */
     private static Path repoWurzel() {
         Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
         for (int i = 0; i < 8 && dir != null; i++, dir = dir.getParent()) {
@@ -442,7 +441,7 @@ class PlaintextAjaxAntwortLesbarTest {
                         return dir;
                     }
                 } catch (IOException ignored) {
-                    // weiter nach oben
+                    // keep going upwards
                 }
             }
         }
@@ -457,7 +456,7 @@ class PlaintextAjaxAntwortLesbarTest {
         bauer().parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
     }
 
-    /** Textinhalt des Wurzelelements, so wie der XML-Parser ihn sieht. */
+    /** Text content of the root element, exactly as the XML parser sees it. */
     private static String textInhalt(String xml) throws Exception {
         return bauer().parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)))
                 .getDocumentElement()
@@ -465,16 +464,16 @@ class PlaintextAjaxAntwortLesbarTest {
     }
 
     /**
-     * Parser mit stummem Fehlerbehandler. Ohne ihn schreibt der voreingestellte Behandler jeden
-     * Fehler zusaetzlich nach {@code System.err} — die Gegenproben oben erzeugen absichtlich
-     * kaputtes XML, und ein Testlauf voller roter Parserausgaben ist nicht mehr lesbar.
+     * Parser with a silent error handler. Without it the default handler additionally writes every
+     * error to {@code System.err} — the counter-checks above deliberately produce broken XML, and a
+     * test run full of red parser output is no longer readable.
      */
     private static DocumentBuilder bauer() throws ParserConfigurationException {
         DocumentBuilder b = fabrik().newDocumentBuilder();
         b.setErrorHandler(new org.xml.sax.ErrorHandler() {
             @Override
             public void warning(SAXParseException e) {
-                // absichtlich still
+                // deliberately silent
             }
 
             @Override

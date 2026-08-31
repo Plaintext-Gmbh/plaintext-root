@@ -35,10 +35,11 @@ class MenuRegistryPostProcessorTest {
     @BeforeEach
     void setUp() {
         postProcessor = new MenuRegistryPostProcessor();
-        // Seit 29.08.2026 reicht der PostProcessor die Umgebung an den Scanner weiter, und der
-        // ClassPathScanningCandidateComponentProvider loest damit Platzhalter im Paketnamen auf.
-        // Ein Mockito-Mock gaebe null zurueck ("Class name must not be null") — hier verhaelt er
-        // sich wie eine echte Umgebung ohne Platzhalter. lenient, weil nicht jeder Test scannt.
+        // Since 29.08.2026 the post processor passes the environment on to the scanner, and the
+        // ClassPathScanningCandidateComponentProvider uses it to resolve placeholders in package
+        // names. A Mockito mock would return null ("Class name must not be null") — here it
+        // behaves like a real environment without placeholders. lenient, because not every test
+        // scans.
         lenient().when(environment.resolveRequiredPlaceholders(anyString()))
                 .thenAnswer(inv -> inv.getArgument(0));
     }

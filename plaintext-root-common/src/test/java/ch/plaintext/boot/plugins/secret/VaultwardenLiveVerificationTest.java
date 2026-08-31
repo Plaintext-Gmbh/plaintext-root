@@ -15,28 +15,28 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 /**
- * LIVE-Verifikation gegen die eigene Vaultwarden-Instanz — laeuft NUR lokal.
+ * LIVE verification against our own Vaultwarden instance — runs ONLY locally.
  *
- * <p>Doppelt gegen CI abgesichert: {@code @Tag("live-vault")} UND
- * {@code @EnabledIfEnvironmentVariable(VAULT_LIVE=true)}. In der CI ist die
- * Umgebungsvariable nicht gesetzt, daher wird der Test automatisch uebersprungen
- * (die CI hat keine Vault-Credentials).</p>
+ * <p>Guarded against CI twice over: {@code @Tag("live-vault")} AND
+ * {@code @EnabledIfEnvironmentVariable(VAULT_LIVE=true)}. In CI the environment
+ * variable is not set, so the test is skipped automatically (CI has no vault
+ * credentials).</p>
  *
- * <p>Lokaler Lauf (Creds ausschliesslich aus Env, nie im Repo):</p>
+ * <p>Local run (credentials exclusively from the env, never in the repo):</p>
  * <pre>
  * export VAULT_LIVE=true
  * export PLAINTEXT_VAULT_EMAIL=&lt;service-account-email&gt;
- * export PLAINTEXT_VAULT_MASTER_PASSWORD=...            # aus dem Passwort-Tresor, nie im Repo
+ * export PLAINTEXT_VAULT_MASTER_PASSWORD=...            # from the password vault, never in the repo
  * export PLAINTEXT_VAULT_URL=https://vault.example.org
- * export VAULT_ITEM_NAME='&lt;Name eines Items im eigenen Tresor&gt;'
+ * export VAULT_ITEM_NAME='&lt;name of an item in your own vault&gt;'
  * export VAULT_EXPECTED_PASSWORD="$(bw get password "$VAULT_ITEM_NAME")"
  * mvn -pl plaintext-root-common test \
  *     -Dtest=VaultwardenLiveVerificationTest -Dmaven.build.cache.enabled=false
  * </pre>
  *
- * <p>Der Test entschluesselt das genannte Item nativ und vergleicht den
- * SHA-256 des Ergebnisses mit dem SHA-256 der {@code bw}-Ausgabe. Es werden
- * KEINE Klartext-Secrets ausgegeben, nur der Hash und JA/NEIN.</p>
+ * <p>The test decrypts the named item natively and compares the SHA-256 of the
+ * result with the SHA-256 of the {@code bw} output. NO plaintext secrets are
+ * printed, only the hash and JA/NEIN.</p>
  */
 @Tag("live-vault")
 @EnabledIfEnvironmentVariable(named = "VAULT_LIVE", matches = "true")

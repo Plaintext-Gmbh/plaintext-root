@@ -5,12 +5,12 @@ package ch.plaintext.notifications.menu;
 
 import ch.plaintext.boot.menu.MenuAnnotation;
 
-// SECURITY (Karte 308, H4): Diese Seite ist der EINZIGE Fall im Framework, in dem ein Menuepunkt
-// unter dem ROOT-Elternmenue absichtlich fuer alle User erreichbar ist: includes/topbar.xhtml
-// verlinkt sie ueber die Benachrichtigungs-Glocke ("Alle anzeigen") fuer JEDEN eingeloggten User;
-// unter "Root" haengt sie nur aus UX-Gruenden. Die Rollen sind deshalb explizit gesetzt, damit die
-// Eltern-Rollen-Vererbung des PageAccessGuardService (Modus STRICT) hier NICHT greift — sonst
-// wuerde die Glocke fuer normale User ins Access-Denied laufen. Gleiches Muster wie ApiTokenMenu.
+// SECURITY (card 308, H4): this page is the ONLY case in the framework where a menu item below
+// the ROOT parent menu is deliberately reachable for all users: includes/topbar.xhtml links to it
+// from the notification bell ("Alle anzeigen") for EVERY logged-in user; it only hangs below
+// "Root" for UX reasons. The roles are therefore set explicitly so that the parent role
+// inheritance of the PageAccessGuardService (STRICT mode) does NOT apply here — otherwise the
+// bell would run into access-denied for normal users. Same pattern as ApiTokenMenu.
 @MenuAnnotation(
     title = "Benachrichtigungen",
     link = "notifications.html",

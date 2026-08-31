@@ -13,9 +13,9 @@ import java.util.Collection;
 
 public class XstreamBaseJPAConverter<T> implements AttributeConverter<T, String> {
 
-    // Allowlist (analog ch.plaintext.boot.plugins.jpa.XstreamBaseJPAConverter im webapp-Modul) --
-    // ohne das laesst XStream in 1.4.21 zwar den Default-Security-Rahmen greifen, der ist aber
-    // permissiver als noetig; explizit auf die tatsaechlich genutzten Typen einschraenken.
+    // Allowlist (analogous to ch.plaintext.boot.plugins.jpa.XstreamBaseJPAConverter in the webapp
+    // module) -- without it XStream 1.4.21 does apply its default security framework, but that one
+    // is more permissive than necessary; restrict it explicitly to the types actually used.
     private XStream xstream = createXStream();
 
     private static XStream createXStream() {
@@ -42,7 +42,7 @@ public class XstreamBaseJPAConverter<T> implements AttributeConverter<T, String>
         try {
             return (T) xstream.fromXML(text);
         } catch (Exception e) {
-            // todo kann weg im 2021
+            // todo can go in 2021
             if (text != null && !text.isEmpty()) {
                 return (T) Arrays.asList(text.split(","));
             }

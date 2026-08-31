@@ -1,47 +1,47 @@
-# Seiten-Zugriffsschutz (Page Access Guard)
+# Page Access Guard
 
 Status: implemented since root 1.429.0.
 
-Der Page Access Guard leitet den Zugriffsschutz einer JSF-View aus der **Menü-Sichtbarkeit** ab:
-Wer den Menüpunkt sehen darf, der auf eine Seite zeigt, darf die Seite aufrufen. Das umfasst
-Rollen (`@MenuAnnotation(roles = ...)`) **und** die mandantenspezifische Sichtbarkeit
-(`MenuVisibilityProvider`, Modul `plaintext-root-menu-visibility`).
+The page access guard derives a JSF view's access protection from **menu visibility**: whoever
+may see the menu item that points at a page may open that page. This covers roles
+(`@MenuAnnotation(roles = ...)`) **and** tenant-specific visibility (`MenuVisibilityProvider`,
+module `plaintext-root-menu-visibility`).
 
-## Bausteine
+## Building blocks
 
-| Klasse | Aufgabe |
+| Class | Responsibility |
 |---|---|
-| `PageAccessGuardService` | Entscheidung „darf diese View?" — Menü-Lookup, Allowlist, Aliase, Modus |
-| `PageAccessGuardFilter` | Durchsetzung **vor** dem `FacesServlet`, eingehängt in die Spring-Security-Kette |
-| `PageAccessGuardBackingBean` | zweite Schicht als `f:event preRenderView` in `includes/template.xhtml` |
-| `PageAccessGuardStartupReport` | listet beim Boot die Views ohne Zugriffsregel auf |
-| `PlaintextSecurityConfig` | harte `requestMatchers` für die Admin-/ROOT-Seiten (menü-unabhängig) |
-| `MenuLinkInvariantTest` | Build-Leitplanke: jeder Link endet auf `.html`, zeigt auf eine existierende View, jede View hat eine Regel |
+| `PageAccessGuardService` | the decision "is this view allowed?" — menu lookup, allowlist, aliases, mode |
+| `PageAccessGuardFilter` | enforcement **before** the `FacesServlet`, hooked into the Spring Security chain |
+| `PageAccessGuardBackingBean` | second layer, as an `f:event preRenderView` in `includes/template.xhtml` |
+| `PageAccessGuardStartupReport` | lists the views without an access rule at boot time |
+| `PlaintextSecurityConfig` | hard `requestMatchers` for the admin/ROOT pages (independent of the menu) |
+| `MenuLinkInvariantTest` | build guardrail: every link ends in `.html`, points at an existing view, and every view has a rule |
 
-## Modi
+## Modes
 
 `plaintext.security.page-guard.mode`
 
-| | `REPORT` (Framework-Default) | `STRICT` |
+| | `REPORT` (framework default) | `STRICT` |
 |---|---|---|
-| kanonischer Link-Vergleich (`.htm`/`.html`/`.xhtml`/`.jsf`) | ja | ja |
-| Exception bei der Prüfung | verweigern | verweigern |
-| Allowlist / Aliase | ja | ja |
-| View **ohne** Menüeintrag, Alias, Allowlist | erlauben **+ WARN** | **verweigern** |
-| Eltern-Rollen-Vererbung | nein | ja |
+| canonical link comparison (`.htm`/`.html`/`.xhtml`/`.jsf`) | yes | yes |
+| exception during the check | deny | deny |
+| allowlist / aliases | yes | yes |
+| view **without** menu entry, alias or allowlist | allow **+ WARN** | **deny** |
+| inheritance of parent roles | no | yes |
 
-`plaintext-root-webapp` selbst läuft in `STRICT` (`application.yml`). Der Framework-Default ist
-`REPORT`, weil jede konsumierende App eigene Views mitbringt: ohne Übergangsmodus würden
-`plaintext-app`, `plaintext-guild` und `plaintext-schuetu` beim Framework-Update ihre Detail- und
-Edit-Seiten aussperren. Jede App bringt ihre eigene `application.yml` mit; die des Frameworks wird
-auf dem Klassenpfad verdeckt und wirkt daher nur für die root-App.
+`plaintext-root-webapp` itself runs in `STRICT` (`application.yml`). The framework default is
+`REPORT`, because every consuming app brings views of its own: without a transitional mode,
+`plaintext-app`, `plaintext-guild` and `plaintext-schuetu` would lock themselves out of their
+detail and edit pages on a framework update. Every app brings its own `application.yml`; the
+framework's is shadowed on the classpath and therefore only takes effect for the root app.
 
-## Eine neue Seite anlegen
+## Adding a new page
 
-1. Regelfall: `@MenuAnnotation(link = "meineseite.html", parent = "...", roles = {...})`.
-   **Der Link muss auf `.html` enden** — `MenuLinkInvariantTest` erzwingt das.
-2. Detail-/Edit-Seite ohne eigenen Menüpunkt: **Alias** setzen, dann gelten die Regeln der
-   Listenseite.
+1. Standard case: `@MenuAnnotation(link = "meineseite.html", parent = "...", roles = {...})`.
+   **The link must end in `.html`** — `MenuLinkInvariantTest` enforces that.
+2. Detail or edit page without a menu item of its own: set an **alias**, and the rules of the
+   list page then apply.
    ```yaml
    plaintext:
      security:
@@ -49,10 +49,10 @@ auf dem Klassenpfad verdeckt und wirkt daher nur für die root-App.
          aliases:
            rechnungdetail.xhtml: rechnungen.html
    ```
-   Framework-Aliase (in `PageAccessGuardService.FRAMEWORK_ALIASES`):
+   Framework aliases (in `PageAccessGuardService.FRAMEWORK_ALIASES`):
    `mandatemenudetail → mandatemenu`, `anforderungdetail → anforderungen`,
    `claudesummary → anforderungen`, `howtodetail → howtos`.
-3. Seite, die wirklich jeder eingeloggte User sehen darf: **Allowlist**.
+3. A page that really every logged-in user may see: **allowlist**.
    ```yaml
    plaintext:
      security:
@@ -61,55 +61,57 @@ auf dem Klassenpfad verdeckt und wirkt daher nur für die root-App.
            - wander-druck.xhtml
            - public/**
    ```
-   Framework-Allowlist: `login-totp`, `myuser`, `useradmin`, Präfix `nosec/**`.
-   Systemseiten: `home`, `index`, `access-denied`, `error`, `login`.
+   Framework allowlist: `login-totp`, `myuser`, `useradmin`, prefix `nosec/**`.
+   System pages: `home`, `index`, `access-denied`, `error`, `login`.
 
-## Rollen und Elternmenüs
+## Roles and parent menus
 
-`MenuItemImpl.isOn()` prüft nur die **eigenen** `roles`. Im gerenderten Menü verbirgt ein
-unsichtbares Elternmenü trotzdem alle Kinder (`PrimefacesSubmenu.isRendered()`) — der Guard
-bildete diese Hierarchie früher nicht nach. Ein Menüpunkt ohne eigene `roles` unter „Root" war
-deshalb per Direkt-URL für jeden eingeloggten User offen.
+`MenuItemImpl.isOn()` only checks the item's **own** `roles`. In the rendered menu an invisible
+parent menu nevertheless hides all of its children (`PrimefacesSubmenu.isRendered()`) — the guard
+used not to reproduce that hierarchy. A menu item without `roles` of its own underneath "Root"
+was therefore open to every logged-in user via a direct URL.
 
-Im Modus `STRICT` erbt ein Menüpunkt **ohne eigene `roles`** die Sichtbarkeit seines Elternmenüs.
-Deklariert er eigene `roles`, sind diese abschließend. Genau so bleibt eine bewusst breiter
-erreichbare Seite unter einem eingeschränkten Elternmenü möglich:
+In `STRICT` mode a menu item **without `roles` of its own** inherits the visibility of its parent
+menu. If it declares its own `roles`, those are final. That is precisely what keeps a
+deliberately more widely reachable page possible underneath a restricted parent menu:
 
 ```java
-// notifications.html hängt unter "Root", ist aber über die Topbar-Glocke für jeden User verlinkt
+// notifications.html hangs under "Root", but the topbar bell links to it for every user
 @MenuAnnotation(title = "Benachrichtigungen", link = "notifications.html", parent = "Root",
                 roles = {"USER", "ADMIN", "ROOT"})
 ```
 
-## Warum ein Filter und nicht `preRenderView`
+## Why a filter and not `preRenderView`
 
-`preRenderView` feuert in RENDER_RESPONSE (Phase 6), Action-Methoden laufen in
-INVOKE_APPLICATION (Phase 5). Ein AJAX-/POST-Postback auf eine gesperrte Seite hatte die
-Backing-Bean-Action also bereits **ausgeführt**; der Redirect verwarf danach nur noch die Antwort.
-Der Filter greift vor jeder JSF-Phase.
+`preRenderView` fires in RENDER_RESPONSE (phase 6), whereas action methods run in
+INVOKE_APPLICATION (phase 5). An AJAX or POST postback to a locked page had therefore already
+**executed** the backing bean action; the redirect afterwards only discarded the response. The
+filter takes effect before any JSF phase.
 
-Er ist per `http.addFilterAfter(..., AuthorizationFilter.class)` in die **Spring-Security-Kette**
-eingehängt, nicht per `FilterRegistrationBean`. Grund: `UrlRewriteConfig` registriert seinen
-Rewrite-Filter mit `Ordered.HIGHEST_PRECEDENCE + 1`, also vor Spring Security (`order = -100`), und
-forwardet `/x.html` auf `/x.xhtml` ohne `chain.doFilter()`. Ein eigenständig registrierter Filter
-mit `DispatcherType.REQUEST` würde bei `.html`-URLs deshalb nie laufen. Die Security-Kette läuft
-dagegen für alle Dispatch-Typen (`SecurityFilterProperties.dispatcherTypes = EnumSet.allOf(...)`).
+It is hooked into the **Spring Security chain** with
+`http.addFilterAfter(..., AuthorizationFilter.class)`, not with a `FilterRegistrationBean`. The
+reason: `UrlRewriteConfig` registers its rewrite filter with `Ordered.HIGHEST_PRECEDENCE + 1`,
+that is, ahead of Spring Security (`order = -100`), and forwards `/x.html` to `/x.xhtml` without
+`chain.doFilter()`. A separately registered filter with `DispatcherType.REQUEST` would therefore
+never run for `.html` URLs. The security chain, by contrast, runs for all dispatch types
+(`SecurityFilterProperties.dispatcherTypes = EnumSet.allOf(...)`).
 
-Antwortverhalten bei verweigertem Zugriff: normaler GET → `302` auf `/access-denied.html`,
-POST/AJAX → `403` (ein `302` auf einen Postback würde dem Client vortäuschen, die Aktion sei
-ausgeführt worden).
+Response behaviour when access is denied: an ordinary GET → `302` to `/access-denied.html`,
+POST/AJAX → `403` (a `302` in response to a postback would fool the client into thinking the
+action had been carried out).
 
-## Not-Aus
+## Emergency stop
 
-`plaintext.security.page-guard.enabled=false` schaltet Filter **und** `preRenderView`-Guard ab.
-Nur für den Fall gedacht, dass der Guard in PROD legitime Seiten sperrt und kein Rollback möglich
-ist. Die harten `requestMatchers` in `PlaintextSecurityConfig` bleiben davon unberührt.
+`plaintext.security.page-guard.enabled=false` switches off both the filter **and** the
+`preRenderView` guard. Intended only for the case where the guard locks legitimate pages in PROD
+and no rollback is possible. The hard `requestMatchers` in `PlaintextSecurityConfig` are
+unaffected by it.
 
-## Offene Punkte (Folgekarten)
+## Open items (follow-up cards)
 
-- `@EnableMethodSecurity` aktivieren und Autorisierung nach Service/Backing-Bean verlagern; die
-  Menü-Sichtbarkeit soll dann reine UX sein.
-- `mode: STRICT` in den Consumer-Apps aktivieren, nachdem deren Views vollständig zugeordnet sind.
-  `MenuLinkInvariantTest` gehört danach nach `plaintext-root-archtests` — das Modul läuft in den
-  Consumer-Builds mit und würde die Invariante dort erzwingen.
-- `demo.xhtml` löschen (verwaiste Beispielseite, aktuell bewusst gesperrt).
+- Enable `@EnableMethodSecurity` and move authorization down into the service / backing bean;
+  menu visibility should then be pure UX.
+- Switch the consumer apps to `mode: STRICT` once all of their views are fully mapped.
+  `MenuLinkInvariantTest` belongs in `plaintext-root-archtests` after that — that module runs as
+  part of the consumer builds and would enforce the invariant there.
+- Delete `demo.xhtml` (an orphaned example page, currently blocked on purpose).

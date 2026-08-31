@@ -18,13 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Der Root-Zweig ist fuer {@code ROLE_ROOT} vom Mandantenfilter ausgenommen — und nur der, und nur
- * fuer root.
+ * The root branch is exempt from the tenant filter for {@code ROLE_ROOT} — only that branch, and
+ * only for root.
  *
- * <p>Henne-Ei-Problem: die Menuesteuerung selbst haengt im Root-Zweig. Steht ein Mandant im
- * Whitelist-Modus ohne diesen Titel, sperrt sich root aus der einzigen Oberflaeche aus, mit der die
- * Liste zu korrigieren waere — per Menue und (weil der {@code PageAccessGuard} dieselbe
- * {@link MenuItemImpl#isOn()} auswertet) auch per Direkt-URL.</p>
+ * <p>Chicken-and-egg problem: the menu visibility configuration itself hangs in the root branch. If
+ * a tenant is in whitelist mode without that title, root locks itself out of the only screen from
+ * which the list could be corrected — via the menu and (because the {@code PageAccessGuard}
+ * evaluates the same {@link MenuItemImpl#isOn()}) via a direct URL as well.</p>
  */
 @DisplayName("Root-Zweig-Ausnahme vom Mandantenfilter")
 class MenuItemRootZweigAusnahmeTest {
@@ -32,7 +32,7 @@ class MenuItemRootZweigAusnahmeTest {
     private static final String MENUESTEUERUNG = "Menüsteuerung";
     private static final String ROOT = "Root";
 
-    /** Blendet ALLES aus — der schaerfste Mandantenfilter, den es gibt. */
+    /** Hides EVERYTHING — the harshest tenant filter there is. */
     private static final MenuVisibilityProvider ALLES_AUS = new MenuVisibilityProvider() {
         @Override
         public boolean isMenuVisible(String menuTitle) {

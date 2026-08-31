@@ -16,18 +16,18 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Speist die per Konfiguration vergebenen Modul-Rollen
- * ({@code plaintext.menu.module-roles.<modulKey>=<rolle>}) automatisch in die
- * {@link PlaintextRoleRegistry} ein.
+ * Feeds the module roles assigned by configuration
+ * ({@code plaintext.menu.module-roles.<modulKey>=<rolle>}) into the
+ * {@link PlaintextRoleRegistry} automatically.
  *
- * <p>Ohne diesen Provider muesste jede Anwendung, die einem Modul eine Rolle zuordnet, zusaetzlich
- * einen eigenen {@link PlaintextRoleProvider} schreiben — sonst stuende die Rolle in der
- * Benutzerverwaltung nicht zur Auswahl und koennte niemandem vergeben werden. Die Konfiguration
- * allein genuegt jetzt.</p>
+ * <p>Without this provider, every application that assigns a role to a module would additionally
+ * have to write a {@link PlaintextRoleProvider} of its own — otherwise the role would not be
+ * offered for selection in the user administration and could not be assigned to anybody. The
+ * configuration alone is now enough.</p>
  *
- * <p>Deklariert eine App bereits einen eigenen Provider fuer dieselbe Rolle (z.B. guild fuer
- * {@code finanzen}), gewinnt dessen ausfuehrlichere Beschreibung: die Registry dedupliziert ueber
- * den normalisierten Namen und behaelt die erste nicht-leere Beschreibung.</p>
+ * <p>If an app already declares a provider of its own for the same role (e.g. guild for
+ * {@code finanzen}), that provider's more detailed description wins: the registry deduplicates by
+ * the normalized name and keeps the first non-empty description.</p>
  *
  * @author info@plaintext.ch
  * @since 1.604.0
@@ -38,17 +38,17 @@ public class ModuleRoleDeclarationProvider implements PlaintextRoleProvider {
     private final ModuleRoleProperties moduleRoleProperties;
 
     /**
-     * Fuer Kontexte ohne {@link ModuleRoleProperties}-Bean: Spring faellt auf diesen Konstruktor
-     * zurueck, wenn die Properties nicht aufloesbar sind (dann werden keine Rollen deklariert).
+     * For contexts without a {@link ModuleRoleProperties} bean: Spring falls back to this
+     * constructor when the properties cannot be resolved (no roles are declared then).
      */
     public ModuleRoleDeclarationProvider() {
         this(null);
     }
 
     /**
-     * Der von Spring bevorzugte Konstruktor; auch fuer Tests und programmatische Nutzung.
+     * The constructor Spring prefers; also for tests and programmatic use.
      *
-     * @param moduleRoleProperties die konfigurierte Modul-Rollen-Zuordnung, darf {@code null} sein
+     * @param moduleRoleProperties the configured module-to-role assignment, may be {@code null}
      */
     @Autowired(required = false)
     public ModuleRoleDeclarationProvider(@Nullable ModuleRoleProperties moduleRoleProperties) {
@@ -70,8 +70,8 @@ public class ModuleRoleDeclarationProvider implements PlaintextRoleProvider {
         if (moduleRoleProperties == null) {
             return ret;
         }
-        // Rolle -> Modul-Keys, damit eine Rolle fuer mehrere Module nur einmal (aber vollstaendig
-        // beschrieben) deklariert wird.
+        // Role -> module keys, so that a role used by several modules is declared only once (but
+        // with a complete description).
         Map<String, List<String>> keysByRole = new TreeMap<>();
         for (Map.Entry<String, String> entry : moduleRoleProperties.canonicalModuleRoles().entrySet()) {
             keysByRole.computeIfAbsent(entry.getValue(), r -> new ArrayList<>()).add(entry.getKey());

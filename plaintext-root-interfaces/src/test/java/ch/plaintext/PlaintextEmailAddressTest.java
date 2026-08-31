@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 596: Was gilt als zustellbare Adresse?
+ * Card 596: what counts as a deliverable address?
  *
  * @author info@plaintext.ch
  * @since 07.08.2026
@@ -37,20 +37,20 @@ class PlaintextEmailAddressTest {
     }
 
     /**
-     * Der eigentliche Zweck dieser Klasse: Genau diese Werte stehen laut Karte 596/588 in
-     * {@code createdBy} bzw. im Altbestand der Benutzertabelle. Wer sie ungeprüft als Empfänger
-     * nimmt, verschickt ins Nichts — und merkt es nicht.
+     * The actual purpose of this class: according to Card 596/588 these are exactly the values
+     * found in {@code createdBy} and in the legacy rows of the user table. Anyone who takes them
+     * as a recipient without checking sends into the void — and does not notice.
      */
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {
-            "plafferma",          // Altbestand: reines Kürzel
-            "anonymousUser",      // maschineller Schreiber ohne Audit-Principal
+            "plafferma",          // legacy data: a plain short handle
+            "anonymousUser",      // machine writer without an audit principal
             "SYSTEM",
             "",
             "   ",
-            "kein@punkt",         // Domain ohne Punkt
-            "@plaintext.ch",      // ohne lokalen Teil
+            "kein@punkt",         // domain without a dot
+            "@plaintext.ch",      // no local part
             "zwei@@plaintext.ch"
     })
     @DisplayName("Kürzel, Leerwerte und kaputte Adressen sind NICHT zustellbar")

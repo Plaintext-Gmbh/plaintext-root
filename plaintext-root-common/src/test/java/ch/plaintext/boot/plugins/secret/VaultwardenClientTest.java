@@ -33,27 +33,27 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 /**
- * Unit-Tests fuer {@link VaultwardenClient} OHNE echtes Netz: ein winziger, lokal an
- * {@code 127.0.0.1} gebundener {@link HttpServer} spielt Vaultwarden (prelogin, token, sync,
- * ciphers-GET/PUT). Die Antwort-Payloads werden mit den <b>Produktions</b>-Krypto-Primitiven
- * ({@link VaultwardenCrypto#encryptSymmetric}, PBKDF2, HKDF, RSA-OAEP-SHA1) erzeugt, sodass der
- * Client sie mit demselben Verfahren wieder entschluesseln muss — echte Verhaltenspruefung des
- * Login-/Sync-/Rotation-Flows, kein Coverage-Gaming.
+ * Unit tests for {@link VaultwardenClient} WITHOUT a real network: a tiny {@link HttpServer}
+ * bound locally to {@code 127.0.0.1} plays Vaultwarden (prelogin, token, sync,
+ * ciphers GET/PUT). The response payloads are produced with the <b>production</b> crypto
+ * primitives ({@link VaultwardenCrypto#encryptSymmetric}, PBKDF2, HKDF, RSA-OAEP-SHA1), so that
+ * the client has to decrypt them again with the same procedure — a real behavioural check of
+ * the login/sync/rotation flow, no coverage gaming.
  */
 class VaultwardenClientTest {
 
     private static final SecureRandom RND = new SecureRandom();
     private static final String EMAIL = "svc@plaintext.ch";
     private static final String MASTER_PW = "master-pw-123";
-    private static final int ITERATIONS = 200; // klein -> schnelle Tests (Mock validiert Hash nicht)
+    private static final int ITERATIONS = 200; // small -> fast tests (the mock does not validate the hash)
     private static final String ORG_ID = "11111111-1111-1111-1111-111111111111";
 
     private MockVault vault;
 
-    // --- Krypto-Fixture (deterministisch je Test neu) ---
-    private byte[] userKey;      // 64B – persoenlicher Schluessel
-    private byte[] orgKey;       // 64B – Org-Schluessel
-    private byte[] personalItemKey; // 64B – per-Cipher-Key des persoenlichen Items
+    // --- crypto fixture (deterministic, fresh for every test) ---
+    private byte[] userKey;      // 64B – personal key
+    private byte[] orgKey;       // 64B – org key
+    private byte[] personalItemKey; // 64B – per-cipher key of the personal item
     private KeyPair rsaKeyPair;
 
     @BeforeEach
@@ -74,7 +74,7 @@ class VaultwardenClientTest {
     }
 
     // ------------------------------------------------------------------
-    // Voller Lese-Flow: Login -> Sync -> Entschluesselung
+    // Full read flow: login -> sync -> decryption
     // ------------------------------------------------------------------
 
     @Test
@@ -83,7 +83,7 @@ class VaultwardenClientTest {
 
         List<VaultwardenItem> items = client.getItems();
 
-        assertThat(items).hasSize(2); // persoenlich + org; das Nicht-Login-Cipher (type 2) faellt raus
+        assertThat(items).hasSize(2); // personal + org; the non-login cipher (type 2) drops out
         VaultwardenItem personal = byName(items, "Personal Item");
         assertThat(personal).isNotNull();
         assertThat(personal.username()).isEqualTo("alice");
@@ -100,7 +100,7 @@ class VaultwardenClientTest {
     void getItems_configuredDeviceIdentifier_stillDecrypts() {
         VaultwardenProperties p = props();
         p.setDeviceIdentifier("fixed-device-uuid");
-        p.setDeviceName("plaintext"); // gleich wie appName-Default -> deckt base.equals(app)-Zweig
+        p.setDeviceName("plaintext"); // same as the appName default -> covers the base.equals(app) branch
         VaultwardenClient client = new VaultwardenClient(p, "plaintext");
 
         assertThat(client.getItems()).hasSize(2);
@@ -128,8 +128,8 @@ class VaultwardenClientTest {
         client.invalidate();
         client.getItems();
 
-        assertThat(vault.syncCalls).isEqualTo(2); // erneuter Sync
-        assertThat(vault.tokenCalls).isEqualTo(1); // aber KEIN erneuter Login (userKey noch gueltig)
+        assertThat(vault.syncCalls).isEqualTo(2); // another sync
+        assertThat(vault.tokenCalls).isEqualTo(1); // but NO new login (the userKey is still valid)
     }
 
     @Test
@@ -145,7 +145,7 @@ class VaultwardenClientTest {
 
     @Test
     void getItems_syncWithoutPrivateKeyAndOrgs_onlyPersonalItems() {
-        vault.syncBody = syncJson(false); // kein PrivateKey, keine Orgs, nur persoenliches Item
+        vault.syncBody = syncJson(false); // no private key, no orgs, only the personal item
         VaultwardenClient client = newClient(props());
 
         List<VaultwardenItem> items = client.getItems();
@@ -154,7 +154,7 @@ class VaultwardenClientTest {
     }
 
     // ------------------------------------------------------------------
-    // Fail-safe-Pfade (nie Exception nach aussen, immer Liste)
+    // Fail-safe paths (never an exception to the outside, always a list)
     // ------------------------------------------------------------------
 
     @Test
@@ -172,18 +172,18 @@ class VaultwardenClientTest {
     }
 
     /**
-     * Karte 395: Nach einem HTTP 429 darf NICHT sofort erneut eingeloggt werden.
+     * Karte 395: after an HTTP 429 there must NOT be an immediate new login.
      *
-     * <p>Genau das war die Ursache der Kaskade vom 01.08.2026: Der Fehlerpfad setzte die
-     * Cache-Gueltigkeit auf hoechstens 60 Sekunden, danach lief der naechste Login-Versuch — und
-     * hielt damit das Rate-Limit am Leben, das er abwarten wollte. Eine einzige Instanz im
-     * Crashloop konnte so den Start ANDERER Anwendungen verhindern.</p>
+     * <p>That was exactly the cause of the cascade of 01.08.2026: the error path set the
+     * cache validity to at most 60 seconds, after which the next login attempt ran — and
+     * thereby kept alive the very rate limit it wanted to wait out. A single instance in a
+     * crash loop could prevent OTHER applications from starting that way.</p>
      */
     @Test
     void getItems_rateLimit429_versuchtNichtSofortErneut() {
-        // cacheTtl = 1s mit Absicht: VOR dem Fix war der Fehler-Backoff clamp(cacheTtl, 1, 60),
-        // also hier 1 Sekunde — nach dem Warten unten waere der naechste Login rausgegangen und
-        // der Test rot. Mit dem Fix greift bei einem 429 der lange Backoff, unabhaengig vom TTL.
+        // cacheTtl = 1s on purpose: BEFORE the fix the error backoff was clamp(cacheTtl, 1, 60),
+        // so one second here — after the wait below the next login would have gone out and
+        // the test would be red. With the fix the long backoff applies on a 429, whatever the TTL.
         VaultwardenProperties p = props();
         p.setCacheTtlSeconds(1);
         vault.tokenStatus = 429;
@@ -194,7 +194,7 @@ class VaultwardenClientTest {
         assertThat(client.getItems()).isEmpty();
         assertThat(vault.tokenCalls).isEqualTo(1);
 
-        uhr.weiter(Duration.ofMillis(1300));   // laenger als der alte Backoff
+        uhr.weiter(Duration.ofMillis(1300));   // longer than the old backoff
         client.getItems();
         client.getItems();
 
@@ -204,9 +204,9 @@ class VaultwardenClientTest {
     }
 
     /**
-     * Auch ein gewoehnlicher Fehlschlag fuehrt nicht zu Dauerfeuer: Der Backoff startet bei 30
-     * Sekunden und verdoppelt sich — vor dem Fix waren es hoechstens 60, danach ging es endlos
-     * im selben Takt weiter.
+     * An ordinary failure does not lead to continuous fire either: the backoff starts at 30
+     * seconds and doubles — before the fix it was at most 60, after which it went on endlessly
+     * at the same rate.
      */
     @Test
     void getItems_fehlschlag_versuchtNichtSofortErneut() {
@@ -226,7 +226,7 @@ class VaultwardenClientTest {
                 .isEqualTo(1);
     }
 
-    /** Nach einem erfolgreichen Zugriff ist der Fehlerzaehler zurueckgesetzt (kein Dauer-Backoff). */
+    /** After a successful access the error counter is reset (no permanent backoff). */
     @Test
     void getItems_nachErfolgKeinBackoffMehr() {
         vault.tokenStatus = 429;
@@ -234,7 +234,7 @@ class VaultwardenClientTest {
         VaultwardenClient client = newClient(props());
         assertThat(client.getItems()).isEmpty();
 
-        // Vaultwarden ist wieder da; der Cache wird verworfen, wie es die Rotation auch tut.
+        // Vaultwarden is back; the cache is discarded, just as the rotation does it.
         vault.tokenStatus = 200;
         vault.tokenBody = tokenJson(3600);
         client.invalidate();
@@ -249,14 +249,14 @@ class VaultwardenClientTest {
         vault.syncBody = "boom";
         VaultwardenClient client = newClient(props());
         assertThat(client.getItems()).isEmpty();
-        assertThat(vault.tokenCalls).isEqualTo(1); // Login klappte, erst Sync scheiterte
+        assertThat(vault.tokenCalls).isEqualTo(1); // the login worked, only the sync failed
     }
 
     // ------------------------------------------------------------------
-    // Diagnose-Flags fuer den Boot-Retry (Vorfaelle 18.+21.08.2026)
+    // Diagnostic flags for the boot retry (incidents 18.+21.08.2026)
     // ------------------------------------------------------------------
 
-    /** Nach einem 429 stehen die Flags auf transient+Rate-Limit; nach Erfolg sind sie geloescht. */
+    /** After a 429 the flags stand at transient+rate limit; after a success they are cleared. */
     @Test
     void fehlerFlags_nach429GesetztNachErfolgGeloescht() {
         vault.tokenStatus = 429;
@@ -278,7 +278,7 @@ class VaultwardenClientTest {
         assertThat(client.letzteFehlermeldung()).isEmpty();
     }
 
-    /** Ein gewoehnlicher Fehlschlag ist transient, aber KEIN Rate-Limit. */
+    /** An ordinary failure is transient, but NOT a rate limit. */
     @Test
     void fehlerFlags_gewoehnlicherFehlerOhneRateLimit() {
         vault.tokenStatus = 500;
@@ -293,12 +293,12 @@ class VaultwardenClientTest {
 
     @Test
     void getItems_unsupportedKdf_failsSafeEmpty() {
-        vault.preloginBody = "{\"kdf\":1,\"kdfIterations\":3}"; // Argon2 -> nicht unterstuetzt
+        vault.preloginBody = "{\"kdf\":1,\"kdfIterations\":3}"; // Argon2 -> not supported
         assertThat(newClient(props()).getItems()).isEmpty();
     }
 
     // ------------------------------------------------------------------
-    // Rotation (Schreib-Flow)
+    // Rotation (write flow)
     // ------------------------------------------------------------------
 
     @Test
@@ -306,26 +306,26 @@ class VaultwardenClientTest {
         vault.cipherGetBody = personalCipherJson(); // GET /api/ciphers/{id}
         vault.cipherPutStatus = 200;
         VaultwardenClient client = newClient(props());
-        client.getItems(); // Cache fuellen, damit findByName greift
+        client.getItems(); // fill the cache so that findByName works
 
         boolean ok = client.rotatePassword("Personal", "n3w-P@ss");
 
         assertThat(ok).isTrue();
-        // Das gesendete CipherRequestModel enthaelt das neu verschluesselte Passwort ...
+        // The CipherRequestModel that is sent contains the newly encrypted password ...
         JsonObject put = JsonParser.parseString(vault.lastPutBody).getAsJsonObject();
         String newPwEnc = put.getAsJsonObject("login").get("password").getAsString();
         byte[] decrypted = VaultwardenCrypto.decryptSymmetric(EncString.parse(newPwEnc), personalItemKey);
         assertThat(new String(decrypted, StandardCharsets.UTF_8)).isEqualTo("n3w-P@ss");
-        // ... und alle uebrigen Felder bleiben inhaltlich UNVERAENDERT (der Username entschluesselt
-        // weiterhin zu "alice"). Kein Vergleich des exakten Chiffretexts: AES-256-CBC nutzt einen
-        // zufaelligen IV, jede Verschluesselung von "alice" ergibt daher einen anderen String.
+        // ... and all the other fields stay UNCHANGED in content (the username still decrypts
+        // to "alice"). No comparison of the exact ciphertext: AES-256-CBC uses a
+        // random IV, so every encryption of "alice" yields a different string.
         String newUserEnc = put.getAsJsonObject("login").get("username").getAsString();
         byte[] decryptedUser = VaultwardenCrypto.decryptSymmetric(EncString.parse(newUserEnc), personalItemKey);
         assertThat(new String(decryptedUser, StandardCharsets.UTF_8)).isEqualTo("alice");
         assertThat(put.getAsJsonArray("fields")).isNotNull();
         assertThat(put.get("lastKnownRevisionDate").getAsString()).isEqualTo("2024-01-01T00:00:00.000Z");
 
-        // Nach erfolgreichem PUT ist der Lese-Cache invalidiert -> erneuter Sync beim naechsten Read.
+        // After a successful PUT the read cache is invalidated -> another sync at the next read.
         client.getItems();
         assertThat(vault.syncCalls).isEqualTo(2);
     }
@@ -363,7 +363,7 @@ class VaultwardenClientTest {
 
         assertThat(client.rotatePassword("Personal", "x")).isFalse();
 
-        client.getItems(); // Cache NICHT invalidiert -> kein zweiter Sync
+        client.getItems(); // cache NOT invalidated -> no second sync
         assertThat(vault.syncCalls).isEqualTo(1);
     }
 
@@ -374,7 +374,7 @@ class VaultwardenClientTest {
     private VaultwardenProperties props() {
         VaultwardenProperties p = new VaultwardenProperties();
         p.setEnabled(true);
-        p.setUrl(vault.url() + "/"); // trailing slash -> deckt trimUrl()
+        p.setUrl(vault.url() + "/"); // trailing slash -> covers trimUrl()
         p.setEmail(EMAIL);
         p.setMasterPassword(MASTER_PW);
         p.setCacheTtlSeconds(300);
@@ -388,15 +388,14 @@ class VaultwardenClientTest {
     }
 
     /**
-     * Steuerbare Uhr fuer die Backoff-Tests (Karte 608).
+     * Controllable clock for the backoff tests (Karte 608).
      *
-     * <p>Vorher warteten diese Tests mit {@code Thread.sleep(1300)} echte Zeit ab, um einen
-     * Backoff zu ueberspringen. Das ist doppelt schlecht: Auf einem langsamen Runner kippt der
-     * Test, auf einem schnellen kostet er trotzdem die volle Wartezeit. Sonar meldet es als
-     * java:S2925.</p>
+     * <p>Previously these tests waited out real time with {@code Thread.sleep(1300)} in order to
+     * skip a backoff. That is bad twice over: on a slow runner the test tips over, on a fast one
+     * it costs the full waiting time anyway. Sonar reports it as java:S2925.</p>
      *
-     * <p>Mit dieser Uhr wird die Zeit gesetzt statt abgewartet — der Test prueft dasselbe
-     * Verhalten in Millisekunden statt in Sekunden.</p>
+     * <p>With this clock the time is set instead of waited out — the test checks the same
+     * behaviour in milliseconds instead of seconds.</p>
      */
     private static final class TestUhr extends Clock {
         private Instant jetzt = Instant.parse("2026-01-01T00:00:00Z");
@@ -413,7 +412,7 @@ class VaultwardenClientTest {
             return jetzt;
         }
 
-        /** Stellt die Uhr vor — der Ersatz fuer {@code Thread.sleep}. */
+        /** Moves the clock forward — the replacement for {@code Thread.sleep}. */
         void weiter(Duration d) {
             jetzt = jetzt.plus(d);
         }
@@ -427,7 +426,7 @@ class VaultwardenClientTest {
         return items.stream().filter(i -> name.equals(i.name())).findFirst().orElse(null);
     }
 
-    /** {@code encryptSymmetric} der Produktion – so, wie der echte Vaultwarden es liefern wuerde. */
+    /** The production {@code encryptSymmetric} – just as the real Vaultwarden would deliver it. */
     private static String encWith(byte[] key64, String plaintext) {
         return VaultwardenCrypto.encryptSymmetric(plaintext.getBytes(StandardCharsets.UTF_8), key64);
     }
@@ -471,13 +470,13 @@ class VaultwardenClientTest {
         return root.toString();
     }
 
-    /** Persoenliches Login-Cipher mit per-Cipher-Key (moderne Bitwarden-Ciphers). */
+    /** Personal login cipher with a per-cipher key (modern Bitwarden ciphers). */
     private JsonObject personalCipher() {
         JsonObject c = new JsonObject();
         c.addProperty("Id", "cipher-personal");
         c.addProperty("Type", 1);
-        c.addProperty("Key", encWith(userKey, dummy())); // wird gleich ueberschrieben
-        // per-Cipher-Key korrekt setzen: itemKey mit userKey verschluesselt
+        c.addProperty("Key", encWith(userKey, dummy())); // is overwritten right away
+        // set the per-cipher key correctly: itemKey encrypted with the userKey
         c.addProperty("Key", encBytes(userKey, personalItemKey));
         c.addProperty("Name", encWith(personalItemKey, "Personal Item"));
         JsonObject login = new JsonObject();
@@ -494,7 +493,7 @@ class VaultwardenClientTest {
         return c;
     }
 
-    /** Org-Login-Cipher OHNE per-Cipher-Key: direkt mit dem Org-Schluessel verschluesselt. */
+    /** Org login cipher WITHOUT a per-cipher key: encrypted directly with the org key. */
     private JsonObject orgCipher() {
         JsonObject c = new JsonObject();
         c.addProperty("Id", "cipher-org");
@@ -508,7 +507,7 @@ class VaultwardenClientTest {
         return c;
     }
 
-    /** Nicht-Login-Cipher (type 2 = SecureNote) -> wird uebersprungen. */
+    /** Non-login cipher (type 2 = SecureNote) -> is skipped. */
     private static JsonObject nonLoginCipher() {
         JsonObject c = new JsonObject();
         c.addProperty("Id", "cipher-note");
@@ -516,7 +515,7 @@ class VaultwardenClientTest {
         return c;
     }
 
-    /** Roh-Cipher wie von {@code GET /api/ciphers/{id}} – mit uris + revisionDate fuer die Rotation. */
+    /** Raw cipher as from {@code GET /api/ciphers/{id}} – with uris + revisionDate for the rotation. */
     private String personalCipherJson() {
         JsonObject c = personalCipher();
         c.addProperty("Favorite", true);
@@ -541,7 +540,7 @@ class VaultwardenClientTest {
         return VaultwardenCrypto.encryptSymmetric(data, key64);
     }
 
-    /** RSA-OAEP-SHA1 (EncString type 4) – exakt das, was {@code decryptRsaOaepSha1} rueckgaengig macht. */
+    /** RSA-OAEP-SHA1 (EncString type 4) – exactly what {@code decryptRsaOaepSha1} undoes. */
     private static String rsaEncrypt(byte[] data, PublicKey pub) {
         try {
             Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
@@ -569,7 +568,7 @@ class VaultwardenClientTest {
     }
 
     // ------------------------------------------------------------------
-    // Winziger lokaler Vaultwarden-Doppelgaenger (nur 127.0.0.1)
+    // Tiny local Vaultwarden stand-in (127.0.0.1 only)
     // ------------------------------------------------------------------
     private static final class MockVault implements AutoCloseable {
         private final HttpServer server;

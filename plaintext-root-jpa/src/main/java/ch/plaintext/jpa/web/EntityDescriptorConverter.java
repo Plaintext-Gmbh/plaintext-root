@@ -10,9 +10,9 @@ import jakarta.faces.convert.Converter;
 import jakarta.faces.convert.FacesConverter;
 
 /**
- * JSF Converter for EntityDescriptor objects. Die Liste der waehlbaren Typen kommt aus der Bean,
- * die das {@code p:selectOneMenu} per {@code <f:attribute name="backingBean">} mitgibt — Root
- * oder Admin, beide sind eine {@link AbstractEntityBackingBean}.
+ * JSF Converter for EntityDescriptor objects. The list of selectable types comes from the bean
+ * that the {@code p:selectOneMenu} passes along via {@code <f:attribute name="backingBean">} —
+ * Root or Admin, both are an {@link AbstractEntityBackingBean}.
  *
  * @author info@plaintext.ch
  * @since 2024

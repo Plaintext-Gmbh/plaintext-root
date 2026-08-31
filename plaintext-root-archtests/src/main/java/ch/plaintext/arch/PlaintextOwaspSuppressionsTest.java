@@ -26,60 +26,60 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Karte 420: Eine OWASP-Suppression, deren Version im Abhängigkeitsbaum gar nicht mehr vorkommt,
- * ist wirkungslos — und sie sieht trotzdem nach Kontrolle aus.
+ * Card 420: an OWASP suppression whose version no longer appears in the dependency tree at all
+ * has no effect — and it still looks like control.
  *
- * <p><b>Warum das zählt.</b> Die Einträge in {@code quality/owasp-suppressions.xml} sind bewusst
- * auf eine exakte Version gepinnt: {@code pkg:maven/…/angus-activation@2.0.3}. Das ist richtig so —
- * zieht Spring Boot eine neue Version, greift die Suppression nicht mehr und der neue Stand wird
- * erneut bewertet (kein Dauer-Blindflug). Der tote Eintrag bleibt danach aber stehen. Wer die Datei
- * liest, hält ihn für eine wirksame, begründete Ausnahme; tatsächlich ist er Altpapier. So wird die
- * Datei zum Endlager, das Karte 420 ausdrücklich verhindern will.</p>
+ * <p><b>Why that counts.</b> The entries in {@code quality/owasp-suppressions.xml} are deliberately
+ * pinned to an exact version: {@code pkg:maven/…/angus-activation@2.0.3}. That is correct —
+ * if Spring Boot pulls in a new version, the suppression no longer applies and the new state is
+ * assessed anew (no permanent blind flight). The dead entry, however, stays behind. Whoever reads
+ * the file takes it for an effective, justified exception; in fact it is waste paper. That is how the
+ * file turns into the final repository that card 420 explicitly wants to prevent.</p>
  *
- * <p><b>Warum das kein theoretisches Risiko ist.</b> Am 06.08.2026 trugen vier Consumer-Repos
- * (app, schuetu, iot, fwtool) eine Suppression auf {@code tomcat-embed-*@11.0.22}, während der
- * Build über {@code plaintext-root-parent} längst 11.0.24 auflöste — in iot und fwtool zusätzlich
- * nur für {@code tomcat-embed-core}, nicht für das Schwester-Artefakt {@code -websocket} mit
- * denselben acht CVEs. Eine Suppression, die nur die Hälfte trifft, ist schlimmer als keine.</p>
+ * <p><b>Why this is no theoretical risk.</b> On 06.08.2026 four consumer repositories
+ * (app, schuetu, iot, fwtool) carried a suppression on {@code tomcat-embed-*@11.0.22}, while the
+ * build had long been resolving 11.0.24 through {@code plaintext-root-parent} — in iot and fwtool
+ * additionally only for {@code tomcat-embed-core}, not for the sibling artifact {@code -websocket} with
+ * the same eight CVEs. A suppression that only covers half is worse than none.</p>
  *
- * <p><b>Wogegen geprüft wird.</b> Gegen den Testklassenpfad des ausführenden Moduls — das ist der
- * Stand, den der Build wirklich auflöst, nicht der, den eine POM-Eigenschaft verspricht. Findet
- * sich ein Artefakt unter anderem Versionsstand als dem gepinnten, ist die Suppression tot.</p>
+ * <p><b>What it is checked against.</b> Against the test classpath of the executing module — that is
+ * the state the build really resolves, not the one a POM property promises. If an artifact is
+ * found at a version other than the pinned one, the suppression is dead.</p>
  *
- * <p><b>Zwei Sorten Einträge, bewusst unterschiedlich behandelt.</b> Die Datei kennt neben exakten
- * Pins auch {@code regex="true"}-Einträge. Beide werden geprüft, sofern der <em>Versionsteil</em>
- * ein Literal ist ({@code …@11\.0\.22$} ist inhaltlich ein Pin und läuft genauso ab). Ein Eintrag
- * mit offenem Versionsbereich ({@code …@.*$}) ist der dokumentierte False-Positive-Fall — er läuft
- * nie ab und wird darum nicht als tot gemeldet. Ohne diese Unterscheidung übersähe der Test genau
- * die Einträge, die in app und schuetu tot waren.</p>
+ * <p><b>Two kinds of entries, deliberately treated differently.</b> Besides exact pins the file also
+ * knows {@code regex="true"} entries. Both are checked, provided the <em>version part</em>
+ * is a literal ({@code …@11\.0\.22$} is a pin in substance and expires just the same). An entry
+ * with an open version range ({@code …@.*$}) is the documented false-positive case — it never
+ * expires and is therefore not reported as dead. Without that distinction the test would overlook
+ * exactly those entries that were dead in app and schuetu.</p>
  *
- * <p><b>Was der Test NICHT kann,</b> und das steht hier, damit es niemand für mehr hält: Er sieht
- * nur Artefakte, die auf dem Klassenpfad des ausführenden Moduls liegen. Eine Suppression für ein
- * Artefakt, das dort gar nicht vorkommt, kann er nicht beurteilen — er meldet sie als unbeurteilbar,
- * statt sie stillschweigend durchzuwinken. Und er sagt nichts darüber, ob eine Suppression fachlich
- * noch berechtigt ist; nur, ob sie überhaupt noch greift.</p>
+ * <p><b>What the test can NOT do,</b> and that stands here so that nobody takes it for more: it sees
+ * only artifacts that lie on the classpath of the executing module. A suppression for an
+ * artifact that does not appear there at all cannot be judged by it — it reports such an entry as
+ * unassessable instead of silently waving it through. And it says nothing about whether a
+ * suppression is still justified in substance; only whether it still applies at all.</p>
  *
- * <p>Wie die übrigen Klassen dieses Moduls liegt der Test in {@code src/main/java} von
- * {@code plaintext-root-archtests} und läuft im Consumer via Surefire {@code <dependenciesToScan>}
- * gegen dessen Klassenpfad — statt in fünf Repos kopiert zu werden.</p>
+ * <p>Like the other classes of this module the test lives in {@code src/main/java} of
+ * {@code plaintext-root-archtests} and runs in the consumer via Surefire {@code <dependenciesToScan>}
+ * against that consumer's classpath — instead of being copied into five repositories.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
  */
 class PlaintextOwaspSuppressionsTest {
 
-    /** {@code <packageUrl>pkg:maven/<group>/<artifact>@<version></packageUrl>} — exakter Pin. */
+    /** {@code <packageUrl>pkg:maven/<group>/<artifact>@<version></packageUrl>} — exact pin. */
     private static final Pattern EXAKTER_PIN = Pattern.compile(
             "<packageUrl>\\s*pkg:maven/([^/]+)/([^@<\\s]+)@([^<\\s]+?)\\s*</packageUrl>");
 
-    /** Dasselbe mit {@code regex="true"} — Gruppen: group, artifact-Ausdruck, Versions-Ausdruck. */
+    /** The same with {@code regex="true"} — groups: group, artifact expression, version expression. */
     private static final Pattern REGEX_PIN = Pattern.compile(
             "<packageUrl\\s+regex\\s*=\\s*\"true\"\\s*>\\s*\\^?pkg:maven/([^/]+)/([^@\\s]+)@([^<\\s]+?)\\$?\\s*</packageUrl>");
 
-    /** Regex-Metazeichen, an denen ein Ausdruck als „nicht literal" erkannt wird. */
+    /** Regex metacharacters by which an expression is recognized as "not literal". */
     private static final Pattern METAZEICHEN = Pattern.compile("[\\[\\]().*+?{}|^$]");
 
-    /** Maven-Klassifizierer, die vor der Versions-Erkennung vom Jar-Namen abgeschnitten werden. */
+    /** Maven classifiers that are cut off the jar name before the version is detected. */
     private static final String[] KLASSIFIZIERER = {"-sources", "-javadoc"};
 
     @Test
@@ -112,9 +112,9 @@ class PlaintextOwaspSuppressionsTest {
             boolean istRegex = "regex".equals(e[3]);
 
             if (istRegex && !istLiteral(versionAusdruck)) {
-                // Offener Versionsbereich: der dokumentierte False-Positive-Fall (z. B. mxparser,
-                // das OWASP wegen der groupId der XStream-CPE zuordnet). Läuft nie ab, ist also
-                // per Definition nie tot — hier nur zählen, nicht bemängeln.
+                // Open version range: the documented false-positive case (e.g. mxparser,
+                // which OWASP assigns to the XStream CPE because of the groupId). It never expires, so by
+                // definition it is never dead — only count it here, do not complain about it.
                 offen.add(entschaerft(artefaktAusdruck) + "@" + versionAusdruck);
                 continue;
             }
@@ -134,8 +134,8 @@ class PlaintextOwaspSuppressionsTest {
             }
         }
 
-        // Sichtbar machen, was der Test NICHT beurteilt hat — sonst liest sich ein grüner Lauf als
-        // "alles geprüft", obwohl womöglich kein einziger Eintrag beurteilbar war.
+        // Make visible what the test has NOT judged — otherwise a green run reads as
+        // "everything checked" although possibly not a single entry was assessable.
         System.out.println("PlaintextOwaspSuppressionsTest — Datei: " + datei
                 + " · Einträge: " + eintraege.size()
                 + " · offener Versionsbereich (läuft nie ab): "
@@ -154,9 +154,9 @@ class PlaintextOwaspSuppressionsTest {
     }
 
     /**
-     * Gegenprobe zur Erkennung selbst: Ein konstruierter Pin auf eine Version, die es nicht gibt,
-     * muss auffallen. Ohne diesen Fall wäre der Test oben auch dann grün, wenn der Vergleich nie
-     * zuschlägt.
+     * Counter-check on the detection itself: a constructed pin on a version that does not exist
+     * has to be noticed. Without this case the test above would be green even if the comparison never
+     * triggers.
      */
     @Test
     void dieErkennungSchlaegtBeiEinemTotenPinAn() throws IOException {
@@ -174,9 +174,9 @@ class PlaintextOwaspSuppressionsTest {
     }
 
     /**
-     * Gegenprobe zum Einlesen beider Eintragssorten. Ohne sie wäre nicht zu sehen, ob der
-     * {@code regex="true"}-Zweig überhaupt greift — und genau der deckt die Einträge ab, die in
-     * app und schuetu tot waren.
+     * Counter-check on the reading of both kinds of entries. Without it there would be no way to see
+     * whether the {@code regex="true"} branch applies at all — and precisely that branch covers the
+     * entries that were dead in app and schuetu.
      */
     @Test
     void beideEintragssortenWerdenGelesen() {
@@ -198,8 +198,8 @@ class PlaintextOwaspSuppressionsTest {
                         + ". Ändert sich das Dateiformat, fällt es hier auf und nicht erst, wenn "
                         + "eine tote Suppression durchrutscht.");
 
-        // Bewusst nach Artefakt gesucht statt nach Position: parse() liest erst alle exakten, dann
-        // alle Regex-Einträge — ein Index-Zugriff würde die Zuordnung stillschweigend vertauschen.
+        // Deliberately searched by artifact instead of by position: parse() reads all exact entries first,
+        // then all regex entries — an index access would silently swap the assignment.
         String[] exakt = suche(gelesen, "angus-activation");
         String[] festerRegex = suche(gelesen, "tomcat-embed-[a-z]+");
         String[] offenerRegex = suche(gelesen, "mxparser");
@@ -223,7 +223,7 @@ class PlaintextOwaspSuppressionsTest {
                         + "'schlimmer als keine' benennt.");
     }
 
-    /** Die Datei muss dort liegen, wo die CI-Pipeline sie erwartet — sonst greift sie im Build nie. */
+    /** The file has to lie where the CI pipeline expects it — otherwise it never applies in the build. */
     @Test
     void dieSuppressionDateiLiegtDaWoDiePipelineSieErwartet() throws IOException {
         Path datei = datei();
@@ -234,9 +234,9 @@ class PlaintextOwaspSuppressionsTest {
                         + "diesen Pfad an dependency-check (ci-cd-pipeline.yaml). Gefunden: " + datei);
     }
 
-    // ── Hilfsmittel ──────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────
 
-    /** Die Suppression-Datei ab der Reactor-Wurzel — oder {@code null}, wenn das Repo keine führt. */
+    /** The suppression file from the reactor root — or {@code null} if the repository keeps none. */
     private static Path datei() throws IOException {
         Path wurzel = repoWurzel();
         if (wurzel == null) {
@@ -258,7 +258,7 @@ class PlaintextOwaspSuppressionsTest {
         return null;
     }
 
-    /** Der Eintrag zu einem Artefakt-Ausdruck — schlägt mit klarer Meldung fehl, wenn er fehlt. */
+    /** The entry for an artifact expression — fails with a clear message if it is missing. */
     private static String[] suche(List<String[]> eintraege, String artefaktAusdruck) {
         return eintraege.stream()
                 .filter(e -> e[1].equals(artefaktAusdruck))
@@ -268,7 +268,7 @@ class PlaintextOwaspSuppressionsTest {
                                 + "dann greift der zugehörige Zweig des Parsers nicht."));
     }
 
-    /** Einträge als {@code [group, artefakt-Ausdruck, versions-Ausdruck, "exakt"|"regex"]}. */
+    /** Entries as {@code [group, artefakt-Ausdruck, versions-Ausdruck, "exakt"|"regex"]}. */
     private static List<String[]> eintraege(Path datei) throws IOException {
         return parse(Files.readString(datei, StandardCharsets.UTF_8));
     }
@@ -287,28 +287,28 @@ class PlaintextOwaspSuppressionsTest {
     }
 
     /**
-     * Ein Ausdruck gilt als Literal, wenn er kein <em>unescaptes</em> Regex-Metazeichen enthält.
-     * {@code 11\.0\.22} ist damit literal, {@code .*} und {@code [a-z]+} sind es nicht.
+     * An expression counts as a literal if it contains no <em>unescaped</em> regex metacharacter.
+     * {@code 11\.0\.22} is therefore literal, {@code .*} and {@code [a-z]+} are not.
      *
-     * <p>Die escapten Sequenzen werden vorher komplett entfernt statt nur der Backslash: Sonst
-     * bliebe aus {@code \.} ein blanker Punkt stehen, der wie ein Metazeichen aussieht — und
-     * <b>jede</b> gepinnte Version enthält Punkte. Der Test hielte dann keinen einzigen
-     * Regex-Eintrag für prüfbar und wäre still wirkungslos. Genau diesen Fehler hat die Gegenprobe
-     * {@code beideEintragssortenWerdenGelesen} beim Bau dieser Klasse gefangen.</p>
+     * <p>The escaped sequences are removed completely beforehand instead of only the backslash:
+     * otherwise a bare dot would be left over from {@code \.} that looks like a metacharacter — and
+     * <b>every</b> pinned version contains dots. The test would then hold not a single
+     * regex entry to be checkable and would be silently ineffective. Exactly this defect was caught
+     * by the counter-check {@code beideEintragssortenWerdenGelesen} while this class was being built.</p>
      */
     private static boolean istLiteral(String ausdruck) {
         return !METAZEICHEN.matcher(ausdruck.replaceAll("\\\\.", "")).find();
     }
 
-    /** Entfernt Backslash-Escapes: {@code 11\.0\.22} → {@code 11.0.22}. */
+    /** Removes backslash escapes: {@code 11\.0\.22} → {@code 11.0.22}. */
     private static String entschaerft(String ausdruck) {
         return ausdruck.replace("\\", "");
     }
 
     /**
-     * Alle Artefakte des Klassenpfads, auf die der Ausdruck passt. Bei einem exakten Eintrag ist
-     * das höchstens eines; bei {@code tomcat-embed-[a-z]+} sind es alle Schwester-Artefakte — und
-     * genau deren vollständige Abdeckung ist der Punkt.
+     * All artifacts of the classpath that the expression matches. For an exact entry that is
+     * at most one; for {@code tomcat-embed-[a-z]+} it is all sibling artifacts — and
+     * their complete coverage is exactly the point.
      */
     private static List<String> passendeArtefakte(Map<String, String> klassenpfad, String ausdruck,
                                                   boolean istRegex) {
@@ -328,20 +328,20 @@ class PlaintextOwaspSuppressionsTest {
                 }
             }
         } catch (PatternSyntaxException e) {
-            // Kein gültiger Ausdruck: dann kann der Test nichts beurteilen und meldet ihn als
-            // unbeurteilbar, statt an einer fremden Datei zu zerbrechen.
+            // Not a valid expression: the test can then judge nothing and reports the entry as
+            // unassessable instead of breaking on a foreign file.
             return List.of();
         }
         return treffer;
     }
 
     /**
-     * artifactId → Version, aus den Jar-Namen des Testklassenpfads.
+     * artifactId → version, from the jar names of the test classpath.
      *
-     * <p>Surefire reicht den Klassenpfad je nach Konfiguration als eine einzige Manifest-Jar durch;
-     * dann steht die echte Liste im {@code Class-Path} von deren Manifest. Beide Fälle werden
-     * behandelt — sonst misst der Test im Leeren, und genau das fällt bei einem Positivbefund nicht
-     * auf.</p>
+     * <p>Depending on the configuration Surefire hands the classpath through as a single manifest
+     * jar; the real list then stands in the {@code Class-Path} of that jar's manifest. Both cases are
+     * handled — otherwise the test measures in the void, and that is exactly what does not stand out
+     * on a positive finding.</p>
      */
     private static Map<String, String> artefakteAufKlassenpfad() throws IOException {
         List<String> eintraege = new ArrayList<>(
@@ -362,7 +362,7 @@ class PlaintextOwaspSuppressionsTest {
                         }
                     }
                 } catch (IOException ignored) {
-                    // kein lesbares Jar — dann eben nicht
+                    // no readable jar — then so be it
                 }
             }
         }
@@ -378,20 +378,20 @@ class PlaintextOwaspSuppressionsTest {
     }
 
     /**
-     * Zerlegt einen Jar-Dateinamen in {@code {artifactId, version}} — ein <b>leeres</b> Array, wenn
-     * der Name nicht dem Maven-Schema {@code <artifactId>-<version>[-sources|-javadoc].jar} folgt.
+     * Decomposes a jar file name into {@code {artifactId, version}} — an <b>empty</b> array if
+     * the name does not follow the Maven scheme {@code <artifactId>-<version>[-sources|-javadoc].jar}.
      *
-     * <p>Leeres Array statt {@code null} (Sonar {@code java:S1168}): der Aufrufer prüft die Länge
-     * und kann das Ergebnis nicht versehentlich dereferenzieren.</p>
+     * <p>Empty array instead of {@code null} (Sonar {@code java:S1168}): the caller checks the length
+     * and cannot dereference the result by accident.</p>
      *
-     * <p>Bewusst ohne regulären Ausdruck. Das frühere Muster
-     * {@code ^(.*?)-(\d[^/\\]*?)(?:-(?:sources|javadoc))?\.jar$} hatte zwei ineinander
-     * verschachtelte reluktante Quantoren und damit polynomiale Laufzeit (Sonar {@code java:S5852}).
-     * Diese Zerlegung liest den Namen in einem Durchgang und liefert dieselbe Aufteilung: Trennstelle
-     * ist der erste Bindestrich, auf den eine Ziffer folgt.</p>
+     * <p>Deliberately without a regular expression. The earlier pattern
+     * {@code ^(.*?)-(\d[^/\\]*?)(?:-(?:sources|javadoc))?\.jar$} had two nested
+     * reluctant quantifiers and therefore polynomial runtime (Sonar {@code java:S5852}).
+     * This decomposition reads the name in a single pass and produces the same split: the separator
+     * is the first hyphen followed by a digit.</p>
      *
-     * @param name Dateiname ohne Pfad, z. B. {@code plaintext-root-menu-1.544.0.jar}
-     * @return zweielementiges Array {artifactId, version}, oder ein leeres Array
+     * @param name file name without path, e.g. {@code plaintext-root-menu-1.544.0.jar}
+     * @return two-element array {artifactId, version}, or an empty array
      */
     static String[] zerlegeJarName(String name) {
         if (name == null || !name.endsWith(".jar")) {
@@ -412,7 +412,7 @@ class PlaintextOwaspSuppressionsTest {
         return KEINE_ZERLEGUNG;
     }
 
-    /** Antwort auf einen Namen, der dem Maven-Schema nicht folgt (java:S1168 — kein {@code null}). */
+    /** Answer for a name that does not follow the Maven scheme (java:S1168 — no {@code null}). */
     private static final String[] KEINE_ZERLEGUNG = new String[0];
 
     private static String entpacke(String eintrag) {

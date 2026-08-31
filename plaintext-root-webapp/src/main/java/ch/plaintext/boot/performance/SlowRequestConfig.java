@@ -10,12 +10,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 
 /**
- * Registriert den {@link SlowRequestFilter} (Karte 430).
+ * Registers the {@link SlowRequestFilter} (card 430).
  *
- * <p>Sehr frueh in der Kette ({@code HIGHEST_PRECEDENCE + 9}), damit die gemessene Dauer die
- * <i>ganze</i> Verarbeitung umfasst — Security, Rate-Limit und Rendering eingeschlossen. Sitzt der
- * Filter weiter hinten, misst er nur den Rest und meldet zu kurze Zeiten; genau das waere fuer die
- * Frage „warum dauert der Klick so lang" wertlos.
+ * <p>Very early in the chain ({@code HIGHEST_PRECEDENCE + 9}), so that the measured duration covers
+ * the <i>whole</i> processing — security, rate limit and rendering included. If the
+ * filter sat further back, it would only measure the rest and report durations that are too short;
+ * exactly that would be worthless for the question "why does the click take so long".
  *
  * @author plaintext.ch
  */
@@ -33,8 +33,8 @@ public class SlowRequestConfig {
     public FilterRegistrationBean<SlowRequestFilter> slowRequestFilterRegistration(
             SlowRequestFilter filter) {
         FilterRegistrationBean<SlowRequestFilter> registration = new FilterRegistrationBean<>(filter);
-        // Karte 497: +9, nicht +10 — auf +10 sitzt der ForwardedHeaderFilter
-        // (RateLimitFilterConfig.FORWARDED_HEADER_FILTER_ORDER, Karte 303).
+        // Card 497: +9, not +10 — the ForwardedHeaderFilter sits on +10
+        // (RateLimitFilterConfig.FORWARDED_HEADER_FILTER_ORDER, card 303).
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 9);
         registration.addUrlPatterns("/*");
         return registration;

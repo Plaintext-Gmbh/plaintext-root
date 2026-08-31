@@ -128,9 +128,9 @@ class UrlRewriteConfigTest {
 
     @Test
     void doFilter_shouldRewriteHtmlEvenWithPathParameters() throws Exception {
-        // Karte 612: Der Filter wird ueber den Servlet-Pfad ausgewaehlt (*.html), entschied aber
-        // ueber getRequestURI() — mit ";jsessionid=..." endete der Pfad nicht auf ".html", die
-        // Umschreibung unterblieb und der Request lief auf eine Ressource, die es nicht gibt.
+        // Card 612: the filter is selected via the servlet path (*.html) but decided based on
+        // getRequestURI() — with ";jsessionid=..." the path did not end in ".html", the rewrite
+        // did not happen and the request ran into a resource that does not exist.
         when(request.getRequestURI()).thenReturn("/kontakte.html;jsessionid=C252CABB81F6399C");
         when(request.getRequestDispatcher("/kontakte.xhtml")).thenReturn(dispatcher);
 

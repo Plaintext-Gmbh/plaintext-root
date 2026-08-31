@@ -3,19 +3,19 @@ layout: default
 title: Role Registry
 ---
 
-# Role Registry (Modul-Rollen-Registrierung)
+# Role Registry (module role registration)
 
-Module — in root selbst und in Apps, die root nutzen — deklarieren ihre Rollen als Spring-Bean.
-Root sammelt alle Deklarationen ein (Union, dedupliziert) und bietet sie in der
-**Benutzerverwaltung** (`useradmin.xhtml`) und der **Rollenzuteilung** als Auswahl an, statt dass
-Rollennamen freihaendig getippt werden muessen.
+Modules — in root itself and in apps that build on root — declare their roles as a Spring bean.
+Root collects all declarations (a deduplicated union) and offers them as a choice in the
+**user administration** (`useradmin.xhtml`) and in the role assignment, instead of forcing role
+names to be typed in freehand.
 
-Der Mechanismus folgt demselben Muster wie das [Menü-System](ARCHITECTURE.md#menu-system):
-Module steuern ihren Beitrag als Bean bei, root sammelt zentral ein.
+The mechanism follows the same pattern as the [menu system](ARCHITECTURE.md#menu-system):
+modules contribute their part as a bean, root collects them centrally.
 
-## Rollen deklarieren
+## Declaring roles
 
-Eine `PlaintextRoleProvider`-Bean pro Modul (Interface in `plaintext-root-common`,
+One `PlaintextRoleProvider` bean per module (the interface lives in `plaintext-root-common`,
 `ch.plaintext.framework`):
 
 ```java
@@ -38,159 +38,161 @@ public class MeinModulRoleProvider implements PlaintextRoleProvider {
 }
 ```
 
-Bestehende Provider, die nur `getRoles()` implementieren, funktionieren unveraendert weiter:
-`getDeclaredRoles()` hat einen Default, der Rollen ohne Beschreibung ableitet.
+Existing providers that only implement `getRoles()` keep working unchanged: `getDeclaredRoles()`
+has a default implementation that derives roles without a description.
 
-Referenzimplementierung: `RootRoleProvider` (`plaintext-root-webapp`,
-`ch.plaintext.boot.plugins.security`) deklariert die root-eigenen Rollen `root`, `admin`, `user`.
-`ROLE_SYSTEM` wird bewusst nicht deklariert (rein technische Authority fuer Cron/Bus).
+Reference implementation: `RootRoleProvider` (`plaintext-root-webapp`,
+`ch.plaintext.boot.plugins.security`) declares root's own roles `root`, `admin`, `user`.
+`ROLE_SYSTEM` is deliberately not declared (a purely technical authority for cron and the bus).
 
-## Namens-Konventionen
+## Naming conventions
 
-| Form | Beispiel | Verwendung |
-|------|----------|------------|
-| `PlaintextRole.name()` | `admin` oder `ROLE_ADMIN` | wie deklariert |
-| `PlaintextRole.normalizedName()` | `admin` | Identitaet/Dedup; Speicherformat am `MyUserEntity` |
-| `PlaintextRole.authorityName()` | `ROLE_ADMIN` | Spring-Security-Authority / Rollenzuteilung |
+| Form | Example | Used for |
+|------|---------|----------|
+| `PlaintextRole.name()` | `admin` or `ROLE_ADMIN` | as declared |
+| `PlaintextRole.normalizedName()` | `admin` | identity/dedup; storage format on `MyUserEntity` |
+| `PlaintextRole.authorityName()` | `ROLE_ADMIN` | Spring Security authority / role assignment |
 
-Deklarationen sind case- und prefix-insensitiv dedupliziert: `admin`, `ADMIN` und `ROLE_admin`
-sind dieselbe Rolle. Deklarieren mehrere Module dieselbe Rolle, gewinnt die erste nicht-leere
-Beschreibung.
+Declarations are deduplicated case- and prefix-insensitively: `admin`, `ADMIN` and `ROLE_admin`
+are the same role. If several modules declare the same role, the first non-empty description
+wins.
 
-## Einsammeln (Konsumenten-Seite)
+## Collecting them (consumer side)
 
-`PlaintextRoleRegistry` (`@Component`, `plaintext-root-common`) sammelt alle Provider-Beans ein:
+`PlaintextRoleRegistry` (`@Component`, `plaintext-root-common`) collects all provider beans:
 
-| Methode | Liefert |
-|---------|---------|
-| `getDeclaredRoles()` | sortierte `PlaintextRole`-Liste (Name + Beschreibung) |
-| `getDeclaredRoleNames()` | normalisierte Namen (`admin`, ...) |
-| `getDeclaredAuthorityNames()` | Authority-Namen (`ROLE_ADMIN`, ...) |
-| `getDescription(name)` | Beschreibung einer Rolle (beliebige Schreibweise) |
+| Method | Returns |
+|--------|---------|
+| `getDeclaredRoles()` | sorted `PlaintextRole` list (name + description) |
+| `getDeclaredRoleNames()` | normalized names (`admin`, ...) |
+| `getDeclaredAuthorityNames()` | authority names (`ROLE_ADMIN`, ...) |
+| `getDescription(name)` | description of a role (any spelling) |
 
-## Bestandsrollen gehen nicht verloren
+## Existing roles are not lost
 
-Die Auswahl-UIs mischen zu den deklarierten Rollen immer den **Bestand** aus der Datenbank dazu
-(am Benutzer gespeicherte bzw. in der Rollenzuteilung vergebene Rollen). Eine Rolle, die kein
-Modul (mehr) deklariert, bleibt dadurch sichtbar und waehlbar — sie verliert nur ihre
-Beschreibung.
+The selection UIs always merge the **existing stock** from the database into the declared roles
+(roles stored on the user, or granted through the role assignment). A role that no module
+declares (any more) therefore stays visible and selectable — it only loses its description.
 
 ---
 
-# Konfigurierbare Modul-Rollen (`plaintext.menu.module-roles`)
+# Configurable module roles (`plaintext.menu.module-roles`)
 
-*seit root 1.604.0*
+*since root 1.604.0*
 
-Eine App kann einem **ganzen Modul** per Konfiguration eine Rolle zuordnen. Ohne diese Rolle ist
-das Modul fuer den Benutzer nicht vorhanden:
+An app can assign a role to an **entire module** by configuration. Without that role the module
+does not exist for the user:
 
-* der **Menuepunkt** (und alle Untermenues) ist unsichtbar,
-* die **Dashboard-Kachel** ist unsichtbar,
-* der **Direktaufruf** der Seiten wird vom `PageAccessGuard` verweigert.
+* the **menu item** (and all submenus) is invisible,
+* the **dashboard tile** is invisible,
+* **direct access** to the pages is denied by the `PageAccessGuard`.
 
-`admin` und `root` behalten **immer** Zugriff. Module ohne Eintrag verhalten sich exakt wie bisher.
+`admin` and `root` **always** retain access. Modules without an entry behave exactly as before.
 
-## Warum Konfiguration und nicht Modul-Code
+## Why configuration and not module code
 
-Dasselbe Modul-Artefakt wird von mehreren Apps gebuendelt — `plaintext-z-mailbox` laeuft in
-`app.plaintext.ch` **und** in `app.guild42.ch`. Eine Rolle im Modul-Code waere in beiden Apps
-dieselbe. Die Zuordnung gehoert deshalb in die Konfiguration der jeweiligen App; **am Modul wird
-nichts geaendert**.
+The same module artifact is bundled by several apps — `plaintext-z-mailbox` runs in
+`app.plaintext.ch` **and** in `app.guild42.ch`. A role in the module code would be the same role
+in both apps. The assignment therefore belongs in the configuration of the individual app;
+**nothing is changed in the module**.
 
-## Konfiguration
+## Configuration
 
 ```yaml
 plaintext:
   menu:
     module-roles:
-      wiki: wiki            # nur wer ROLE_WIKI hat, sieht das Wiki
+      wiki: wiki            # only someone with ROLE_WIKI sees the wiki
       mailbox: mail
-      postkonto: finanzen   # mehrere Module duerfen sich eine Rolle teilen
+      postkonto: finanzen   # several modules may share one role
       rechnungen: finanzen
       buchhaltung: finanzen
 ```
 
-Der Rollenname wird ohne `ROLE_`-Prefix geschrieben; Gross-/Kleinschreibung ist egal
-(`wiki`, `WIKI` und `ROLE_Wiki` sind dieselbe Rolle).
+The role name is written without the `ROLE_` prefix; case does not matter (`wiki`, `WIKI` and
+`ROLE_Wiki` are the same role).
 
-## Der Modul-Key
+## The module key
 
-Primaer die **`moduleId`** — derselbe Wert wie in `@MenuAnnotation(moduleId = "…")` bzw.
-`ModuleDescriptor#moduleId()`, also genau das, was das Admin-Panel **„Root | Module"** anzeigt.
+Primarily the **`moduleId`** — the same value as in `@MenuAnnotation(moduleId = "…")` or
+`ModuleDescriptor#moduleId()`, that is, exactly what the admin panel **"Root | Module"**
+displays.
 
-Fuer Module ohne `moduleId` greift als Fallback die **Menu-Root-Id**: der `menuId` des obersten
-Menuepunkts des Moduls, ersatzweise sein aus dem Titel abgeleiteter Bezeichner (kleingeschrieben,
-Umlaute transliteriert, Sonderzeichen zu `_`). Beide Formen funktionieren — beim Modul
-*Rechnungen* etwa sowohl `rechnungen` (moduleId) als auch `rechnungsverwaltung` (Menu-Root-Titel).
+For modules without a `moduleId` the **menu root id** applies as a fallback: the `menuId` of the
+module's topmost menu item, or failing that the identifier derived from its title (lower-cased,
+umlauts transliterated, special characters turned into `_`). Both forms work — for the module
+*Rechnungen*, for instance, both `rechnungen` (moduleId) and `rechnungsverwaltung` (menu root
+title).
 
-**Den Key eines Moduls herausfinden** — drei Wege:
+**Finding a module's key** — three ways:
 
-1. Admin-Panel **„Root | Module"**: die Spalte *Modul-Id*.
-2. Das Startup-Log der App:
+1. Admin panel **"Root | Module"**: the *Modul-Id* column.
+2. The app's startup log:
    `ModuleRoleService : Modul-Rollen aktiv: {wiki=WIKI} — erkannte Modul-Keys: [anschreiben, buchhaltung, …]`
-3. Im Quelltext: `moduleId` der `@MenuAnnotation` am Wurzelmenue des Moduls.
+3. In the source: the `moduleId` of the `@MenuAnnotation` on the module's root menu.
 
-Ein konfigurierter Key, den kein Menuepunkt beansprucht, bricht den Start **nicht** — er wird beim
-Start als WARN gemeldet (inklusive der Liste der bekannten Keys).
+A configured key that no menu item claims does **not** break startup — it is reported as a WARN
+at startup (including the list of known keys).
 
-## Wie Menue, Kachel, PageGuard und Registry zusammenspielen
+## How menu, tile, PageGuard and registry interact
 
-| Baustein | Wirkung |
-|----------|---------|
-| `ModuleRoleProperties` (`plaintext-root-interfaces`) | bindet `plaintext.menu.module-roles`, kanonisiert Keys/Rollen |
-| `ModuleRoleService` (`plaintext-root-menu`) | leitet die Modul-Zugehoerigkeit jedes Menuepunkts aus `moduleId` + Elternkette ab und schreibt die geforderten Rollen an den Menuepunkt |
-| `MenuItemImpl.isOn()` | prueft die Modul-Rolle als vierten Schritt — Menue **und** `PageAccessGuard` fragen beide diese Methode |
-| `TileItemImpl.isOn()` | ordnet die Kachel ueber ihren `link` (ersatzweise `menuTitle`) dem Modul-Menue zu |
-| `ModuleRoleDeclarationProvider` (`plaintext-root-common`) | meldet die konfigurierten Rollen automatisch an die `PlaintextRoleRegistry` |
+| Building block | Effect |
+|----------------|--------|
+| `ModuleRoleProperties` (`plaintext-root-interfaces`) | binds `plaintext.menu.module-roles`, canonicalizes keys and roles |
+| `ModuleRoleService` (`plaintext-root-menu`) | derives every menu item's module membership from `moduleId` + parent chain and writes the required roles onto the menu item |
+| `MenuItemImpl.isOn()` | checks the module role as its second step — the menu **and** the `PageAccessGuard` both call this method |
+| `TileItemImpl.isOn()` | maps the tile to the module menu via its `link` (or `menuTitle` as a fallback) |
+| `ModuleRoleDeclarationProvider` (`plaintext-root-common`) | registers the configured roles with the `PlaintextRoleRegistry` automatically |
 
-Weil die Pruefung **in** `MenuItemImpl.isOn()` sitzt, greift sie auch dort, wo die Eltern-Vererbung
-des Guards ausdruecklich nicht greift: Untermenues, die selbst `roles = {USER, ADMIN, ROOT}`
-deklarieren (der Normalfall), sind sonst per Direkt-URL offen.
+Because the check sits **inside** `MenuItemImpl.isOn()`, it also applies where the guard's parent
+inheritance explicitly does not: submenus that declare `roles = {USER, ADMIN, ROOT}` themselves
+(the normal case) would otherwise be open via a direct URL.
 
-## Rolle vergeben
+## Granting the role
 
-Die konfigurierten Rollen erscheinen **automatisch** in der Benutzerverwaltung — die App braucht
-dafuer keinen eigenen `PlaintextRoleProvider`. Die Beschreibung wird generiert:
+The configured roles appear in the user administration **automatically** — the app needs no
+`PlaintextRoleProvider` of its own for that. The description is generated:
 
-* eine Rolle fuer ein Modul → *„Zugriff auf das Modul wiki"*
-* eine Rolle fuer mehrere Module → *„Zugriff auf die Module buchhaltung, postkonto, rechnungen"*
+* one role for one module → *"Zugriff auf das Modul wiki"* ("access to the module wiki")
+* one role for several modules → *"Zugriff auf die Module buchhaltung, postkonto, rechnungen"*
+  ("access to the modules buchhaltung, postkonto, rechnungen")
 
-Deklariert die App fuer dieselbe Rolle bereits einen eigenen Provider (z.B. guild fuer `finanzen`),
-gewinnt dessen ausfuehrlichere Beschreibung.
+If the app already declares its own provider for the same role (guild for `finanzen`, for
+example), that provider's more detailed description wins.
 
-> **Nach dem Deploy:** Eine neu konfigurierte Modul-Rolle hat noch niemand. Bis sie in der
-> Benutzerverwaltung vergeben wird, sehen nur `admin` und `root` das Modul.
+> **After the deployment:** nobody holds a newly configured module role yet. Until it is granted
+> in the user administration, only `admin` and `root` see the module.
 
 ---
 
-# Zustaendigkeitsregel: root sagt WELCHE, admin sagt WER
+# Rule of responsibility: root says WHICH, admin says WHO
 
-*seit root 1.608.0*
+*since root 1.608.0*
 
-Die Sichtbarkeit eines Menuepunkts hat **zwei Zustaendige**, und sie beantworten verschiedene
-Fragen. Wer die beiden verwechselt, sucht den Fehler an der falschen Stelle.
+A menu item's visibility has **two responsible parties**, and they answer different questions.
+Confusing the two means looking for the fault in the wrong place.
 
-| Frage | Wer | Werkzeug |
-|-------|-----|----------|
-| **Welche Module gehoeren zu diesem Mandanten?** | `root` | `Root → Menuesteuerung` (Mandanten-White-/Blacklist) |
-| **Wer darf sie benutzen?** | `admin` | Modul-Rollen an Benutzer vergeben (Benutzerverwaltung, Rollenzuteilung) |
+| Question | Who | Tool |
+|----------|-----|------|
+| **Which modules belong to this tenant?** | `root` | `Root → Menuesteuerung` (menu visibility; tenant whitelist/blacklist) |
+| **Who is allowed to use them?** | `admin` | granting module roles to users (user administration, role assignment) |
 
-Die vier Filter in `MenuItemImpl.isOn()` bleiben **UND-verknuepft**: eine Rolle hebt den
-Mandantenfilter **nicht** auf. Das ist Absicht — der Mandantenfilter beschreibt den Zuschnitt eines
-Mandanten, nicht ein Recht.
+The four filters in `MenuItemImpl.isOn()` stay **AND-combined**: a role does **not** override the
+tenant filter. That is deliberate — the tenant filter describes a tenant's scope, not a
+permission.
 
-## Die vier Filter im Ueberblick
+## The four filters at a glance
 
-| # | Filter | Quelle | Bypass |
+| # | Filter | Source | Bypass |
 |---|--------|--------|--------|
-| 1 | Rolle | `@MenuAnnotation(roles = …)` | — |
-| 2 | Modul-Rolle | `plaintext.menu.module-roles` | `admin`, `root` |
-| 3 | Modul aktiv | `Root → Module` | — |
-| 4 | Mandant | Mandanten-White-/Blacklist | **nur** der Root-Zweig fuer `root` |
+| 1 | Role | `@MenuAnnotation(roles = …)` | — |
+| 2 | Module role | `plaintext.menu.module-roles` | `admin`, `root` |
+| 3 | Module enabled | `Root → Module` | — |
+| 4 | Tenant | tenant whitelist/blacklist | **only** the root branch, for `root` |
 
-## Die eine Ausnahme: der Root-Zweig
+## The one exception: the root branch
 
-Der Mandantenfilter kennt genau **eine** Ausnahme, und sie ist so eng gefasst wie moeglich:
+The tenant filter has exactly **one** exception, and it is drawn as narrowly as possible:
 
 ```java
 // MenuItemImpl
@@ -199,112 +201,113 @@ public boolean isRootBranchExemptFromMandate() {
 }
 ```
 
-Beide Bedingungen muessen zutreffen: der Menuepunkt liegt im **Root-Zweig** (Titel `Root` oder
-Elternmenue `Root`) **und** der Benutzer haelt `ROLE_ROOT`.
+Both conditions must hold: the menu item lies in the **root branch** (title `Root` or parent menu
+`Root`) **and** the user holds `ROLE_ROOT`.
 
-**Warum es sie gibt:** Die Menuesteuerung selbst (`Root | Menuesteuerung`) haengt im Root-Zweig.
-Steht ein Mandant im Whitelist-Modus ohne diesen Titel, sperrt sich root aus der einzigen
-Oberflaeche aus, mit der die Liste zu korrigieren waere — per Menue *und* per Direkt-URL, weil der
-`PageAccessGuard` dieselbe `isOn()` auswertet. Erhoben auf app.plaintext.ch: in **8 von 10**
-Mandanten war die Menuesteuerung so unerreichbar.
+**Why it exists:** the menu visibility page itself (`Root | Menuesteuerung`) hangs in the root
+branch. If a tenant is in whitelist mode without that title, root locks itself out of the only UI
+that could correct the list — through the menu *and* through a direct URL, because the
+`PageAccessGuard` evaluates the same `isOn()`. Measured on app.plaintext.ch: in **8 out of 10**
+tenants the menu visibility page was unreachable this way.
 
-**Was sie nicht ist:** kein genereller Bypass. Ausserhalb des Root-Zweigs bleibt der Mandantenfilter
-auch fuer root scharf, und die drei anderen Filter bleiben ueberall unangetastet — ein deaktiviertes
-Modul bleibt auch im Root-Zweig deaktiviert.
+**What it is not:** a general bypass. Outside the root branch the tenant filter stays in force for
+root as well, and the other three filters remain untouched everywhere — a disabled module stays
+disabled in the root branch too.
 
-## Mandanten-Listen: zwei Formen von Eintraegen
+## Tenant lists: two forms of entry
 
-| Form | Beispiel | Wirkung |
-|------|----------|---------|
-| **Modul** | `modul:wiki` | das ganze Modul samt allen Untermenues |
-| **Menue-Titel** | `Wiki \| Projekte` | genau dieser eine Menuepunkt |
+| Form | Example | Effect |
+|------|---------|--------|
+| **Module** | `modul:wiki` | the whole module including all submenus |
+| **Menu title** | `Wiki \| Projekte` | exactly this one menu item |
 
-Der Modul-Key ist **derselbe**, den auch die Modul-Rollen benutzen (`moduleId`, ersatzweise die
-Menu-Root-Id). Damit sprechen beide Zustaendigen dasselbe Vokabular: `ModuleRoleService.resolve()`
-schreibt die Keys als `MenuItemImpl.moduleKeys` an jeden Menuepunkt, und `MenuItemImpl` reicht sie
-ueber `MenuVisibilityProvider.isMenuVisible(titel, moduleKeys)` an die Mandanten-Liste weiter.
+The module key is **the same** one the module roles use (`moduleId`, or the menu root id as a
+fallback). Both responsible parties therefore speak the same vocabulary:
+`ModuleRoleService.resolve()` writes the keys onto every menu item as `MenuItemImpl.moduleKeys`,
+and `MenuItemImpl` passes them on to the tenant list via
+`MenuVisibilityProvider.isMenuVisible(titel, moduleKeys)`.
 
-**Warum der Praefix `modul:` und nicht die nackte `moduleId`** — die Umstellung muss verlustfrei
-sein. Eine nackte `moduleId` waere mehrdeutig: ein Modul mit der Id `wiki` hat sein Wurzelmenue in
-aller Regel unter dem Titel `Wiki`, und im Bestand stehen zusaetzlich Eintraege, die auf keinen
-Titel mehr passen (Umbenennungen — auf app.plaintext.ch 19 von 123). Ein nackter Key waere damit
-mal Titel, mal Modul, je nach Zustand des Menuebaums. Mit dem Praefix ist die Absicht am Eintrag
-selbst ablesbar: **alles ohne Praefix ist und bleibt ein Titel**, und weil kein Menue-Titel mit
-`modul:` beginnt, kann kein Bestandseintrag seine Bedeutung aendern.
+**Why the prefix `modul:` and not the bare `moduleId`** — the changeover has to be lossless. A
+bare `moduleId` would be ambiguous: a module with the id `wiki` usually has its root menu under
+the title `Wiki`, and the existing data additionally holds entries that no longer match any title
+(renames — 19 out of 123 on app.plaintext.ch). A bare key would therefore be a title sometimes
+and a module other times, depending on the state of the menu tree. With the prefix, the intent
+can be read off the entry itself: **everything without a prefix is and stays a title**, and
+because no menu title starts with `modul:`, no existing entry can change its meaning.
 
-Die Detailseite fuehrt drei getrennte Auswahlen — Module, Menuepunkte und **Eintraege ohne
-Entsprechung im Menuebaum**. Die dritte Gruppe ist vorausgewaehlt: Speichern wirft nichts weg, was
-der Bearbeiter nicht bewusst abgewaehlt hat.
+The detail page keeps three separate selections — modules, menu items and **entries with no
+counterpart in the menu tree**. The third group is preselected: saving throws nothing away that
+the editor has not deliberately deselected.
 
-## Tote Listen-Eintraege
+## Dead list entries
 
-Beim Start meldet `MandateMenuStartupReport` pro Mandant, welche Eintraege im aktuellen Menuebaum
-ins Leere zeigen — analog zur bestehenden Meldung `ModuleRoleService: Modul-Rolle konfiguriert fuer
-unbekannten Modul-Key`:
+At startup, `MandateMenuStartupReport` reports per tenant which entries point nowhere in the
+current menu tree — analogous to the existing message `ModuleRoleService: Modul-Rolle
+konfiguriert fuer unbekannten Modul-Key`:
 
 ```
 WARN  Menuesteuerung: Mandant 'lauftage2026' (Whitelist-Modus) hat 3 Listen-Eintraege ohne
       Entsprechung im Menuebaum — sie wirken nicht (umbenannter Menuepunkt?): [...]
 ```
 
-Wirkung eines toten Eintrags: im **Blacklist**-Modus blendet er nichts mehr aus; im
-**Whitelist**-Modus blendet er den umbenannten Punkt still **aus**.
+Effect of a dead entry: in **blacklist** mode it no longer hides anything; in **whitelist** mode
+it silently **hides** the renamed item.
 
-## Diagnose-Ansicht
+## Diagnostics view
 
-`Root → Menue-Diagnose` (`menudiagnose.html`, nur ROOT) zeigt jeden Menuepunkt mit den vier Filtern
-als eigene Spalten und nennt zu jedem *Nein* den Grund („Rolle WIKI fehlt", „nicht in Whitelist von
-lauftage2026", „Modul 'wiki' ist deaktiviert").
+`Root → Menue-Diagnose` (`menudiagnose.html`, ROOT only) shows every menu item with the four
+filters as separate columns and gives a reason for every *no* ("Rolle WIKI fehlt", "nicht in
+Whitelist von lauftage2026", "Modul 'wiki' ist deaktiviert").
 
-Die Ja/Nein-Werte kommen aus **denselben** Methoden, die auch Menue und `PageAccessGuard` benutzen
-(`MenuItemImpl.isRoleVisible()`, `isModuleRoleVisible()`, `isModuleVisible()`, `isMandateVisible()`
-— dafuer oeffentlich). `MenuDiagnoseService` bildet nur den Text dazu; eine zweite Kopie der Logik
-wuerde abdriften.
+The yes/no values come from **the same** methods the menu and the `PageAccessGuard` use
+(`MenuItemImpl.isRoleVisible()`, `isModuleRoleVisible()`, `isModuleVisible()`,
+`isMandateVisible()` — public for exactly that reason). `MenuDiagnoseService` only produces the
+accompanying text; a second copy of the logic would drift.
 
-Im **Impersonate**-Modus zeigt die Tabelle die Sicht des impersonierten Benutzers, ohne Zutun: die
-Menuepunkte befragen den `SecurityProvider` der laufenden Session, und die Impersonation tauscht
-genau dort die `Authentication` aus.
+In **impersonate** mode the table shows the impersonated user's view, without any extra work: the
+menu items query the `SecurityProvider` of the running session, and impersonation swaps out the
+`Authentication` in exactly that place.
 
-## Welche Rollen darf admin vergeben
+## Which roles admin may grant
 
-`PrivilegedRoleRules` (`plaintext-root-common`, `ch.plaintext.framework`) ist die eine Stelle, an
-der das entschieden wird — benutzt von der Benutzerverwaltung **und** der Rollenzuteilung.
+`PrivilegedRoleRules` (`plaintext-root-common`, `ch.plaintext.framework`) is the single place
+where that is decided — used by the user administration **and** by the role assignment.
 
-| Rolle | admin darf neu vergeben | Grund |
-|-------|-------------------------|-------|
-| Modul-Rollen (`wiki`, `finanzen`, …) | **ja** | reine Zugangsrollen zu einem Fachmodul — genau admins Aufgabe |
-| `user` | ja | keine Verwaltungsrechte |
-| `admin` | nein | admin koennte sonst seine eigene Beschraenkung aufheben |
-| `root` | nein | Verwaltungsrechte |
-| `PROPERTY_*` | nein | wirkt ueber den eigenen Mandanten hinaus (Mandanten-Wechsel) |
+| Role | admin may newly grant | Reason |
+|------|-----------------------|--------|
+| module roles (`wiki`, `finanzen`, …) | **yes** | pure access roles for a business module — precisely admin's job |
+| `user` | yes | no administrative rights |
+| `admin` | no | admin could otherwise lift its own restriction |
+| `root` | no | administrative rights |
+| `PROPERTY_*` | no | takes effect beyond one's own tenant (switching tenants) |
 
-**Bestand bleibt unangetastet:** die Regel gilt nur fuer das NEU-Vergeben. Eine bereits
-persistierte Zuweisung bleibt bestehen und editierbar; beide Aufrufer pruefen deshalb gegen den
-persistierten Stand, nicht gegen das Formular.
+**Existing assignments stay untouched:** the rule only governs granting something NEW. An
+assignment that is already persisted remains in place and editable; both callers therefore check
+against the persisted state, not against the form.
 
-Die Rollenzuteilung (`Admin → Rollenzuteilung`) braucht dieselbe Pruefung wie die
-Benutzerverwaltung — sonst waere sie der Umweg, auf dem ein admin sich `ROLE_ROOT` zuteilt.
+The role assignment (`Admin → Rollenzuteilung`) needs the same check as the user administration —
+otherwise it would be the detour by which an admin grants themselves `ROLE_ROOT`.
 
-## Mandanten entfernen
+## Removing tenants
 
-`Root → Mandate → Aus Verwaltung entfernen` loescht **nur, was das Framework besitzt**: die
-`mandate_menu_config` des Mandanten und damit seinen Eintrag in der Auswahlliste. Die Fachdaten der
-Anwendung bleiben bestehen — das Framework kennt diese Tabellen nicht (in plaintext-app liegen sie
-ueber acht Tabellen verteilt). Vorher entfernte die Aktion den Mandanten nur aus einer `ArrayList`
-in der Session und meldete trotzdem Erfolg; nach einem `reload()` war er wieder da.
+`Root → Mandate → Aus Verwaltung entfernen` deletes **only what the framework owns**: the
+tenant's `mandate_menu_config`, and with it its entry in the selection list. The application's
+business data stays — the framework does not know those tables (in plaintext-app they are spread
+over eight tables). Previously the action only removed the tenant from an `ArrayList` in the
+session and reported success anyway; after a `reload()` it was back.
 
-Zwei Fallen beim Suchen nach Mandantendaten:
+Two traps when searching for tenant data:
 
-1. **Mandantenzugehoerigkeit gibt es zweimal** — als Rollen-Property `PROPERTY_MANDAT_<NAME>` am
-   Benutzer (Heimat-Mandant) und in der Tabelle `user_mandate` (Zusatz-Mandate). Wer nur die erste
-   prueft, meldet „keine Benutzer betroffen", obwohl welche zugeordnet sind.
-2. **Mandantennamen sind nicht case-konsistent** — in `user_session` stand `BUTSCHER` gross,
-   waehrend derselbe Mandant ueberall sonst `butscher` klein geschrieben ist. Immer
-   case-insensitiv vergleichen (`findByMandatIgnoreCase`, `findByMandateNameIgnoreCase`).
+1. **Tenant membership exists twice** — as the role property `PROPERTY_MANDAT_<NAME>` on the user
+   (home tenant) and in the `user_mandate` table (additional tenants). Anyone checking only the
+   first reports "no users affected" even though some are assigned.
+2. **Tenant names are not case-consistent** — in `user_session` it was stored as `BUTSCHER` in
+   uppercase, while the same tenant is written `butscher` in lowercase everywhere else. Always
+   compare case-insensitively (`findByMandatIgnoreCase`, `findByMandateNameIgnoreCase`).
 
-## Anleitungsseiten in der Anwendung
+## Guide pages inside the application
 
-| Seite | Fuer | Inhalt |
-|-------|------|--------|
-| `Root → Menuesteuerung → ⓘ Anleitung` (Info-Knopf, kein eigener Menuepunkt seit 1.634.0) | ROOT | White-/Blacklist, wann welcher Modus, Modul- vs. Titel-Eintrag, Diagnose lesen, Impersonate, Mandanten anlegen/entfernen |
-| `Admin → Anleitung Modul-Rollen` | ADMIN, ROOT | Modul-Rollen vergeben, was sie bewirken, Zusammenspiel mit den Mandanten-Listen, wann man root braucht |
+| Page | For | Content |
+|------|-----|---------|
+| `Root → Menuesteuerung → ⓘ Anleitung` (info button, no menu item of its own since 1.634.0) | ROOT | whitelist/blacklist, when to use which mode, module vs. title entry, reading the diagnostics, impersonate, creating and removing tenants |
+| `Admin → Anleitung Modul-Rollen` | ADMIN, ROOT | granting module roles, what they do, interplay with the tenant lists, when you need root |

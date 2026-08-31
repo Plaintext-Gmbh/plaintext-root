@@ -13,10 +13,10 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Zentrale Modul-Verwaltung (Task #016): sammelt per Spring-Discovery alle {@link ModuleDescriptor}-Beans
- * ein (wie das {@code PlaintextCron}-Muster — keine zentrale Registry) und verwaltet ihren Ein-/Aus-Zustand
- * in {@link ModuleConfig}. {@link #isEnabled(String)} ist die API, die Feature-Module in ihren
- * Crons/Listenern abfragen können, um sich funktional zu deaktivieren (Default: aktiviert).
+ * Central module management (Task #016): collects all {@link ModuleDescriptor} beans via Spring
+ * discovery (like the {@code PlaintextCron} pattern — no central registry) and manages their
+ * on/off state in {@link ModuleConfig}. {@link #isEnabled(String)} is the API that feature modules
+ * can query in their crons/listeners in order to deactivate themselves functionally (default: enabled).
  */
 @Service
 @Slf4j
@@ -25,11 +25,11 @@ public class ModuleService implements ModuleEnablementProvider {
     @Autowired
     private ModuleConfigRepository configRepository;
 
-    /** Alle Module, die das Discovery-Interface implementieren (Opt-in; leer, wenn keins). */
+    /** All modules that implement the discovery interface (opt-in; empty if there is none). */
     @Autowired(required = false)
     private List<ModuleDescriptor> descriptors = new ArrayList<>();
 
-    /** Ein-/Aus-Zustand eines Moduls (Default: aktiviert, wenn keine Zeile vorhanden). */
+    /** On/off state of a module (default: enabled if no row exists). */
     @Override
     public boolean isEnabled(String moduleId) {
         return configRepository.findByModuleId(moduleId).map(ModuleConfig::isEnabled).orElse(true);
@@ -47,7 +47,7 @@ public class ModuleService implements ModuleEnablementProvider {
         log.info("Modul '{}' {}", moduleId, enabled ? "aktiviert" : "deaktiviert");
     }
 
-    /** Liste aller entdeckten Module (Anzeigename, Version, Zustand), alphabetisch. */
+    /** List of all discovered modules (display name, version, state), alphabetically. */
     public List<ModuleView> list() {
         List<ModuleView> result = new ArrayList<>();
         for (ModuleDescriptor d : descriptors) {
@@ -58,7 +58,7 @@ public class ModuleService implements ModuleEnablementProvider {
         return result;
     }
 
-    /** Defensiv: ein einzelnes fehlerhaftes Modul soll die ganze Liste nicht abschiessen. */
+    /** Defensive: a single faulty module must not take down the entire list. */
     private static String sicher(java.util.function.Supplier<String> s, String fallback) {
         try {
             String v = s.get();

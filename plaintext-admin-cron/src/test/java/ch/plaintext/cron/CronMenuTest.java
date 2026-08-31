@@ -54,7 +54,7 @@ class CronMenuTest {
     @Test
     void menuAnnotationHasCorrectRoles() {
         MenuAnnotation annotation = CronMenu.class.getAnnotation(MenuAnnotation.class);
-        // Zustandsbericht 29.08.2026 (H4): ADMIN_PAGES erlaubt ADMIN|ROOT — Menue sagt dasselbe.
+        // Status report 29.08.2026 (H4): ADMIN_PAGES allows ADMIN|ROOT — the menu says the same.
         assertThat(annotation.roles()).containsExactly("ADMIN", "ROOT");
     }
 }

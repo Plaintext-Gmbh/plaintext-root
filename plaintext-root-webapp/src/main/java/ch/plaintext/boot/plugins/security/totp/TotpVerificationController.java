@@ -22,18 +22,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.io.IOException;
 
 /**
- * Zweiter Schritt der Anmeldung: nimmt den 6-stelligen TOTP-Code (oder einen Recovery-Code)
- * entgegen und finalisiert die zuvor zurueckgehaltene Authentication.
+ * Second step of the login: takes the 6-digit TOTP code (or a recovery code)
+ * and finalizes the previously withheld authentication.
  *
- * <h2>Sicherheits-Invariante (kein Bypass)</h2>
+ * <h2>Security invariant (no bypass)</h2>
  * <ul>
- *   <li>Ohne "pending" Session-Zustand (den nur der {@link PlaintextAuthenticationSuccessHandler}
- *       nach korrektem Passwort setzt) ist jede Aktion hier wirkungslos → Redirect auf Login.
- *       Ein Angreifer kann {@code /login/totp} also nicht "kalt" aufrufen, um sich anzumelden.</li>
- *   <li>Die volle Authentication wird erst NACH gueltigem Code in den {@link SecurityContext}
- *       gesetzt und persistiert. Vorher ist der Request-Kontext anonym.</li>
- *   <li>Fehlversuche werden per {@link AccountLockoutService} gezaehlt (Brute-Force-Schutz auf
- *       den zweiten Faktor); ein Lockout invalidiert den pending-Zustand.</li>
+ *   <li>Without a "pending" session state (which only the {@link PlaintextAuthenticationSuccessHandler}
+ *       sets after a correct password) every action here has no effect → redirect to the login.
+ *       An attacker therefore cannot call {@code /login/totp} "cold" in order to log in.</li>
+ *   <li>The full authentication is only put into the {@link SecurityContext} and persisted
+ *       AFTER a valid code. Before that the request context is anonymous.</li>
+ *   <li>Failed attempts are counted via {@link AccountLockoutService} (brute-force protection on
+ *       the second factor); a lockout invalidates the pending state.</li>
  * </ul>
  */
 @Controller
@@ -49,8 +49,8 @@ public class TotpVerificationController {
     private final PlaintextAuthenticationSuccessHandler successHandler;
 
     /**
-     * Rendert die Code-Eingabeseite. Nur erreichbar, wenn ein pending-Zustand existiert –
-     * sonst zurueck zum Login (kein Anhaltspunkt fuer Angreifer, ob ein User existiert).
+     * Renders the code entry page. Only reachable if a pending state exists -
+     * otherwise back to the login (no clue for attackers whether a user exists).
      */
     @GetMapping(STEP_PATH)
     public String showTotpPage(HttpServletRequest request) {
@@ -58,13 +58,13 @@ public class TotpVerificationController {
         if (pending == null) {
             return "redirect:/login.html";
         }
-        // Facelet unter META-INF/resources/login-totp.xhtml
+        // facelet under META-INF/resources/login-totp.xhtml
         return "forward:/login-totp.xhtml";
     }
 
     /**
-     * Verifiziert den zweiten Faktor. Bei Erfolg: volle Authentication setzen + Redirect aufs
-     * urspruengliche Ziel. Bei Fehler: zurueck mit Fehler-Flag (Rate-Limit greift).
+     * Verifies the second factor. On success: set the full authentication + redirect to the
+     * original target. On failure: back with an error flag (the rate limit applies).
      */
     @PostMapping(STEP_PATH)
     public void verify(@RequestParam(name = "code", required = false) String code,
@@ -73,19 +73,19 @@ public class TotpVerificationController {
         HttpSession session = request.getSession(false);
         TotpPendingAuthentication pending = readPending(session);
         if (pending == null) {
-            // Kein legitimer Zwischenzustand – nichts finalisieren.
+            // No legitimate intermediate state - do not finalize anything.
             response.sendRedirect(request.getContextPath() + "/login.html");
             return;
         }
 
         String username = pending.username();
-        // Eigener Lockout-Schluessel fuer den ZWEITEN Faktor: TOTP-Fehlversuche duerfen NICHT den
-        // Passwort-Login (Schluessel = username) sperren – sonst wuerde ein vertippter Code den
-        // legitimen User aus BEIDEN Faktoren aussperren. Der zweite Faktor hat seine eigene,
-        // getrennte Brute-Force-Zaehlung.
+        // Separate lockout key for the SECOND factor: TOTP failures must NOT lock the
+        // password login (key = username) - otherwise a mistyped code would lock the
+        // legitimate user out of BOTH factors. The second factor has its own,
+        // separate brute-force counting.
         String totpLockKey = "totp:" + username;
 
-        // Brute-Force-Schutz auf dem zweiten Faktor (getrennt vom Passwort-Faktor).
+        // Brute-force protection on the second factor (separate from the password factor).
         if (lockoutService.isLocked(totpLockKey)) {
             invalidatePending(session);
             log.warn("TOTP: user '{}' locked out during second factor", username);
@@ -101,7 +101,7 @@ public class TotpVerificationController {
             return;
         }
 
-        // Erfolg: TOTP-Fehlerzaehler zuruecksetzen, pending verbrauchen und volle Auth herstellen.
+        // Success: reset the TOTP failure counter, consume the pending state and establish the full auth.
         lockoutService.recordSuccess(totpLockKey);
         Authentication authentication = pending.authentication();
         String targetUrl = pending.targetUrl();
@@ -112,7 +112,7 @@ public class TotpVerificationController {
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, request, response);
 
-        // Login-Event erst jetzt publizieren – Login ist nun vollstaendig.
+        // Only publish the login event now - the login is complete at this point.
         successHandler.publishLoginEvent(request, authentication);
 
         log.debug("TOTP: second factor OK for user '{}', redirect to {}", username, targetUrl);

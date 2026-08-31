@@ -12,36 +12,36 @@ import org.springframework.core.Ordered;
 import org.springframework.web.filter.ForwardedHeaderFilter;
 
 /**
- * Registriert den {@link RateLimitFilter} an der richtigen Stelle der Servlet-Filterkette.
+ * Registers the {@link RateLimitFilter} at the right place in the servlet filter chain.
  *
- * <p>SECURITY (Karte 303): Der Filter war zuvor nur ein {@code @Component} ohne Order. Spring Boot
- * registriert solche Filter mit {@code Ordered.LOWEST_PRECEDENCE}, die
- * {@code springSecurityFilterChain} laeuft dagegen bei
- * {@code SecurityProperties.DEFAULT_FILTER_ORDER = -100}. Damit lief das Rate-Limiting
- * <em>hinter</em> Security und die Limits fuer {@code POST /login} sowie {@code POST /ott/generate}
- * konnten gar nicht greifen.
+ * <p>SECURITY (card 303): the filter previously was just a {@code @Component} without an order.
+ * Spring Boot registers such filters with {@code Ordered.LOWEST_PRECEDENCE}, whereas the
+ * {@code springSecurityFilterChain} runs at
+ * {@code SecurityProperties.DEFAULT_FILTER_ORDER = -100}. That way the rate limiting ran
+ * <em>behind</em> security and the limits for {@code POST /login} as well as {@code POST /ott/generate}
+ * could not take effect at all.
  *
- * <p>Warum ganz nach vorne und nicht nur knapp vor Security: der Filter muss die <b>echte</b>
- * Peer-Adresse und die <b>ungefilterte</b> {@code X-Forwarded-For}-Kette sehen, um den Bucket-Key
- * spoof-sicher bestimmen zu koennen (siehe {@link ClientIpResolver}). Springs
- * {@code ForwardedHeaderFilter} (aktiviert ueber {@code server.forward-headers-strategy=FRAMEWORK})
- * wird von Spring Boot bei {@code Ordered.HIGHEST_PRECEDENCE} registriert, ersetzt
- * {@code getRemoteAddr()} durch das <em>erste</em> — also vom Client frei waehlbare — Element der
- * XFF-Kette und blendet die {@code X-Forwarded-*}-Header danach aus. Ein Rate-Limiter dahinter
- * koennte prinzipiell nicht spoof-sicher sein.
+ * <p>Why all the way to the front and not just barely ahead of security: the filter has to see the
+ * <b>real</b> peer address and the <b>unfiltered</b> {@code X-Forwarded-For} chain in order to be able
+ * to determine the bucket key spoof-safely (see {@link ClientIpResolver}). Spring's
+ * {@code ForwardedHeaderFilter} (activated via {@code server.forward-headers-strategy=FRAMEWORK})
+ * is registered by Spring Boot at {@code Ordered.HIGHEST_PRECEDENCE}, replaces
+ * {@code getRemoteAddr()} with the <em>first</em> — that is, freely chosen by the client — element of
+ * the XFF chain and hides the {@code X-Forwarded-*} headers afterwards. A rate limiter behind it
+ * could not possibly be spoof-safe.
  *
- * <p>Deshalb wird die von Spring Boot erzeugte {@code forwardedHeaderFilter}-Registrierung hier per
- * {@link BeanPostProcessor} um zehn Positionen nach hinten geschoben. Bewusst nicht per
- * gleichnamiger Ersatz-Bean: das haengt daran, dass die Auto-Configuration-Bean sich zurueckzieht,
- * und der Filter wuerde bei einer kuenftigen Boot-Aenderung im Zweifel doppelt oder gar nicht
- * registriert. Der BeanPostProcessor aendert nur den Order-Wert; Filter-Instanz, Dispatcher-Typen
- * und die {@code server.forward-headers-strategy}-Semantik bleiben unangetastet. Fuer alles hinter
- * dem Rate-Limiter — Security, JSF, URL-Erzeugung — ist das Verhalten damit unveraendert.
+ * <p>Therefore the {@code forwardedHeaderFilter} registration created by Spring Boot is moved back
+ * by ten positions here via a {@link BeanPostProcessor}. Deliberately not via a
+ * replacement bean of the same name: that would depend on the auto-configuration bean backing off,
+ * and on a future Boot change the filter would in case of doubt be registered twice or not at
+ * all. The BeanPostProcessor only changes the order value; the filter instance, the dispatcher types
+ * and the {@code server.forward-headers-strategy} semantics remain untouched. For everything behind
+ * the rate limiter — security, JSF, URL generation — the behaviour is therefore unchanged.
  *
- * <p>Resultierende Reihenfolge:
+ * <p>Resulting order:
  * <pre>
- *   RateLimitFilter        HIGHEST_PRECEDENCE       (echte Peer-Adresse + rohe XFF-Kette)
- *   ForwardedHeaderFilter  HIGHEST_PRECEDENCE + 10  (wie bisher: Scheme/Host/RemoteAddr fixen)
+ *   RateLimitFilter        HIGHEST_PRECEDENCE       (real peer address + raw XFF chain)
+ *   ForwardedHeaderFilter  HIGHEST_PRECEDENCE + 10  (as before: fix scheme/host/remoteAddr)
  *   ...
  *   springSecurityFilterChain  -100
  * </pre>
@@ -62,8 +62,8 @@ public class RateLimitFilterConfig {
     }
 
     /**
-     * Schiebt Springs {@code ForwardedHeaderFilter} hinter den Rate-Limiter. Ohne diesen Eingriff
-     * saehe der Rate-Limiter nur noch die vom Client selbst gesetzte XFF-Adresse.
+     * Moves Spring's {@code ForwardedHeaderFilter} behind the rate limiter. Without this
+     * intervention the rate limiter would only see the XFF address set by the client itself.
      */
     @Bean
     static BeanPostProcessor forwardedHeaderFilterOrderPostProcessor() {

@@ -29,15 +29,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests für {@link ApiTokenValidatorServiceImpl#validateRequest(String, String)}.
+ * Tests for {@link ApiTokenValidatorServiceImpl#validateRequest(String, String)}.
  * <p>
- * Sichert insbesondere die Regression der drei Audit-Befunde:
+ * In particular it secures the regression of the three audit findings:
  * <ul>
- *   <li>Echte exp-Prüfung (vorher nur {@code contains("exp")} — JEDER Token mit exp-Claim
- *       wurde als "expired" gemeldet, egal ob abgelaufen oder nicht).</li>
- *   <li>Der revoked-Zweig ist erreichbar (Signatur gültig, aber nicht in DB).</li>
- *   <li>Die JWT-Signatur wird genau EINMAL validiert (kein zweiter
- *       {@code validateToken}-Durchlauf).</li>
+ *   <li>A real exp check (previously only {@code contains("exp")} — EVERY token with an exp claim
+ *       was reported as "expired", whether it had actually expired or not).</li>
+ *   <li>The revoked branch is reachable (signature valid, but not in the DB).</li>
+ *   <li>The JWT signature is validated exactly ONCE (no second
+ *       {@code validateToken} run).</li>
  * </ul>
  */
 class ApiTokenValidatorServiceImplTest {
@@ -49,7 +49,7 @@ class ApiTokenValidatorServiceImplTest {
 
     private static final String PATH = "/api/test";
 
-    /** Baut einen JWT-förmigen Token (header.payload.sig) mit gegebenem Payload-JSON. */
+    /** Builds a JWT-shaped token (header.payload.sig) with the given payload JSON. */
     private static String tokenWithPayload(String payloadJson) {
         Base64.Encoder enc = Base64.getUrlEncoder().withoutPadding();
         String header = enc.encodeToString("{\"alg\":\"RS256\"}".getBytes(StandardCharsets.UTF_8));
@@ -85,7 +85,7 @@ class ApiTokenValidatorServiceImplTest {
         assertFalse(outcome.hasError());
         assertNull(outcome.getErrorResponse());
         assertEquals(result, outcome.getValidation());
-        // Dedup-Regression: Signatur genau EINMAL validiert, kein zweiter Voll-Validierungslauf.
+        // Dedup regression: signature validated exactly ONCE, no second full validation run.
         verify(jwtTokenService, times(1)).validateToken(anyString());
         verify(apiTokenService, never()).validateToken(anyString());
     }
@@ -106,8 +106,8 @@ class ApiTokenValidatorServiceImplTest {
 
     @Test
     void ungueltigeSignaturMitZukunftsExpGibtTokenInvalidNichtExpired() {
-        // Regression zum contains("exp")-Bug: exp-Claim vorhanden, aber in der ZUKUNFT →
-        // der Token ist nicht abgelaufen, sondern hat eine ungültige Signatur.
+        // Regression for the contains("exp") bug: exp claim present, but in the FUTURE →
+        // the token has not expired, it has an invalid signature.
         String token = tokenWithPayload("{\"userId\":7,\"exp\":" + Instant.now().plusSeconds(3600).getEpochSecond() + "}");
         when(jwtTokenService.validateToken(token)).thenReturn(Optional.empty());
 
@@ -118,7 +118,7 @@ class ApiTokenValidatorServiceImplTest {
 
     @Test
     void tokenOhneExpGiltAlsNichtAbgelaufen() {
-        // Dokumentierte Semantik: ohne exp-Claim nie "expired" → Invalid-Pfad.
+        // Documented semantics: without an exp claim never "expired" → invalid path.
         String token = tokenWithPayload("{\"userId\":7}");
         when(jwtTokenService.validateToken(token)).thenReturn(Optional.empty());
 
@@ -129,7 +129,7 @@ class ApiTokenValidatorServiceImplTest {
 
     @Test
     void gueltigeSignaturOhneDbEintragGibtTokenRevoked() {
-        // Revoked-Zweig (vorher toter Code): Signatur gültig, aber Hash nicht (mehr) in der DB.
+        // Revoked branch (previously dead code): signature valid, but the hash is not (any longer) in the DB.
         String token = tokenWithPayload("{\"userId\":7,\"exp\":" + Instant.now().plusSeconds(3600).getEpochSecond() + "}");
         JwtValidationResult jwt = new JwtValidationResult(7L, "plaintext", "u@x.ch", "cli", Instant.now().plusSeconds(3600), null, null);
         when(jwtTokenService.validateToken(token)).thenReturn(Optional.of(jwt));

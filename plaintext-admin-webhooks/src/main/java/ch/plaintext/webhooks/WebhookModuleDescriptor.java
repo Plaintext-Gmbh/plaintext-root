@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Meldet das Webhook-Modul an die zentrale Modul-Verwaltung (analog mailtemplate/i18n). */
+/** Registers the webhook module with the central module management (analogous to mailtemplate/i18n). */
 @Component
 public class WebhookModuleDescriptor implements ModuleDescriptor {
     @Override

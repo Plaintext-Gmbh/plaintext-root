@@ -1,56 +1,49 @@
-# Anmeldewege — und die beiden entfernten
+# Login paths — and the two that were removed
 
-Das Framework kennt drei Anmeldewege: **Form-Login**, **OAuth2/OIDC** und
-**One-Time-Token**. Alle drei laufen über dieselben Gates (Account-Lockout,
-Session-Fixation, zweiter Faktor).
+The framework knows three login paths: **form login**, **OAuth2/OIDC** and **one-time token**.
+All three run through the same gates (account lockout, session fixation, second factor).
 
-Zwei weitere Wege gab es einmal. Beide sind entfernt, und beide stehen hier
-weiterhin, weil ihre Begründung erklärt, warum es keinen dritten Sonderweg
-geben sollte.
+There used to be two more. Both have been removed, and both are still documented here, because
+their rationale explains why there should not be a third special path.
 
-## Entfernt: `GET /token-login?token=` (Karte 560, 05.08.2026)
+## Removed: `GET /token-login?token=` (card 560, 05.08.2026)
 
-Der Endpunkt tauschte ein ApiToken-JWT gegen eine vollwertige Browser-Session,
-gedacht für scriptgesteuerte bzw. Kiosk-Aufrufer (UI-Tests, PageTester, ZAP,
-Turnier-Kiosk).
+The endpoint exchanged an ApiToken JWT for a fully fledged browser session, intended for
+script-driven or kiosk callers (UI tests, PageTester, ZAP, tournament kiosk).
 
-**Warum er weg ist:** Er war eine zweite Tür neben der markierten. Ein Token, das
-für maschinellen Zugriff ausgestellt wurde, ergab dort eine Browser-Session mit
-den **vollen DB-Rollen** seines Besitzers. Karte 309 hat den Weg abgesichert
-(Gates, Scope-Zwang, Not-Aus), Karte 544 den Default-Scope von `ADMIN` auf
-`SESSION` verengt — aber solange die Tür existiert, kann sie wieder aufgehen.
+**Why it is gone:** it was a second door next to the marked one. A token that had been issued for
+machine access produced a browser session there, carrying the **full database roles** of its
+owner. Card 309 secured the path (gates, mandatory scope, emergency stop), card 544 narrowed the
+default scope from `ADMIN` to `SESSION` — but as long as the door exists, it can be opened again.
 
-**Vorbedingung war eine Messung, keine Annahme:** In 30 Tagen kein einziger
-erfolgreicher `/token-login` in PROD. Gemessen wurde gegen die Erfolgsmeldung des
-`SessionLoginFinalizer` (`"… Session aufgebaut fuer …"`), nicht gegen die
-Abwesenheit von Fehlermeldungen — und die Suche vorher an einem Positivfall
-geprüft, sonst wäre die Null wertlos gewesen.
+**The precondition was a measurement, not an assumption:** not a single successful
+`/token-login` in PROD over 30 days. The measurement was taken against the success message of the
+`SessionLoginFinalizer` (`"… Session aufgebaut fuer …"`), not against the absence of error
+messages — and the search itself was verified against a positive case beforehand, otherwise the
+zero would have been worthless.
 
-**Was mit entfernt wurde:** `TokenLoginController` samt Test,
-`plaintext.security.token-login.*` (`TokenLoginProperties`), der `permitAll`- und
-der CSRF-Eintrag in `PlaintextSecurityConfig`, der Rate-Limit-Zweig im
-`RateLimitFilter` und der Auswahlwert `SESSION` in der Token-Ausstellung.
+**What was removed along with it:** `TokenLoginController` and its test,
+`plaintext.security.token-login.*` (`TokenLoginProperties`), the `permitAll` entry and the CSRF
+entry in `PlaintextSecurityConfig`, the rate-limit branch in the `RateLimitFilter`, and the
+`SESSION` option in token issuance.
 
-**Was NICHT entfernt wurde:** Der Scope-**Wert** `SESSION` selbst. Bestehende
-Tokens tragen ihn im Claim; sie bleiben gültig und verhalten sich wie
-`READ`-Tokens (der `McpBearerTokenFilter` kennt den Wert nicht und vergibt
-`SCOPE_READ`). Er wird nur nicht mehr *angeboten* — dieselbe Behandlung wie
-`EINTRAGEN` in Karte 545. Damit braucht der Ausbau keine Migration.
+**What was NOT removed:** the scope **value** `SESSION` itself. Existing tokens carry it in their
+claim; they remain valid and behave like `READ` tokens (the `McpBearerTokenFilter` does not know
+the value and grants `SCOPE_READ`). It is merely no longer *offered* — the same treatment as
+`EINTRAGEN` in card 545. The removal therefore needs no migration.
 
-**Für Skripte gilt jetzt der Form-Login.** Aufrufer, die bisher
-`PLAINTEXT_KIOSK_TOKEN` an `/token-login` gehängt haben, brauchen den regulären
-Anmeldeweg; `scripts/lib/plaintext-login.sh` (plaintext-boot) kann beides und
-fällt ohne Token bereits auf den Form-Login zurück.
+**Scripts now use the form login.** Callers that used to append `PLAINTEXT_KIOSK_TOKEN` to
+`/token-login` need the regular login path; `scripts/lib/plaintext-login.sh` (plaintext-boot) can
+do both and already falls back to the form login when no token is present.
 
-## Entfernt: `GET /autologin?key=`
+## Removed: `GET /autologin?key=`
 
-Statischer Klartext-Key in `my_user_entity.autologin_key`, weder ablaufend noch
-widerrufbar. Endpunkt, Spalte und Konfiguration sind entfernt.
+A static plaintext key in `my_user_entity.autologin_key`, neither expiring nor revocable.
+Endpoint, column and configuration have been removed.
 
-## Warum es keinen vierten Weg geben sollte
+## Why there should be no fourth path
 
-Beide entfernten Wege hatten dieselbe Bauart: ein Credential in der URL, das
-ohne Passworteingabe eine Session eröffnet. Beide waren gut gemeint (Kiosk,
-Automation), und bei beiden ergab am Ende ein für einen engen Zweck
-ausgestelltes Geheimnis eine Vollsession. Wer einen ähnlichen Bedarf hat, baut
-ihn in den bestehenden Wegen ab — nicht daneben.
+Both removed paths were built the same way: a credential in the URL that opens a session without
+a password being entered. Both were well meant (kiosk, automation), and in both of them a secret
+issued for a narrow purpose ended up yielding a full session. Anyone with a similar need should
+satisfy it inside the existing paths — not next to them.

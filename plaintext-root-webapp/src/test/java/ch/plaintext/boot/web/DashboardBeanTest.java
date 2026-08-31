@@ -18,9 +18,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Sichert die defensive {@code init()}-Logik von {@link DashboardBean} ab: ein fehlerhafter
- * Kachel-Builder darf die Framework-Startseite NICHT mit einem Render-500 abschiessen — bei einer
- * Exception bleibt {@code tiles} eine leere (nicht-{@code null}) Liste und es fliegt kein Throw.
+ * Safeguards the defensive {@code init()} logic of {@link DashboardBean}: a faulty
+ * tile builder must NOT shoot down the framework start page with a render 500 — on an
+ * exception {@code tiles} stays an empty (non-{@code null}) list and nothing is thrown.
  */
 class DashboardBeanTest {
 
@@ -61,7 +61,7 @@ class DashboardBeanTest {
 
         DashboardBean bean = beanWith(builder);
 
-        // Defensive: kein Render-500 — init() schluckt die Exception und liefert eine leere Liste.
+        // Defensive: no render 500 — init() swallows the exception and returns an empty list.
         assertDoesNotThrow(bean::init);
         assertNotNull(bean.getTiles());
         assertTrue(bean.getTiles().isEmpty());

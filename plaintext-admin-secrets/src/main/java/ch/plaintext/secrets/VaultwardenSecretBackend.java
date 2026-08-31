@@ -10,9 +10,9 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
- * Backend über die bestehende Vaultwarden-Integration (root-common). Ändert die Boot-Property-
- * Injektion NICHT — nutzt nur die vorhandene {@link VaultwardenSecretService}-API (rotatePassword = set,
- * getSecret = Kommentar). Der Service-Bean existiert nur bei aktivem Vault → {@link ObjectProvider}.
+ * Backend via the existing Vaultwarden integration (root-common). Does NOT change the boot property
+ * injection — only uses the existing {@link VaultwardenSecretService} API (rotatePassword = set,
+ * getSecret = comment). The service bean exists only when the vault is active → {@link ObjectProvider}.
  */
 @Slf4j
 @Component
@@ -58,7 +58,7 @@ public class VaultwardenSecretBackend implements SecretBackend {
         if (v == null) {
             return null;
         }
-        // Vaultwarden-„Notes" bzw. ein Custom-Feld „comment" (best effort — kein Wert wird gelesen).
+        // Vaultwarden "Notes" or a custom field "comment" (best effort — no value is read).
         return v.getField(name, "notes").orElseGet(() -> v.getField(name, "comment").orElse(null));
     }
 

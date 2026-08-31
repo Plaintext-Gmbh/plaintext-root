@@ -15,9 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Implementierung einer Dashboard-Kachel – analog zu
- * {@link ch.plaintext.boot.menu.MenuItemImpl}. Hält die Metadaten der {@code @DashboardTile}-
- * Annotation und entscheidet über die Sichtbarkeit (Rollen + {@link MenuVisibilityProvider}).
+ * Implementation of a dashboard tile – analogous to
+ * {@link ch.plaintext.boot.menu.MenuItemImpl}. Holds the metadata of the {@code @DashboardTile}
+ * annotation and decides on visibility (roles + {@link MenuVisibilityProvider}).
  *
  * @author plaintext.ch
  */
@@ -39,20 +39,20 @@ public class TileItemImpl implements TileRegistry.TileItem {
     private BeanFactory beanFactory;
 
     /**
-     * Liefert den Titel, gegen den die mandatsspezifische Sichtbarkeit geprüft wird:
-     * {@link #menuTitle} falls gesetzt, sonst {@link #title}.
+     * Returns the title against which the tenant-specific visibility is checked:
+     * {@link #menuTitle} if set, otherwise {@link #title}.
      */
     public String getVisibilityTitle() {
         return (menuTitle == null || menuTitle.trim().isEmpty()) ? title : menuTitle;
     }
 
     /**
-     * Konfigurierbare Modul-Rolle ({@code plaintext.menu.module-roles}): Die Kachel wird ueber
-     * ihren {@link #link} — ersatzweise ueber ihren {@link #menuTitle} — dem Modul-Menue
-     * zugeordnet und verschwindet damit konsistent mit dem Menuepunkt. {@code admin}/{@code root}
-     * umgehen die Pruefung.
+     * Configurable module role ({@code plaintext.menu.module-roles}): the tile is assigned to the
+     * module menu through its {@link #link} — alternatively through its {@link #menuTitle} — and
+     * therefore disappears consistently with the menu item. {@code admin}/{@code root} bypass the
+     * check.
      *
-     * @return {@code true}, wenn keine Modul-Rolle gefordert ist oder der Benutzer sie haelt
+     * @return {@code true} if no module role is required or the user holds it
      */
     private boolean isModuleRoleVisible() {
         if (moduleRoleService == null && beanFactory != null) {
@@ -74,7 +74,7 @@ public class TileItemImpl implements TileRegistry.TileItem {
 
     @Override
     public boolean isOn() {
-        // Zuerst rollenbasierte Sichtbarkeit prüfen
+        // First check the role-based visibility
         if (roles != null && !roles.isEmpty() && securityProvider != null) {
             boolean hasRole = false;
             for (String role : roles) {
@@ -89,12 +89,12 @@ public class TileItemImpl implements TileRegistry.TileItem {
             }
         }
 
-        // Konfigurierbare Modul-Rolle: eine Kachel verschwindet zusammen mit ihrem Modul-Menue.
+        // Configurable module role: a tile disappears together with its module menu.
         if (!isModuleRoleVisible()) {
             return false;
         }
 
-        // MenuVisibilityProvider bei Bedarf lazy aus der BeanFactory laden
+        // Load the MenuVisibilityProvider lazily from the BeanFactory if needed
         if (menuVisibilityProvider == null && beanFactory != null) {
             try {
                 menuVisibilityProvider = beanFactory.getBean(MenuVisibilityProvider.class);
@@ -104,7 +104,7 @@ public class TileItemImpl implements TileRegistry.TileItem {
             }
         }
 
-        // Mandatsspezifische Sichtbarkeit prüfen, wenn ein Provider verfügbar ist
+        // Check the tenant-specific visibility if a provider is available
         if (menuVisibilityProvider != null) {
             String fullTitle = getVisibilityTitle();
             boolean visible = menuVisibilityProvider.isMenuVisible(fullTitle);

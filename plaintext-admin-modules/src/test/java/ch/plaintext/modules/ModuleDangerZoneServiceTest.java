@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/** Unit-Tests für „Daten leeren" eines Moduls (Task #016 Phase 2, PR 4). */
+/** Unit tests for "clear data" of a module (Task #016 phase 2, PR 4). */
 @ExtendWith(MockitoExtension.class)
 class ModuleDangerZoneServiceTest {
 

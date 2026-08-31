@@ -10,14 +10,14 @@ import org.springframework.mock.env.MockEnvironment;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * SECURITY (Karte 314, Punkt 8) — vorhersagbarer Krypto-Fallback.
+ * SECURITY (card 314, item 8) — predictable crypto fallback.
  *
- * <p>Fehlt {@code PLAINTEXT_SECRET_KEY}, leitete {@code SecretCrypto} den AES-Schluessel aus
- * {@code sha256("plaintext-dev-fallback-" + HOSTNAME)} ab. Ist {@code HOSTNAME} nicht gesetzt —
- * und weder Dockerfile noch compose.yaml setzen die Variable — ist der Wert der konstante String
- * "null" und der Schluessel damit oeffentlich berechenbar. In PROD ist das jetzt ein Startfehler
- * statt einer leicht zu uebersehenden WARN. Die Krypto selbst ist unveraendert (AES-256-GCM,
- * frischer IV je Aufruf).
+ * <p>If {@code PLAINTEXT_SECRET_KEY} is missing, {@code SecretCrypto} derived the AES key from
+ * {@code sha256("plaintext-dev-fallback-" + HOSTNAME)}. If {@code HOSTNAME} is not set —
+ * and neither the Dockerfile nor compose.yaml sets the variable — the value is the constant string
+ * "null" and the key is therefore publicly computable. In PROD this is now a startup error
+ * instead of an easily overlooked WARN. The crypto itself is unchanged (AES-256-GCM,
+ * fresh IV per call).
  */
 @DisplayName("SecretCrypto: Dev-Fallback")
 class SecretCryptoFallbackTest {
@@ -25,7 +25,7 @@ class SecretCryptoFallbackTest {
     @Test
     void failsFastInProductionWithoutKey() {
         if (System.getenv("PLAINTEXT_SECRET_KEY") != null) {
-            return; // in einer Umgebung mit echtem Key nicht aussagekraeftig
+            return; // not meaningful in an environment with a real key
         }
         MockEnvironment prod = new MockEnvironment();
         prod.setActiveProfiles("prod");
@@ -46,7 +46,7 @@ class SecretCryptoFallbackTest {
         assertEquals("geheim", crypto.decrypt(cipher));
     }
 
-    /** Kein ECB: derselbe Klartext ergibt durch den frischen IV zwei verschiedene Chiffrate. */
+    /** No ECB: thanks to the fresh IV the same plaintext yields two different ciphertexts. */
     @Test
     void producesDifferentCiphertextForSamePlaintext() {
         SecretCrypto crypto = new SecretCrypto(new MockEnvironment());

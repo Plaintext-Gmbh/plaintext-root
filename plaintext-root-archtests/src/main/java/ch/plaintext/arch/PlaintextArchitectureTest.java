@@ -21,26 +21,26 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Geteilte Architektur-Regeln des plaintext-root-Frameworks (ArchUnit, reine Bytecode-Analyse — kein
- * Spring-Kontext, keine DB).
+ * Shared architecture rules of the plaintext-root framework (ArchUnit, pure bytecode analysis — no
+ * Spring context, no DB).
  *
- * <p><b>Wiederverwendung ueber Modulgrenzen:</b> Diese Klasse liegt bewusst in
- * {@code src/main/java} des geteilten Test-Moduls {@code plaintext-root-archtests} (nicht in
- * {@code src/test}), damit sie ins publizierte Jar wandert. Consumer (app, iot, fwtool, schuetu)
- * nehmen das Modul als Test-Dependency auf und lassen die Regeln via Surefire
- * {@code <dependenciesToScan>} gegen ihre eigenen {@code ch.plaintext}-Klassen laufen — kein
- * Copy-Paste mehr. Beim Lauf in einem Consumer analysiert {@code @AnalyzeClasses(packages =
- * "ch.plaintext")} dessen Classpath-Klassen.
+ * <p><b>Reuse across module boundaries:</b> this class deliberately lives in
+ * {@code src/main/java} of the shared test module {@code plaintext-root-archtests} (not in
+ * {@code src/test}), so that it ends up in the published jar. Consumers (app, iot, fwtool, schuetu)
+ * take the module as a test dependency and let the rules run via Surefire
+ * {@code <dependenciesToScan>} against their own {@code ch.plaintext} classes — no more
+ * copy-paste. When running inside a consumer, {@code @AnalyzeClasses(packages =
+ * "ch.plaintext")} analyzes that consumer's classpath classes.
  *
- * <p><b>Kernregel:</b> Zeitsteuerung laeuft ueber das PlaintextCron-Framework ({@link PlaintextCron}:
- * Admin-UI mit Zeitplan/an-aus, per-Mandant-Ausfuehrung, Laufzeit-Statistik). Rohes Spring-
- * {@code @Scheduled} umgeht das alles und ist deshalb verboten — bis auf die wenigen Klassen, die
- * bewusst mit {@link AllowRawScheduled} annotiert sind (Framework-/System-Waechter mit Sub-Minuten-
- * bzw. Selbst-Wartungs-Takten, die eine Cron-Expression nicht abbilden kann). Die Regel ist damit
- * voll generisch und consumer-erweiterbar: ein Consumer annotiert seine legitime eigene
- * {@code @Scheduled}-Klasse einfach mit {@code @AllowRawScheduled} (Main-Classpath, aus
- * {@code plaintext-root-common}) — ganz ohne eigenen Test-Code. Jeder neue periodische Job gehoert
- * ins Cron-Framework.
+ * <p><b>Core rule:</b> scheduling runs through the PlaintextCron framework ({@link PlaintextCron}:
+ * admin UI with schedule/on-off, per-tenant execution, runtime statistics). Raw Spring
+ * {@code @Scheduled} bypasses all of that and is therefore forbidden — except for the few classes
+ * deliberately annotated with {@link AllowRawScheduled} (framework/system guards with sub-minute
+ * or self-maintenance intervals that a cron expression cannot express). The rule is thereby fully
+ * generic and extensible by consumers: a consumer simply annotates its own legitimate
+ * {@code @Scheduled} class with {@code @AllowRawScheduled} (main classpath, from
+ * {@code plaintext-root-common}) — entirely without test code of its own. Every new periodic job
+ * belongs in the cron framework.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -49,9 +49,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 public class PlaintextArchitectureTest {
 
     /**
-     * Voll qualifizierter Name der Marker-Annotation {@link AllowRawScheduled}. Als String referenziert,
-     * damit die Regel unabhaengig davon greift, ob die Annotation zur Analysezeit auf dem Classpath
-     * aufloesbar ist.
+     * Fully qualified name of the marker annotation {@link AllowRawScheduled}. Referenced as a string
+     * so that the rule applies regardless of whether the annotation is resolvable on the classpath at
+     * analysis time.
      */
     private static final String ALLOW_RAW_SCHEDULED = AllowRawScheduled.class.getName();
 
@@ -65,23 +65,23 @@ public class PlaintextArchitectureTest {
     @ArchTest
     static final ArchRule plaintextCronsSindPrototype = classes()
             .that().implement(PlaintextCron.class).and().areNotInterfaces()
-            // Framework-Interna ausnehmen: die abstrakte Basis SuperCron und der von ihr per
-            // BeanPostProcessor erzeugte Wrapper (CronBeanPostProcessor$1) implementieren PlaintextCron,
-            // sind aber KEINE Anwendungs-Cron-Beans und legitim nicht @Scope("prototype"). Die Regel gilt
-            // den konkreten, ausserhalb ch.plaintext.cron liegenden Anwendungs-Crons.
+            // Exempt framework internals: the abstract base SuperCron and the wrapper it creates via a
+            // BeanPostProcessor (CronBeanPostProcessor$1) implement PlaintextCron, but are NOT application
+            // cron beans and are legitimately not @Scope("prototype"). The rule targets the concrete
+            // application crons that live outside ch.plaintext.cron.
             .and().resideOutsideOfPackage("ch.plaintext.cron..")
             .should(mitScopePrototypeAnnotiert())
             .because("der CronController holt pro Mandant-Lauf eine frische Instanz; ein Singleton "
                     + "würde per setMandant() überschrieben (CronBeanPostProcessor bricht den Boot ab)");
 
     /**
-     * JSF-Backing-Beans laufen im plaintext-root-Framework session-scoped: {@code @Component} +
-     * {@code @Scope("session")} plus ein {@code preRenderView}-Listener {@code #{bean.onLoad()}} mit
-     * {@code isPostback}-Guard, der die Daten bei jedem GET frisch laedt. Die ViewScoped-Annotation ist
-     * damit abgeloest und verboten; sie wuerde eigene JSF-View-State-Serialisierung erzwingen.
+     * JSF backing beans run session-scoped in the plaintext-root framework: {@code @Component} +
+     * {@code @Scope("session")} plus a {@code preRenderView} listener {@code #{bean.onLoad()}} with an
+     * {@code isPostback} guard, which reloads the data freshly on every GET. The ViewScoped annotation
+     * is thereby superseded and forbidden; it would force JSF view-state serialization of its own.
      *
-     * <p>Diese Regel deckt nur die auf dem Consumer-Classpath sichtbaren Module ab. Der modul-
-     * uebergreifende Quelltext-Scan (inkl. Modulen, die nicht von der webapp abhaengen) lebt in
+     * <p>This rule only covers the modules visible on the consumer classpath. The cross-module
+     * source-code scan (incl. modules that do not depend on the webapp) lives in
      * {@code PlaintextViewScopedBanTest}.
      */
     @ArchTest
@@ -90,7 +90,7 @@ public class PlaintextArchitectureTest {
             .because("Backing-Beans laufen session-scoped (@Scope(\"session\")) mit preRenderView-onLoad(); "
                     + "die ViewScoped-Annotation ist im plaintext-root-Framework abgeloest");
 
-    // ── Bedingungen ────────────────────────────────────────────────────────
+    // ── Conditions ─────────────────────────────────────────────────────────
 
     private static ArchCondition<JavaMethod> nurInMitAllowRawScheduledAnnotierterKlasse() {
         return new ArchCondition<>("nur in einer mit @AllowRawScheduled annotierten Klasse deklariert sein") {

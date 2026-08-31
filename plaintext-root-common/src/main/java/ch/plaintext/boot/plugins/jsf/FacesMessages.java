@@ -52,16 +52,16 @@ public final class FacesMessages {
     }
 
     /**
-     * Beliebige Schwere als Parameter — fuer die {@code addMessage(severity, text)}-Wrapper, die
-     * in vielen Backing Beans stehen (Massnahme 9, 29.08.2026).
+     * Arbitrary severity as a parameter — for the {@code addMessage(severity, text)} wrappers that
+     * sit in many backing beans (measure 9, 29.08.2026).
      */
     public static void meldung(FacesMessage.Severity severity, String text, String detail) {
         add(severity, text, detail);
     }
 
     /**
-     * Meldung an einer Komponente ({@code clientId}, z. B. {@code "fm:betrag"}) — erscheint in
-     * {@code <p:message for=…>} statt im Growl. {@code clientId == null} = globale Meldung.
+     * Message attached to a component ({@code clientId}, e.g. {@code "fm:betrag"}) — appears in
+     * {@code <p:message for=…>} instead of the growl. {@code clientId == null} = global message.
      */
     public static void feld(String clientId, FacesMessage.Severity severity, String text, String detail) {
         FacesContext ctx = FacesContext.getCurrentInstance();

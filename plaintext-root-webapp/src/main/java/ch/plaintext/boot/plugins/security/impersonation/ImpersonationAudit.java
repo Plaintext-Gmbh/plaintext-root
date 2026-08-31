@@ -12,9 +12,9 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * Ein Impersonation-Vorgang: welcher Admin hat wann welchen User impersoniert, und wann (falls
- * bereits geschehen) wieder beendet. Persistente, abfragbare Quelle für ROOT-Impersonation —
- * vorher gab es dafür nur {@code log.info}.
+ * One impersonation event: which admin impersonated which user and when, and when (if it has
+ * already happened) it was ended again. A persistent, queryable source for ROOT impersonation —
+ * before this there was only {@code log.info} for it.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -32,8 +32,8 @@ public class ImpersonationAudit {
     private Long targetUserId;
     private String targetUsername;
     private LocalDateTime startedAt;
-    /** {@code null}, solange die Impersonation noch aktiv ist. */
+    /** {@code null} as long as the impersonation is still active. */
     private LocalDateTime endedAt;
-    /** HTTP-Session-ID, in der impersoniert wurde (best effort, kann null sein). */
+    /** HTTP session ID in which the impersonation took place (best effort, may be null). */
     private String sessionId;
 }

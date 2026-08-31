@@ -4,15 +4,15 @@
 package ch.plaintext;
 
 /**
- * Rollen-Pruefungen mit einem einzigen Vokabular (Massnahme 9, 29.08.2026).
+ * Role checks with a single vocabulary (measure 9, 29.08.2026).
  *
- * <p>Die Apps fragten dieselbe Sache auf sechs Arten ab: {@code ifGranted("ROOT")},
+ * <p>The applications asked the same question in six different ways: {@code ifGranted("ROOT")},
  * {@code "ROLE_ROOT"}, {@code "ROLE_root"}, {@code "ADMIN"}, {@code "ROLE_ADMIN"},
- * {@code "ROLE_admin"} — und jede zweite Backing Bean hatte ein eigenes {@code isAdmin()}.
- * {@link PlaintextSecurity#ifGranted(String)} normalisiert zwar Praefix und Schreibweise, aber
- * der Leser sieht das nicht. Hier steht es einmal.</p>
+ * {@code "ROLE_admin"} — and every second backing bean had an {@code isAdmin()} of its own.
+ * {@link PlaintextSecurity#ifGranted(String)} does normalize prefix and case, but the reader
+ * cannot see that. Here it is written down once.</p>
  *
- * <p>Alle Methoden sind null-sicher: ohne Security (Tests, Hintergrund-Jobs) ist nichts gewaehrt.</p>
+ * <p>All methods are null-safe: without security (tests, background jobs) nothing is granted.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -26,22 +26,22 @@ public final class PlaintextRoles {
     private PlaintextRoles() {
     }
 
-    /** Nur die Instanz-Rolle root. */
+    /** The instance role root only. */
     public static boolean isRoot(PlaintextSecurity security) {
         return security != null && security.ifGranted(ROLE_ROOT);
     }
 
-    /** Mandanten-Admin ODER root — das, was fast jede Bean als „Admin" meint. */
+    /** Tenant admin OR root — what almost every bean means by "admin". */
     public static boolean isAdmin(PlaintextSecurity security) {
         return security != null && (security.ifGranted(ROLE_ADMIN) || security.ifGranted(ROLE_ROOT));
     }
 
-    /** Nur Mandanten-Admin, ohne root. */
+    /** Tenant admin only, without root. */
     public static boolean isAdminOnly(PlaintextSecurity security) {
         return security != null && security.ifGranted(ROLE_ADMIN);
     }
 
-    /** Irgendeine der genannten Rollen (Praefix ROLE_ optional, Gross-/Kleinschreibung egal). */
+    /** Any of the given roles (the ROLE_ prefix is optional, case-insensitive). */
     public static boolean hasAny(PlaintextSecurity security, String... rollen) {
         if (security == null || rollen == null) {
             return false;

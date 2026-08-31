@@ -23,15 +23,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
- * Karte 664: Der Standard-Checker darf eine App-eigene Blocklist nicht verdrängen — und vor allem
- * nicht neben ihr stehen.
+ * Card 664: The default checker must not displace an app's own blocklist — and above all must
+ * not sit alongside it.
  *
- * <p><b>Warum das ein eigener Test ist.</b> plaintext-schuetu bringt mit {@code RevokedTokenService}
- * seit Karte 484 eine eigene {@link JtiRevocationChecker}-Bean mit. Wäre der neue Checker ein
- * schlichtes {@code @Component}, hätte schuetu zwei Beans desselben Interface, und
- * {@code ObjectProvider.getIfAvailable()} in {@code McpBearerTokenFilterConfig} würde beim Start
- * mit {@code NoUniqueBeanDefinitionException} abbrechen. Ein Patch in root hätte damit eine andere
- * Anwendung lahmgelegt — ein Fehler, den man erst beim Rollout sieht.</p>
+ * <p><b>Why this is a test of its own.</b> With {@code RevokedTokenService}, plaintext-schuetu
+ * has brought its own {@link JtiRevocationChecker} bean since card 484. If the new checker were a
+ * plain {@code @Component}, schuetu would have two beans of the same interface, and
+ * {@code ObjectProvider.getIfAvailable()} in {@code McpBearerTokenFilterConfig} would abort at
+ * startup with {@code NoUniqueBeanDefinitionException}. A patch in root would thereby have
+ * paralysed another application — an error that only shows up at rollout.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -49,7 +49,7 @@ class JtiRevocationAutoConfigurationTest {
         }
     }
 
-    /** Die Situation in plaintext-schuetu. */
+    /** The situation in plaintext-schuetu. */
     @Configuration
     static class MitEigenemChecker {
         @Bean
@@ -84,12 +84,12 @@ class JtiRevocationAutoConfigurationTest {
 
     @Test
     void ohneLookupGibtEsGarKeineBeanStattEinesStartfehlers() {
-        // Eine Anwendung, die das Modul nicht betreibt, soll sich verhalten wie vor Karte 664 —
-        // und nicht beim Start an einer fehlenden Abhaengigkeit scheitern.
+        // An application that does not run the module should behave as it did before card 664 —
+        // and not fail at startup on a missing dependency.
         runner.run(context -> assertEquals(0, context.getBeanNamesForType(JtiRevocationChecker.class).length));
     }
 
-    /** Belegt nebenbei, dass der Standard-Checker tatsaechlich den Lookup benutzt. */
+    /** Proves along the way that the default checker really does use the lookup. */
     @Test
     void standardCheckerFragtDenLookup() {
         var lookup = new ApiTokenRevocationLookup() {
@@ -105,7 +105,7 @@ class JtiRevocationAutoConfigurationTest {
 
             @Override
             public void markUsed(long id) {
-                // im Test nicht benutzt
+                // not used in the test
             }
         };
         var checker = new ApiTokenJtiRevocationChecker(lookup);

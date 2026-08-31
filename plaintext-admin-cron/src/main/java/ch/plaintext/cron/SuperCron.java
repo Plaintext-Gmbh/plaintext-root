@@ -34,41 +34,41 @@ import java.util.concurrent.TimeUnit;
 public abstract class SuperCron implements PlaintextCron, InitializingBean, ApplicationContextAware, BeanNameAware, Runnable {
 
     /**
-     * Principal-Name des technischen Cron-Users. Entspricht dem SYSTEM-User, den
-     * {@code PlaintextSecurityImpl.getUser()} auch ohne Authentifizierung meldet — so bleiben
-     * Auditing ({@code @CreatedBy}/{@code @LastModifiedBy}) und Log-Ausgaben konsistent.
+     * Principal name of the technical cron user. Matches the SYSTEM user that
+     * {@code PlaintextSecurityImpl.getUser()} reports even without authentication — this keeps
+     * auditing ({@code @CreatedBy}/{@code @LastModifiedBy}) and log output consistent.
      */
     public static final String SYSTEM_USER = "SYSTEM";
 
-    /** Marker-Rolle, an der Code einen Cron-/System-Lauf erkennen kann. */
+    /** Marker role by which code can recognise a cron/system run. */
     public static final String ROLE_SYSTEM = "ROLE_SYSTEM";
 
     /**
-     * Baut für einen Cron-Lauf einen definierten {@link SecurityContext} auf:
-     * technischer {@value #SYSTEM_USER}-User mit {@value #ROLE_SYSTEM} und der
-     * {@code PROPERTY_MANDAT_<mandant>}-Authority des Ziel-Mandanten. Damit liefert
-     * {@code PlaintextSecurityHolder.getMandat()}/{@code getUser()} in Background-Jobs
-     * (cron4j-Threads laufen OHNE Request-/Session-Kontext) sinnvolle Werte statt
-     * {@code NO_AUTH}-Defaults.
+     * Builds a well-defined {@link SecurityContext} for a cron run:
+     * technical {@value #SYSTEM_USER} user with {@value #ROLE_SYSTEM} and the
+     * {@code PROPERTY_MANDAT_<mandant>} authority of the target tenant. This way
+     * {@code PlaintextSecurityHolder.getMandat()}/{@code getUser()} return meaningful values in
+     * background jobs (cron4j threads run WITHOUT a request/session context) instead of
+     * {@code NO_AUTH} defaults.
      *
-     * <p>WICHTIG: Der bestehende Context wird NIE in-place mutiert (Muster wie im
-     * {@code McpBearerTokenFilter}): es wird ein frischer Context gesetzt; der Aufrufer
-     * ({@link #run()}) restauriert bzw. cleart ihn im {@code finally}.</p>
+     * <p>IMPORTANT: the existing context is NEVER mutated in place (same pattern as in
+     * {@code McpBearerTokenFilter}): a fresh context is set; the caller
+     * ({@link #run()}) restores or clears it in the {@code finally} block.</p>
      *
-     * @param mandant Ziel-Mandant des Laufs (z. B. {@code "global"} oder ein echter Mandant)
+     * @param mandant target tenant of the run (e.g. {@code "global"} or a real tenant)
      */
     private void loginMandat(String mandant) {
         loginMandatUser(mandant, SYSTEM_USER);
     }
 
     /**
-     * Wie {@link #loginMandat(String)}, aber mit einem konkreten Benutzer als Principal statt
-     * {@value #SYSTEM_USER} — genutzt für {@link ExecutionScope#PERSOENLICH}-Läufe
-     * ({@link #runProPersoenlich()}), damit {@code PlaintextSecurityHolder.getUser()} innerhalb des
-     * Laufs den richtigen Benutzer liefert.
+     * Like {@link #loginMandat(String)}, but with a concrete user as the principal instead of
+     * {@value #SYSTEM_USER} — used for {@link ExecutionScope#PERSOENLICH} runs
+     * ({@link #runProPersoenlich()}), so that {@code PlaintextSecurityHolder.getUser()} returns the
+     * right user inside the run.
      *
-     * @param mandant Ziel-Mandant des Laufs
-     * @param userId  Ziel-Benutzer; {@code null}/leer fällt auf {@value #SYSTEM_USER} zurück
+     * @param mandant target tenant of the run
+     * @param userId  target user; {@code null}/empty falls back to {@value #SYSTEM_USER}
      */
     private void loginMandatUser(String mandant, String userId) {
         Set<GrantedAuthority> authorities = new LinkedHashSet<>();
@@ -281,9 +281,9 @@ public abstract class SuperCron implements PlaintextCron, InitializingBean, Appl
         log.info(">>> Starting cron '{}' for mandant '{}' (scope: {})", getName(), getMandant(), getScope());
         start();
 
-        // Vorherigen Context merken (auf gepoolten Threads könnte theoretisch einer liegen),
-        // dann frischen System-Context für diesen Lauf setzen. Restore/Clear IMMER im finally —
-        // auch im Exception-Pfad darf keine System-Authentication auf dem Thread zurückbleiben.
+        // Remember the previous context (on pooled threads there could theoretically be one),
+        // then set a fresh system context for this run. Restore/clear ALWAYS in the finally block —
+        // not even on the exception path may a system authentication be left behind on the thread.
         SecurityContext previous = SecurityContextHolder.getContext();
         boolean previousHadAuthentication = previous.getAuthentication() != null;
 
@@ -311,12 +311,12 @@ public abstract class SuperCron implements PlaintextCron, InitializingBean, Appl
     }
 
     /**
-     * {@link ExecutionScope#PERSOENLICH}-Ausführung: einmal je aktivem Benutzer des Mandanten
-     * ({@link PlaintextSecurity#getUsersForMandat(String)}), mit Kontext = Mandant + jeweiliger
-     * Benutzer. Fehler-Isolation je Benutzer (try/catch + {@code log.warn}) — ein Benutzer-Fehler
-     * bricht weder die restlichen Benutzer noch den Gesamtlauf; die Zeilen-/Schedule-Ebene bleibt
-     * dieselbe wie bei {@link ExecutionScope#MANDAT} (genau eine Config-Zeile je Mandant, siehe
-     * {@link CronController#createCronsMap()} — keine Zeilen-Explosion pro Benutzer).
+     * {@link ExecutionScope#PERSOENLICH} execution: once per active user of the tenant
+     * ({@link PlaintextSecurity#getUsersForMandat(String)}), with context = tenant + the respective
+     * user. Errors are isolated per user (try/catch + {@code log.warn}) — an error for one user
+     * breaks neither the remaining users nor the overall run; the row/schedule level stays the same
+     * as for {@link ExecutionScope#MANDAT} (exactly one configuration row per tenant, see
+     * {@link CronController#createCronsMap()} — no explosion of rows per user).
      */
     private void runProPersoenlich() {
         PlaintextSecurity security = context.getBean(PlaintextSecurity.class);

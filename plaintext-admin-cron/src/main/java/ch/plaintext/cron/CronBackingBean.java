@@ -55,14 +55,14 @@ public class CronBackingBean implements Serializable {
         crons.clear();
 
         if(plaintextSecurity.ifGranted("root")){
-            // Root sees ALL cron entries from all mandanten
+            // Root sees ALL cron entries from all tenants
             for (List<CronConfigEntity> mandatList : cronController.getCronsMap().values()) {
                 if (mandatList != null) {
                     crons.addAll(mandatList);
                 }
             }
         } else {
-            // Non-root users only see their own mandant entries
+            // Non-root users only see their own tenant entries
             List<CronConfigEntity> list = cronController.getCronsMap().get(mandat);
             if (list != null) {
                 crons.addAll(list);
@@ -261,7 +261,7 @@ public class CronBackingBean implements Serializable {
         return plaintextSecurity.ifGranted("root");
     }
 
-    /** Deutsches Anzeige-Label für {@link CronConfigEntity#getScope()} (Task 005). */
+    /** German display label for {@link CronConfigEntity#getScope()} (Task 005). */
     public String getScopeLabel(CronConfigEntity entity) {
         if (entity == null || entity.getScope() == null) {
             return "-";

@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Meldet das Mailtext-Modul an die zentrale Modul-Verwaltung (analog i18n). */
+/** Registers the mail text module with the central module management (analogous to i18n). */
 @Component
 public class MailTemplateModuleDescriptor implements ModuleDescriptor {
     @Override

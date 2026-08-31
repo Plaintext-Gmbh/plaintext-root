@@ -12,28 +12,28 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Meldung Daniel, 26.08.2026: „Auszahlungen für Jasmin Marthaler in Mandat trimstein geht nicht
- * mehr."
+ * Report from Daniel, 26.08.2026: "Auszahlungen for Jasmin Marthaler in tenant trimstein no
+ * longer works."
  *
- * <p><b>Die Kette.</b> Rollen stehen in der Datenbank klein ({@code auszahlungen}).
- * {@code MyUserDetailsService} macht daraus beim Anmelden {@code "ROLE_" + role.toUpperCase()},
- * also {@code ROLE_AUSZAHLUNGEN}. Die Werte in {@code plaintext.menu.module-roles} sind klein
- * geschrieben, und {@code SpringSecurityProvider.hasRole} vergleicht bewusst mit Beachtung der
- * Schreibweise. Der Riegel traf damit <b>nie</b> zu.
+ * <p><b>The chain.</b> Roles are stored in lower case in the database ({@code auszahlungen}). At
+ * login {@code MyUserDetailsService} turns them into {@code "ROLE_" + role.toUpperCase()}, that is
+ * {@code ROLE_AUSZAHLUNGEN}. The values in {@code plaintext.menu.module-roles} are written in
+ * lower case, and {@code SpringSecurityProvider.hasRole} compares case-sensitively on purpose. The
+ * gate therefore <b>never</b> matched.
  *
- * <p>Die Folge war schlimmer als „ein Modul fehlt": das Modul war für jeden ausser ROOT/ADMIN
- * dauerhaft unsichtbar — auch für die Person, der man die Rolle ausdrücklich zugewiesen hatte.
- * Der Riegel liess sich schliessen, aber nicht mehr öffnen.
+ * <p>The consequence was worse than "a module is missing": the module was permanently invisible to
+ * everyone except ROOT/ADMIN — including the person the role had explicitly been assigned to. The
+ * gate could be closed, but no longer opened.
  */
 class ModulRiegelSchreibweiseTest {
 
-    /** Ein Benutzer mit genau den Authorities, die {@code MyUserDetailsService} erzeugt. */
+    /** A user with exactly the authorities that {@code MyUserDetailsService} produces. */
     private static SecurityProvider angemeldetMit(String... authorities) {
         Set<String> vorhanden = Set.of(authorities);
         return new SecurityProvider() {
             @Override
             public boolean hasRole(String role) {
-                // Absichtlich mit Beachtung der Schreibweise - genau wie SpringSecurityProvider.
+                // Deliberately case-sensitive - exactly like SpringSecurityProvider.
                 return vorhanden.contains(role)
                         || vorhanden.contains(role.startsWith("ROLE_") ? role.substring(5) : "ROLE_" + role);
             }
@@ -66,8 +66,8 @@ class ModulRiegelSchreibweiseTest {
     }
 
     /**
-     * Die Gegenprobe, ohne die „immer true" ebenfalls grün wäre: die Schreibweise darf
-     * durchlässig sein, der Rollenname nicht.
+     * The control test, without which "always true" would be green as well: the spelling may be
+     * permissive, the role name may not.
      */
     @Test
     @DisplayName("Eine fremde Rolle bleibt verweigert")

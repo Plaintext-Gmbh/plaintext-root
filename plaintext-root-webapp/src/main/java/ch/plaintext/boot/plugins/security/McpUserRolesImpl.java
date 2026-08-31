@@ -13,30 +13,30 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * {@link McpUserRoles}-Implementierung: liest die Rollen eines Benutzers für den MCP-Bearer-Filter.
+ * {@link McpUserRoles} implementation: reads the roles of a user for the MCP bearer filter.
  *
- * <p><b>Warum hier JDBC statt JPA steht (Karte 437):</b> Diese Methode läuft aus einem
- * Servlet-Filter heraus — auch beim <b>Verbindungsaufbau</b> einer MCP-Sitzung, einem Request, der
- * über die gesamte Sitzungsdauer offen bleibt. Mit {@code spring.jpa.open-in-view=true}
- * (Spring-Boot-Default, in keinem der Repos abgeschaltet) bindet der erste JPA-Zugriff einen
- * EntityManager an den Request; die DB-Verbindung ist damit für die ganze Sitzung belegt. HikariCP
- * meldet sie nach 60 Sekunden als {@code Apparent connection leak detected} — mit genau dieser
- * Methode im Stack.
+ * <p><b>Why JDBC stands here instead of JPA (card 437):</b> this method runs out of a
+ * servlet filter — including while an MCP session is being <b>established</b>, a request that
+ * stays open for the whole duration of the session. With {@code spring.jpa.open-in-view=true}
+ * (Spring Boot default, switched off in none of the repositories) the first JPA access binds an
+ * entity manager to the request; the DB connection is thereby occupied for the whole session. After
+ * 60 seconds HikariCP reports it as {@code Apparent connection leak detected} — with exactly this
+ * method in the stack.
  *
- * <p><b>Gemessen am 03.08.2026:</b> 424 solcher Warnungen in 24 Stunden, in app, guild und iot
- * <b>im selben Millisekundenfenster</b> — der Fingerabdruck eines MCP-Clients, der seine drei
- * Server gleichzeitig öffnet. Die Verbindungen kommen nach Sitzungsende zurück (kein unbegrenztes
- * Leck), aber solange die Sitzung steht, fehlen sie im Pool. Bei 25 Verbindungen Poolgrösse ist
- * die Grenze absehbar.
+ * <p><b>Measured on 03.08.2026:</b> 424 such warnings within 24 hours, in app, guild and iot
+ * <b>within the same millisecond window</b> — the fingerprint of an MCP client that opens its three
+ * servers simultaneously. The connections come back once the session ends (no unbounded
+ * leak), but as long as the session stands they are missing from the pool. With a pool size of 25
+ * connections the limit is foreseeable.
  *
- * <p>Ein einzelner {@code JdbcTemplate}-Zugriff öffnet die Verbindung, liest und gibt sie sofort
- * zurück — ohne EntityManager, der am Request hängen bliebe. Fachlich ist es derselbe Lesevorgang:
- * {@code MyUserEntity.roles} ist eine per {@code @Convert} gespeicherte Spalte, also ein einzelner
- * Spaltenwert ohne Lazy-Beziehung.
+ * <p>A single {@code JdbcTemplate} access opens the connection, reads and returns it immediately —
+ * without an entity manager that would stay attached to the request. Functionally it is the same
+ * read: {@code MyUserEntity.roles} is a column stored via {@code @Convert}, hence a single
+ * column value without a lazy relation.
  *
- * <p><b>Nicht der Juli-Fix:</b> Damals (Memory {@code project_apitoken_connection_leak}) lag es an
- * {@code @Transactional} aus einem Filter heraus. Diese Klasse war nie {@code @Transactional} —
- * hier ist es die view-gebundene Session, ein anderer Mechanismus mit demselben Symptombild.
+ * <p><b>Not the July fix:</b> back then (memory {@code project_apitoken_connection_leak}) the cause
+ * was {@code @Transactional} out of a filter. This class was never {@code @Transactional} —
+ * here it is the view-bound session, a different mechanism with the same symptoms.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -44,7 +44,7 @@ import java.util.Set;
 @Component
 public class McpUserRolesImpl implements McpUserRoles {
 
-    /** XStream-Kopf des ROLES-Werts — die Spalte hält ein serialisiertes {@code Set<String>}. */
+    /** XStream header of the ROLES value — the column holds a serialized {@code Set<String>}. */
     private static final String ROLLE_ANFANG = "<string>";
     private static final String ROLLE_ENDE = "</string>";
 
@@ -68,10 +68,10 @@ public class McpUserRolesImpl implements McpUserRoles {
     }
 
     /**
-     * Zerlegt den gespeicherten XStream-Wert in die einzelnen Rollen.
+     * Splits the stored XStream value into the individual roles.
      *
-     * <p>Bewusst ohne XStream: Der Wert ist eine flache Liste von {@code <string>}-Elementen, und
-     * der Filter soll für diesen einen Lesevorgang keinen Deserialisierer starten.
+     * <p>Deliberately without XStream: the value is a flat list of {@code <string>} elements, and
+     * the filter should not start a deserializer for this single read.
      */
     static Set<String> zerlege(String xml) {
         Set<String> rollen = new HashSet<>();

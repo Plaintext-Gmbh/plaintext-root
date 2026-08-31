@@ -26,21 +26,21 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Zustandsbericht 29.08.2026 (H4): Seitenrechte stehen an zwei Orten — hart verdrahtet in
- * {@code PlaintextSecurityConfig} (ROOT_ONLY_PAGES / ADMIN_PAGES, was Spring durchlaesst) und
- * je Menuepunkt in {@code @MenuAnnotation(roles = …)} (was der Menue-Guard zeigt). Wenn die beiden
- * auseinanderlaufen, gibt es Seiten, die niemand erreicht (oidcconfig mit roles={"root"}) oder
- * die ein Berechtigter im Menue nicht sieht (cron nur ADMIN, obwohl ROOT darf).
+ * Status report 29.08.2026 (H4): page permissions live in two places — hard-wired in
+ * {@code PlaintextSecurityConfig} (ROOT_ONLY_PAGES / ADMIN_PAGES, what Spring lets through) and
+ * per menu entry in {@code @MenuAnnotation(roles = …)} (what the menu guard shows). When the two
+ * drift apart, there are pages that nobody reaches (oidcconfig with roles={"root"}) or
+ * that an authorized user does not see in the menu (cron ADMIN only, although ROOT is allowed).
  *
- * <p>Dieser Test liest beide Orte und haelt drei Regeln fest:</p>
+ * <p>This test reads both places and records three rules:</p>
  * <ol>
- *   <li>Rollen in {@code @MenuAnnotation} sind GROSS geschrieben — der Vergleich ist case-sensitiv.</li>
- *   <li>Ein Menuepunkt auf eine ROOT_ONLY-Seite verlangt genau {ROOT}.</li>
- *   <li>Ein Menuepunkt auf eine ADMIN-Seite verlangt genau {ADMIN, ROOT} — beide Orte sagen dasselbe.</li>
+ *   <li>Roles in {@code @MenuAnnotation} are written in UPPER CASE — the comparison is case-sensitive.</li>
+ *   <li>A menu entry pointing to a ROOT_ONLY page requires exactly {ROOT}.</li>
+ *   <li>A menu entry pointing to an ADMIN page requires exactly {ADMIN, ROOT} — both places say the same.</li>
  * </ol>
  *
- * <p>Liest die Quellen aller Module (nicht den Classpath), damit auch Menues aus
- * plaintext-admin-* erfasst sind, die root-webapp nicht als Test-Dependency hat.</p>
+ * <p>Reads the sources of all modules (not the classpath), so that menus from
+ * plaintext-admin-* are covered as well, which root-webapp does not have as a test dependency.</p>
  */
 class SeitenrechteInvariantTest {
 
@@ -49,7 +49,7 @@ class SeitenrechteInvariantTest {
     private static final Pattern ROLES = Pattern.compile("\\broles\\s*=\\s*\\{([^}]*)\\}");
     private static final Pattern STRING = Pattern.compile("\"([^\"]*)\"");
 
-    /** link → (Datei, Rollen) fuer jede @MenuAnnotation im Repo. */
+    /** link → (file, roles) for every @MenuAnnotation in the repository. */
     private static final Map<String, MenuEintrag> MENUES = new LinkedHashMap<>();
 
     record MenuEintrag(String datei, String link, Set<String> rollen) {
@@ -133,7 +133,7 @@ class SeitenrechteInvariantTest {
                 + String.join("\n", verstoesse));
     }
 
-    /** Ant-Muster wie "/mandate*.*" gegen den kanonischen Link ("mandatemenu.html" → "/mandatemenu.html"). */
+    /** Ant patterns such as "/mandate*.*" against the canonical link ("mandatemenu.html" → "/mandatemenu.html"). */
     static boolean trifft(String[] muster, String link) {
         String pfad = link.startsWith("/") ? link : "/" + link;
         for (String m : muster) {
@@ -155,7 +155,7 @@ class SeitenrechteInvariantTest {
         }
     }
 
-    /** Alle @MenuAnnotation(...)-Bloecke einer Quelle, Klammern gezaehlt (Werte enthalten Klammern). */
+    /** All @MenuAnnotation(...) blocks of a source, with brackets counted (values contain brackets). */
     static List<String> annotationsBloecke(String quelle) {
         List<String> bloecke = new ArrayList<>();
         int start = 0;

@@ -15,18 +15,16 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Validiert beim Start, dass die mandatsspezifische Sichtbarkeit jeder Dashboard-Kachel
- * tatsächlich an einen registrierten Menü-Titel gekoppelt ist (siehe Sicherheitsbefund zu
- * Commit {@code d041891}).
+ * Validates at startup that the tenant-specific visibility of every dashboard tile is really
+ * coupled to a registered menu title (see the security finding on commit {@code d041891}).
  * <p>
- * Hintergrund: Die Kachel-Sichtbarkeit hängt an einem exakten String-Abgleich von
- * {@link TileItemImpl#getVisibilityTitle()} gegen die im Mandanten ausgeblendeten Menü-Titel.
- * Im Blacklist-Standard ist alles sichtbar, was <em>nicht</em> exakt matcht. Bei einem
- * Titel-Mismatch (Tippfehler, fehlendes {@code menuTitle}, hierarchischer Titel) bleibt eine
- * Kachel also sichtbar, obwohl der zugehörige Menüeintrag für den Mandanten ausgeblendet ist
- * (fail-open). Dieser Validator macht eine solche Fehlkonfiguration beim Start <strong>laut</strong>
- * (WARN-Logging) statt sie still durchzulassen – {@code menuTitle} wird damit faktisch
- * verpflichtend.
+ * Background: tile visibility hinges on an exact string comparison of
+ * {@link TileItemImpl#getVisibilityTitle()} against the menu titles hidden for the tenant.
+ * With the blacklist default, everything that does <em>not</em> match exactly stays visible. On a
+ * title mismatch (typo, missing {@code menuTitle}, hierarchical title) a tile therefore remains
+ * visible even though the corresponding menu entry is hidden for the tenant (fail-open). This
+ * validator makes such a misconfiguration <strong>loud</strong> at startup (WARN logging) instead
+ * of letting it pass silently – which effectively makes {@code menuTitle} mandatory.
  *
  * @author plaintext.ch
  */
@@ -58,9 +56,9 @@ public class TileVisibilityValidator implements SmartInitializingSingleton {
     }
 
     /**
-     * Prüft alle registrierten Kacheln gegen die registrierten Menü-Titel.
+     * Checks all registered tiles against the registered menu titles.
      *
-     * @return Liste der gefundenen Probleme (leer, wenn alles korrekt gekoppelt ist)
+     * @return list of the issues found (empty if everything is coupled correctly)
      */
     List<TileVisibilityIssue> validate() {
         Collection<TileItemImpl> tiles = applicationContext.getBeansOfType(TileItemImpl.class).values();
@@ -76,12 +74,12 @@ public class TileVisibilityValidator implements SmartInitializingSingleton {
             String visibilityTitle = tile.getVisibilityTitle();
 
             if (menuTitle == null || menuTitle.trim().isEmpty()) {
-                // menuTitle ist faktisch verpflichtend: ohne ihn fällt die Kopplung auf den
-                // Kachel-Titel zurück, der selten exakt einem Menü-Titel entspricht.
+                // menuTitle is effectively mandatory: without it the coupling falls back to the
+                // tile title, which rarely matches a menu title exactly.
                 issues.add(new TileVisibilityIssue(tile.getId(), visibilityTitle,
                     IssueReason.MISSING_MENU_TITLE));
             } else if (!menuTitles.isEmpty() && !menuTitles.contains(visibilityTitle)) {
-                // Es sind Menü-Titel registriert, aber keiner matcht exakt -> Konfig-Fehler.
+                // Menu titles are registered, but none matches exactly -> configuration error.
                 issues.add(new TileVisibilityIssue(tile.getId(), visibilityTitle,
                     IssueReason.NO_MATCHING_MENU));
             }
@@ -105,22 +103,22 @@ public class TileVisibilityValidator implements SmartInitializingSingleton {
     }
 
     /**
-     * Ein bei der Validierung gefundenes Problem einer Kachel-Menü-Kopplung.
+     * An issue with a tile-to-menu coupling found during validation.
      *
-     * @param tileId          die technische ID der betroffenen Kachel
-     * @param visibilityTitle der Titel, gegen den die Sichtbarkeit geprüft würde
-     * @param reason          die Art des Problems
+     * @param tileId          the technical ID of the affected tile
+     * @param visibilityTitle the title against which visibility would be checked
+     * @param reason          the kind of issue
      */
     record TileVisibilityIssue(String tileId, String visibilityTitle, IssueReason reason) {
     }
 
     /**
-     * Art eines Kopplungs-Problems.
+     * Kind of coupling issue.
      */
     enum IssueReason {
-        /** Es ist kein {@code menuTitle} gesetzt (faktisch verpflichtend). */
+        /** No {@code menuTitle} is set (effectively mandatory). */
         MISSING_MENU_TITLE("kein menuTitle gesetzt"),
-        /** Der {@code menuTitle} entspricht keinem registrierten Menü-Titel. */
+        /** The {@code menuTitle} does not match any registered menu title. */
         NO_MATCHING_MENU("menuTitle passt zu keinem registrierten Menü-Titel");
 
         private final String message;

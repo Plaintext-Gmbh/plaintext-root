@@ -19,9 +19,9 @@ import static org.mockito.Mockito.*;
 /**
  * Tests for GenericEntityService - generic object storage service.
  *
- * <p>Verwendet einen eigenen Testtyp statt TestPref: der Service liegt
- * seit der Auslagerung in plaintext-root-common, und ein Test dort darf nicht
- * auf das webapp-Modul zeigen.</p>
+ * <p>Uses a test type of its own instead of TestPref: the service has lived
+ * in plaintext-root-common since it was moved out, and a test there must not
+ * point at the webapp module.</p>
  */
 @ExtendWith(MockitoExtension.class)
 class GenericEntityServiceTest {

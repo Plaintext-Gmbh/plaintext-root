@@ -18,9 +18,9 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 /**
- * Sendet den Magic-Link per E-Mail statt ihn in die Response zu schreiben.
- * Antwortet immer neutral (Redirect zu login?magic_link_sent=true),
- * unabhaengig davon ob die Mail tatsaechlich versendet wurde – kein User-Enumeration.
+ * Sends the magic link by e-mail instead of writing it into the response.
+ * Always answers neutrally (redirect to login?magic_link_sent=true),
+ * regardless of whether the mail was actually sent - no user enumeration.
  */
 @Component
 @RequiredArgsConstructor
@@ -45,7 +45,7 @@ public class MagicLinkGenerationSuccessHandler implements OneTimeTokenGeneration
             log.debug("MagicLink: kein User fuer '{}' gefunden, Mail nicht gesendet", username);
         }
 
-        // Immer gleiche neutrale Antwort
+        // Always the same neutral response
         response.sendRedirect(request.getContextPath() + "/login.xhtml?magic_link_sent=true");
     }
 }

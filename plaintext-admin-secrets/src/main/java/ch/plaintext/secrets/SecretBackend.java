@@ -4,37 +4,37 @@
 package ch.plaintext.secrets;
 
 /**
- * Abstraktion über die Secret-Backends. Bewusst <b>one-way</b>: die Werte selbst werden über dieses
- * Interface NICHT ausgelesen (kein {@code get(value)}) — nur Metadaten gezeigt und gesetzt. Die
- * Auflistung/Verwaltung der verwalteten Secrets macht der {@link SecretService} über {@code secret_entry}
- * (funktioniert so auch für Backends ohne List-API wie Vaultwarden).
+ * Abstraction over the secret backends. Deliberately <b>one-way</b>: the values themselves are NOT
+ * read out through this interface (no {@code get(value)}) — only metadata is shown and set. Listing
+ * and managing the managed secrets is done by the {@link SecretService} via {@code secret_entry}
+ * (which also works for backends without a list API, such as Vaultwarden).
  */
 public interface SecretBackend {
 
     SecretBackendType type();
 
-    /** Ist dieses Backend konfiguriert/erreichbar? */
+    /** Is this backend configured/reachable? */
     boolean isAvailable();
 
     /**
-     * Live-Test: greift das Backend gerade, und falls nicht — was fehlt? Macht (wo sinnvoll) einen
-     * echten Erreichbarkeits-Check, nicht nur Config-Präsenz. Fürs UI im Backend-Bereich.
+     * Live test: is the backend working right now, and if not — what is missing? Performs (where it
+     * makes sense) a real reachability check, not just config presence. For the UI in the backend area.
      */
     SecretHealth health();
 
-    /** Kommentar/Metadaten zu einem Secret (z.B. Vaultwarden-Notiz), oder {@code null}. */
+    /** Comment/metadata of a secret (e.g. Vaultwarden note), or {@code null}. */
     String comment(String name);
 
-    /** Secret setzen/anlegen (one-way). {@code note} = optionale Freitext-Notiz. */
+    /** Set/create a secret (one-way). {@code note} = optional free-text note. */
     void set(String name, String value, String note);
 
     /**
-     * INTERN — liest den Klartext-Wert eines Secrets. NIE fürs UI; der one-way-Charakter der Anzeige
-     * bleibt gewahrt. {@code null}, wenn nicht lesbar.
+     * INTERNAL — reads the plaintext value of a secret. NEVER for the UI; the one-way character of the
+     * display is preserved. {@code null} if it is not readable.
      *
-     * <p>Zulässige Verwender sind die Migration (Backend→Backend-Zügeln) und
-     * {@link SecretService#resolve(String)}, über das technische Verbraucher ein gepflegtes Secret zur
-     * Laufzeit beziehen.
+     * <p>Permitted consumers are the migration (moving backend→backend) and
+     * {@link SecretService#resolve(String)}, through which technical consumers obtain a managed secret
+     * at runtime.
      */
     String readValue(String name);
 }

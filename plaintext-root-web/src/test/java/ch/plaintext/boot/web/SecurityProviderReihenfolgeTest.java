@@ -12,18 +12,17 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Haelt fest, welcher {@link SecurityProvider} gewinnt, wenn beide AutoConfigurations laufen.
+ * Pins down which {@link SecurityProvider} wins when both AutoConfigurations run.
  *
- * <p><b>Warum das ein eigener Test ist.</b> {@code MenuAutoConfiguration} bietet einen
- * <i>permissiven</i> Default-Provider an ({@code hasRole} liefert immer {@code true}), damit eine
- * App ohne Security ueberhaupt ein Menue bekommt. {@link WebAutoConfiguration} bietet den echten,
- * an Spring Security gebundenen an. Beide sind {@code @ConditionalOnMissingBean} — es gewinnt
- * also, wer zuerst registriert.
+ * <p><b>Why this deserves its own test.</b> {@code MenuAutoConfiguration} offers a
+ * <i>permissive</i> default provider ({@code hasRole} always returns {@code true}), so that an app
+ * without security gets a menu at all. {@link WebAutoConfiguration} offers the real one, bound to
+ * Spring Security. Both are {@code @ConditionalOnMissingBean} — so whoever registers first wins.
  *
- * <p>Gewaenne der Default, waere das ein <b>fail-open</b>: jeder Menuepunkt waere fuer jeden
- * sichtbar, und zwar ohne Fehlermeldung. Unter {@code plaintext.menu.access-policy=strict} und
- * mit dem Seiten-Zugriffsschutz haengt daran auch die Erreichbarkeit der Seiten. Ein solcher
- * Fehler faellt im Betrieb erst auf, wenn jemand Eintraege sieht, die ihn nichts angehen.
+ * <p>If the default won, that would be a <b>fail-open</b>: every menu item would be visible to
+ * everyone, and without any error message. Under {@code plaintext.menu.access-policy=strict} and
+ * with the page access guard, the reachability of the pages depends on this as well. A bug like
+ * that only surfaces in production once somebody sees entries that are none of their business.
  */
 class SecurityProviderReihenfolgeTest {
 

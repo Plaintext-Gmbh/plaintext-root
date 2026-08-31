@@ -12,13 +12,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 
 /**
- * Sichert die Jar-Namens-Zerlegung von {@link PlaintextOwaspSuppressionsTest}.
+ * Safeguards the jar-name decomposition of {@link PlaintextOwaspSuppressionsTest}.
  *
- * <p>Die Zerlegung ersetzt seit Karte 636 den Ausdruck
- * {@code ^(.*?)-(\d[^/\\]*?)(?:-(?:sources|javadoc))?\.jar$} (Sonar {@code java:S5852}: polynomiale
- * Laufzeit durch zwei reluktante Quantoren). Sie ist der stille Teil des Suppression-Tests: liefert
- * sie nichts, misst der Test im Leeren und meldet trotzdem grün — genau davor warnt sein eigener
- * Javadoc. Deshalb steht hier eine Tabelle echter Jar-Namen statt „sieht gut aus".</p>
+ * <p>Since card 636 the decomposition replaces the expression
+ * {@code ^(.*?)-(\d[^/\\]*?)(?:-(?:sources|javadoc))?\.jar$} (Sonar {@code java:S5852}: polynomial
+ * runtime through two reluctant quantifiers). It is the silent part of the suppression test: if it
+ * returns nothing, the test measures in the void and still reports green — exactly what its own
+ * Javadoc warns about. That is why a table of real jar names stands here instead of "looks fine".</p>
  */
 class PlaintextOwaspSuppressionsJarNameTest {
 
@@ -36,10 +36,10 @@ class PlaintextOwaspSuppressionsJarNameTest {
 
     @Test
     void trenntAmErstenBindestrichVorZiffer() {
-        // 4j gehoert zum artifactId-Teil: die Ziffer steht nicht direkt hinter einem Bindestrich.
+        // 4j belongs to the artifactId part: the digit does not stand directly behind a hyphen.
         assertArrayEquals(new String[]{"ical4j", "4.1.1"},
                 PlaintextOwaspSuppressionsTest.zerlegeJarName("ical4j-4.1.1.jar"));
-        // Versionen mit Qualifier bleiben vollstaendig in der Version.
+        // Versions with a qualifier stay in the version in full.
         assertArrayEquals(new String[]{"plaintext-parent", "2.1503.0-SNAPSHOT"},
                 PlaintextOwaspSuppressionsTest.zerlegeJarName("plaintext-parent-2.1503.0-SNAPSHOT.jar"));
     }
@@ -54,7 +54,7 @@ class PlaintextOwaspSuppressionsJarNameTest {
 
     @Test
     void liefertLeeresArrayOhneVersionOderOhneJarEndung() {
-        // Leeres Array statt null (java:S1168): der Aufrufer prueft die Laenge, nicht auf null.
+        // Empty array instead of null (java:S1168): the caller checks the length, not for null.
         assertEquals(0, PlaintextOwaspSuppressionsTest.zerlegeJarName("lombok.jar").length);
         assertEquals(0, PlaintextOwaspSuppressionsTest.zerlegeJarName("plaintext-root-menu-1.544.0.pom").length);
         assertEquals(0, PlaintextOwaspSuppressionsTest.zerlegeJarName(null).length);
@@ -62,9 +62,9 @@ class PlaintextOwaspSuppressionsJarNameTest {
 
     @Test
     void bleibtBeiPathologischemNamenLinear() {
-        // Genau der Eingabetyp, an dem das alte Muster quadratisch wurde: viele "-Ziffer"-Stellen
-        // fuer die beiden reluktanten Gruppen, und eine Endung, die knapp nicht passt. Mit dem
-        // alten Ausdruck gemessen: 372 ms bei n=2000, 1351 ms bei n=4000, 4783 ms bei n=8000.
+        // Exactly the kind of input on which the old pattern became quadratic: many "-digit" places
+        // for the two reluctant groups, and a suffix that just barely does not match. Measured with the
+        // old expression: 372 ms at n=2000, 1351 ms at n=4000, 4783 ms at n=8000.
         String bosartig = "a-1".repeat(8000) + ".ja";
         assertTimeout(Duration.ofSeconds(2),
                 () -> assertEquals(0, PlaintextOwaspSuppressionsTest.zerlegeJarName(bosartig).length));

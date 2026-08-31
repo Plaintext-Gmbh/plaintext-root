@@ -9,14 +9,14 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.SecurityContextRepository;
 
 /**
- * Stellt den {@link SecurityContextRepository} als eigenstaendige Bean bereit.
+ * Provides the {@link SecurityContextRepository} as a bean of its own.
  *
- * <p>Bewusst aus {@link PlaintextSecurityConfig} herausgezogen: Der
- * {@link PlaintextAuthenticationSuccessHandler} braucht das Repository (zum Persistieren
- * eines leeren Contexts im TOTP-Gate), und {@code PlaintextSecurityConfig} braucht wiederum
- * den SuccessHandler. Laege die Repository-Bean weiterhin in {@code PlaintextSecurityConfig},
- * entstuende eine Konstruktor-Zyklus-Abhaengigkeit. Diese kleine, zustandslose Config bricht
- * den Zyklus.
+ * <p>Deliberately pulled out of {@link PlaintextSecurityConfig}: the
+ * {@link PlaintextAuthenticationSuccessHandler} needs the repository (to persist
+ * an empty context in the TOTP gate), and {@code PlaintextSecurityConfig} in turn needs
+ * the success handler. If the repository bean still lay in {@code PlaintextSecurityConfig},
+ * a constructor cycle dependency would arise. This small, stateless config breaks
+ * the cycle.
  */
 @Configuration
 public class SecurityContextRepositoryConfig {

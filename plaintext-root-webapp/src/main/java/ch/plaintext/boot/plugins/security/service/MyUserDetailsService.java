@@ -20,9 +20,9 @@ import java.util.List;
 public class MyUserDetailsService implements org.springframework.security.core.userdetails.UserDetailsService {
 
     /**
-     * Authority, die einen erzwungenen Passwortwechsel markiert (Karte 306). Wird gesetzt, wenn
-     * {@code MyUserEntity.mustChangePassword} true ist, und vom
-     * {@code PlaintextAuthenticationSuccessHandler} in einen Redirect auf die Passwort-Seite umgesetzt.
+     * Authority that marks a forced password change (card 306). Is set when
+     * {@code MyUserEntity.mustChangePassword} is true, and is turned by the
+     * {@code PlaintextAuthenticationSuccessHandler} into a redirect to the password page.
      */
     public static final String MUST_CHANGE_PASSWORD_AUTHORITY = "PROPERTY_MUSTCHANGEPASSWORD";
 
@@ -57,8 +57,8 @@ public class MyUserDetailsService implements org.springframework.security.core.u
         if (user.getStartpage() != null && !user.getStartpage().isEmpty()) {
             auth.add(new SimpleGrantedAuthority("PROPERTY_STARTPAGE_"+user.getStartpage()));
         }
-        // Karte 306: signalisiert dem AuthenticationSuccessHandler einen erzwungenen
-        // Passwortwechsel (z.B. Root-Initialpasswort) -> Redirect auf die Selbstservice-Seite.
+        // Card 306: signals a forced password change to the AuthenticationSuccessHandler
+        // (e.g. the root initial password) -> redirect to the self-service page.
         if (user.isMustChangePassword()) {
             auth.add(new SimpleGrantedAuthority(MUST_CHANGE_PASSWORD_AUTHORITY));
         }

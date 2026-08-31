@@ -4,26 +4,26 @@
 package ch.plaintext.modules;
 
 /**
- * Discovery-Interface für Feature-Module (Task #016, Modul-Verwaltung). Jedes Modul, das in der
- * zentralen Verwaltung („Root | Module") erscheinen soll, stellt eine Spring-Bean bereit, die dieses
- * Interface implementiert — analog zum {@code PlaintextCron}-Discovery (Spring sammelt automatisch
- * {@code List<ModuleDescriptor>} ein, keine zentrale Registry). Ohne Bean taucht ein Modul nicht auf
- * (Opt-in). Der Ein-/Aus-Zustand wird separat (Tabelle {@code module_config}) persistiert.
+ * Discovery interface for feature modules (Task #016, module management). Every module that should
+ * appear in the central management page ("Root | Module") provides a Spring bean implementing this
+ * interface — analogous to the {@code PlaintextCron} discovery (Spring collects
+ * {@code List<ModuleDescriptor>} automatically, no central registry). Without such a bean a module
+ * does not show up (opt-in). The on/off state is persisted separately (table {@code module_config}).
  */
 public interface ModuleDescriptor {
 
-    /** Eindeutige, stabile Modul-Id (z. B. "secrets", "member", "buchhaltung"). */
+    /** Unique, stable module id (e.g. "secrets", "member", "buchhaltung"). */
     String moduleId();
 
-    /** Anzeigename für die UI (Default: {@link #moduleId()}). */
+    /** Display name for the UI (default: {@link #moduleId()}). */
     default String displayName() {
         return moduleId();
     }
 
     /**
-     * Modul-Version — Default aus dem Jar-Manifest ({@code Implementation-Version} der implementierenden
-     * Klasse); fehlt es (IDE/Dev-Run), {@code "dev"}. Voraussetzung fürs Manifest:
-     * {@code maven-jar-plugin} mit {@code addDefaultImplementationEntries}.
+     * Module version — by default from the jar manifest ({@code Implementation-Version} of the
+     * implementing class); if it is missing (IDE/dev run), {@code "dev"}. Prerequisite for the
+     * manifest: {@code maven-jar-plugin} with {@code addDefaultImplementationEntries}.
      */
     default String version() {
         Package p = getClass().getPackage();
@@ -32,9 +32,9 @@ public interface ModuleDescriptor {
     }
 
     /**
-     * JPA-Entity-Klassen dieses Moduls, die beim Export/Import (Task #016 Phase 2) mitgenommen
-     * werden. Default: leer (Opt-in) — Module ohne eigene Daten (z. B. reine UI-Module) müssen
-     * nichts überschreiben.
+     * JPA entity classes of this module that are included in export/import (Task #016 phase 2).
+     * Default: empty (opt-in) — modules without data of their own (e.g. pure UI modules) do not
+     * need to override anything.
      */
     default java.util.List<Class<?>> entities() {
         return java.util.List.of();

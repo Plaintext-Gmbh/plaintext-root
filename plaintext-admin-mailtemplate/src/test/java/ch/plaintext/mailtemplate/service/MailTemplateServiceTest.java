@@ -19,8 +19,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests für {@link MailTemplateService}: Cache-Fallback-Verhalten (DB-Override vor Code-Default),
- * Platzhalter-Ersetzung sowie Save/Delete-Wirkung auf den Cache.
+ * Tests for {@link MailTemplateService}: cache fallback behaviour (DB override before code default),
+ * placeholder substitution as well as the effect of save/delete on the cache.
  */
 class MailTemplateServiceTest {
 

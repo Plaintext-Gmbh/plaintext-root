@@ -33,8 +33,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Prueft die aus dem {@link MagicLinkGenerationSuccessHandler} hierher verschobene Link-Bau- und
- * Mail-Versand-Logik sowie die neue Token-Generierung.
+ * Checks the link-building and mail-sending logic moved here from the
+ * {@link MagicLinkGenerationSuccessHandler}, as well as the new token generation.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -137,7 +137,7 @@ class MagicLinkServiceTest {
 
     @Test
     void sendForExistingToken_ignoriertXForwardedHost_ohneKonfigurierteBaseUrl() {
-        // X-Forwarded-Header duerfen NICHT im Magic-Link landen (Phishing-Vektor)
+        // X-Forwarded headers must NOT end up in the magic link (phishing vector)
         when(request.getHeader("X-Forwarded-Host")).thenReturn("evil.com");
 
         service.sendForExistingToken(userWithMandat(), "abc123", request);

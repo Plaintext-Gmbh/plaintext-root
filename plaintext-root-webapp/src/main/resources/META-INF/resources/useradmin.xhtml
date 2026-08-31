@@ -103,10 +103,10 @@
                                  process="@this"/>
 
                 <!--
-                    Spaltenauswahl je Benutzer (Auftrag Daniel, 25.08.2026). Gespeichert wird am
-                    change-Ereignis, also bei JEDER Aenderung im aufgeklappten Menue - kein
-                    Speichern-Knopf, den man vergessen kann. Die Spalte "Bearbeiten" steht
-                    bewusst nicht zur Wahl: sie ist der einzige Weg, einen Benutzer zu oeffnen.
+                    Per user column selection (request from Daniel, 25 August 2026). Saving happens
+                    on the change event, so on EVERY change in the opened menu - no
+                    save button that can be forgotten. The "Bearbeiten" column is
+                    deliberately not offered for selection: it is the only way to open a user.
                 -->
                 <p:selectCheckboxMenu id="spalten"
                                       value="#{myUserBackingBean.sichtbareSpalten}"
@@ -170,11 +170,11 @@
                 </p:column>
 
                 <!--
-                    Mehrfachauswahl statt Freitext: die Mandantennamen sind kurz und wiederholen
-                    sich, eine Liste zum Ankreuzen trifft schneller als Tippen. filter="true"
-                    macht die Liste selbst durchsuchbar, sobald es viele Mandanten sind.
-                    filterMatchMode="in" ist zwingend - mit "contains" wuerde eine Mehrfachauswahl
-                    gegen den Wert nur der Reihe nach verglichen und traefe nichts.
+                    Multiple selection instead of free text: the tenant names are short and repeat
+                    themselves, a list to tick off hits faster than typing. filter="true"
+                    makes the list itself searchable as soon as there are many tenants.
+                    filterMatchMode="in" is mandatory - with "contains" a multiple selection would
+                    be compared against the value one item at a time and would match nothing.
                 -->
                 <p:column headerText="Mandat" priority="2"
                           visible="#{myUserBackingBean.spalteSichtbar('mandat')}"
@@ -255,9 +255,9 @@
                     </p:inputText>
 
                     <!--
-                        Vor- und Nachname (Auftrag Daniel, 25.08.2026). Beide sind freiwillig:
-                        bestehende Konten haben keine Namen, ein Pflichtfeld wuerde das Speichern
-                        jedes Altkontos blockieren.
+                        First and last name (request from Daniel, 25 August 2026). Both are optional:
+                        existing accounts have no names, and a required field would block saving
+                        every legacy account.
                     -->
                     <h:outputText value="#{i18n.t('Vorname')}:"/>
                     <p:inputText id="vorname" size="45" value="#{myUserBackingBean.selected.vorname}"/>
@@ -267,13 +267,13 @@
 
                     <h:outputText value="#{i18n.t('Ohne Passwort (nur OIDC)')}:"/>
                     <h:panelGroup>
-                        <!-- 29.08.2026 (Daniel): Der Haken aktualisierte den GANZEN Dialog
-                             (update="fm:dlg"). Ein Dialog, der sich selbst per Ajax neu rendert,
-                             verliert seinen Zustand und geht zu — es sah aus, als wuerde das
-                             Formular sofort gespeichert. Jetzt werden nur die beiden Zellen der
-                             Passwort-Zeile aktualisiert; der Dialog bleibt offen und die Eingaben
-                             stehen. Absolute Ids (fuehrender Doppelpunkt), sonst sucht PrimeFaces
-                             relativ zum Dialog und findet nichts. -->
+                        <!-- 29 August 2026 (Daniel): the checkbox updated the WHOLE dialog
+                             (update="fm:dlg"). A dialog that re-renders itself via Ajax
+                             loses its state and closes; it looked as if the
+                             form were being saved immediately. Now only the two cells of the
+                             password row are updated; the dialog stays open and the entries
+                             remain. Absolute ids (leading colon), otherwise PrimeFaces searches
+                             relative to the dialog and finds nothing. -->
                         <p:selectBooleanCheckbox id="passwordlessChk" value="#{myUserBackingBean.selected.passwordless}">
                             <p:ajax process="@this" update=":fm:pwLabelZelle :fm:pwFeldZelle"/>
                         </p:selectBooleanCheckbox>
@@ -281,9 +281,9 @@
                                       style="font-size: 0.85rem; color: var(--text-color-secondary);"/>
                     </h:panelGroup>
 
-                    <!-- Beide Zellen bleiben IMMER im Raster (nur ihr Inhalt haengt am Haken) —
-                         sonst verschiebt eine wegfallende Zelle alle folgenden Zeilen des
-                         zweispaltigen panelGrid, wie es in setup.xhtml passiert ist. -->
+                    <!-- Both cells ALWAYS stay in the grid (only their content depends on the checkbox);
+                         otherwise a cell that drops out shifts all following rows of the
+                         two-column panelGrid, as happened in setup.xhtml. -->
                     <h:panelGroup id="pwLabelZelle">
                         <h:outputText value="#{i18n.t('Passwort')}:"
                                       rendered="#{not myUserBackingBean.selected.passwordless}"/>
@@ -370,16 +370,16 @@
                     </h:panelGroup>
 
                     <!--
-                        Die Knopfzeile liegt im FUSS des Rasters, nicht als weitere Zelle darin.
-                        Zwei Gruende, beide hier vorgefallen: Ein h:panelGroup kennt kein colspan
-                        (das Attribut wurde stillschweigend ignoriert), und das <br/> davor war
-                        selbst eine Zelle und verschob alles Nachfolgende um eine Spalte.
+                        The button row sits in the FOOTER of the grid, not as another cell inside it.
+                        Two reasons, both of which occurred here: an h:panelGroup knows no colspan
+                        (the attribute was silently ignored), and the <br/> in front of it was
+                        itself a cell and shifted everything after it by one column.
 
-                        SECURITY (Forensik 23.08.2026): Verlangt das Backing-Bean fuer den Entzug von
-                        root/admin eine ausdrueckliche Bestaetigung, kommt die Antwort mit
-                        validationFailed zurueck (Dialog bleibt offen) und rollenEntzugAusstehend
-                        ist gesetzt — dann wird die Rueckfrage gezeigt statt kommentarlos zu
-                        speichern.
+                        SECURITY (forensics 23 August 2026): if the backing bean demands an explicit
+                        confirmation for the revocation of root/admin, the response comes back with
+                        validationFailed (the dialog stays open) and rollenEntzugAusstehend
+                        is set; then the confirmation prompt is shown instead of saving
+                        without comment.
                     -->
                     <f:facet name="footer">
                       <h:panelGroup styleClass="dialog-buttons">
@@ -401,10 +401,10 @@
             </p:dialog>
 
             <!--
-                SECURITY (Forensik 23.08.2026): Rueckfrage beim Entzug privilegierter Rollen durch root.
-                Ein Nicht-root wird schon serverseitig abgewiesen und sieht diesen Dialog nie.
-                Der Vorfall, der zu dieser Karte fuehrte, war ein root-Akteur — deshalb reicht ein
-                reiner Nicht-root-Schutz nicht, root muss die Absicht bestaetigen.
+                SECURITY (forensics 23 August 2026): confirmation prompt when root revokes privileged roles.
+                A non-root user is rejected on the server side already and never sees this dialog.
+                The incident that led to this card involved a root actor; that is why a
+                purely non-root guard is not enough, root has to confirm the intent.
             -->
             <p:dialog id="rollenEntzugDlg" widgetVar="rollenEntzugDlg" styleClass="mobile-safe"
                       header="#{i18n.t('Rollen-Entzug bestätigen')}"

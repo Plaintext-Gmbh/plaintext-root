@@ -28,8 +28,8 @@ public class HttpSessionRegistry {
 
     // Thread-safe map to store session references
     /**
-     * Attributname, unter dem Spring Security den {@code SecurityContext} in der Session ablegt.
-     * Bewusst als Konstante dupliziert, damit dieses Modul nicht von spring-security-web abhaengt.
+     * Attribute name under which Spring Security stores the {@code SecurityContext} in the session.
+     * Deliberately duplicated as a constant so this module does not depend on spring-security-web.
      */
     private static final String SPRING_SECURITY_CONTEXT_KEY = "SPRING_SECURITY_CONTEXT";
 
@@ -81,20 +81,20 @@ public class HttpSessionRegistry {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 9): invalidiert alle aktiven Sessions eines Benutzers.
+     * SECURITY (card 314, item 9): invalidates all active sessions of a user.
      *
-     * <p>Wird nach einem Passwort-Reset aufgerufen. Ohne das behaelt ein Angreifer, der bereits
-     * eine Session auf dem Konto hat, seinen Zugriff ueber den Passwortwechsel hinaus — der
-     * Reset waere dann als Wiederherstellungsmassnahme wirkungslos. Die persistenten
-     * Remember-Me-Tokens werden separat geloescht.</p>
+     * <p>Called after a password reset. Without it an attacker who already has
+     * a session on the account keeps their access beyond the password change — the
+     * reset would then be ineffective as a recovery measure. The persistent
+     * remember-me tokens are deleted separately.</p>
      *
-     * <p>Gelesen wird der in der Session abgelegte {@code SecurityContext} von Springs
-     * {@code HttpSessionSecurityContextRepository}. Fehler beim Invalidieren (z.B. eine bereits
-     * abgelaufene Session) werden geschluckt, damit ein einzelner Fehlschlag die uebrigen
-     * Sessions nicht stehen laesst.</p>
+     * <p>What is read is the {@code SecurityContext} stored in the session by Spring's
+     * {@code HttpSessionSecurityContextRepository}. Errors while invalidating (e.g. an already
+     * expired session) are swallowed so that a single failure does not leave the remaining
+     * sessions standing.</p>
      *
-     * @param username der Benutzername, dessen Sessions beendet werden sollen
-     * @return Anzahl der invalidierten Sessions
+     * @param username the user name whose sessions are to be terminated
+     * @return number of invalidated sessions
      */
     public int invalidateSessionsOfUser(String username) {
         if (username == null || username.isBlank()) {
@@ -115,7 +115,7 @@ public class HttpSessionRegistry {
                 session.invalidate();
                 invalidated++;
             } catch (RuntimeException e) {
-                // Session bereits invalidiert/abgelaufen -> aus der Registry werfen und weitermachen.
+                // Session already invalidated/expired -> drop it from the registry and carry on.
                 log.debug("Session {} konnte nicht invalidiert werden: {}", entry.getKey(), e.toString());
             } finally {
                 sessionMap.remove(entry.getKey());

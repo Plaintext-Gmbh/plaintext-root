@@ -16,17 +16,17 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Baut die Liste der anzuzeigenden {@link DashboardTileData} aus allen sichtbaren, registrierten
- * Kacheln auf – analog zum {@link ch.plaintext.boot.menu.MenuModelBuilder}.
+ * Builds the list of {@link DashboardTileData} to be displayed from all visible, registered
+ * tiles – analogous to the {@link ch.plaintext.boot.menu.MenuModelBuilder}.
  * <p>
- * Pro Kachel werden die statischen Metadaten der {@code @DashboardTile}-Annotation übernommen und
- * anschliessend – sofern vorhanden – über einen passenden {@link DashboardTileDataProvider}
- * dynamisch angereichert.
+ * For every tile the static metadata of the {@code @DashboardTile} annotation is taken over and
+ * then – if one is present – dynamically enriched through a matching
+ * {@link DashboardTileDataProvider}.
  * <p>
- * Die Kachel- und Provider-Beans sind statisch (zur Startzeit registriert) und werden daher
- * <strong>einmalig</strong> aufgelöst und gecacht. Pro Seitenaufruf werden nur noch die
- * request-abhängigen {@link TileItemImpl#isOn()}- und {@link DashboardTileDataProvider#enrich}-
- * Aufrufe ausgewertet.
+ * The tile and provider beans are static (registered at startup time) and are therefore resolved
+ * and cached <strong>once</strong>. Per page request only the request-dependent
+ * {@link TileItemImpl#isOn()} and {@link DashboardTileDataProvider#enrich} calls are still
+ * evaluated.
  *
  * @author plaintext.ch
  */
@@ -36,25 +36,25 @@ public class DashboardTileModelBuilder implements SmartInitializingSingleton {
     @Autowired
     private ApplicationContext applicationContext;
 
-    /** Einmalig aufgelöste, nach {@code order} sortierte Kacheln (statisch zur Startzeit). */
+    /** Tiles resolved once and sorted by {@code order} (static at startup time). */
     private volatile List<TileItemImpl> cachedTiles;
 
-    /** Einmalig aufgelöste Provider, nach Kachel-ID indexiert (statisch zur Startzeit). */
+    /** Providers resolved once, indexed by tile ID (static at startup time). */
     private volatile Map<String, DashboardTileDataProvider> cachedProviders;
 
     @Override
     public void afterSingletonsInstantiated() {
-        // Beans einmalig nach dem vollständigen Hochfahren des Contexts auflösen.
+        // Resolve the beans once, after the context has fully started up.
         resolveBeans();
     }
 
     /**
-     * Baut die sichtbaren Dashboard-Kacheln, sortiert nach {@code order}, angereichert via Provider.
+     * Builds the visible dashboard tiles, sorted by {@code order}, enriched via providers.
      *
-     * @return Liste der anzuzeigenden Kacheln (nie {@code null})
+     * @return list of the tiles to be displayed (never {@code null})
      */
     public List<DashboardTileData> buildTiles() {
-        // Fallback (z. B. im Unit-Test ohne Container-Lifecycle): bei Bedarf lazy auflösen.
+        // Fallback (e.g. in a unit test without a container lifecycle): resolve lazily if needed.
         if (cachedTiles == null) {
             resolveBeans();
         }
@@ -66,7 +66,7 @@ public class DashboardTileModelBuilder implements SmartInitializingSingleton {
 
         List<DashboardTileData> result = new ArrayList<>();
         for (TileItemImpl item : cachedTiles) {
-            // Nur sichtbare Kacheln (Rollen + mandatsspezifische Sichtbarkeit) – request-abhängig
+            // Only visible tiles (roles + tenant-specific visibility) – request-dependent
             if (!item.isOn()) {
                 continue;
             }
@@ -78,12 +78,12 @@ public class DashboardTileModelBuilder implements SmartInitializingSingleton {
                 try {
                     provider.enrich(tile);
                 } catch (Exception e) {
-                    // Eine fehlerhafte Kachel darf das gesamte Dashboard nicht lahmlegen
+                    // A single faulty tile must not paralyse the whole dashboard
                     log.error("Fehler beim Anreichern der Kachel '{}': {}", item.getId(), e.getMessage(), e);
                 }
             }
 
-            // Fallback: Wenn keine Aktionen gesetzt wurden, aber ein Haupt-Link existiert
+            // Fallback: if no actions were set but a main link exists
             if (tile.getActions().isEmpty() && item.getLink() != null && !item.getLink().isBlank()) {
                 tile.getActions().add(new DashboardTileData.TileAction("Öffnen", item.getLink(), "pi pi-arrow-right"));
             }
@@ -96,9 +96,9 @@ public class DashboardTileModelBuilder implements SmartInitializingSingleton {
     }
 
     /**
-     * Löst die statischen Kachel- und Provider-Beans einmalig auf und cacht sie. Idempotent und
-     * thread-safe: weitere Aufrufe (z. B. eager beim Start und lazy aus {@link #buildTiles()}) sind
-     * No-ops.
+     * Resolves the static tile and provider beans once and caches them. Idempotent and
+     * thread-safe: further calls (e.g. eagerly at startup and lazily from {@link #buildTiles()})
+     * are no-ops.
      */
     private synchronized void resolveBeans() {
         if (cachedTiles != null) {
@@ -107,7 +107,7 @@ public class DashboardTileModelBuilder implements SmartInitializingSingleton {
 
         List<TileItemImpl> tiles =
             new ArrayList<>(applicationContext.getBeansOfType(TileItemImpl.class).values());
-        // Sortierung ist statisch -> einmalig vorsortieren, pro Request nur noch filtern.
+        // The ordering is static -> sort once up front, then only filter per request.
         tiles.sort(Comparator.comparingInt(TileItemImpl::getOrder));
 
         Map<String, DashboardTileDataProvider> providers = new HashMap<>();

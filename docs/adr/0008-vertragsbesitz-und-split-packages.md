@@ -1,61 +1,58 @@
-# Vertragsbesitz in `plaintext-root-interfaces` und der Umgang mit Split-Packages
+# Contract ownership in `plaintext-root-interfaces` and how split packages are handled
 
 * **Status:** accepted
 * **Date:** 2026-08-30
 * **Deciders:** Daniel Marthaler
-* **Kontext:** Zustandsbericht 29.08.2026, §3 (Welle 3)
+* **Context:** status report of 29.08.2026, §3 (wave 3)
 
 ## Context
 
-Der Zustandsbericht hielt zwei Vermutungen fest: `plaintext-root-interfaces` enthalte
-Verträge, die App-Fachlichkeit sind und nach `plaintext-app-interfaces` gehören; und
-mehrere Java-Pakete würden von mehr als einem Maven-Modul befüllt (Split-Packages —
-unter JPMS verboten, für Werkzeuge verwirrend, und sie verstecken, wer für ein Paket
-zuständig ist).
+The status report recorded two suspicions: that `plaintext-root-interfaces` holds contracts which
+are app business logic and belong in `plaintext-app-interfaces`; and that several Java packages
+are filled by more than one Maven module (split packages — forbidden under JPMS, confusing for
+tooling, and they hide who is responsible for a package).
 
-Beides wurde gemessen, bevor etwas bewegt wurde: alle 42 Typen in
-`plaintext-root-interfaces` wurden einzeln nach Implementierern und Nutzern über **alle
-fünf Repos** (root, app, guild, iot, schuetu) aufgelöst, und die Paket-zu-Modul-Zuordnung
-wurde für alle 326 Pakete der Familie gebildet.
+Both were measured before anything was moved: all 42 types in `plaintext-root-interfaces` were
+individually resolved for implementers and users across **all five repos** (root, app, guild,
+iot, schuetu), and the package-to-module mapping was built for all 326 packages of the family.
 
-### Befund 1 — die Verträge sind zu 41 von 42 Framework
+### Finding 1 — 41 of the 42 contracts are framework
 
-Die Messung widerlegt die Vermutung weitgehend. Was wie App-Fachlichkeit aussieht, ist
-fast durchweg Javadoc: `SecretResolver` nennt `zeiterfassung.jira-password` als
-Beispielschlüssel, `MenuRegistry` „Zeiterfassung" als Beispieltitel, `SearchProvider`
-`"kontakte"` als Beispiel-Id. Die **Signaturen** kennen keine Fachbegriffe — sie sprechen
-über Menüs, Rollen, Mandate, Cron-Läufe, Suchtreffer und Kacheln. Das sind
-Framework-Begriffe, und die Nutzungszahlen bestätigen es: die tragenden Verträge
-(`PlaintextSecurity`, `MenuAnnotation`, `PlaintextCron`, `ModuleDescriptor`,
-`MenuVisibilityProvider`) werden von drei bis fünf Repos konsumiert.
+The measurement largely refutes the suspicion. What looks like app business logic is almost
+always Javadoc: `SecretResolver` names `zeiterfassung.jira-password` as an example key,
+`MenuRegistry` names "Zeiterfassung" as an example title, `SearchProvider` names `"kontakte"` as
+an example id. The **signatures** know no business terms — they talk about menus, roles, tenants,
+cron runs, search hits and tiles. Those are framework terms, and the usage figures confirm it:
+the load-bearing contracts (`PlaintextSecurity`, `MenuAnnotation`, `PlaintextCron`,
+`ModuleDescriptor`, `MenuVisibilityProvider`) are consumed by three to five repos.
 
-Genau **ein** Typ fällt heraus: `ch.plaintext.upload.IUploadTarget`.
+Exactly **one** type falls out of that: `ch.plaintext.upload.IUploadTarget`.
 
 | | |
 | --- | --- |
-| Nutzer in root | **keiner** (ausser dem eigenen Test) |
-| Nutzer in app | `PostkontoUploadTarget`, `RunningUploadTarget` (Implementierungen) und `RootUploadController` (Konsument) |
-| Nutzer in guild / iot / schuetu | keine |
+| users in root | **none** (apart from its own test) |
+| users in app | `PostkontoUploadTarget`, `RunningUploadTarget` (implementations) and `RootUploadController` (consumer) |
+| users in guild / iot / schuetu | none |
 
-Der Endpunktname `/nosec/root/upload` und das Javadoc legten eine Root-Zuständigkeit nahe,
-die es nie gab: der treibende Controller liegt in `plaintext-app-webapp`. Der Vertrag ist
-App-Fachlichkeit im Framework-Vertragsmodul.
+The endpoint name `/nosec/root/upload` and the Javadoc suggested a root responsibility that never
+existed: the driving controller lives in `plaintext-app-webapp`. The contract is app business
+logic inside the framework's contract module.
 
-Zwei weitere Typen haben auffällige Zahlen, sind aber **korrekt** hier:
+Two further types have conspicuous figures but are **correctly** placed here:
 
-* `PlaintextRoles` — 0 Nutzer in root, 15 in app. Reines Framework-Vokabular
-  (`ROLE_USER`/`ROLE_ADMIN`/`ROLE_ROOT`) und Prädikate über `PlaintextSecurity`; dass
-  root es selbst nicht braucht, macht es nicht zu App-Code.
-* `PlaintextEmailAddress` — scheinbar 0 Nutzer, tatsächlich von der Default-Methode
-  `PlaintextSecurity#getDeliverableEmail` im selben Modul verwendet.
+* `PlaintextRoles` — 0 users in root, 15 in app. Pure framework vocabulary
+  (`ROLE_USER`/`ROLE_ADMIN`/`ROLE_ROOT`) and predicates over `PlaintextSecurity`; that root does
+  not need it itself does not make it app code.
+* `PlaintextEmailAddress` — apparently 0 users, but in fact used by the default method
+  `PlaintextSecurity#getDeliverableEmail` in the same module.
 
-### Befund 2 — Split-Packages sind fast alle Vertrag + Implementierung
+### Finding 2 — almost all split packages are contract + implementation
 
-29 Pakete werden von mehr als einem Modul befüllt. Der grosse Teil davon ist **gewollt**
-und die direkte Folge des Musters „Vertrag im Interface-Modul, Implementierung im
-Fachmodul unter demselben Paket":
+29 packages are filled by more than one module. The bulk of them is **intended** and the direct
+consequence of the pattern "contract in the interface module, implementation in the business
+module under the same package":
 
-| Paket | Module |
+| Package | Modules |
 | --- | --- |
 | `ch.plaintext.settings` | root-interfaces + admin-settings |
 | `ch.plaintext.secrets` | root-interfaces + admin-secrets |
@@ -69,81 +66,75 @@ Fachmodul unter demselben Paket":
 | `ch.plaintext.boot.search` | root-interfaces + root-webapp |
 | `ch.plaintext.boot.deeplink` | root-interfaces + root-webapp |
 | `ch.plaintext.boot.menu` | root-interfaces + root-menu + root-webapp |
-| `ch.plaintext.rechnungen`, `.kontakte`, `.auszahlungen`, `.ocr`, `.postkonto`, `.strom`, `.messenger` | app-interfaces + das jeweilige `plaintext-z-*` |
+| `ch.plaintext.rechnungen`, `.kontakte`, `.auszahlungen`, `.ocr`, `.postkonto`, `.strom`, `.messenger` | app-interfaces + the respective `plaintext-z-*` |
 
-Auflösen hiesse, jeden Vertrag in ein `…​.api`-Unterpaket zu schieben — eine
-Massenumbenennung über fünf Repos, die jede Import-Zeile jedes Konsumenten anfasst und
-für jede der vier Apps eine Release-Kette auslöst. Der Nutzen wäre auf absehbare Zeit
-null, weil die Familie ein klassischer Classpath-Build ist und JPMS nicht einsetzt.
-**Wir lösen sie nicht auf.**
+Resolving them would mean pushing every contract into a `…​.api` sub-package — a mass rename
+across five repos that touches every import line of every consumer and triggers a release chain
+for each of the four apps. The benefit would be nil for the foreseeable future, because the
+family is a classic classpath build and does not use JPMS. **We are not resolving them.**
 
-Interessant sind stattdessen die Pakete, die eine **Repo-Grenze** überschreiten — dort
-befüllt eine App ein Paket, das root gehört:
+What is interesting instead are the packages that cross a **repo boundary** — there an app fills
+a package that belongs to root:
 
-| Paket | Fremdbefüller | Bewertung |
+| Package | Filled from outside by | Assessment |
 | --- | --- | --- |
-| `ch.plaintext.boot.plugins.config` | `ForwardedHeaderConfig` **dreimal identisch** in app-, guild- und iot-webapp | Echte Redundanz; gehört einmal nach `plaintext-root-web` |
-| `ch.plaintext.boot.web.nosec` | `RootUploadController` (app-webapp) | Der Konsument von `IUploadTarget`; sollte mit umziehen |
-| `ch.plaintext.boot.web` | `SwaggerRedirectController` (app-webapp) | App-Belang unter Root-Paketnamen |
-| `ch.plaintext.boot` | `DemoCron`, `DemoCronGlobal` (app-webapp) | Demo-Code |
-| `ch.plaintext.boot.plugins.security` | `AppRoleProvider` (app-webapp) | Implementiert einen Root-SPI |
-| `ch.plaintext.boot.plugins.security.model` | `MyUser` (app-z-zeiterfassung) | JPA-Entity der App unter Root-Paketnamen |
-| `ch.plaintext.apitoken` | `KontaktApiController` (app-z-kontakte) | Fach-Controller unter Root-Paketnamen |
-| `ch.plaintext.mcp` | `McpLiterale` (app-interfaces) + root-common | Zwei Repos teilen ein Paket |
-| `ch` | die fünf `*BootApplication`-Klassen | Absicht: Component-Scan-Wurzel |
+| `ch.plaintext.boot.plugins.config` | `ForwardedHeaderConfig` **three times identically** in app-, guild- and iot-webapp | Real redundancy; belongs in `plaintext-root-web`, once |
+| `ch.plaintext.boot.web.nosec` | `RootUploadController` (app-webapp) | The consumer of `IUploadTarget`; should move along with it |
+| `ch.plaintext.boot.web` | `SwaggerRedirectController` (app-webapp) | An app concern under a root package name |
+| `ch.plaintext.boot` | `DemoCron`, `DemoCronGlobal` (app-webapp) | Demo code |
+| `ch.plaintext.boot.plugins.security` | `AppRoleProvider` (app-webapp) | Implements a root SPI |
+| `ch.plaintext.boot.plugins.security.model` | `MyUser` (app-z-zeiterfassung) | The app's JPA entity under a root package name |
+| `ch.plaintext.apitoken` | `KontaktApiController` (app-z-kontakte) | A business controller under a root package name |
+| `ch.plaintext.mcp` | `McpLiterale` (app-interfaces) + root-common | Two repos share one package |
+| `ch` | the five `*BootApplication` classes | Deliberate: the component-scan root |
 
-Es gibt in der ganzen Familie genau **eine** echte Namenskollision
-(`ch.plaintext.boot.plugins.config.ForwardedHeaderConfig`), und sie ist harmlos, weil die
-drei Kopien in drei getrennten Deployables liegen, die nie einen Klassenpfad teilen.
+In the whole family there is exactly **one** genuine name collision
+(`ch.plaintext.boot.plugins.config.ForwardedHeaderConfig`), and it is harmless, because the three
+copies live in three separate deployables that never share a classpath.
 
 ## Decision
 
-1. `IUploadTarget` zieht nach `plaintext-app-interfaces` um — **unter demselben voll
-   qualifizierten Namen** `ch.plaintext.upload.IUploadTarget`, damit kein Konsument seine
-   Importe anfassen muss.
-2. Der Umzug läuft als Expand/Contract, weil app auf eine *veröffentlichte* root-Version
-   gepinnt ist und ein Typ, der hier verschwindet, für app erst nach einem root-Release
-   fehlt:
-   * **Expand** (app-PR): app-interfaces bekommt den Vertrag; app-webapp bindet
-     app-interfaces explizit ein. Während dieser Phase liegt der Typ zweimal auf app's
-     Klassenpfad, und zwar gewinnt die **root**-Kopie: in der aufgelösten Reihenfolge von
-     `plaintext-app-webapp` steht `plaintext-root-interfaces` vor
-     `plaintext-app-interfaces`. Tragfähig ist die Phase deshalb nur, weil beide Kopien
-     bytecode-gleich sind (per `javap` geprüft: gleiche Methoden, gleicher
-     `UploadResult`-Record). Wirksam wird die app-Kopie erst mit dem Contract-Schritt.
-   * **Contract** (root, dieser PR): die root-Kopie wird `@Deprecated(forRemoval = true)`
-     und fällt in einem Folge-PR weg, sobald app auf eine root-Version ohne sie gepinnt
-     ist.
-   Die Reihenfolge ist zwingend: erst app, dann die Löschung in root.
-3. Die übrigen 41 Verträge bleiben, wo sie sind.
-4. Split-Packages nach dem Muster „Vertrag + Implementierung" bleiben. Neue
-   Fremdbefüllung eines Root-Pakets durch eine App gilt als Fehler und wird beim Review
-   zurückgewiesen.
+1. `IUploadTarget` moves to `plaintext-app-interfaces` — **under the same fully qualified name**
+   `ch.plaintext.upload.IUploadTarget`, so that no consumer has to touch its imports.
+2. The move runs as expand/contract, because app is pinned to a *published* root version and a
+   type that disappears here is only missing for app after a root release:
+   * **Expand** (app PR): app-interfaces receives the contract; app-webapp declares
+     app-interfaces explicitly. During this phase the type lies on app's classpath twice, and the
+     **root** copy is the one that wins: in the resolved order of `plaintext-app-webapp`,
+     `plaintext-root-interfaces` comes before `plaintext-app-interfaces`. The phase is viable
+     only because both copies are bytecode-identical (verified with `javap`: same methods, same
+     `UploadResult` record). The app copy takes effect only with the contract step.
+   * **Contract** (root, this PR): the root copy becomes `@Deprecated(forRemoval = true)` and is
+     dropped in a follow-up PR as soon as app is pinned to a root version without it.
+   The order is mandatory: app first, then the deletion in root.
+3. The remaining 41 contracts stay where they are.
+4. Split packages following the "contract + implementation" pattern stay. An app newly filling a
+   root package from the outside counts as a defect and is rejected at review.
 
 ## Consequences
 
-* Positiv: `plaintext-root-interfaces` enthält danach ausschliesslich Framework-Verträge;
-  die Behauptung des Zustandsberichts ist damit erledigt statt offen.
-* Positiv: Der Umzug kostet keinen Konsumenten eine Import-Änderung.
-* Negativ: Zwischen Expand und Contract existiert der Typ doppelt, und es ist die
-  root-Kopie, die zieht. Eine Änderung an der app-Kopie bliebe in dieser Phase **still
-  wirkungslos** — die unangenehmere Richtung, weil sie wie eine erfolgte Änderung aussieht.
-  Deshalb trägt die root-Kopie ein `forRemoval`-Flag und die app-Kopie eine ausdrückliche
-  Warnung im Javadoc; die Phase soll kurz bleiben.
-* Neutral: `ForwardedHeaderConfig` bleibt vorerst dreifach. Die Zusammenlegung nach
-  `plaintext-root-web` wäre ein root-Release plus drei Konsumenten-Bumps für 30 Zeilen
-  Konfiguration — separat zu entscheiden, nicht Teil dieses ADR.
+* Positive: `plaintext-root-interfaces` afterwards contains framework contracts exclusively; the
+  status report's claim is thereby settled instead of open.
+* Positive: the move costs no consumer a single import change.
+* Negative: between expand and contract the type exists twice, and it is the root copy that
+  takes effect. A change to the app copy would be **silently ineffective** during that phase —
+  the more unpleasant direction, because it looks like a change that has taken hold. That is why
+  the root copy carries a `forRemoval` flag and the app copy an explicit warning in its Javadoc;
+  the phase is meant to stay short.
+* Neutral: `ForwardedHeaderConfig` stays threefold for the time being. Consolidating it into
+  `plaintext-root-web` would mean a root release plus three consumer bumps for 30 lines of
+  configuration — to be decided separately, not part of this ADR.
 
 ## Alternatives considered
 
-| Option | Warum nicht? |
+| Option | Why not? |
 | --- | --- |
-| Alles auf einmal: root löscht, app übernimmt, alle bumpen | app wäre zwischen den beiden Merges nicht baubar; der Pin auf eine veröffentlichte root-Version lässt keinen atomaren Schnitt zu. |
-| `IUploadTarget` in root lassen und nur das Javadoc korrigieren | Hätte die Fehlbenennung dokumentiert statt behoben; der Vertrag hätte weiter Konsumenten in root vorgetäuscht, die es nicht gibt. |
-| Split-Packages global über `…​.api`-Unterpakete auflösen | Massenumbenennung über fünf Repos, vier Release-Ketten, jede Import-Zeile betroffen — ohne JPMS kein Gegenwert. |
-| `ForwardedHeaderConfig` in diesem Zug nach root ziehen | Eigene Release-Kette über drei Konsumenten; vermischt zwei unabhängige Entscheidungen in einem PR. |
+| All at once: root deletes, app takes over, everybody bumps | app would not be buildable between the two merges; the pin to a published root version does not permit an atomic cut. |
+| Leave `IUploadTarget` in root and only correct the Javadoc | Would have documented the misnaming instead of fixing it; the contract would have kept pretending to have consumers in root that do not exist. |
+| Resolve split packages globally through `…​.api` sub-packages | A mass rename across five repos, four release chains, every import line affected — without JPMS there is nothing to gain. |
+| Move `ForwardedHeaderConfig` to root in the same step | A release chain of its own across three consumers; mixes two independent decisions into one PR. |
 
 ## References
 
-* Zustandsbericht 29.08.2026, §3 (Welle 3)
-* ADR-0006 — Releases und Konsumenten-Pins
+* Status report of 29.08.2026, §3 (wave 3)
+* ADR-0006 — Releases and consumer pins

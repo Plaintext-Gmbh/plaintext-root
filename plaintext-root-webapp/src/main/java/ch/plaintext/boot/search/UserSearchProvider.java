@@ -14,13 +14,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Root-eigener {@link SearchProvider}: findet Benutzer per Benutzername oder ID und verlinkt auf die
- * Benutzerverwaltung ({@code useradmin.xhtml}).
+ * Root's own {@link SearchProvider}: finds users by user name or ID and links to the
+ * user administration ({@code useradmin.xhtml}).
  * <p>
- * <b>Nur für ROOT/ADMIN</b> und quer schneidend ({@link #isMenuScoped()} {@code = false}); die
- * Rollen-/Mandanten-Sichtbarkeit wird hier selbst erzwungen – exakt wie in der Benutzerverwaltung:
- * ROOT sieht alle Benutzer, ADMIN nur die des eigenen Mandanten. Ohne ROOT/ADMIN liefert der
- * Provider nichts.
+ * <b>For ROOT/ADMIN only</b> and cross-cutting ({@link #isMenuScoped()} {@code = false}); the
+ * role/tenant visibility is enforced here by the provider itself - exactly as in the user
+ * administration: ROOT sees all users, ADMIN only those of its own tenant. Without ROOT/ADMIN the
+ * provider returns nothing.
  *
  * @author plaintext.ch
  */
@@ -44,7 +44,7 @@ public class UserSearchProvider implements SearchProvider {
 
     @Override
     public boolean isMenuScoped() {
-        // Rollen-/Mandanten-gebunden, an kein Fachmodul-Menü gekoppelt: selbst abgesichert.
+        // Bound to roles/tenants, coupled to no domain module menu: secured by itself.
         return false;
     }
 
@@ -78,14 +78,14 @@ public class UserSearchProvider implements SearchProvider {
     }
 
     /**
-     * Baut aus einem sichtbaren, passenden Benutzer einen Treffer, sonst {@code null}
-     * (kein Username, fremder Mandant für ADMIN oder kein Query-Match).
+     * Builds a hit from a visible, matching user, otherwise {@code null}
+     * (no user name, foreign tenant for ADMIN or no query match).
      */
     private SearchHit toHit(MyUserEntity user, boolean root, String currentMandat, String needle) {
         if (user == null || user.getUsername() == null) {
             return null;
         }
-        // ADMIN: strikt auf den eigenen Mandanten begrenzen (wie in der Benutzerverwaltung).
+        // ADMIN: restrict strictly to the own tenant (as in the user administration).
         if (!root && (currentMandat == null || !currentMandat.equals(user.getMandat()))) {
             return null;
         }
@@ -103,7 +103,7 @@ public class UserSearchProvider implements SearchProvider {
     }
 
     /**
-     * Score: exakter/Präfix-Treffer im Benutzernamen &gt; enthaltener Name; ID-Treffer separat. 0 = kein Match.
+     * Score: exact/prefix hit in the user name &gt; contained name; ID hit separately. 0 = no match.
      */
     private int matchScore(MyUserEntity user, String needle) {
         String name = user.getUsername().toLowerCase();

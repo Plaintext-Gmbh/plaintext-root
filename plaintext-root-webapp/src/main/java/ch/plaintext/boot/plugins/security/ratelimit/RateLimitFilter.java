@@ -23,34 +23,34 @@ import java.io.IOException;
  * Rate limiting filter for REST API endpoints.
  * Limits requests per IP address to prevent abuse.
  *
- * <p>SECURITY (Karte 303, Befund 1): Der Filter muss <b>vor</b> der
- * {@code springSecurityFilterChain} laufen, sonst sind die Zweige fuer {@code POST /login} und
- * {@code POST /ott/generate} toter Code — Springs {@code UsernamePasswordAuthenticationFilter}
- * beendet den Request innerhalb der Security-Chain und ruft {@code chain.doFilter()} nicht mehr
- * auf. Die Reihenfolge wird deshalb in {@link RateLimitFilterConfig} explizit gesetzt; ein
- * blosses {@code @Component} landet bei {@code Ordered.LOWEST_PRECEDENCE} und damit weit
- * <em>hinter</em> Security.
+ * <p>SECURITY (card 303, finding 1): the filter has to run <b>before</b> the
+ * {@code springSecurityFilterChain}, otherwise the branches for {@code POST /login} and
+ * {@code POST /ott/generate} are dead code — Spring's {@code UsernamePasswordAuthenticationFilter}
+ * ends the request inside the security chain and no longer calls {@code chain.doFilter()}.
+ * The order is therefore set explicitly in {@link RateLimitFilterConfig}; a
+ * plain {@code @Component} ends up at {@code Ordered.LOWEST_PRECEDENCE} and thus far
+ * <em>behind</em> security.
  */
 @Slf4j
 @Component
-@AllowRawScheduled // System-Waechter: Rate-Limit-Buckets-Cleanup im Sub-Minuten-Rahmen, keine Cron-Expression moeglich
+@AllowRawScheduled // System guard: cleanup of rate-limit buckets on a sub-minute interval, no cron expression possible
 public class RateLimitFilter implements Filter {
 
     private final RateLimiter apiLimiter;
     private final RateLimiter loginLimiter;
     private final RateLimiter claudeLimiter;
     private final RateLimiter nosecTokenLimiter;
-    /** SECURITY (Karte 314, Punkt 16): Auffang-Limit fuer alle uebrigen /nosec/-Pfade. */
+    /** SECURITY (card 314, item 16): catch-all limit for all remaining /nosec/ paths. */
     private final RateLimiter nosecPublicLimiter;
     /**
-     * Karte 657: Eigener, deutlich groesserer Eimer fuer CalDAV/CardDAV. Diese Pfade liegen nur
-     * deshalb unter {@code /nosec/}, damit die Formular-Anmeldung sie nicht abfaengt — sie sind
-     * per Basic-Auth geschuetzt und gerade nicht „public".
+     * Card 657: a separate, considerably larger bucket for CalDAV/CardDAV. These paths lie under
+     * {@code /nosec/} only so that the form login does not intercept them — they are
+     * protected by basic auth and precisely not "public".
      */
     private final RateLimiter davLimiter;
     private final ClientIpResolver clientIpResolver;
 
-    /** Vorgabe des DAV-Eimers, auch fuer die Test-Konstruktoren (Karte 657). */
+    /** Default of the DAV bucket, also for the test constructors (card 657). */
     static final int DEFAULT_DAV_MAX_REQUESTS = 240;
     static final int DEFAULT_DAV_WINDOW_SECONDS = 60;
 
@@ -66,13 +66,13 @@ public class RateLimitFilter implements Filter {
             @Value("${plaintext.rate-limit.nosec-token.window-seconds:60}") int nosecTokenWindowSeconds,
             @Value("${plaintext.rate-limit.nosec-public.max-requests:60}") int nosecPublicMaxRequests,
             @Value("${plaintext.rate-limit.nosec-public.window-seconds:60}") int nosecPublicWindowSeconds,
-            // Karte 657: gemessen am nginx-Zugriffslog von plaintext-app, 7 Tage — ein
-            // Apple-Sync-Durchlauf erreicht Spitzen von 85 CalDAV-Anfragen pro Minute, mehrere
-            // Minuten lagen ueber 60. Das generische /nosec-Limit hat deshalb 73 Mal echte
-            // Clients abgewiesen, darunter vier Aufrufe der oeffentlichen Terminseite durch
-            // einen Browser, der sich den Eimer mit dem gleichzeitigen Sync teilte.
-            // 240 statt 90: Ein Erstsync eines neuen Geraets macht ein Vielfaches eines
-            // Folgesyncs, und ein Anschluss hat mehrere Geraete hinter derselben Adresse.
+            // Card 657: measured against the nginx access log of plaintext-app, 7 days — one
+            // Apple sync run reaches peaks of 85 CalDAV requests per minute, several
+            // minutes were above 60. The generic /nosec limit therefore rejected real clients
+            // 73 times, among them four calls of the public appointment page by
+            // a browser that shared the bucket with the concurrent sync.
+            // 240 instead of 90: a first sync of a new device makes a multiple of a
+            // follow-up sync, and one connection has several devices behind the same address.
             @Value("${plaintext.rate-limit.dav.max-requests:240}") int davMaxRequests,
             @Value("${plaintext.rate-limit.dav.window-seconds:60}") int davWindowSeconds,
             @Value("${plaintext.rate-limit.trusted-proxies:" + ClientIpResolver.DEFAULT_TRUSTED_PROXIES + "}")
@@ -94,7 +94,7 @@ public class RateLimitFilter implements Filter {
                 maxBuckets, trustedProxies);
     }
 
-    /** Bequemer Konstruktor fuer Tests: Default-Trusted-Proxies und Default-Bucket-Deckel. */
+    /** Convenience constructor for tests: default trusted proxies and default bucket cap. */
     RateLimitFilter(int apiMaxRequests, int apiWindowSeconds,
                     int loginMaxRequests, int loginWindowSeconds,
                     int claudeMaxRequests, int claudeWindowSeconds,
@@ -104,7 +104,7 @@ public class RateLimitFilter implements Filter {
                 60, 60);
     }
 
-    /** Bequemer Konstruktor fuer Tests inkl. des generischen /nosec-Limits (Karte 314, Punkt 16). */
+    /** Convenience constructor for tests incl. the generic /nosec limit (card 314, item 16). */
     RateLimitFilter(int apiMaxRequests, int apiWindowSeconds,
                     int loginMaxRequests, int loginWindowSeconds,
                     int claudeMaxRequests, int claudeWindowSeconds,
@@ -117,7 +117,7 @@ public class RateLimitFilter implements Filter {
                 ClientIpResolver.DEFAULT_TRUSTED_PROXIES, RateLimiter.DEFAULT_MAX_BUCKETS);
     }
 
-    /** Wie oben, aber mit eigener CalDAV/CardDAV-Grenze (Karte 657). */
+    /** As above, but with a separate CalDAV/CardDAV limit (card 657). */
     RateLimitFilter(int apiMaxRequests, int apiWindowSeconds,
                     int loginMaxRequests, int loginWindowSeconds,
                     int claudeMaxRequests, int claudeWindowSeconds,
@@ -152,8 +152,8 @@ public class RateLimitFilter implements Filter {
             response.setHeader("X-RateLimit-Remaining", String.valueOf(apiLimiter.getRemainingRequests(clientIp)));
         }
 
-        // H3-Härtung: Brute-Force-Bremse für die tokenbasierten Claude-Automation-Endpoints.
-        // /nosec/** ist permitAll — ohne Limit könnte eine IP unbegrenzt Token raten.
+        // H3 hardening: brute-force brake for the token-based Claude automation endpoints.
+        // /nosec/** is permitAll — without a limit one IP could guess tokens without bound.
         if (path.startsWith("/nosec/api/claude")) {
             String clientIp = getClientIp(request);
             if (!claudeLimiter.tryConsume(clientIp)) {
@@ -171,27 +171,27 @@ public class RateLimitFilter implements Filter {
                 return;
             }
         } else if (path.startsWith("/nosec/caldav/") || path.startsWith("/nosec/carddav/")) {
-            // Karte 657: CalDAV/CardDAV bekommt einen EIGENEN Eimer statt des generischen
-            // /nosec-Limits. Zwei Gruende, und der zweite ist der wichtigere:
+            // Card 657: CalDAV/CardDAV gets a bucket of its OWN instead of the generic
+            // /nosec limit. Two reasons, and the second one is the more important:
             //
-            // 1. Groessenordnung. Ein Apple-Sync (remindd/dataaccessd) erzeugt binnen Sekunden
-            //    dutzende PROPFIND/REPORT — gemessen am nginx-Log von plaintext-app ueber 7 Tage:
-            //    Spitzen von 85 Anfragen pro Minute, mehrere Minuten ueber der Grenze von 60.
+            // 1. Order of magnitude. An Apple sync (remindd/dataaccessd) produces
+            //    dozens of PROPFIND/REPORT within seconds — measured against the nginx log of plaintext-app over 7 days:
+            //    peaks of 85 requests per minute, several minutes above the limit of 60.
             //
-            // 2. Es sind verschiedene Dinge im selben Topf. Der geteilte Eimer hat nicht nur den
-            //    Sync gebremst, sondern die OEFFENTLICHE Terminseite gleich mit: Am 08.08.2026
-            //    bekam ein Browser vier Mal in 22 Sekunden HTTP 429 auf
-            //    /nosec/khost/termin/<token>, weil parallel synchronisiert wurde. Ein Besucher
-            //    zahlt so fuer die Geraete eines anderen.
+            // 2. Different things share the same pot. The shared bucket did not only throttle the
+            //    sync, but the PUBLIC appointment page along with it: on 08.08.2026
+            //    a browser got HTTP 429 four times within 22 seconds on
+            //    /nosec/khost/termin/<token>, because a sync was running in parallel. A visitor
+            //    thereby pays for somebody else's devices.
             //
-            // Bewusst NICHT das generische Limit angehoben: Die Begruendung aus Karte 314/16
-            // (fail-closed-Default fuer jeden neuen /nosec-Endpunkt) bleibt gueltig. CalDAV ist
-            // ausserdem gar nicht „public" — es authentisiert sich per Basic-Auth und liegt nur
-            // deshalb unter /nosec/, damit die Formular-Anmeldung es nicht abfaengt.
+            // Deliberately did NOT raise the generic limit: the justification from card 314/16
+            // (fail-closed default for every new /nosec endpoint) remains valid. Besides, CalDAV
+            // is not "public" at all — it authenticates via basic auth and lies under /nosec/
+            // only so that the form login does not intercept it.
             //
-            // Der Eimer bleibt pro Client-IP wirksam: Die Ablehnungen nennen die echte
-            // oeffentliche Adresse (Graylog: "from IP: 144.2.66.241"), nicht die Docker-Bridge --
-            // der ClientIpResolver wertet X-Forwarded-For korrekt aus.
+            // The bucket remains effective per client IP: the rejections name the real
+            // public address (Graylog: "from IP: 144.2.66.241"), not the Docker bridge --
+            // the ClientIpResolver evaluates X-Forwarded-For correctly.
             String clientIp = getClientIp(request);
             if (!davLimiter.tryConsume(clientIp)) {
                 log.warn("Rate limit exceeded for CalDAV/CardDAV endpoint {} from IP: {}", path, clientIp);
@@ -199,18 +199,18 @@ public class RateLimitFilter implements Filter {
                 return;
             }
         } else if (path.startsWith("/nosec/") && !path.startsWith("/nosec/api/claude")) {
-            // SECURITY (Karte 314, Punkt 16): generischer Auffangzweig fuer ALLE uebrigen
-            // /nosec/-Pfade. Bisher waren nur /nosec/api/claude und /nosec/schiri-mobile
-            // namentlich abgedeckt; /nosec/wiki und /nosec/challenge (plaintext-app) hatten
-            // trotz gegenteiliger Zusage in ihren Controller-Javadocs KEIN Limit. Weil
-            // /nosec/** permitAll ist, muss der Default fail-closed sein: neue /nosec-Endpunkte
-            // einer konsumierenden App sind ab sofort automatisch limitiert, statt bis zum
-            // naechsten Audit unbemerkt offen zu stehen.
+            // SECURITY (card 314, item 16): generic catch-all branch for ALL remaining
+            // /nosec/ paths. Until now only /nosec/api/claude and /nosec/schiri-mobile were
+            // covered by name; /nosec/wiki and /nosec/challenge (plaintext-app) had
+            // NO limit despite a statement to the contrary in their controller Javadocs. Because
+            // /nosec/** is permitAll, the default has to be fail-closed: new /nosec endpoints
+            // of a consuming app are automatically limited from now on, instead of standing
+            // open unnoticed until the next audit.
             //
-            // Bewusst ein EIGENER, grosszuegigerer Limiter statt des strengen Token-Limits:
-            // hinter /nosec/wiki stehen oeffentlich lesbare Seiten, die mehrere Besucher
-            // hinter derselben NAT-Adresse abrufen koennen. Das strenge Limit gilt weiterhin
-            // fuer die tokenratenden Pfade oben.
+            // Deliberately a SEPARATE, more generous limiter instead of the strict token limit:
+            // behind /nosec/wiki there are publicly readable pages that several visitors
+            // behind the same NAT address may fetch. The strict limit still applies
+            // to the token-guessing paths above.
             String clientIp = getClientIp(request);
             if (!nosecPublicLimiter.tryConsume(clientIp)) {
                 log.warn("Rate limit exceeded for public nosec endpoint {} from IP: {}", path, clientIp);
@@ -219,11 +219,11 @@ public class RateLimitFilter implements Filter {
             }
         }
 
-        // SECURITY (Karte 314, Punkt 10): /password-reset und /register sind permitAll und
-        // versenden beide Mails an eine vom Aufrufer gewaehlte Adresse. Ohne Limit laesst sich
-        // darueber sowohl der Mailversand als Spam-Relais missbrauchen als auch die
-        // Existenz von Konten durchprobieren. Sie laufen auf dem Login-Limiter, weil sie
-        // demselben Missbrauchsmuster folgen (Anmelde-/Kontooperationen pro IP).
+        // SECURITY (card 314, item 10): /password-reset and /register are permitAll and
+        // both send mails to an address chosen by the caller. Without a limit this can be
+        // abused both to misuse the mail dispatch as a spam relay and to probe the
+        // existence of accounts. They run on the login limiter, because they
+        // follow the same abuse pattern (login/account operations per IP).
         if (("POST".equalsIgnoreCase(request.getMethod()))
                 && (path.startsWith("/password-reset") || path.startsWith("/register"))) {
             String clientIp = getClientIp(request);
@@ -239,10 +239,10 @@ public class RateLimitFilter implements Filter {
                 rejectLogin(response, path, clientIp);
                 return;
             }
-            // Das Limit soll Rateversuche bremsen, nicht echte Anmeldungen. Deshalb wird das
-            // Token nach einem nachweislich erfolgreichen Login zurueckgegeben. Bewusst
-            // "verbrauchen und ggf. erstatten" statt "nur bei Misserfolg verbrauchen": faellt die
-            // Erfolgserkennung je aus, wird im Zweifel gezaehlt (fail-closed) statt gar nicht.
+            // The limit is meant to slow down guessing attempts, not real logins. Therefore the
+            // token is returned after a demonstrably successful login. Deliberately
+            // "consume and refund if applicable" instead of "consume only on failure": should the
+            // success detection ever fail, the attempt is counted in case of doubt (fail-closed) instead of not at all.
             filterChain.doFilter(servletRequest, servletResponse);
             if (isAuthenticated(request)) {
                 loginLimiter.refund(clientIp);
@@ -250,15 +250,15 @@ public class RateLimitFilter implements Filter {
             return;
         }
 
-        // Karte 560: Der Zweig fuer /token-login ist entfallen, weil es den Endpunkt nicht mehr
-        // gibt. Er faellt damit unter anyRequest().authenticated() und ist fuer Anonyme gar nicht
-        // mehr erreichbar -- ein Rate-Limit darauf haette nichts mehr zu bremsen.
+        // Card 560: the branch for /token-login has been dropped, because the endpoint no longer
+        // exists. It thereby falls under anyRequest().authenticated() and is no longer reachable
+        // for anonymous users at all -- a rate limit on it would have nothing left to throttle.
 
-        // Zustandsbericht 29.08.2026 (H3): Der zweite Faktor war die einzige Anmeldestufe ohne
-        // Bremse. Der Lockout-Schluessel "totp:<user>" im TotpVerificationController zaehlt
-        // Fehlversuche pro Konto; dieser Zweig bremst zusaetzlich pro Adresse, damit ein Angreifer
-        // mit dem Passwort die sechs Ziffern nicht im Sekundentakt durchprobieren kann. Kein
-        // Refund: ein legitimer Nutzer braucht genau einen Versuch.
+        // Status report 29.08.2026 (H3): the second factor was the only login stage without a
+        // brake. The lockout key "totp:<user>" in the TotpVerificationController counts
+        // failed attempts per account; this branch additionally throttles per address, so that an attacker
+        // who has the password cannot try the six digits second by second. No
+        // refund: a legitimate user needs exactly one attempt.
         if (path.equals("/login/totp") && "POST".equalsIgnoreCase(request.getMethod())) {
             String clientIp = getClientIp(request);
             if (!loginLimiter.tryConsume(clientIp)) {
@@ -279,10 +279,10 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
-     * Haelt die Session nach dem Request einen angemeldeten (nicht anonymen) Benutzer? Gelesen
-     * wird die Session-Ablage von Springs {@code HttpSessionSecurityContextRepository} — der
-     * {@code SecurityContextHolder} ist an dieser Stelle bereits geleert. Bewusst kein Auswerten
-     * des Redirect-Ziels: das haengt an der Konfiguration des Failure-Handlers.
+     * Does the session hold an authenticated (non-anonymous) user after the request? What is read
+     * is the session store of Spring's {@code HttpSessionSecurityContextRepository} — the
+     * {@code SecurityContextHolder} has already been cleared at this point. Deliberately no
+     * evaluation of the redirect target: that depends on the configuration of the failure handler.
      */
     private boolean isAuthenticated(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
@@ -308,11 +308,11 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
-     * Antwort fuer die Login-Pfade. Frueher wurde hier {@code setStatus(429)} mit einem
-     * anschliessenden {@code sendRedirect(...)} kombiniert — der Redirect ueberschreibt den Status,
-     * am Ende ging also ein 302 raus und der Client konnte gar nicht erkennen, dass er limitiert
-     * wurde (die Ziel-Seite wertet {@code error=rate_limited} auch nirgends aus). Jetzt geht ein
-     * echter 429 mit {@code Retry-After} und einer kurzen, verlinkten Meldung raus.
+     * Response for the login paths. Previously {@code setStatus(429)} was combined here with a
+     * subsequent {@code sendRedirect(...)} — the redirect overrides the status,
+     * so in the end a 302 went out and the client could not tell at all that it had been
+     * limited (the target page does not evaluate {@code error=rate_limited} anywhere either). Now a
+     * real 429 with {@code Retry-After} and a short, linked message goes out.
      */
     private void rejectLogin(HttpServletResponse response, String path, String clientIp) throws IOException {
         log.warn("Rate limit exceeded for login path {} from IP: {}", path, clientIp);
@@ -328,10 +328,10 @@ public class RateLimitFilter implements Filter {
     }
 
     /**
-     * SECURITY (Karte 303, Befund 2): frueher wurde das erste — vom Client frei waehlbare —
-     * {@code X-Forwarded-For}-Element als Bucket-Schluessel benutzt. Details zum jetzigen
-     * Verfahren siehe {@link ClientIpResolver}. {@code X-Real-IP} wird bewusst nicht mehr
-     * ausgewertet: der Header traegt keine Hop-Kette und ist damit nicht verifizierbar.
+     * SECURITY (card 303, finding 2): previously the first — freely choosable by the client —
+     * {@code X-Forwarded-For} element was used as the bucket key. For details on the current
+     * procedure see {@link ClientIpResolver}. {@code X-Real-IP} is deliberately no longer
+     * evaluated: the header carries no hop chain and is therefore not verifiable.
      */
     String getClientIp(HttpServletRequest request) {
         return clientIpResolver.resolve(request);

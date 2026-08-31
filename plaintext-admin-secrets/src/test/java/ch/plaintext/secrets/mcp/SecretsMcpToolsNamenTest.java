@@ -13,24 +13,24 @@ import java.util.TreeSet;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Karte 489: Die nach aussen sichtbaren MCP-Tool-Namen von {@link SecretsMcpTools} sind ein Vertrag —
- * sie duerfen sich beim Umbenennen der Java-Methoden auf camelCase NICHT aendern.
+ * Card 489: the externally visible MCP tool names of {@link SecretsMcpTools} are a contract —
+ * they must NOT change when the Java methods are renamed to camelCase.
  *
- * <p><b>Warum dieser Test vor der Umbenennung entstand:</b> Ein vergessenes {@code name = "…"}
- * benennt ein produktives Tool still um. Der Fehler faellt weder beim Kompilieren noch in einem
- * fachlichen Test auf — er faellt auf, wenn ein Client das Tool nicht mehr findet. Die Liste unten
- * ist der Stand VOR der Umbenennung; bleibt der Test danach gruen, ist bewiesen, dass kein Name
- * verlorenging.
+ * <p><b>Why this test was written before the renaming:</b> a forgotten {@code name = "…"}
+ * silently renames a production tool. The mistake shows up neither at compile time nor in a
+ * functional test — it shows up when a client no longer finds the tool. The list below
+ * is the state BEFORE the renaming; if the test stays green afterwards, it is proven that no name
+ * was lost.
  *
- * <p>Die Namensregel ist dieselbe, die {@code SyncMcpToolProvider} aus
- * {@code mcp-annotations 0.9.0} anwendet: {@code hasText(annotation.name()) ? name() :
+ * <p>The naming rule is the same one that {@code SyncMcpToolProvider} from
+ * {@code mcp-annotations 0.9.0} applies: {@code hasText(annotation.name()) ? name() :
  * method.getName()}.
  */
 class SecretsMcpToolsNamenTest {
 
     /**
-     * Die ausgelieferten Tool-Namen. Stand 03.08.2026 vor der Umbenennung (Karte 489),
-     * ergaenzt am 30.08.2026 um die beiden Backend-Werkzeuge (Karte 999).
+     * The shipped tool names. As of 2026-08-03 before the renaming (card 489), extended on
+     * 2026-08-30 by the two backend tools (card 999).
      */
     private static final Set<String> ERWARTETE_TOOLS = Set.of(
             "set_secret",
@@ -38,7 +38,7 @@ class SecretsMcpToolsNamenTest {
             "secret_backend_status"
     );
 
-    /** Bildet die Regel des Providers nach: gesetzter {@code name} gewinnt, sonst der Methodenname. */
+    /** Reproduces the provider's rule: a set {@code name} wins, otherwise the method name. */
     private static String toolName(Method m) {
         McpTool a = m.getAnnotation(McpTool.class);
         String name = a.name();
@@ -72,14 +72,14 @@ class SecretsMcpToolsNamenTest {
                         + "Tool still umbenannt.");
     }
 
-    /** Gegenprobe: Ohne sie waere der Test auch gruen, wenn die Reflection gar nichts sieht. */
+    /** Cross-check: without it the test would also be green if the reflection saw nothing at all. */
     @Test
     void diePruefungSiehtUeberhauptTools() {
         assertEquals(3, ausgelieferteTools().size(),
                 "Die Anzahl der @McpTool-Methoden hat sich geaendert.");
     }
 
-    /** Der Zweck der Umbenennung (java:S100): sonst faerbt jede Beruehrung das Quality-Gate rot. */
+    /** The purpose of the renaming (java:S100): otherwise every touch turns the quality gate red. */
     @Test
     void methodennamenFolgenDerJavaKonvention() {
         Set<String> verstoesse = new TreeSet<>();

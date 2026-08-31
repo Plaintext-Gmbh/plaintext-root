@@ -19,9 +19,9 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
 /**
- * Tests fuer {@link VaultwardenPropertySource} im echten {@link StandardEnvironment}:
- * Durchfall normaler Werte, transparente Aufloesung von {@code vault:}-Werten und der
- * Re-Entranz-Schutz (die Source liest waehrend einer Aufloesung nicht rekursiv erneut auf).
+ * Tests for {@link VaultwardenPropertySource} in a real {@link StandardEnvironment}:
+ * fall-through of ordinary values, transparent resolution of {@code vault:} values and the
+ * re-entrancy protection (during a resolution the source does not resolve recursively again).
  */
 class VaultwardenPropertySourceTest {
 
@@ -49,7 +49,7 @@ class VaultwardenPropertySourceTest {
         environment.getPropertySources().addFirst(new VaultwardenPropertySource(environment, resolver));
     }
 
-    // ── Durchfall normaler Werte ──────────────────────────────────────────────
+    // ── Fall-through of ordinary values ───────────────────────────────────────
 
     @Test
     void normalerWertFaelltDurch() {
@@ -59,11 +59,11 @@ class VaultwardenPropertySourceTest {
             return enabledService();
         }));
         assertThat(environment.getProperty("plain.value")).isEqualTo("hello");
-        // Ein normaler Wert darf den Vault-Client nicht instanziieren.
+        // An ordinary value must not instantiate the vault client.
         assertThat(supplierCalls.get()).isZero();
     }
 
-    // ── Transparente Aufloesung ───────────────────────────────────────────────
+    // ── Transparent resolution ────────────────────────────────────────────────
 
     @Test
     void vaultWertWirdTransparentAufgeloest() {
@@ -75,13 +75,13 @@ class VaultwardenPropertySourceTest {
         return enabledService();
     }
 
-    // ── Re-Entranz-Schutz ─────────────────────────────────────────────────────
+    // ── Re-entrancy protection ────────────────────────────────────────────────
 
     @Test
     void reEntranterZugriffWaehrendClientInitFuehrtNichtInRekursion() {
         AtomicInteger supplierCalls = new AtomicInteger();
-        // Der Supplier liest waehrend der (lazy) Client-Init selbst wieder aus dem
-        // Environment -> muss dank ThreadLocal-Guard OHNE Rekursion durchlaufen.
+        // During the (lazy) client init the supplier itself reads from the
+        // environment again -> thanks to the ThreadLocal guard it must run through WITHOUT recursion.
         VaultwardenValueResolver resolver = new VaultwardenValueResolver(() -> {
             supplierCalls.incrementAndGet();
             String bootstrapEmail = environment.getProperty("plaintext.vault.email");
@@ -94,7 +94,7 @@ class VaultwardenPropertySourceTest {
         assertThat(supplierCalls.get()).isEqualTo(1);
     }
 
-    // ── containsProperty loest nicht auf ──────────────────────────────────────
+    // ── containsProperty does not resolve ─────────────────────────────────────
 
     @Test
     void containsPropertyLoestNichtAus() {
@@ -103,12 +103,12 @@ class VaultwardenPropertySourceTest {
             supplierCalls.incrementAndGet();
             return enabledService();
         }));
-        // Existenz wird von der echten Source beantwortet, ohne den Vault zu befragen.
+        // Existence is answered by the real source, without asking the vault.
         assertThat(environment.containsProperty("app.secret")).isTrue();
         assertThat(supplierCalls.get()).isZero();
     }
 
-    // ── Fail-fast propagiert bis zum Environment-Zugriff ──────────────────────
+    // ── Fail-fast propagates up to the environment access ─────────────────────
 
     @Test
     void nichtAufloesbarerWertBrichtZugriffAb() {

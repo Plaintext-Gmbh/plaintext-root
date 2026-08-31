@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository für CronConfigEntity.
+ * Repository for CronConfigEntity.
  */
 @Repository
 public interface CronConfigRepository extends JpaRepository<CronConfigEntity, Long> {
@@ -24,9 +24,9 @@ public interface CronConfigRepository extends JpaRepository<CronConfigEntity, Lo
     void deleteByCronNameAndMandat(String cronName, String mandat);
 
     /**
-     * Findet die Bestandszeile desselben Jobs unter einem Proxy-Namen (Praefix {@code <name>$$}).
-     * Siehe {@link CronConfigStore#findLegacyProxyRow(String, String)}. Aeltester Treffer zuerst:
-     * bei mehreren Proxy-Generationen ist die urspruengliche Zeile die mit den Einstellungen.
+     * Finds the existing row of the same job stored under a proxy name (prefix {@code <name>$$}).
+     * See {@link CronConfigStore#findLegacyProxyRow(String, String)}. Oldest match first:
+     * with several proxy generations the original row is the one that carries the settings.
      */
     Optional<CronConfigEntity> findFirstByCronNameStartingWithAndMandatOrderByIdAsc(String prefix, String mandat);
 

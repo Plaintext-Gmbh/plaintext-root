@@ -55,9 +55,9 @@ public class HowtoDetailBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped): laedt die Howto anhand des viewParam {@code id} bei jedem GET.
-     * viewParams sind vor preRenderView gesetzt, daher ist {@code howtoId} hier verfuegbar. Der isPostback-Guard
-     * verhindert das Neuladen bei Ajax-Postbacks (Bearbeitungszustand bleibt erhalten).
+     * preRenderView listener (session-scoped): loads the Howto from the {@code id} viewParam on every GET.
+     * viewParams are set before preRenderView, therefore {@code howtoId} is available here. The isPostback
+     * guard prevents a reload on Ajax postbacks (the editing state is preserved).
      */
     public void onLoad() {
         FacesContext ctx = FacesContext.getCurrentInstance();

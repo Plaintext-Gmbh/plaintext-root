@@ -23,16 +23,16 @@ public class PlaintextInitLoader {
 
     private static final String ROOT_USERNAME = "root@root.root";
 
-    /** Quelle des Einmal-Initialpassworts fuer den Root-Bootstrap-User (Karte 306). */
+    /** Source of the one-time initial password for the root bootstrap user (card 306). */
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final MyUserRepository userRepository;
     private final ISetupConfigService setupConfigService;
     /**
-     * SECURITY (Karte 314, Punkt 7): zentrale {@link PasswordEncoder}-Bean statt eines lokalen
-     * {@code new BCryptPasswordEncoder()}. Der lokale Aufruf haette den Spring-Default-Kostenfaktor
-     * 10 behalten, waehrend die Bean in {@code PlaintextSecurityConfig} auf 12 steht — die
-     * Kostenfaktoren waeren also je nach Codepfad auseinandergedriftet.
+     * SECURITY (card 314, item 7): central {@link PasswordEncoder} bean instead of a local
+     * {@code new BCryptPasswordEncoder()}. The local call would have kept Spring's default cost factor
+     * 10, while the bean in {@code PlaintextSecurityConfig} stands at 12 — the
+     * cost factors would therefore have drifted apart depending on the code path.
      */
     private final PasswordEncoder passwordEncoder;
 
@@ -88,15 +88,15 @@ public class PlaintextInitLoader {
         rootUser.setMandat("default");
         rootUser.setMustChangePassword(true);
         userRepository.save(rootUser);
-        // SECURITY (Forensik 23.08.2026): Das Initialpasswort wird NICHT MEHR GELOGGT. Bisher stand es im
-        // Klartext im Container-Log und damit auch in Graylog — ein Log-Leser bekam damit den
-        // maechtigsten Zugang der Anwendung geschenkt, und "erscheint nur einmal" half nichts,
-        // weil Logs aufbewahrt werden. Das Passwort wird stattdessen gar nicht erst bekannt
-        // gegeben: es ist ein zufaelliger Wegwerfwert, den niemand kennt. Der Zugang entsteht
-        // ueber den bestehenden Passwort-vergessen-Weg (PasswordResetService, sofern fuer den
-        // Mandanten aktiviert) oder dadurch, dass ein bereits vorhandener root-Benutzer in der
-        // Benutzerverwaltung ein Passwort setzt. mustChangePassword bleibt gesetzt, damit auch
-        // ein so gesetztes Passwort beim ersten Login gewechselt werden muss.
+        // SECURITY (forensics 23.08.2026): the initial password is NO LONGER LOGGED. Until now it stood in
+        // clear text in the container log and thereby also in Graylog — a log reader was handed the
+        // most powerful access of the application, and "appears only once" did not help,
+        // because logs are retained. Instead the password is not made known at all
+        // in the first place: it is a random throwaway value that nobody knows. Access is created
+        // through the existing forgotten-password path (PasswordResetService, provided it is enabled
+        // for the tenant) or by an already existing root user setting a password in the
+        // user administration. mustChangePassword stays set, so that a password set that way
+        // also has to be changed on the first login.
         log.warn("=== ROOT-USER '{}' angelegt === Es wurde ein zufaelliges Wegwerf-Passwort gesetzt, "
                 + "das NIRGENDS ausgegeben wird. Zugang herstellen ueber 'Passwort vergessen' fuer "
                 + "'{}' oder durch einen bestehenden root-Benutzer in der Benutzerverwaltung. "
@@ -104,10 +104,10 @@ public class PlaintextInitLoader {
     }
 
     /**
-     * Erzeugt ein zufaelliges Wegwerf-Initialpasswort (128 Bit Entropie, 22 Zeichen Base64url) fuer
-     * den Root-Bootstrap-User. Ersetzt das frueher statische {@code "root"} (Karte 306). Der
-     * Klartext verlaesst diese Methode nur als bcrypt-Hash — er wird bewusst nicht geloggt und
-     * nicht zurueckgegeben (Forensik 23.08.2026).
+     * Creates a random throwaway initial password (128 bits of entropy, 22 characters of Base64url) for
+     * the root bootstrap user. Replaces the formerly static {@code "root"} (card 306). The
+     * clear text leaves this method only as a bcrypt hash — it is deliberately not logged and
+     * not returned (forensics 23.08.2026).
      */
     private static String generateInitialPassword() {
         byte[] bytes = new byte[16];

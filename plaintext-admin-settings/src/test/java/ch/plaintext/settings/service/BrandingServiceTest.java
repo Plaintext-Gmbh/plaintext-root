@@ -128,9 +128,9 @@ class BrandingServiceTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 14): SVG ist als Logo-Format nicht mehr zulaessig. Ein SVG ist
-     * ein XML-Dokument mit erlaubtem {@code <script>} und wurde same-origin mit gespeichertem
-     * Content-Type ausgeliefert — also gespeichertes XSS im Anwendungs-Origin.
+     * SECURITY (card 314, item 14): SVG is no longer permitted as a logo format. An SVG is
+     * an XML document with {@code <script>} allowed in it and was served same-origin with the
+     * stored content type — that is, stored XSS in the application origin.
      */
     @Test
     void saveLogoRejectsSvg() {
@@ -142,9 +142,9 @@ class BrandingServiceTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 14): der Content-Type ist client-kontrolliert. Ein als
-     * "image/png" deklariertes SVG darf nicht durchrutschen — sonst waere die Typ-Allowlist
-     * durch blosses Umdeklarieren umgehbar.
+     * SECURITY (card 314, item 14): the content type is client-controlled. An SVG declared as
+     * "image/png" must not slip through — otherwise the type allowlist could be bypassed by
+     * merely redeclaring the type.
      */
     @Test
     void saveLogoRejectsSvgDisguisedAsPng() {
@@ -156,8 +156,8 @@ class BrandingServiceTest {
     }
 
     /**
-     * SECURITY (Karte 314, Punkt 14): bereits gespeicherte SVG-Logos (Alt-Bestand) duerfen nicht
-     * mehr ausgeliefert werden.
+     * SECURITY (card 314, item 14): already stored SVG logos (legacy data) must no longer
+     * be served.
      */
     @Test
     void svgIsNotDeliverable() {
@@ -320,9 +320,9 @@ class BrandingServiceTest {
         verify(logoRepository).save(logo);
     }
 
-    // --- SECURITY (Karte 314, Punkt 14): Testdaten mit echten Magic Bytes ---------------------
-    // saveLogo prueft den Dateiinhalt gegen den behaupteten Content-Type. Die Tests muessen
-    // deshalb Bytes liefern, die wie das jeweilige Format aussehen.
+    // --- SECURITY (card 314, item 14): test data with real magic bytes ------------------------
+    // saveLogo checks the file content against the claimed content type. The tests must
+    // therefore supply bytes that look like the respective format.
 
     private static byte[] png() {
         byte[] b = new byte[32];

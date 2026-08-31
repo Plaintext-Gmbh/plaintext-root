@@ -16,36 +16,36 @@ import org.springframework.core.Ordered;
 import java.io.IOException;
 
 /**
- * Entfernt Path-Parameter (das Semikolon-Anhaengsel einer URL, typischerweise
- * {@code ;jsessionid=...}) aus dem Request-Pfad, bevor irgendetwas anderes ihn auswertet.
+ * Removes path parameters (the semicolon suffix of a URL, typically
+ * {@code ;jsessionid=...}) from the request path before anything else evaluates it.
  *
- * <p><b>Warum (Karte 612):</b> Der Servlet-Container haengt die Sitzungskennung an die URL, wenn
- * ein Client keine Cookies mitschickt. Solche URLs landen in Lesezeichen und werden
- * weitergegeben. Gemessen am 07.08.2026 an guild-INT und app-PROD:
+ * <p><b>Why (Card 612):</b> The servlet container appends the session id to the URL when a
+ * client sends no cookies. Such URLs end up in bookmarks and get passed around.
+ * Measured on 07.08.2026 against guild-INT and app-PROD:
  *
  * <pre>
- *   angemeldet,  GET /;jsessionid=&lt;gueltig&gt;   -&gt; 400 Bad Request, ohne jede Logzeile
- *   angemeldet,  GET /;foo=bar                 -&gt; 400   (jedes Semikolon genuegt)
- *   anonym,      GET /login.html;foo=bar       -&gt; 302 auf die Anmeldung, obwohl permitAll
+ *   logged in,   GET /;jsessionid=&lt;valid&gt;     -&gt; 400 Bad Request, without a single log line
+ *   logged in,   GET /;foo=bar                 -&gt; 400   (any semicolon is enough)
+ *   anonymous,   GET /login.html;foo=bar       -&gt; 302 to the login, even though permitAll
  * </pre>
  *
- * Ausloeser ist nicht die Sitzung, sondern das Semikolon: die Pfad-Auswertung trifft die
- * passende Regel nicht mehr. Der 400 entsteht per {@code sendError}, deshalb steht er in keinem
- * Log — er war nur fuer den betroffenen Benutzer sichtbar.
+ * The trigger is not the session but the semicolon: path matching no longer finds the
+ * applicable rule. The 400 is raised via {@code sendError}, which is why it shows up in no
+ * log — it was visible only to the affected user.
  *
- * <p><b>Und die Fehlerseite gab die Sitzungskennung zurueck</b> ({@code "path":"/;jsessionid=..."}).
- * Wer den Fehler meldete, gab damit seine angemeldete Sitzung weiter. Nach dieser Umleitung
- * entsteht die Fehlerseite gar nicht mehr.
+ * <p><b>And the error page handed the session id back</b> ({@code "path":"/;jsessionid=..."}).
+ * Whoever reported the error passed on their logged-in session along with it. With this redirect
+ * in place the error page is never produced at all.
  *
- * <p><b>Ordnung:</b> {@code HIGHEST_PRECEDENCE + 20} — nach Springs ForwardedHeaderFilter (+10),
- * damit die Weiterleitung das Schema der urspruenglichen Anfrage traegt, und weiterhin vor
- * Spring Security (Order -100) und
- * vor dem {@code htmlRewriteFilter} (HIGHEST_PRECEDENCE + 1), der ueber
- * {@code getRequestURI()} entscheidet und deshalb an derselben Stelle stolpert.
+ * <p><b>Order:</b> {@code HIGHEST_PRECEDENCE + 20} — after Spring's ForwardedHeaderFilter (+10),
+ * so that the redirect carries the scheme of the original request, and still before
+ * Spring Security (order -100) and
+ * before the {@code htmlRewriteFilter} (HIGHEST_PRECEDENCE + 1), which decides based on
+ * {@code getRequestURI()} and therefore trips over the very same thing.
  *
- * <p><b>Ergaenzend</b> steht in {@code application.yml} seit derselben Karte
- * {@code server.servlet.session.tracking-modes: cookie}: Dieser Filter faengt die Altlasten,
- * die Einstellung stoppt den Nachschub.
+ * <p><b>In addition</b>, since the same card {@code application.yml} carries
+ * {@code server.servlet.session.tracking-modes: cookie}: this filter catches the legacy URLs,
+ * the setting stops new ones from being created.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -59,23 +59,23 @@ public class PathParameterConfig {
         FilterRegistrationBean<PathParameterFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new PathParameterFilter());
         registration.addUrlPatterns("/*");
-        // Karte 612 (08.08.2026): HIGHEST_PRECEDENCE + 20 statt HIGHEST_PRECEDENCE.
+        // Card 612 (08.08.2026): HIGHEST_PRECEDENCE + 20 instead of HIGHEST_PRECEDENCE.
         //
-        // sendRedirect() unten bekommt einen RELATIVEN Pfad; die absolute URL baut der
-        // Container daraus -- mit dem Schema, das ER sieht. Lief dieser Filter vor Springs
-        // ForwardedHeaderFilter, war das noch das Schema des Connectors (http), nicht das der
-        // urspruenglichen Anfrage (https). Gemessen am 08.08.2026 auf allen vier Hosts:
+        // sendRedirect() below is given a RELATIVE path; the container builds the absolute URL
+        // from it -- using the scheme IT sees. When this filter ran before Spring's
+        // ForwardedHeaderFilter, that was still the connector's scheme (http), not the one of
+        // the original request (https). Measured on 08.08.2026 on all four hosts:
         //
         //   GET https://app.plaintext.ch/;jsessionid=...  ->  302  Location: http://app.plaintext.ch/
         //
-        // Die Weiterleitung funktionierte also, stufte den Benutzer aber auf Klartext-HTTP
-        // zurueck -- und seit Karte 620 traegt das Session-Cookie Secure, wird dorthin also gar
-        // nicht mehr gesendet. Aus einem Schoenheitsfehler wurde damit ein Anmeldeproblem.
+        // So the redirect worked, but it downgraded the user to plaintext HTTP -- and since
+        // Card 620 the session cookie is marked Secure, so it is no longer sent there at all.
+        // What had been a cosmetic flaw thereby turned into a login problem.
         //
-        // Resultierende Reihenfolge (root; die Werte stehen in RateLimitFilterConfig):
-        //   RateLimitFilter        HIGHEST_PRECEDENCE        rohe Peer-Adresse + XFF-Kette
-        //   ForwardedHeaderFilter  HIGHEST_PRECEDENCE + 10   Scheme/Host/RemoteAddr korrigieren
-        //   PathParameterFilter    HIGHEST_PRECEDENCE + 20   <- hier, mit korrektem Schema
+        // Resulting order (root; the values live in RateLimitFilterConfig):
+        //   RateLimitFilter        HIGHEST_PRECEDENCE        raw peer address + XFF chain
+        //   ForwardedHeaderFilter  HIGHEST_PRECEDENCE + 10   fix up scheme/host/remoteAddr
+        //   PathParameterFilter    HIGHEST_PRECEDENCE + 20   <- here, with the correct scheme
         //   SecurityFilterChain    -100
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 20);
         registration.setName("pathParameterFilter");
@@ -91,7 +91,7 @@ public class PathParameterConfig {
             HttpServletResponse httpResponse = (HttpServletResponse) response;
             String uri = httpRequest.getRequestURI();
 
-            // Normalfall: kein Semikolon -> unveraendert weiter, kein Aufwand.
+            // Normal case: no semicolon -> pass through unchanged, no work done.
             if (uri == null || uri.indexOf(';') < 0) {
                 chain.doFilter(request, response);
                 return;
@@ -102,25 +102,26 @@ public class PathParameterConfig {
 
             if ("GET".equalsIgnoreCase(method) || "HEAD".equalsIgnoreCase(method)) {
                 String target = appendQueryString(cleanedPath, httpRequest.getQueryString());
-                // 302, nicht 301: Die Quell-URL traegt eine Sitzungskennung, ist also fuer jeden
-                // Besucher eine andere und kehrt nie wieder. Ein dauerhaft gecachter 301 auf eine
-                // solche Adresse ist wertlos und aus Browser-Caches kaum mehr zu entfernen.
+                // 302, not 301: the source URL carries a session id, so it is different for
+                // every visitor and never comes back. A permanently cached 301 for such an
+                // address is worthless and next to impossible to evict from browser caches.
                 log.warn("Pfad-Parameter in der URL entfernt und umgeleitet: {} -> {} ({})",
                         maskParameterValues(uri), target, method);
                 httpResponse.sendRedirect(target);
                 return;
             }
 
-            // Andere Methoden (POST, und PROPFIND/REPORT fuer CalDAV/CardDAV) werden NICHT
-            // umgeleitet: Ein 302 verloere den Rumpf. Sie laufen mit bereinigtem Pfad weiter.
+            // Other methods (POST, plus PROPFIND/REPORT for CalDAV/CardDAV) are NOT redirected:
+            // a 302 would lose the body. They continue with the cleaned-up path.
             log.warn("Pfad-Parameter im Pfad entfernt (kein Redirect wegen Methode {}): {} -> {}",
                     method, maskParameterValues(uri), cleanedPath);
             chain.doFilter(new StrippedPathRequest(httpRequest, cleanedPath), response);
         }
 
         /**
-         * Entfernt in JEDEM Pfadsegment alles ab dem ersten Semikolon — {@code ;jsessionid} kann
-         * an jedem Segment haengen, nicht nur am letzten ({@code /a;jsessionid=X/b}).
+         * Removes everything from the first semicolon onwards in EVERY path segment —
+         * {@code ;jsessionid} can be attached to any segment, not just the last one
+         * ({@code /a;jsessionid=X/b}).
          */
         static String stripPathParameters(String uri) {
             String[] segments = uri.split("/", -1);
@@ -137,9 +138,9 @@ public class PathParameterConfig {
             if (result.isEmpty()) {
                 return "/";
             }
-            // Schutz gegen Open Redirect: "//host/pfad" ist eine protokollrelative URL und wuerde
-            // den Browser auf einen fremden Host schicken. Ein Pfad, der nach dem Bereinigen so
-            // beginnt, wird auf die Wurzel zurueckgefuehrt statt weitergereicht.
+            // Protection against open redirects: "//host/path" is a protocol-relative URL and
+            // would send the browser to a foreign host. A path that starts like this after
+            // cleaning is folded back to the root instead of being passed on.
             if (result.startsWith("//")) {
                 return "/";
             }
@@ -150,9 +151,10 @@ public class PathParameterConfig {
             if (queryString == null || queryString.isEmpty()) {
                 return path;
             }
-            // Defensiv: Zeilenumbrueche im Query-String wuerden im Location-Header einen
-            // Header-Injection-Versuch bedeuten. Der Container laesst sie nicht durch; faellt das
-            // einmal weg, wird hier lieber der Query-String verworfen als der Header vergiftet.
+            // Defensive: line breaks in the query string would amount to a header injection
+            // attempt in the Location header. The container does not let them through; should
+            // that ever stop being true, we would rather drop the query string here than poison
+            // the header.
             if (queryString.indexOf('\r') >= 0 || queryString.indexOf('\n') >= 0) {
                 return path;
             }
@@ -160,9 +162,9 @@ public class PathParameterConfig {
         }
 
         /**
-         * Ersetzt die WERTE der Path-Parameter durch {@code ***}. Eine Sitzungskennung ist ein
-         * Zugang ohne Passwort und ohne zweiten Faktor — sie gehoert nicht ins Log (genau so ist
-         * sie in Karte 612 in eine Kartenbeschreibung gelangt).
+         * Replaces the VALUES of the path parameters with {@code ***}. A session id is access
+         * without a password and without a second factor — it does not belong in the log (that
+         * is exactly how one ended up in a card description in Card 612).
          */
         static String maskParameterValues(String uri) {
             return uri.replaceAll(";([^;/=]+)=[^;/]*", ";$1=***");
@@ -180,9 +182,9 @@ public class PathParameterConfig {
     }
 
     /**
-     * Reicht den Request mit bereinigtem Pfad weiter. {@code getServletPath()} und
-     * {@code getPathInfo()} liefert der Container bereits ohne Path-Parameter; nur
-     * {@code getRequestURI()}/{@code getRequestURL()} tragen sie noch.
+     * Passes the request on with a cleaned-up path. The container already delivers
+     * {@code getServletPath()} and {@code getPathInfo()} without path parameters; only
+     * {@code getRequestURI()}/{@code getRequestURL()} still carry them.
      */
     static class StrippedPathRequest extends HttpServletRequestWrapper {
 

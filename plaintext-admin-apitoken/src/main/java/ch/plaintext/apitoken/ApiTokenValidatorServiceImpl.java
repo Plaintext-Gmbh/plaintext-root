@@ -43,13 +43,13 @@ public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
             return errorOutcome(ApiErrorResponse.tokenMissing(requestPath));
         }
 
-        // JWT-Signatur + Ablauf GENAU EINMAL prüfen; das Ergebnis wird an den
-        // Revocation-Check weitergereicht (vorher wurde die Signatur doppelt validiert:
-        // einmal implizit in apiTokenService.validateToken, einmal explizit hier).
+        // Check JWT signature + expiry EXACTLY ONCE; the result is passed on to the
+        // revocation check (previously the signature was validated twice:
+        // once implicitly in apiTokenService.validateToken, once explicitly here).
         Optional<JwtTokenService.JwtValidationResult> jwtResult = jwtTokenService.validateToken(token);
 
         if (jwtResult.isEmpty()) {
-            // Signatur ungültig ODER abgelaufen — echte exp-Prüfung unterscheidet die beiden.
+            // Signature invalid OR expired — an actual exp check tells the two apart.
             if (isTokenExpired(token)) {
                 Instant expiredAt = getTokenExpiry(token);
                 log.warn("API request with expired token to {} - expired at {}", requestPath, expiredAt);
@@ -59,15 +59,15 @@ public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
             return errorOutcome(ApiErrorResponse.tokenInvalid(requestPath));
         }
 
-        // Signatur gültig & nicht abgelaufen → Hash-Lookup in DB (Revocation-Check),
-        // ohne die Signatur erneut zu validieren.
+        // Signature valid & not expired → hash lookup in the DB (revocation check),
+        // without validating the signature again.
         Optional<ApiTokenValidationResult> result = apiTokenService.validateVerifiedToken(token, jwtResult.get());
 
         if (result.isPresent()) {
             return new TokenValidationOutcome(null, result.get());
         }
 
-        // JWT ist gültig, aber nicht (mehr) in der DB bzw. invalidiert → revoked
+        // JWT is valid, but not (any longer) in the DB or invalidated → revoked
         log.warn("API request with revoked token to {} for userId={}", requestPath, jwtResult.get().userId());
         return errorOutcome(ApiErrorResponse.tokenRevoked(requestPath));
     }
@@ -87,12 +87,12 @@ public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
     }
 
     /**
-     * Echte Ablauf-Prüfung: parst den {@code exp}-Claim aus dem (unverifizierten) JWT-Payload
-     * und vergleicht ihn mit der aktuellen Zeit. Dient ausschliesslich der Fehler-KLASSIFIZIERUNG
-     * nach bereits fehlgeschlagener Validierung (expired vs. invalid) — nie als Sicherheitsentscheid.
+     * Actual expiry check: parses the {@code exp} claim out of the (unverified) JWT payload
+     * and compares it with the current time. Serves solely to CLASSIFY the error
+     * after validation has already failed (expired vs. invalid) — never as a security decision.
      * <p>
-     * Token OHNE {@code exp}-Claim (oder mit unparsbarem Payload) gelten als NICHT abgelaufen —
-     * bisherige Semantik beibehalten — und laufen damit in den Invalid-/Revoked-Pfad.
+     * Tokens WITHOUT an {@code exp} claim (or with an unparsable payload) count as NOT expired —
+     * keeping the previous semantics — and therefore run into the invalid/revoked path.
      */
     private boolean isTokenExpired(String token) {
         Instant expiry = getTokenExpiry(token);

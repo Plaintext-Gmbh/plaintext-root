@@ -15,8 +15,8 @@ import lombok.EqualsAndHashCode;
 import java.time.Instant;
 
 /**
- * Ein Zustellversuch (bzw. eine Serie von Retry-Versuchen) eines {@link WebhookEndpoint} für ein
- * konkretes Domain-Event — Delivery-Log + Grundlage für den Retry-Cron.
+ * One delivery attempt (or rather a series of retry attempts) of a {@link WebhookEndpoint} for a
+ * specific domain event — delivery log + basis for the retry cron.
  *
  * @author info@plaintext.ch
  * @since 2026

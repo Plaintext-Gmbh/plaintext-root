@@ -1,72 +1,71 @@
-# Admin-Module abwählen: Maven-`<exclusions>` statt `optional`, BOM oder `@ConditionalOnProperty`
+# Opting out of admin modules: Maven `<exclusions>` instead of `optional`, a BOM or `@ConditionalOnProperty`
 
 * **Status:** accepted
-* **Date:** 2026-08-30 (Zustandsbericht 29.08.2026, §3 „Aggregator ohne Opt-out")
+* **Date:** 2026-08-30 (status report of 29.08.2026, §3 "Aggregator ohne Opt-out")
 * **Deciders:** Daniel Marthaler
 
 ## Context
 
-`plaintext-root-webapp` zieht 20 interne Module, keines davon `optional`. Eine App hängt an
-genau diesem einen Artefakt und bekommt damit alles: `plaintext-schuetu` mit 5,9k fachlichen
-Zeilen schleppt Webhooks, Benachrichtigungen, Secrets, OIDC und Mailvorlagen mit — Code,
-Classpath und CVE-Fläche. `plaintext-admin-modules` schaltet nur die **Menü-Sichtbarkeit** ab
-(`plaintext.menu.module-roles.<key>`), nicht den Classpath.
+`plaintext-root-webapp` pulls in 22 internal modules, none of them `optional`. An app depends on
+precisely this one artifact and thereby gets all of them: `plaintext-schuetu`, with 5.9k lines of
+business code, drags along webhooks, notifications, secrets, OIDC and mail templates — code,
+classpath and CVE surface. `plaintext-admin-modules` only switches off **menu visibility**
+(`plaintext.menu.module-roles.<key>`), not the classpath.
 
-Der interne Abhängigkeitsgraph ist flach:
+The internal dependency graph is flat:
 
 ```
-plaintext-root-interfaces          (Verträge, keine Abhängigkeit)
+plaintext-root-interfaces          (contracts, no dependencies)
   └── plaintext-root-menu, plaintext-root-common
-        └── alle übrigen root-*- und admin-*-Module
+        └── all remaining root-* and admin-* modules
 ```
 
-Kein Admin-Modul hängt an einem anderen Admin-Modul; alle zwölf sind Blätter. Die Verträge
+No admin module depends on another admin module; all twelve are leaves. The contracts
 (`IMailTemplateProvider`, `ISetupConfigService`, `ModuleEnablementProvider`, `SecretResolver`,
-`NotificationService`, …) liegen bereits in `plaintext-root-interfaces` — die Trennung war also
-schon vorgedacht, nur nie ausgenutzt.
+`NotificationService`, …) already live in `plaintext-root-interfaces` — so the separation had
+been thought through, it was just never exploited.
 
 ## Decision
 
-**Die Module bleiben nicht-`optional` in `plaintext-root-webapp`; wer sie loswerden will, nimmt
-Maven-`<exclusions>`.** Dazu ein Testlauf, der beweist, dass der Kontext ohne sie startet.
+**The modules stay non-`optional` in `plaintext-root-webapp`; whoever wants to be rid of one uses
+Maven `<exclusions>`.** Plus a test run that proves the context starts without them.
 
-Die drei erwogenen Alternativen scheiden aus konkreten Gründen aus:
+The three alternatives that were considered are ruled out for concrete reasons:
 
-1. **`<optional>true</optional>` an den Dependencies.** Kehrt die Vorgabe von „alles an" auf
-   „nichts an" um. Alle vier Apps hängen an genau einem Artefakt und würden beim nächsten
-   root-Bump **stillschweigend** Module verlieren, die sie benutzen — genau die
-   Verhaltensänderung, die dieser Umbau nicht haben darf. `optional` wird erst tragfähig, wenn
-   die Apps ihre Module selbst deklarieren; das ist ein Schnitt in vier fremden Repos und
-   gehört nicht in diesen Schritt.
-2. **Eigene BOM `plaintext-root-bom`.** Wäre eine zweite, parallel zu pflegende Kopie derselben
-   Liste: `plaintext-root-parent` **ist** bereits die BOM — sein `dependencyManagement` verwaltet
-   jedes interne Artefakt über `${plaintext-root.version}`, und alle vier Apps haben genau diesen
-   Parent. Eine BOM brächte hier keinen einzigen Fall, der ohne sie nicht ginge.
-3. **`@ConditionalOnProperty` an den Modul-AutoConfigurations.** Wirkungslos. Die Beans der
-   Module hängen in root **und in allen vier Apps** am `@ComponentScan("ch.plaintext")` der
-   Boot-Klasse, nicht an ihrer AutoConfiguration — nachgeprüft in allen vier Repos. Ein
-   ausgeschalteter Schalter hätte die AutoConfiguration abgeräumt und die Beans stehen lassen:
-   ein Schalter, der aussieht, als schaltete er.
+1. **`<optional>true</optional>` on the dependencies.** Flips the default from "everything on" to
+   "nothing on". All four apps depend on exactly one artifact and on the next root bump would
+   **silently** lose modules they use — precisely the behavioural change this rework must not
+   have. `optional` only becomes viable once the apps declare their modules themselves; that is a
+   cut through four foreign repos and does not belong in this step.
+2. **A separate BOM, `plaintext-root-bom`.** Would be a second copy of the same list, maintained
+   in parallel: `plaintext-root-parent` **is** the BOM already — its `dependencyManagement`
+   manages every internal artifact through `${plaintext-root.version}`, and all four apps have
+   exactly that parent. A BOM would not add a single case here that does not work without it.
+3. **`@ConditionalOnProperty` on the modules' auto-configurations.** Ineffective. In root **and
+   in all four apps** the modules' beans hang off the boot class's `@ComponentScan("ch.plaintext")`,
+   not off their auto-configuration — verified in all four repos. A switch that was turned off
+   would have removed the auto-configuration and left the beans in place: a switch that looks as
+   if it switched something.
 
-Abwählbar sind heute vier Module: `plaintext-admin-webhooks`, `-notifications`, `-secrets`,
-`-modules`. Welche nicht und warum, steht in `docs/MODULE_ABWAEHLEN.md`.
+Four modules can be opted out of today: `plaintext-admin-webhooks`, `-notifications`, `-secrets`,
+`-modules`. Which ones cannot, and why, is in `docs/OPTIONAL_MODULES.md`.
 
 ## Consequences
 
-* **Positiv:** Eine App kann Module streichen, ohne dass die anderen drei etwas merken. Für die
-  bestehenden Apps ändert sich nichts — die Vorgabe bleibt „alles an".
-* **Positiv:** Die Abwählbarkeit ist nicht länger ein Zufall, den der nächste `@Autowired`
-  wieder kassiert. Der Surefire-Lauf `kontext-ohne-abwaehlbare-module` in
-  `plaintext-root-webapp` nimmt den vier Jars per `classpathDependencyExcludes` den Platz auf dem
-  Test-Classpath weg und startet den Kontext ohne sie; `AbwaehlbareModuleXhtmlTest` deckt den
-  Weg ab, den der Kontext-Start nicht sieht — eine Kern-XHTML, die eine Bean des Moduls anspricht.
-* **Negativ:** Die Liste steht an drei Stellen (pom.xml, `SchlankerKontextTest`,
-  `docs/MODULE_ABWAEHLEN.md`). Maven kann Plugin-Konfiguration nicht aus Java lesen; der Test
-  prüft die Deckung gegen die pom, die Doku bleibt Handarbeit.
-* **Negativ:** Wer ein Modul aus einer App wirft, deren Datenbank dessen Flyway-Migrationen schon
-  angewandt hat, braucht `spring.flyway.validate-on-migrate: false` (root selbst setzt das seit
-  dem Wegfall von `plaintext-root-email` ohnehin). Steht in der Anleitung.
-* **Offen:** `plaintext-admin-cron` startet nachweislich auch ohne — die Abschaltung wäre aber
-  **still**: `PlaintextCron`-Beans blieben gewöhnliche Beans und liefen nie wieder. Deshalb
-  steht es nicht in der Liste. Wer es aufnehmen will, braucht zuerst einen lauten Hinweis beim
-  Start (`PlaintextCron`-Bean ohne `CronBeanPostProcessor` → Warnung).
+* **Positive:** an app can drop modules without the other three noticing. For the existing apps
+  nothing changes — the default stays "everything on".
+* **Positive:** being able to opt out is no longer an accident that the next `@Autowired` takes
+  away again. The Surefire run `kontext-ohne-abwaehlbare-module` in `plaintext-root-webapp` takes
+  the four jars off the test classpath via `classpathDependencyExcludes` and starts the context
+  without them; `AbwaehlbareModuleXhtmlTest` covers the path that starting the context does not
+  see — a core XHTML that addresses a bean of the module.
+* **Negative:** the list exists in four places (pom.xml, `SchlankerKontextTest`, `AbwaehlbareModuleXhtmlTest`, and the table in OPTIONAL_MODULES.md) (pom.xml, `SchlankerKontextTest`,
+  `docs/OPTIONAL_MODULES.md`). Maven cannot read plugin configuration from Java; the test checks
+  the coverage against the pom, the documentation stays manual work.
+* **Negative:** whoever throws a module out of an app whose database has already applied that
+  module's Flyway migrations needs `spring.flyway.validate-on-migrate: false` (root itself has
+  set that anyway ever since `plaintext-root-email` was dropped). It is in the guide.
+* **Open:** `plaintext-admin-cron` demonstrably starts without it as well — but switching it off
+  would be **silent**: `PlaintextCron` beans would stay ordinary beans and never run again. That
+  is why it is not on the list. Whoever wants to add it needs a loud notice at startup first
+  (a `PlaintextCron` bean without a `CronBeanPostProcessor` → warning).

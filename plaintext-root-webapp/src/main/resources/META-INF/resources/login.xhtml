@@ -358,9 +358,9 @@
 
         <!-- OIDC Auto-Redirect (only when no error/logout parameter) -->
         <h:panelGroup rendered="#{loginSetupBean.oidcAutoRedirectActive and empty param.error and empty param.logout}">
-            <!-- Die Ziel-URL kommt als data-Attribut, nicht als EL in einem Skriptkoerper: ein
-                 Inline-<script> zwingt die Content-Security-Policy zu script-src 'unsafe-inline'
-                 (Welle 4). js/login.js liest das Attribut und leitet weiter. -->
+            <!-- The target URL arrives as a data attribute, not as EL in a script body: an
+                 inline <script> forces the Content Security Policy to script-src 'unsafe-inline'
+                 (wave 4). js/login.js reads the attribute and redirects. -->
             <div id="oidc-auto-redirect" hidden="hidden"
                  data-pt-redirect="#{request.contextPath}/oauth2/authorization/#{loginSetupBean.oidcAutoRedirectRegistrationId}"></div>
         </h:panelGroup>
@@ -375,7 +375,7 @@
                 </div>
             </div>
 
-            <!-- Erfolgs-/Info-Meldung nach Link-Anforderung -->
+            <!-- Success/info message after the link has been requested -->
             <div class="success-message" style="display: #{param.magic_link_sent != null ? 'flex' : 'none'}">
                 <i class="pi pi-envelope"></i>
                 <span>#{i18n.t('Falls ein Konto mit dieser Adresse existiert, erhalten Sie gleich einen Anmelde-Link per E-Mail.')}</span>

@@ -10,22 +10,22 @@ import java.io.Serializable;
 import java.util.Locale;
 
 /**
- * Merkt einen Deep-Link ueber den Login-Flow hinweg (Karte 345, „Login-Fall").
+ * Remembers a deep link across the login flow (card 345, "login case").
  *
- * <h2>Warum keine Ziel-URL gespeichert wird</h2>
- * Der naheliegende Weg — die gewuenschte URL als Parameter durch den Login schleifen — ist genau
- * das Muster, aus dem Open Redirects entstehen. Hier wird deshalb <b>keine URL</b> abgelegt,
- * sondern nur die drei validierten Bezeichner {@code type}/{@code mandat}/{@code id} in der
- * <b>Server-Session</b>. Nach dem Login wird daraus wieder ein {@code /deeplink}-Aufruf gebaut,
- * der erneut die volle Pruefkette durchlaeuft. Ein Angreifer kann damit weder ein fremdes Ziel
- * ansteuern noch eine Pruefung ueberspringen — schlimmstenfalls schickt er sein Opfer auf eine
- * Seite der eigenen Anwendung, auf die es ohnehin Zugriff hat.
+ * <h2>Why no target URL is stored</h2>
+ * The obvious way — dragging the desired URL through the login as a parameter — is exactly
+ * the pattern out of which open redirects arise. Therefore <b>no URL</b> is stored here,
+ * only the three validated identifiers {@code type}/{@code mandat}/{@code id} in the
+ * <b>server session</b>. After the login a {@code /deeplink} call is built from them again,
+ * which runs through the full chain of checks anew. An attacker can thereby neither steer to a
+ * foreign target nor skip a check — at worst they send their victim to a
+ * page of our own application that the victim has access to anyway.
  */
 public final class DeepLinkPendingStore {
 
     static final String SESSION_ATTRIBUTE = "PLAINTEXT_PENDING_DEEPLINK";
 
-    /** Die drei Bezeichner eines Deep-Links — bewusst kein freier Text und keine URL. */
+    /** The three identifiers of a deep link — deliberately no free text and no URL. */
     public record PendingDeepLink(String type, String mandat, String id) implements Serializable {
     }
 
@@ -33,12 +33,12 @@ public final class DeepLinkPendingStore {
     }
 
     /**
-     * Legt den Deep-Link fuer die Zeit nach dem Login ab. Ungueltige Parameter werden gar nicht
-     * erst gemerkt (dann landet der Benutzer nach dem Login auf seiner Startseite).
+     * Stores the deep link for the time after the login. Invalid parameters are not
+     * remembered at all (the user then lands on their start page after the login).
      */
     public static void merke(HttpServletRequest request, String type, String mandat, String id) {
-        // Erst normalisieren, dann pruefen — genau wie im DeepLinkResolver. Sonst scheitert ein
-        // voellig harmloser Link mit grossgeschriebenem Mandanten an der Mustertruefung.
+        // Normalize first, then check — exactly as in the DeepLinkResolver. Otherwise a
+        // completely harmless link with a capitalized tenant would fail the pattern check.
         String t = type == null ? null : type.trim().toLowerCase(Locale.ROOT);
         String m = mandat == null ? null : mandat.trim().toLowerCase(Locale.ROOT);
         String i = id == null ? null : id.trim();
@@ -51,8 +51,8 @@ public final class DeepLinkPendingStore {
     }
 
     /**
-     * Liest den gemerkten Deep-Link und entfernt ihn sofort (Einmal-Verwendung), damit ein
-     * einmaliger Mail-Klick nicht jeden weiteren Login umleitet.
+     * Reads the remembered deep link and removes it immediately (single use), so that a
+     * one-off mail click does not redirect every subsequent login.
      */
     public static PendingDeepLink entnehme(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
@@ -65,12 +65,12 @@ public final class DeepLinkPendingStore {
     }
 
     /**
-     * Baut aus einem gemerkten Deep-Link den (context-relativen) {@code /deeplink}-Aufruf. Alle
-     * Bestandteile stammen aus den validierten Feldern des Records, nicht aus dem Request.
+     * Builds the (context-relative) {@code /deeplink} call from a remembered deep link. All
+     * parts come from the validated fields of the record, not from the request.
      */
     public static String alsPfad(PendingDeepLink pending) {
-        // Die Validierung greift hier ein zweites Mal: der Record kommt aus der Session und soll
-        // auch dann kein Schmuggelweg sein, wenn ihn jemand anders befuellt hat.
+        // The validation applies here a second time: the record comes from the session and must
+        // not be a smuggling route either, even if somebody else filled it.
         if (pending == null
                 || !DeepLinkFormat.istGueltigerType(pending.type())
                 || !DeepLinkFormat.istGueltigesMandat(pending.mandat())

@@ -4,21 +4,21 @@
 package ch.plaintext.bus;
 
 /**
- * Ausführungs-/Zustellungs-Scope für {@link PlaintextBusEvent}/{@link PlaintextBusSubscriber} —
- * dieselbe Stufung, die {@code PlaintextCron} (via {@code isGlobal()}) bereits implizit kennt, hier
- * explizit als Enum und um {@code PERSOENLICH} erweitert.
+ * Execution/delivery scope for {@link PlaintextBusEvent}/{@link PlaintextBusSubscriber} — the same
+ * gradation that {@code PlaintextCron} already knows implicitly (via {@code isGlobal()}), here made
+ * explicit as an enum and extended by {@code PERSOENLICH}.
  *
  * @author info@plaintext.ch
  * @since 2026
  */
 public enum ExecutionScope {
 
-    /** Mandantenlos, systemweit (analog {@code PlaintextCron.isGlobal() == true}). */
+    /** Tenant-less, system-wide (analogous to {@code PlaintextCron.isGlobal() == true}). */
     APPLICATION,
 
-    /** Gehört einem Mandanten (analog {@code PlaintextCron.isGlobal() == false}). */
+    /** Belongs to a tenant (analogous to {@code PlaintextCron.isGlobal() == false}). */
     MANDAT,
 
-    /** Gehört einem Mandanten UND einem konkreten Benutzer darin. */
+    /** Belongs to a tenant AND to a specific user within it. */
     PERSOENLICH
 }

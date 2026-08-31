@@ -5,11 +5,11 @@
                 xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
 
     <ui:define name="content">
-        <!-- Der Code steht seit Welle 4 (CSP ohne 'unsafe-inline') in einer eigenen Datei. Damit
-             ist auch die alte Falle weg, die ihn hierher vor das Formular gezwungen hat: ein
-             woertliches CDATA-Ende innerhalb von h:form beendet die CDATA-Sektion jeder
-             Ajax-Antwort vorzeitig, und der Browser verwirft sie dann stillschweigend
-             (Karte 502, Ursache belegt in Karte 430). -->
+        <!-- Since wave 4 (CSP without 'unsafe-inline') the code lives in its own file. That also
+             removes the old trap that forced it in front of the form here: a literal
+             CDATA end inside h:form terminates the CDATA section of every
+             Ajax response early, and the browser then silently discards it
+             (card 502, cause documented in card 430). -->
         <h:outputScript library="plaintext-root" name="js/cron.js"/>
 
         <h:form id="fm">

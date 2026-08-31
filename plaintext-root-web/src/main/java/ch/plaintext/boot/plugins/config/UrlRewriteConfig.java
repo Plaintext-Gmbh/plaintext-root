@@ -27,21 +27,22 @@ public class UrlRewriteConfig {
         FilterRegistrationBean<HtmlToXhtmlRewriteFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new HtmlToXhtmlRewriteFilter());
         registration.addUrlPatterns("*.html", "*.htm");
-        // Karte 612 (08.08.2026): + 30 statt + 1.
+        // Card 612 (08.08.2026): + 30 instead of + 1.
         //
-        // Dieser Filter muss NACH dem pathParameterFilter laufen, damit eine URL wie
-        // /login.html;jsessionid=... hier bereits bereinigt ankommt -- sonst endet sie nicht
-        // auf .html und das urlPattern greift nicht.
+        // This filter has to run AFTER the pathParameterFilter, so that a URL such as
+        // /login.html;jsessionid=... already arrives here cleaned up -- otherwise it does not
+        // end in .html and the urlPattern does not match.
         //
-        // Der pathParameterFilter wiederum musste hinter Springs ForwardedHeaderFilter (+10)
-        // wandern, weil sein sendRedirect() sonst mit dem Connector-Schema (http) statt dem
-        // der urspruenglichen Anfrage (https) gebaut wird. Beide Bedingungen zusammen ergeben:
+        // The pathParameterFilter in turn had to move behind Spring's ForwardedHeaderFilter
+        // (+10), because otherwise its sendRedirect() is built with the connector's scheme
+        // (http) instead of the one of the original request (https). Both conditions together
+        // give:
         //
-        //   ForwardedHeaderFilter  +10   Scheme/Host korrigieren
-        //   PathParameterFilter    +20   Pfad bereinigen, Redirect mit korrektem Schema
-        //   htmlRewriteFilter      +30   <- hier, sieht nur bereinigte Pfade
+        //   ForwardedHeaderFilter  +10   fix up scheme/host
+        //   PathParameterFilter    +20   clean up the path, redirect with the correct scheme
+        //   htmlRewriteFilter      +30   <- here, only ever sees cleaned-up paths
         //
-        // Weiterhin nach dem Swagger-Filter und vor Spring Security (-100).
+        // Still after the Swagger filter and before Spring Security (-100).
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 30);
         registration.setName("htmlRewriteFilter");
         return registration;
@@ -56,13 +57,13 @@ public class UrlRewriteConfig {
         public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
                 throws IOException, ServletException {
             HttpServletRequest httpRequest = (HttpServletRequest) request;
-            // Path-Parameter abschneiden (Karte 612): Der Filter wird ueber den Servlet-Pfad
-            // ausgewaehlt (*.html) — dort entfernt der Container ";jsessionid=..." bereits —,
-            // entscheidet hier aber ueber getRequestURI(), wo es noch drinsteht. Ohne diesen
-            // Schnitt endet "/kontakte.html;jsessionid=X" nicht auf ".html", die Umschreibung
-            // auf .xhtml unterbleibt und der Request laeuft auf eine Ressource, die es physisch
-            // nicht gibt. Der pathParameterFilter raeumt das im Normalfall schon vorher weg;
-            // diese Zeile haelt das Modul auch ohne ihn richtig.
+            // Strip path parameters (Card 612): the filter is selected via the servlet path
+            // (*.html) — where the container has already removed ";jsessionid=..." — but decides
+            // here based on getRequestURI(), where it is still present. Without this cut
+            // "/kontakte.html;jsessionid=X" does not end in ".html", the rewrite to .xhtml does
+            // not happen and the request runs into a resource that does not physically exist.
+            // Normally the pathParameterFilter has already cleared this away beforehand; this
+            // line keeps the module correct even without it.
             String path = stripPathParameters(httpRequest.getRequestURI());
 
             // Skip Swagger, OAuth2 and technical URLs
@@ -90,9 +91,10 @@ public class UrlRewriteConfig {
         }
 
         /**
-         * Entfernt in jedem Pfadsegment alles ab dem ersten Semikolon (Karte 612). Delegiert an
-         * {@link PathParameterConfig.PathParameterFilter#stripPathParameters(String)}, damit es
-         * fuer die Regel genau eine Quelle gibt.
+         * Removes everything from the first semicolon onwards in every path segment (Card 612).
+         * Delegates to
+         * {@link PathParameterConfig.PathParameterFilter#stripPathParameters(String)} so that
+         * there is exactly one source for the rule.
          */
         static String stripPathParameters(String uri) {
             if (uri == null || uri.indexOf(';') < 0) {

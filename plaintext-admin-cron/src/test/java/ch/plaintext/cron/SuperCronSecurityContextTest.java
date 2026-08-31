@@ -20,15 +20,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Verifiziert die SecurityContext-Hygiene von {@link SuperCron#run()}:
- * Background-/Cron-Threads bekommen pro Lauf einen definierten System-Context
- * (SYSTEM-User + Ziel-Mandant), der nach dem Lauf — auch im Exception-Pfad —
- * restlos wieder verschwindet bzw. einen vorher vorhandenen Context restauriert.
+ * Verifies the SecurityContext hygiene of {@link SuperCron#run()}:
+ * background/cron threads get a well-defined system context per run
+ * (SYSTEM user + target tenant) which, after the run — including on the exception path —
+ * disappears completely again, or restores a previously existing context.
  */
 @DisplayName("SuperCron SecurityContext-Lifecycle")
 class SuperCronSecurityContextTest {
 
-    /** Hält fest, was WÄHREND run(mandant) im SecurityContextHolder lag. */
+    /** Records what was in the SecurityContextHolder DURING run(mandant). */
     private static class ContextCapturingCron extends SuperCron {
         private Authentication seenDuringRun;
         private boolean shouldThrow = false;

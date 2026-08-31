@@ -34,8 +34,8 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
- * Der Start meldet pro Mandant, welche Listen-Eintraege im aktuellen Menuebaum ins Leere zeigen —
- * Vorbild ist die bestehende Meldung „Modul-Rolle konfiguriert fuer unbekannten Modul-Key".
+ * The startup reports, per tenant, which list entries point nowhere in the current menu tree — the
+ * model for this is the existing message "Modul-Rolle konfiguriert fuer unbekannten Modul-Key".
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Startup-Meldung: tote Listen-Eintraege")

@@ -13,16 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SECURITY (Karte 376, urspruenglich Punkt 8 der Sammelkarte 314) — vorhersagbarer Krypto-Fallback,
- * hier fuer die <b>zweite</b> betroffene Klasse.
+ * SECURITY (card 376, originally item 8 of collective card 314) — predictable crypto fallback, here
+ * for the <b>second</b> affected class.
  *
- * <p>{@code WebhookCrypto} benutzt denselben Env-Key und denselben Fallback wie
- * {@code SecretCrypto}, ist aber bewusst dupliziert (kein Modul referenziert quer auf
- * {@code plaintext-admin-secrets}). Ein Fix in nur einer der beiden Klassen liesse die Luecke
- * offen — deshalb existiert dieser Test als Gegenstueck zu {@code SecretCryptoFallbackTest}.
+ * <p>{@code WebhookCrypto} uses the same env key and the same fallback as {@code SecretCrypto}, but
+ * is deliberately duplicated (no module references {@code plaintext-admin-secrets} across module
+ * boundaries). A fix in only one of the two classes would leave the hole open — which is why this
+ * test exists as the counterpart to {@code SecretCryptoFallbackTest}.
  *
- * <p>Besonders heikel ist der Fall hier: Aus einem berechenbaren Schluessel folgen lesbare
- * Signing-Secrets und daraus <b>gueltige Signaturen</b> fuer ausgehende Webhooks.
+ * <p>The case here is particularly delicate: a computable key yields readable signing secrets and
+ * from those <b>valid signatures</b> for outgoing webhooks.
  */
 @DisplayName("WebhookCrypto: Dev-Fallback")
 class WebhookCryptoFallbackTest {
@@ -30,7 +30,7 @@ class WebhookCryptoFallbackTest {
     @Test
     void failsFastInProductionWithoutKey() {
         if (System.getenv("PLAINTEXT_SECRET_KEY") != null) {
-            return; // in einer Umgebung mit echtem Key nicht aussagekraeftig
+            return; // not meaningful in an environment with a real key
         }
         MockEnvironment prod = new MockEnvironment();
         prod.setActiveProfiles("prod");
@@ -51,7 +51,7 @@ class WebhookCryptoFallbackTest {
         assertEquals("signing-secret", crypto.decrypt(cipher));
     }
 
-    /** Kein ECB: derselbe Klartext ergibt durch den frischen IV zwei verschiedene Chiffrate. */
+    /** No ECB: thanks to the fresh IV, the same plain text yields two different ciphertexts. */
     @Test
     void producesDifferentCiphertextForSamePlaintext() {
         WebhookCrypto crypto = new WebhookCrypto(new MockEnvironment());

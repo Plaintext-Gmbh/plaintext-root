@@ -24,6 +24,6 @@ public interface SetupConfigRepository extends JpaRepository<SetupConfig, Long> 
 
     Optional<SetupConfig> findFirstByTotpEnabledTrue();
 
-    /** Erste Konfiguration mit gesetztem GLOBAL-Systemmailkonto (system-weite Auflösung für Auth-Mails). */
+    /** First configuration with a GLOBAL system mail account set (system-wide resolution for auth mails). */
     Optional<SetupConfig> findFirstBySystemMailAccountIdNotNull();
 }

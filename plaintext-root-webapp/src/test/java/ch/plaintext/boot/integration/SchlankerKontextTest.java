@@ -24,28 +24,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Nachweis, dass der Spring-Kontext von plaintext-root <b>ohne</b> die abwaehlbaren Admin-Module
- * startet — also genau das, was eine App tut, die sie per {@code <exclusions>} aus
- * {@code plaintext-root-webapp} herauswirft.
+ * Proof that the Spring context of plaintext-root starts <b>without</b> the deselectable admin
+ * modules — that is, exactly what an app does that throws them out of
+ * {@code plaintext-root-webapp} via {@code <exclusions>}.
  *
- * <p><b>Warum ein eigener Testlauf.</b> Der Test laeuft NICHT in der normalen Surefire-Ausfuehrung,
- * sondern in der zweiten Ausfuehrung {@code kontext-ohne-abwaehlbare-module} (siehe pom.xml dieses
- * Moduls). Die nimmt den vier Modul-Jars per {@code classpathDependencyExcludes} den Platz auf dem
- * Test-Classpath weg. Damit ist die Abwesenheit echt und nicht simuliert: keine
- * {@code AutoConfiguration.imports}, keine Klassen, keine Flyway-Migrationen, kein
- * Component-Scan-Treffer. Ein {@code spring.autoconfigure.exclude} haette das NICHT bewiesen — die
- * Beans dieser Module haengen in root und in allen vier Apps ohnehin am
- * {@code @ComponentScan("ch.plaintext")} der Boot-Klasse und nicht an ihrer AutoConfiguration.
+ * <p><b>Why a test run of its own.</b> The test does NOT run in the normal Surefire execution,
+ * but in the second execution {@code kontext-ohne-abwaehlbare-module} (see the pom.xml of this
+ * module). That one takes the place on the test classpath away from the four module jars via
+ * {@code classpathDependencyExcludes}. The absence is thereby real and not simulated: no
+ * {@code AutoConfiguration.imports}, no classes, no Flyway migrations, no
+ * component scan hit. A {@code spring.autoconfigure.exclude} would NOT have proven that — the
+ * beans of these modules hang off the {@code @ComponentScan("ch.plaintext")} of the boot class in
+ * root and in all four apps anyway, and not off their AutoConfiguration.
  *
- * <p><b>Wozu er gut ist.</b> Er ist zugleich die Sperre: Wer im Kern (plaintext-root-webapp oder
- * einem plaintext-root-*-Modul) eine Klasse aus einem dieser Pakete importiert oder eine ihrer
- * Beans hart injiziert, laesst diesen Lauf mit {@code NoClassDefFoundError} bzw.
- * {@code NoSuchBeanDefinitionException} scharf werden — nicht erst den PROD-Start einer App, die
- * das Modul abgewaehlt hat.
+ * <p><b>What it is good for.</b> It is at the same time the barrier: whoever imports a class from
+ * one of these packages in the core (plaintext-root-webapp or a plaintext-root-* module) or
+ * hard-injects one of their beans makes this run trip with a {@code NoClassDefFoundError} resp.
+ * {@code NoSuchBeanDefinitionException} — instead of only the PROD start of an app that has
+ * deselected the module.
  *
- * <p>Die Liste haelt {@code docs/MODULE_ABWAEHLEN.md} nach; sie steht doppelt (hier und in der
- * pom.xml), weil Maven Plugin-Konfiguration nicht aus Java lesen kann. {@link #listeStimmtUeberein}
- * prueft die Deckung.
+ * <p>The list is tracked by {@code docs/OPTIONAL_MODULES.md}; it exists twice (here and in the
+ * pom.xml), because Maven cannot read plugin configuration out of Java. {@link #listeStimmtUeberein}
+ * checks that the two agree.
  *
  * @since 1.644.0
  */
@@ -53,14 +53,14 @@ import static org.junit.jupiter.api.Assertions.fail;
 @ActiveProfiles("test")
 class SchlankerKontextTest {
 
-    /** Wurzelpakete der abwaehlbaren Module — Implementierung, nicht die Vertraege in -interfaces. */
+    /** Root packages of the deselectable modules — implementation, not the contracts in -interfaces. */
     private static final List<String> ABGEWAEHLTE_PAKETE = List.of(
             "ch.plaintext.webhooks.",
             "ch.plaintext.notifications.",
             "ch.plaintext.secrets.",
             "ch.plaintext.modules.");
 
-    /** Je eine Klasse aus jedem abgewaehlten Modul-Jar; muss beim Laden fehlschlagen. */
+    /** One class from each deselected module jar; loading it has to fail. */
     private static final List<String> ABGEWAEHLTE_KLASSEN = List.of(
             "ch.plaintext.webhooks.config.WebhooksModuleConfiguration",
             "ch.plaintext.notifications.config.NotificationsModuleConfiguration",
@@ -79,8 +79,8 @@ class SchlankerKontextTest {
     private Flyway flyway;
 
     /**
-     * Vorbedingung: Die Jars sind wirklich weg. Laeuft der Test versehentlich in der normalen
-     * Surefire-Ausfuehrung mit, faellt er hier auf — statt gruen zu sein und nichts zu beweisen.
+     * Precondition: the jars really are gone. If the test accidentally runs along in the normal
+     * Surefire execution, it stands out here — instead of being green and proving nothing.
      */
     @Test
     void modulJarsSindNichtAufDemClasspath() {
@@ -91,12 +91,12 @@ class SchlankerKontextTest {
                         + "Surefire-Ausfuehrung 'kontext-ohne-abwaehlbare-module' (pom.xml), die die "
                         + "Modul-Jars per classpathDependencyExcludes entfernt.");
             } catch (ClassNotFoundException | NoClassDefFoundError erwartet) {
-                // genau so soll es sein
+                // exactly as it should be
             }
         }
     }
 
-    /** Der Kern steht: Kontext hochgefahren, Menue-Registry und Benutzer-Repository da. */
+    /** The core stands: context started, menu registry and user repository present. */
     @Test
     void kontextStartetOhneDieAbgewaehltenModule() {
         assertNotNull(kontext, "Kontext wurde nicht hochgefahren");
@@ -104,7 +104,7 @@ class SchlankerKontextTest {
         assertNotNull(kontext.getBean(MyUserRepository.class), "Benutzer-Repository fehlt");
     }
 
-    /** Und es ist wirklich keine Bean der abgewaehlten Module durchgerutscht. */
+    /** And really no bean of the deselected modules has slipped through. */
     @Test
     void keineBeanAusDenAbgewaehltenModulen() {
         for (String name : kontext.getBeanDefinitionNames()) {
@@ -119,10 +119,10 @@ class SchlankerKontextTest {
     }
 
     /**
-     * Flyway laeuft mit dem verkleinerten Migrationssatz durch. Auf einer <b>frischen</b> Datenbank
-     * ist das der Normalfall; eine bestehende Datenbank braucht zusaetzlich
-     * {@code spring.flyway.validate-on-migrate: false} (root setzt das seit dem Wegfall von
-     * plaintext-root-email ohnehin) — siehe docs/MODULE_ABWAEHLEN.md.
+     * Flyway runs through with the reduced set of migrations. On a <b>fresh</b> database
+     * that is the normal case; an existing database additionally needs
+     * {@code spring.flyway.validate-on-migrate: false} (root sets that anyway since
+     * plaintext-root-email was dropped) — see docs/OPTIONAL_MODULES.md.
      */
     @Test
     void flywayLaeuftOhneDieMigrationenDerAbgewaehltenModule() {
@@ -131,8 +131,8 @@ class SchlankerKontextTest {
     }
 
     /**
-     * Haelt die Liste hier und die {@code classpathDependencyExcludes} der pom.xml zusammen: Die
-     * pom reicht die tatsaechlich ausgeschlossenen Artefakte als Systemproperty herein.
+     * Keeps the list here and the {@code classpathDependencyExcludes} of the pom.xml together: the
+     * pom hands the actually excluded artifacts in as a system property.
      */
     @Test
     void listeStimmtUeberein() {

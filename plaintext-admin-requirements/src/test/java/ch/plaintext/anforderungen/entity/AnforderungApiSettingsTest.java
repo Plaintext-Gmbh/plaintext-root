@@ -33,7 +33,7 @@ class AnforderungApiSettingsTest {
         assertThat(settings.getClaudeAutomationEnabled()).isTrue();
     }
 
-    // --- syncApiTokenHash (JPA-Lifecycle-Hook, @PrePersist/@PreUpdate) ---
+    // --- syncApiTokenHash (JPA lifecycle hook, @PrePersist/@PreUpdate) ---
 
     @Test
     void syncApiTokenHashDerivesHashFromPlaintextToken() {

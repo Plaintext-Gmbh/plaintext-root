@@ -12,10 +12,10 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Admin-editierbarer Override für einen System-Mailtext (Betreff+Body), identifiziert über
- * {@code templateKey} (z. B. {@code auth.registration}). Ohne Zeile für einen Key gilt der im Code
- * hinterlegte Default-Text (Aufrufer übergibt ihn direkt bei {@link
- * ch.plaintext.mailtemplate.service.MailTemplateService#render}) — kein separater Seed-Mechanismus.
+ * Admin-editable override for a system mail text (subject+body), identified by
+ * {@code templateKey} (e.g. {@code auth.registration}). If there is no row for a key, the default
+ * text stored in the code applies (the caller passes it directly to {@link
+ * ch.plaintext.mailtemplate.service.MailTemplateService#render}) — no separate seed mechanism.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -36,7 +36,7 @@ public class MailTemplate extends SuperModel {
     @Column(name = "body", length = 8000, nullable = false)
     private String body;
 
-    /** {@code true}, wenn {@link #body} HTML statt Plaintext ist. */
+    /** {@code true} if {@link #body} is HTML instead of plain text. */
     @Column(name = "html")
     private boolean html;
 }

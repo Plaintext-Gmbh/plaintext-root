@@ -6,26 +6,26 @@ package ch.plaintext.boot.plugins.secret;
 import lombok.Getter;
 
 /**
- * Fail-fast-Fehler, wenn ein {@code vault:}-Property-Wert nicht aufgeloest werden
- * kann (Vault deaktiviert, Login-Fehler oder Item/Feld fehlt).
+ * Fail-fast error raised when a {@code vault:} property value cannot be resolved
+ * (vault disabled, login error or item/field missing).
  *
- * <p><b>Sicherheit:</b> Die Meldung nennt ausschliesslich den <i>Property-Namen</i>
- * und den <i>Item-Namen</i> (plus einen generischen Grund) — NIEMALS einen
- * Secret-Wert, das Master-Passwort oder sonstige Tresor-Inhalte.</p>
+ * <p><b>Security:</b> the message names only the <i>property name</i> and the
+ * <i>item name</i> (plus a generic reason) — NEVER a secret value, the master
+ * password or any other vault content.</p>
  */
 @Getter
 public class VaultwardenPropertyResolutionException extends RuntimeException {
 
-    /** Name des Properties, dessen Wert nicht aufgeloest werden konnte. */
+    /** Name of the property whose value could not be resolved. */
     private final String propertyName;
 
-    /** Name des referenzierten Vault-Items (kein Secret-Wert). */
+    /** Name of the referenced vault item (not a secret value). */
     private final String itemName;
 
     /**
-     * @param propertyName Property-Schluessel (z.B. {@code plaintext.buchhaltung.paperless-token})
-     * @param itemName     referenzierter Item-Name (z.B. {@code guild.paperless-token})
-     * @param reason       generischer Grund OHNE jeglichen Secret-Inhalt
+     * @param propertyName property key (e.g. {@code plaintext.buchhaltung.paperless-token})
+     * @param itemName     referenced item name (e.g. {@code guild.paperless-token})
+     * @param reason       generic reason WITHOUT any secret content
      */
     public VaultwardenPropertyResolutionException(String propertyName, String itemName, String reason) {
         super("Vault-Property '" + propertyName + "' (Item '" + itemName

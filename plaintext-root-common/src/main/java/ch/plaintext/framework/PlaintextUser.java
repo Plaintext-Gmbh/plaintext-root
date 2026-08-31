@@ -12,7 +12,7 @@ public interface PlaintextUser {
 
     void setUsername(String username);
 
-    // die beiden folgenden methoden werden benoetigt um im webgui die rollen zuweisen zu koennen
+    // the two methods below are needed in order to assign the roles in the web GUI
     List<String> getAuths();
 
     void setAuths(List<String> coll);

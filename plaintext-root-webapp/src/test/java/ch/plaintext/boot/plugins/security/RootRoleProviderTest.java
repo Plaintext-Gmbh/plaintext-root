@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests fuer die Referenzimplementierung des Rollen-Registry-Musters: root deklariert seine
- * eigenen Rollen selbst.
+ * Tests for the reference implementation of the role registry pattern: root declares its
+ * own roles itself.
  */
 class RootRoleProviderTest {
 

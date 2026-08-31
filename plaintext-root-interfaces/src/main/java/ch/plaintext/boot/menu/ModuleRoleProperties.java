@@ -11,8 +11,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Konfigurierbare Modul-Rollen: ordnet einem Modul-Key pro Anwendung eine Rolle zu, die das
- * gesamte Modul ein- bzw. ausschaltet.
+ * Configurable module roles: per application, maps a module key to a role that switches the entire
+ * module on or off.
  *
  * <pre>
  * plaintext:
@@ -23,22 +23,21 @@ import java.util.TreeMap;
  *       postkonto: finanzen
  * </pre>
  *
- * <p>Ohne die konfigurierte Rolle ist weder ein Menuepunkt noch eine Dashboard-Kachel des Moduls
- * sichtbar, und der {@code PageAccessGuard} verweigert den Direktaufruf der Seiten.
- * {@code admin} und {@code root} umgehen die Pruefung immer. Module ohne Eintrag verhalten sich
- * unveraendert.</p>
+ * <p>Without the configured role neither a menu item nor a dashboard tile of the module is
+ * visible, and the {@code PageAccessGuard} refuses direct calls to the pages. {@code admin} and
+ * {@code root} always bypass the check. Modules without an entry behave unchanged.</p>
  *
- * <p><b>Warum hier und nicht im Modul-Code:</b> Dasselbe Modul-Artefakt wird von mehreren
- * Anwendungen gebuendelt (z.B. {@code plaintext-z-mailbox} laeuft in app.plaintext.ch UND in
- * app.guild42.ch). Die Zuordnung gehoert deshalb in die Konfiguration der jeweiligen Anwendung,
- * nicht in das Modul.</p>
+ * <p><b>Why here and not in the module code:</b> the same module artifact is bundled by several
+ * applications (e.g. {@code plaintext-z-mailbox} runs in app.plaintext.ch AND in app.guild42.ch).
+ * The mapping therefore belongs in the configuration of the respective application, not in the
+ * module.</p>
  *
- * <p><b>Modul-Key:</b> primaer die {@code moduleId} aus
- * {@code @MenuAnnotation(moduleId = "...")} bzw. {@code ModuleDescriptor#moduleId()} — genau der
- * Wert, den das Admin-Panel „Root | Module" anzeigt. Fuer Module ohne {@code moduleId} greift als
- * Fallback die Menu-Root-Id (der {@code menuId} bzw. der aus dem Titel abgeleitete Bezeichner des
- * obersten Menuepunkts des Moduls). Beim Start protokolliert das Framework alle erkannten
- * Modul-Keys; ein Key ohne Treffer wird als WARN gemeldet.</p>
+ * <p><b>Module key:</b> primarily the {@code moduleId} from
+ * {@code @MenuAnnotation(moduleId = "...")} or {@code ModuleDescriptor#moduleId()} — exactly the
+ * value the admin panel "Root | Module" shows. For modules without a {@code moduleId} the menu
+ * root id serves as the fallback (the {@code menuId}, or the identifier derived from the title of
+ * the module's topmost menu item). At startup the framework logs every module key it detected; a
+ * key without a match is reported as a WARN.</p>
  *
  * @author info@plaintext.ch
  * @since 1.604.0
@@ -46,7 +45,7 @@ import java.util.TreeMap;
 @ConfigurationProperties(prefix = "plaintext.menu")
 public class ModuleRoleProperties {
 
-    /** Modul-Key -&gt; Rollenname (ohne {@code ROLE_}-Prefix, Gross-/Kleinschreibung egal). */
+    /** Module key -&gt; role name (without the {@code ROLE_} prefix, case-insensitive). */
     private Map<String, String> moduleRoles = new LinkedHashMap<>();
 
     public Map<String, String> getModuleRoles() {
@@ -58,11 +57,11 @@ public class ModuleRoleProperties {
     }
 
     /**
-     * Die Zuordnung in kanonischer Form: Modul-Key kleingeschrieben, Rollenname GROSS und ohne
-     * {@code ROLE_}-Prefix — die Schreibweise, in der {@code SecurityProvider#hasRole(String)}
-     * geprueft wird. Leere Keys oder Rollen werden verworfen.
+     * The mapping in canonical form: module key lowercased, role name UPPERCASE and without the
+     * {@code ROLE_} prefix — the spelling in which {@code SecurityProvider#hasRole(String)} checks
+     * it. Empty keys or roles are discarded.
      *
-     * @return kanonische Zuordnung, alphabetisch nach Modul-Key sortiert (nie {@code null})
+     * @return canonical mapping, sorted alphabetically by module key (never {@code null})
      */
     public Map<String, String> canonicalModuleRoles() {
         Map<String, String> ret = new TreeMap<>();
@@ -76,26 +75,26 @@ public class ModuleRoleProperties {
         return ret;
     }
 
-    /** {@code true}, wenn keine einzige gueltige Zuordnung konfiguriert ist. */
+    /** {@code true} if not a single valid mapping is configured. */
     public boolean isEmpty() {
         return canonicalModuleRoles().isEmpty();
     }
 
     /**
-     * Kanonische Form eines Modul-Keys: getrimmt und kleingeschrieben.
+     * Canonical form of a module key: trimmed and lowercased.
      *
-     * @param key roher Key, darf {@code null} sein
-     * @return kanonischer Key, nie {@code null}
+     * @param key raw key, may be {@code null}
+     * @return canonical key, never {@code null}
      */
     public static String canonicalKey(String key) {
         return key == null ? "" : key.trim().toLowerCase(Locale.ROOT);
     }
 
     /**
-     * Kanonische Form eines Rollennamens: getrimmt, ohne {@code ROLE_}-Prefix, GROSS.
+     * Canonical form of a role name: trimmed, without the {@code ROLE_} prefix, UPPERCASE.
      *
-     * @param role roher Rollenname, darf {@code null} sein
-     * @return kanonischer Rollenname, nie {@code null}
+     * @param role raw role name, may be {@code null}
+     * @return canonical role name, never {@code null}
      */
     public static String canonicalRole(String role) {
         if (role == null) {

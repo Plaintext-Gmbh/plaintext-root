@@ -9,16 +9,16 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /**
- * SHA-256-Hashing fuer die Einmal-Tokens der Selbstservice-Flows (Registrierung, Passwort-Reset).
- * Der Klartext-Token wird nur im E-Mail-Link ausgeliefert; in der DB liegt ausschliesslich der Hash
- * (Karte 307, K2.3) — analog {@code HashedOneTimeTokenService} fuer Magic-Links.
+ * SHA-256 hashing for the one-time tokens of the self-service flows (registration, password reset).
+ * The clear-text token is only delivered in the e-mail link; the DB holds exclusively the hash
+ * (card 307, K2.3) — analogously to {@code HashedOneTimeTokenService} for magic links.
  */
 final class SelfServiceTokenHash {
 
     private SelfServiceTokenHash() {
     }
 
-    /** SHA-256 des Klartext-Tokens als 64-stelliger Hex-String (passt in VARCHAR(64)). */
+    /** SHA-256 of the clear-text token as a 64-character hex string (fits into VARCHAR(64)). */
     static String sha256Hex(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

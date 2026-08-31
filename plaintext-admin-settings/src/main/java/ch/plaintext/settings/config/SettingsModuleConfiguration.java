@@ -9,27 +9,27 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
- * Macht das Settings-Modul ausserhalb von plaintext-root nutzbar - dasselbe
- * Muster wie {@code CronModuleConfiguration}.
+ * Makes the settings module usable outside of plaintext-root - the same
+ * pattern as {@code CronModuleConfiguration}.
  * <p>
- * Die Klassen dieses Moduls tragen {@code @Component}/{@code @Service} und
- * werden gefunden, solange die Anwendung {@code ch.plaintext} component-scannt.
- * Konsumenten ausserhalb von plaintext-root tun das nicht - sie scannen ihr
- * eigenes Package. Diese AutoConfiguration registriert Beans, Entities
- * ({@code Setting}, {@code SetupConfig}, {@code BrandingLogo}) und Repositories
- * des Moduls explizit.
+ * The classes of this module carry {@code @Component}/{@code @Service} and
+ * are found as long as the application component-scans {@code ch.plaintext}.
+ * Consumers outside of plaintext-root do not do that - they scan their
+ * own package. This AutoConfiguration registers the module's beans, entities
+ * ({@code Setting}, {@code SetupConfig}, {@code BrandingLogo}) and repositories
+ * explicitly.
  * <p>
- * In der Root-Webapp entsteht dadurch nichts doppelt:
- * {@code @SpringBootApplication} schliesst AutoConfiguration-Klassen vom
- * Component-Scan aus ({@code AutoConfigurationExcludeFilter}), geladen wird sie
- * genau einmal ueber die imports-Datei; die Repository-Registrierung ueberlappt
- * mit der der Webapp ({@code @EnableJpaRepositories("ch.plaintext")}), was mit
- * deren {@code allow-bean-definition-overriding} folgenlos bleibt.
+ * Nothing ends up duplicated in the root webapp:
+ * {@code @SpringBootApplication} excludes AutoConfiguration classes from the
+ * component scan ({@code AutoConfigurationExcludeFilter}), and it is loaded
+ * exactly once via the imports file; the repository registration overlaps
+ * with the webapp's own ({@code @EnableJpaRepositories("ch.plaintext")}), which
+ * stays without consequence thanks to its {@code allow-bean-definition-overriding}.
  * <p>
- * Was Konsumenten weiterhin selbst tun muessen: die Menueklassen des Moduls
- * ({@code SettingsSubmenu}, {@code SetupSubmenu}) werden ueber
- * {@code plaintext.menu.scan-package} gefunden - dort
- * {@code ch.plaintext.settings} ergaenzen (Kommaliste).
+ * What consumers still have to do themselves: the module's menu classes
+ * ({@code SettingsSubmenu}, {@code SetupSubmenu}) are found via
+ * {@code plaintext.menu.scan-package} - add
+ * {@code ch.plaintext.settings} there (comma-separated list).
  *
  * @since 1.505.0
  */

@@ -4,15 +4,15 @@
                 xmlns:f="jakarta.faces.core"
                 xmlns:p="http://primefaces.org/ui">
     <!--
-      pt:colAmount — Betragsspalte: EIN Zahlenformat, rechtsbuendig.
+      pt:colAmount — amount column: ONE number format, right aligned.
 
-      Gemessener Bestand: #,##0.00 49x plus sieben Varianten, CHF-Currency 5x; die Ausrichtung mal
-      gesetzt, mal nicht. Untereinanderstehende Betraege mit wandernden Kommas sind der haeufigste
-      Grund, warum eine Liste unruhig wirkt, ohne dass jemand sagen kann, warum.
+      Measured inventory: #,##0.00 49x plus seven variants, CHF currency 5x; the alignment sometimes
+      set, sometimes not. Stacked amounts with wandering decimal separators are the most common
+      reason why a list feels restless without anybody being able to say why.
 
-      Attributnamen wie bei pt:colText bewusst colClass/colRendered — Begruendung dort.
+      Attribute names deliberately colClass/colRendered as in pt:colText — reasoning there.
 
-      PFLICHT: header, value
+      REQUIRED: header, value
       OPTIONAL: width, pattern, currency, colClass, colRendered
     -->
     <p:column headerText="#{header}"

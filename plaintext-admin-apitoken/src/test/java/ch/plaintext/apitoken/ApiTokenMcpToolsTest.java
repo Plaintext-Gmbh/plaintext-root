@@ -31,10 +31,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests für {@link ApiTokenMcpTools} — Schwerpunkt Autorisierung: die Ausstellung von API-Tokens über
- * MCP darf keine Rechteausweitung sein. Geprüft wird, dass ohne {@code SCOPE_ADMIN} bzw. ohne die
- * Rolle ADMIN/ROOT gar nicht erst ausgestellt wird, dass der Scope Pflicht ist und dass immer nur für
- * den aufrufenden Benutzer im eigenen Mandanten ausgestellt/widerrufen wird.
+ * Tests for {@link ApiTokenMcpTools} — focus on authorization: issuing API tokens via
+ * MCP must not be a privilege escalation. It is checked that without {@code SCOPE_ADMIN}, or without
+ * the ADMIN/ROOT role, nothing is issued in the first place, that the scope is mandatory and that
+ * tokens are only ever issued/revoked for the calling user within their own tenant.
  */
 class ApiTokenMcpToolsTest {
 
@@ -106,9 +106,9 @@ class ApiTokenMcpToolsTest {
     }
 
     /**
-     * Karte 545: {@code WRITE} ist der neue Name des Schreibrechts, {@code EINTRAGEN} bleibt im
-     * Übergangsfenster gültig. Beide müssen die Ausstellung passieren — sonst kann ein Client, der
-     * schon auf den neuen Namen umgestellt hat, sich kein Token mehr ausstellen lassen.
+     * Card 545: {@code WRITE} is the new name of the write permission, {@code EINTRAGEN} stays
+     * valid during the transition window. Both must pass the issuing path — otherwise a client that
+     * has already switched to the new name can no longer have a token issued to it.
      */
     @Test
     void schreibScopes_werdenBeideAkzeptiert_neuerUndAlterName() {
@@ -176,16 +176,16 @@ class ApiTokenMcpToolsTest {
     }
 
     /**
-     * Karte 670: Im Kontext liegen zwei widersprüchliche {@code PROPERTY_MANDAT_*} — eine aus dem
-     * Token-Claim (klein) und eine aus {@code my_user_entity.roles}, wo derselbe Mandant in PROD
-     * gross gespeichert ist. Massgeblich ist der Mandant des <b>Tokens</b>.
+     * Card 670: The context holds two contradictory {@code PROPERTY_MANDAT_*} — one from the
+     * token claim (lower case) and one from {@code my_user_entity.roles}, where the same tenant is
+     * stored in upper case in PROD. Authoritative is the tenant of the <b>token</b>.
      *
-     * <p>Beide Einfügereihenfolgen werden geprüft. Das beweist für sich genommen <b>nicht</b>, dass
-     * die Auswahl hash-unabhängig ist — ein {@code HashSet} ignoriert die Einfügereihenfolge, beide
-     * Durchläufe sehen dieselbe Ordnung. Die Variation sichert gegen eine spätere Implementierung
-     * ab, die die Reihenfolge doch beachtet (etwa ein {@code LinkedHashSet} im Aufrufer). Dass der
-     * Test greift, ist gegengeprüft: mit dem alten {@code findFirst()} über
-     * {@code PROPERTY_MANDAT_} schlägt er fehl ("FEHLER: Token 1 nicht gefunden").
+     * <p>Both insertion orders are checked. Taken by itself that does <b>not</b> prove that
+     * the selection is hash-independent — a {@code HashSet} ignores the insertion order, both
+     * runs see the same ordering. The variation guards against a later implementation
+     * that does honour the order after all (a {@code LinkedHashSet} in the caller, say). That the
+     * test actually bites has been counter-checked: with the old {@code findFirst()} over
+     * {@code PROPERTY_MANDAT_} it fails ("FEHLER: Token 1 nicht gefunden").
      */
     @Test
     void zweiMandatAuthorities_tokenMandatGewinnt_unabhaengigVonDerReihenfolge() {
@@ -209,10 +209,10 @@ class ApiTokenMcpToolsTest {
     }
 
     /**
-     * Karte 670: Zwischen root-Release und Rollout in app/guild/schuetu läuft dort noch ein Filter
-     * ohne {@code PROPERTY_TOKEN_MANDAT_*}. Ohne Rückfall auf {@code PROPERTY_MANDAT_} bräche in
-     * diesem Fenster jedes Token-Werkzeug mit „Mandant nicht bestimmbar" ab — aus einem Lesefehler
-     * würde ein Ausfall.
+     * Card 670: Between the root release and the rollout in app/guild/schuetu, a filter without
+     * {@code PROPERTY_TOKEN_MANDAT_*} is still running there. Without a fallback to
+     * {@code PROPERTY_MANDAT_}, every token tool would abort during that window with "tenant cannot
+     * be determined" — a read error would turn into an outage.
      */
     @Test
     void ohneTokenMandatAuthority_faelltAufAltePropertyZurueck() {
@@ -224,7 +224,7 @@ class ApiTokenMcpToolsTest {
         verify(service).invalidateToken(1L, 7L, "plaintext");
     }
 
-    /** Karte 670: Fehlt jede Mandanten-Authority, wird nicht geraten, sondern abgebrochen. */
+    /** Card 670: If every tenant authority is missing, nothing is guessed — the call is aborted. */
     @Test
     void ohneJedeMandatAuthority_keineAusstellung() {
         authentifiziereAls("ROLE_ADMIN", "SCOPE_ADMIN", "PROPERTY_MYUSERID_7");

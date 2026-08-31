@@ -6,7 +6,7 @@ package ch.plaintext.modules;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-/** UI-Zeile der Modul-Liste: Id, Anzeigename, Version, Ein-/Aus-Zustand. */
+/** UI row of the module list: id, display name, version, on/off state. */
 @Data
 @AllArgsConstructor
 public class ModuleView {

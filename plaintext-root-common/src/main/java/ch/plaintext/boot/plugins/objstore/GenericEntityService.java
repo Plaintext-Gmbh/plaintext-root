@@ -8,23 +8,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// TODO-REFACTOR-113: Unchecked Cast Warning ohne Type Safety
-// Begründung: findByUniqueId() macht unchecked cast (T) storable.getMyObject()
-//             Keine Runtime-Type-Überprüfung, kann ClassCastException zur Laufzeit werfen
-// Vorschlag: Generic Type Token Pattern oder Validation mit instanceof
+// TODO-REFACTOR-113: Unchecked cast warning without type safety
+// Rationale: findByUniqueId() performs an unchecked cast (T) storable.getMyObject()
+//            No runtime type check, can throw a ClassCastException at runtime
+// Suggestion: generic type token pattern or validation with instanceof
 
-// TODO-REFACTOR-307: Inconsistent Exception Handling
-// Begründung: save() catcht Exception und loggt, aber deleteByUniqueId() hat keinen try-catch
-//             deleteByUniqueId() kann NullPointerException werfen wenn entity null ist
-// Vorschlag: Konsistentes Exception Handling, Null-Check vor delete()
+// TODO-REFACTOR-307: Inconsistent exception handling
+// Rationale: save() catches Exception and logs, but deleteByUniqueId() has no try-catch
+//            deleteByUniqueId() can throw a NullPointerException when entity is null
+// Suggestion: consistent exception handling, null check before delete()
 
-// TODO-REFACTOR-604: Fehlende @Transactional bei Delete-Operation
-// Begründung: deleteByUniqueId() hat keine @Transactional Annotation
-// Vorschlag: @Transactional für Konsistenz mit save() Methode
+// TODO-REFACTOR-604: Missing @Transactional on the delete operation
+// Rationale: deleteByUniqueId() has no @Transactional annotation
+// Suggestion: @Transactional for consistency with the save() method
 
-// TODO-REFACTOR-206: Naming - "MyObject" ist zu generisch
-// Begründung: storable.getMyObject() und storable.setMyObject() sind nicht aussagekräftig
-// Vorschlag: Umbenennen zu getStoredEntity() / setStoredEntity()
+// TODO-REFACTOR-206: Naming - "MyObject" is too generic
+// Rationale: storable.getMyObject() and storable.setMyObject() are not expressive
+// Suggestion: rename to getStoredEntity() / setStoredEntity()
 
 @Slf4j
 @Service

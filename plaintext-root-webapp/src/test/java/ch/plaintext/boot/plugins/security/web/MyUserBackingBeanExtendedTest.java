@@ -56,22 +56,22 @@ class MyUserBackingBeanExtendedTest {
     @Mock
     private UserMandateRepository userMandateRepo;
 
-    /** Rollen-Registry (Modul-Rollen-Registrierung): liefert die deklarierten Rollen. */
+    /** Role registry (module role registration): supplies the declared roles. */
     @Mock
     private PlaintextRoleRegistry roleRegistry;
 
     /**
-     * SECURITY (Karte 314, Punkt 7): der PasswordEncoder wird jetzt injiziert (zentrale Bean mit
-     * Kostenfaktor 12) statt lokal instanziiert. Als @Spy, damit die Tests weiterhin gegen echtes
-     * BCrypt pruefen koennen.
+     * SECURITY (card 314, item 7): the PasswordEncoder is now injected (central bean with
+     * cost factor 12) instead of being instantiated locally. As a @Spy, so that the tests can still
+     * check against real BCrypt.
      */
     @org.mockito.Spy
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**
-     * Forensik 23.08.2026: Audit-Log fuer Rollenaenderungen/Loeschungen. Muss als Mock dabei sein, weil ein
-     * parametrisierter Konstruktor die Konstruktor-Injection von {@code @InjectMocks} aktiviert —
-     * eine fehlende Abhaengigkeit kaeme sonst als {@code null} in der Bean an.
+     * Forensics 23.08.2026: audit log for role changes/deletions. Has to be present as a mock, because a
+     * parameterized constructor activates the constructor injection of {@code @InjectMocks} —
+     * a missing dependency would otherwise arrive in the bean as {@code null}.
      */
     @Mock
     private ch.plaintext.audit.DestructiveActionAuditService auditService;
@@ -574,7 +574,7 @@ class MyUserBackingBeanExtendedTest {
         assertNotNull(testUser.getRoles());
     }
 
-    // ==================== edit() (Zeilen-Button in der Benutzer-Liste) ====================
+    // ==================== edit() (row button in the user list) ====================
 
     @Test
     void edit_shouldSelectRowUserAndLoadDialogData() {
@@ -866,8 +866,8 @@ class MyUserBackingBeanExtendedTest {
     // ==================== newUser() Tests ====================
 
     /**
-     * Forensik 23.08.2026, Punkt 4: der Mandant wird weiterhin vorbelegt — aber die Entity bleibt transient,
-     * bis {@code save()} sie wirklich schreibt.
+     * Forensics 23.08.2026, item 4: the tenant is still pre-filled — but the entity stays transient
+     * until {@code save()} really writes it.
      */
     @Test
     void newUser_shouldCreateWithDefaultMandate_withoutPersisting() {

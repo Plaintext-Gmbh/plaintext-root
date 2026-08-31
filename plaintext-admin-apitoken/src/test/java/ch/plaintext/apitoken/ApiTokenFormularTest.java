@@ -18,31 +18,31 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 504: Die Ausstellungsmaske zeigte einen Zugriffsumfang an und stellte einen anderen aus.
+ * Card 504: The token issuing form displayed one access scope and issued a different one.
  *
- * <p><b>Was passiert war:</b> Der Erstellen-Knopf trug
- * {@code process="@this,:fm:tokenName,:fm:tokenValidity"} — ohne {@code tokenScope}. Ein Feld, das
- * PrimeFaces nicht verarbeitet, durchläuft den JSF-Lebenszyklus nicht; sein Wert kommt in der Bean
- * nie an. {@code newTokenScope} behielt also seinen Initialwert {@code READ}, während die
- * Gültigkeit — die in der Liste stand — sauber ankam. Genau deshalb sah der Defekt wie ein
- * Backend-Fehler aus: zwei Tokens mit unterschiedlicher Laufzeit, beide mit {@code READ}, obwohl
- * ADMIN gewählt war. Im Java-Code war nichts falsch.</p>
+ * <p><b>What had happened:</b> The create button carried
+ * {@code process="@this,:fm:tokenName,:fm:tokenValidity"} — without {@code tokenScope}. A field that
+ * PrimeFaces does not process does not run through the JSF lifecycle; its value never arrives in
+ * the bean. {@code newTokenScope} therefore kept its initial value {@code READ}, while the
+ * validity — which was in the list — arrived properly. That is exactly why the defect looked like a
+ * backend error: two tokens with different lifetimes, both with {@code READ}, although
+ * ADMIN had been selected. Nothing was wrong in the Java code.</p>
  *
- * <p>Ein Unit-Test der Bean hätte das nie gefunden — er ruft {@code createToken()} auf, nachdem er
- * {@code newTokenScope} selbst gesetzt hat, und ist immer grün. Der Fehler lebt ausschliesslich in
- * der Verdrahtung der Maske. Deshalb wird hier das XHTML geprüft.</p>
+ * <p>A unit test of the bean would never have found this — it calls {@code createToken()} after
+ * having set {@code newTokenScope} itself, and is always green. The bug lives exclusively in
+ * the wiring of the form. That is why the XHTML is checked here.</p>
  *
- * <p>Die Regel ist bewusst allgemein: <b>Jedes Eingabefeld dieses Formulars, dessen Wert in die
- * Bean zurückschreibt, muss in der {@code process}-Liste des Knopfes stehen, der es liest.</b> Wer
- * ein viertes Feld ergänzt und die Liste vergisst, fällt hier auf — nicht erst, wenn jemand einen
- * Token mit falschen Rechten in der Hand hält.</p>
+ * <p>The rule is deliberately general: <b>Every input field of this form whose value writes back
+ * into the bean must appear in the {@code process} list of the button that reads it.</b> Whoever
+ * adds a fourth field and forgets the list is caught here — not only once somebody is holding a
+ * token with the wrong permissions.</p>
  */
 class ApiTokenFormularTest {
 
     private static final Path MASKE = Path.of(
             "src/main/resources/META-INF/resources/api-token.xhtml");
 
-    /** Eingabefelder mit id und Wertbindung: {@code <p:inputText id="x" value="#{bean.y}"}. */
+    /** Input fields with id and value binding: {@code <p:inputText id="x" value="#{bean.y}"}. */
     private static final Pattern EINGABEFELD = Pattern.compile(
             "<p:(?:inputText|selectOneMenu|selectOneRadio|selectBooleanCheckbox|inputNumber|password)\\b"
                     + "[^>]*?\\bid=\"([^\"]+)\"[^>]*?\\bvalue=\"#\\{apiTokenBean\\.(new[^.}]+)\\}\"",
@@ -59,7 +59,7 @@ class ApiTokenFormularTest {
         return Files.readString(MASKE, StandardCharsets.UTF_8);
     }
 
-    /** Ohne diese Gegenprobe wäre der Test auch grün, wenn die Regex gar nichts fände. */
+    /** Without this counter-check the test would be green even if the regex found nothing at all. */
     @Test
     void dieMaskeHatUeberhauptEingabefelderUndEinenErstellenKnopf() throws IOException {
         String xhtml = maske();
@@ -102,9 +102,9 @@ class ApiTokenFormularTest {
     }
 
     /**
-     * Der Zugriffsumfang im Besonderen: Er entscheidet, was ein Token darf. Eine eigene Prüfung,
-     * damit die Regressionsstelle beim Namen genannt ist, auch wenn die allgemeine Regel oben
-     * einmal umgebaut wird.
+     * The access scope in particular: it decides what a token is allowed to do. A dedicated check,
+     * so that the regression site is named explicitly, even if the general rule above is
+     * restructured some day.
      */
     @Test
     void derZugriffsumfangWirdVerarbeitet() throws IOException {
@@ -119,9 +119,9 @@ class ApiTokenFormularTest {
     }
 
     /**
-     * Gegenprobe zur Bean: Der Initialwert ist der Wert, der bei diesem Fehler stillschweigend
-     * ausgeliefert wurde. Er muss der <b>engste</b> Scope bleiben — fiele hier je ADMIN hin, wäre
-     * derselbe Verdrahtungsfehler nicht mehr harmlos, sondern eine Rechteausweitung.
+     * Counter-check on the bean: the initial value is the value that was silently issued during
+     * this defect. It must remain the <b>narrowest</b> scope — should ADMIN ever end up here, the
+     * same wiring error would no longer be harmless but a privilege escalation.
      */
     @Test
     void derInitialwertIstDerEngsteScope() {

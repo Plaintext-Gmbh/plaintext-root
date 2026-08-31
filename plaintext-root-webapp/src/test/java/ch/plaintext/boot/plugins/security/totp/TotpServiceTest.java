@@ -15,8 +15,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Reine Unit-Tests der TOTP-Kernlogik: Code-Verifikation (gueltig/ungueltig/Zeitfenster) und
- * Recovery-Code-Hashing.
+ * Pure unit tests of the TOTP core logic: code verification (valid/invalid/time window) and
+ * recovery code hashing.
  */
 class TotpServiceTest {
 
@@ -33,7 +33,7 @@ class TotpServiceTest {
         totpService = new TotpService(props);
     }
 
-    /** Erzeugt einen gueltigen TOTP-Code fuer das aktuelle 30s-Fenster (+ Offset in Fenstern). */
+    /** Generates a valid TOTP code for the current 30s window (+ offset in windows). */
     private String codeForCurrentWindow(String secret, int windowOffset) throws Exception {
         long counter = timeProvider.getTime() / 30 + windowOffset;
         return codeGenerator.generate(secret, counter);
@@ -44,7 +44,7 @@ class TotpServiceTest {
         String secret = totpService.generateSecret();
         assertNotNull(secret);
         assertFalse(secret.isBlank());
-        // DefaultSecretGenerator liefert Base32 (A-Z2-7), Standardlaenge 32.
+        // DefaultSecretGenerator returns base32 (A-Z2-7), default length 32.
         assertTrue(secret.matches("[A-Z2-7]+"), "Secret muss Base32 sein, war: " + secret);
     }
 
@@ -74,7 +74,7 @@ class TotpServiceTest {
     @Test
     void verifyCode_akzeptiertBenachbartesFensterInnerhalbToleranz() throws Exception {
         String secret = totpService.generateSecret();
-        // +/- 1 Fenster ist erlaubt (allowedTimePeriodDiscrepancy=1).
+        // +/- 1 window is permitted (allowedTimePeriodDiscrepancy=1).
         assertTrue(totpService.verifyCode(secret, codeForCurrentWindow(secret, -1)),
                 "Code aus dem vorherigen Fenster muss innerhalb der Toleranz gelten");
         assertTrue(totpService.verifyCode(secret, codeForCurrentWindow(secret, 1)),
@@ -84,7 +84,7 @@ class TotpServiceTest {
     @Test
     void verifyCode_lehntFensterAusserhalbToleranzAb() throws Exception {
         String secret = totpService.generateSecret();
-        // 5 Fenster entfernt liegt weit ausserhalb der +/-1-Toleranz.
+        // 5 windows away lies far outside the +/-1 tolerance.
         assertFalse(totpService.verifyCode(secret, codeForCurrentWindow(secret, 5)),
                 "Code weit ausserhalb des Zeitfensters muss abgelehnt werden");
     }
@@ -103,7 +103,7 @@ class TotpServiceTest {
     void hashRecoveryCode_istDeterministischUndNormalisiert() {
         String hashed = totpService.hashRecoveryCode("ABCD-EFGH-JKLM");
         assertEquals(64, hashed.length(), "SHA-256 Hex ist 64 Zeichen");
-        // Bindestriche/Whitespace/Case duerfen den Hash nicht aendern.
+        // Hyphens/whitespace/case must not change the hash.
         assertEquals(hashed, totpService.hashRecoveryCode("abcdefghjklm"));
         assertEquals(hashed, totpService.hashRecoveryCode(" ABCD EFGH JKLM "));
         assertNotEquals(hashed, totpService.hashRecoveryCode("ZZZZ-ZZZZ-ZZZZ"));
@@ -114,7 +114,7 @@ class TotpServiceTest {
         List<String> plain = totpService.generateRecoveryCodes();
         Set<String> hashed = totpService.hashRecoveryCodes(plain);
         assertEquals(plain.size(), hashed.size());
-        // Kein Klartext-Code taucht im gehashten Set auf.
+        // No plain-text code appears in the hashed set.
         for (String p : plain) {
             assertFalse(hashed.contains(p));
             assertTrue(hashed.contains(totpService.hashRecoveryCode(p)));

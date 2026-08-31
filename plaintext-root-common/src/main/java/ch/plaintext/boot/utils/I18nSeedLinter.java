@@ -16,92 +16,92 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Gemeinsame Lese-Logik fuer die i18n-Seed-Dateien ({@code classpath*:i18n/*.csv}) und den Scan
- * der in Facelets referenzierten Labels ({@code #{i18n.t('…')}}).
+ * Shared reading logic for the i18n seed files ({@code classpath*:i18n/*.csv}) and for the scan
+ * of the labels referenced in facelets ({@code #{i18n.t('…')}}).
  *
- * <p><b>Warum hier.</b> Der Seed-Importer ({@code I18nService} in plaintext-admin-i18n) und der
- * geteilte Vollstaendigkeits-Test ({@code PlaintextI18nSeedTest} in plaintext-root-archtests)
- * muessen dieselbe Datei gleich lesen — sonst prueft der Test etwas anderes, als die Anwendung
- * beim Start importiert. Wie {@link FaceletsElLinter} und {@link MobileFormLinter} liegt die Klasse
- * deshalb in plaintext-root-common, ist Nur-JDK und damit auf dem Classpath jedes Consumers.
+ * <p><b>Why here.</b> The seed importer ({@code I18nService} in plaintext-admin-i18n) and the
+ * shared completeness test ({@code PlaintextI18nSeedTest} in plaintext-root-archtests) have to
+ * read the same file in the same way — otherwise the test checks something other than what the
+ * application imports at startup. Like {@link FaceletsElLinter} and {@link MobileFormLinter} the
+ * class therefore lives in plaintext-root-common, is JDK only and thus on the classpath of every
+ * consumer.
  *
- * <p><b>Das Schluessel-Modell.</b> Es gibt keine Property-Keys: der Schluessel einer Uebersetzung
- * IST der deutsche Vorgabetext, so wie er im XHTML in {@code i18n.t('Speichern')} steht. Deutsch
- * ({@code de}) wird nie uebersetzt ({@code I18nService.translate} gibt den Vorgabetext zurueck);
- * eine Seed-Zeile fuer {@code de} waere wirkungslos.
+ * <p><b>The key model.</b> There are no property keys: the key of a translation IS the German
+ * default text, exactly as it stands in the XHTML in {@code i18n.t('Speichern')}. German
+ * ({@code de}) is never translated ({@code I18nService.translate} returns the default text);
+ * a seed line for {@code de} would have no effect.
  *
- * <p><b>Seed-Format</b> (identisch mit dem Export unter {@code /api/i18n/export}):
+ * <p><b>Seed format</b> (identical to the export under {@code /api/i18n/export}):
  * <pre>
  * defaultLabel;languageCode;translatedText
- * # Kommentarzeile
+ * # comment line
  * Speichern;en;Save
  * </pre>
- * Trennzeichen ist das Semikolon; die dritte Spalte darf weitere Semikola enthalten (Split auf
- * drei Teile). Ein Wert darf in gerade Anfuehrungszeichen eingeschlossen sein (innen {@code ""}
- * fuer ein {@code "}); die Anfuehrungszeichen schuetzen NICHT vor einem Semikolon im Label — ein
- * Label mit Semikolon ist nicht darstellbar (Export und Import sind sich darin einig). Ein
- * fuehrendes Apostroph vor {@code = + - @} — der Formel-Schutz des Exports gegen CSV-Injection —
- * wird entfernt, damit ein Export unveraendert als Seed eingecheckt werden kann. Die Kopfzeile
- * wird nur uebersprungen, wenn sie die erste Zeile der Datei ist und mit {@code defaultLabel}
- * beginnt.
+ * The separator is the semicolon; the third column may contain further semicolons (split into
+ * three parts). A value may be enclosed in straight quotation marks (inside, {@code ""} stands
+ * for one {@code "}); the quotation marks do NOT protect against a semicolon in the label — a
+ * label with a semicolon cannot be represented (export and import agree on that). A leading
+ * apostrophe before {@code = + - @} — the export's formula protection against CSV injection —
+ * is removed, so that an export can be checked in unchanged as a seed. The header line is only
+ * skipped when it is the first line of the file and starts with {@code defaultLabel}.
  *
  * @author info@plaintext.ch
  * @since 2026
  */
 public final class I18nSeedLinter {
 
-    /** Trennzeichen der Seed-/Export-CSV. */
+    /** Separator of the seed/export CSV. */
     public static final String SEPARATOR = ";";
 
-    /** Beginn der (optionalen) Kopfzeile. */
+    /** Beginning of the (optional) header line. */
     public static final String HEADER_PREFIX = "defaultLabel";
 
-    /** Zeichen, vor denen der Export ein schuetzendes Apostroph setzt (Formel-Trigger von Tabellenkalkulationen). */
+    /** Characters in front of which the export places a protective apostrophe (formula triggers of spreadsheets). */
     private static final String FORMULA_TRIGGERS = "=+-@\t\r";
 
     /**
-     * Ein {@code i18n.t('…')}- bzw. {@code i18n.t("…")}-Aufruf in einem Facelet. Gruppe 1 = Inhalt
-     * eines einfach, Gruppe 2 = Inhalt eines doppelt angefuehrten EL-Strings; EL-Escapes
-     * ({@code \'} bzw. {@code \"}) bleiben erst einmal drin und werden in {@link #elString} aufgeloest.
-     * Der zweite Parameter ({@code i18n.t('x', 'en')}) ist fuer den Schluessel unerheblich.
+     * An {@code i18n.t('…')} resp. {@code i18n.t("…")} call in a facelet. Group 1 = content of a
+     * singly quoted, group 2 = content of a doubly quoted EL string; EL escapes
+     * ({@code \'} resp. {@code \"}) stay in for the time being and are resolved in {@link #elString}.
+     * The second parameter ({@code i18n.t('x', 'en')}) is irrelevant for the key.
      */
     private static final Pattern I18N_CALL = Pattern.compile(
             "i18n\\.t\\(\\s*(?:'((?:[^'\\\\]|\\\\.)*)'|\"((?:[^\"\\\\]|\\\\.)*)\")");
 
-    /** Opt-out-Marker als Kommentar in derselben Zeile: die Referenz wird nicht gemeldet. */
+    /** Opt-out marker as a comment on the same line: the reference is not reported. */
     public static final String EXEMPT_COMMENT = "i18n-seed-ok";
 
     private I18nSeedLinter() {
     }
 
     /**
-     * Eine Zeile einer Seed-Datei.
+     * One line of a seed file.
      *
-     * @param defaultLabel   deutscher Vorgabetext (Schluessel)
-     * @param languageCode   Sprachcode, z. B. {@code en}
-     * @param translatedText Uebersetzung
-     * @param line           1-basierte Zeilennummer in der Datei
+     * @param defaultLabel   German default text (the key)
+     * @param languageCode   language code, e.g. {@code en}
+     * @param translatedText translation
+     * @param line           1-based line number in the file
      */
     public record SeedRow(String defaultLabel, String languageCode, String translatedText, int line) {
     }
 
     /**
-     * Ergebnis von {@link #parse(BufferedReader)}: die brauchbaren Zeilen und je ein Text pro Zeile,
-     * die nicht importiert werden kann (zu wenig Spalten, leere Pflichtspalte).
+     * Result of {@link #parse(BufferedReader)}: the usable lines and one text for every line
+     * that cannot be imported (too few columns, an empty mandatory column).
      *
-     * @param rows     importierbare Zeilen in Dateireihenfolge
-     * @param problems Beschreibungen der uebersprungenen Zeilen (mit Zeilennummer)
+     * @param rows     importable lines in file order
+     * @param problems descriptions of the skipped lines (with line number)
      */
     public record Seed(List<SeedRow> rows, List<String> problems) {
     }
 
     /**
-     * Liest eine Seed-CSV. Leerzeilen, {@code #}-Kommentare und die Kopfzeile werden ausgelassen;
-     * Zeilen mit weniger als drei Spalten oder einer leeren Spalte landen in {@link Seed#problems()}.
+     * Reads a seed CSV. Empty lines, {@code #} comments and the header line are skipped;
+     * lines with fewer than three columns or with an empty column end up in {@link Seed#problems()}.
      *
-     * @param reader Leser auf den UTF-8-Inhalt; wird nicht geschlossen
-     * @return Zeilen und Probleme
-     * @throws IOException wenn der Leser versagt
+     * @param reader reader on the UTF-8 content; it is not closed
+     * @return lines and problems
+     * @throws IOException when the reader fails
      */
     public static Seed parse(BufferedReader reader) throws IOException {
         List<SeedRow> rows = new ArrayList<>();
@@ -134,10 +134,10 @@ public final class I18nSeedLinter {
     }
 
     /**
-     * Liest eine Seed-CSV aus einer Datei (UTF-8).
+     * Reads a seed CSV from a file (UTF-8).
      *
-     * @param file Pfad der CSV
-     * @return Zeilen und Probleme
+     * @param file path of the CSV
+     * @return lines and problems
      */
     public static Seed parse(Path file) {
         try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
@@ -148,12 +148,12 @@ public final class I18nSeedLinter {
     }
 
     /**
-     * Hebt die CSV-Kodierung eines Werts auf: umschliessende gerade Anfuehrungszeichen weg,
-     * {@code ""} zu {@code "}, und das schuetzende Apostroph des Exports vor einem Formel-Trigger
-     * ({@code = + - @}) weg — so bleibt Export → Import verlustfrei.
+     * Undoes the CSV encoding of a value: enclosing straight quotation marks removed,
+     * {@code ""} to {@code "}, and the export's protective apostrophe before a formula trigger
+     * ({@code = + - @}) removed — that keeps export → import lossless.
      *
-     * @param value roher Spaltenwert (darf null sein)
-     * @return dekodierter Wert, nie null
+     * @param value raw column value (may be null)
+     * @return decoded value, never null
      */
     public static String unescape(String value) {
         if (value == null) {
@@ -170,23 +170,23 @@ public final class I18nSeedLinter {
     }
 
     /**
-     * Eine Referenz auf ein Label in einem Facelet.
+     * A reference to a label in a facelet.
      *
-     * @param file  XHTML-Datei
-     * @param line  1-basierte Zeile des Aufrufs
-     * @param label der Schluessel, so wie ihn EL zur Laufzeit an {@code i18n.t} uebergibt
-     *              (EL-Escapes und XML-Entitaeten aufgeloest)
+     * @param file  XHTML file
+     * @param line  1-based line of the call
+     * @param label the key exactly as EL passes it to {@code i18n.t} at runtime
+     *              (EL escapes and XML entities resolved)
      */
     public record LabelReference(Path file, int line, String label) {
     }
 
     /**
-     * Scannt rekursiv alle {@code *.xhtml} unter {@code resourcesRoot} nach {@code i18n.t('…')}.
-     * Nur Facelets: {@code i18n.t} ist ein EL-Aufruf und existiert in Java hoechstens als
-     * Javadoc-Beispiel. Zeilen mit {@code i18n-seed-ok} werden ausgelassen.
+     * Scans all {@code *.xhtml} below {@code resourcesRoot} recursively for {@code i18n.t('…')}.
+     * Facelets only: {@code i18n.t} is an EL call and exists in Java at most as a
+     * Javadoc example. Lines with {@code i18n-seed-ok} are skipped.
      *
-     * @param resourcesRoot Wurzel (z. B. {@code src/main/resources}); fehlt sie, kommt eine leere Liste
-     * @return alle Referenzen in Datei-/Zeilenreihenfolge (Mehrfachnennungen bleiben erhalten)
+     * @param resourcesRoot root (e.g. {@code src/main/resources}); if it is missing, an empty list is returned
+     * @return all references in file/line order (repeated mentions are preserved)
      */
     public static List<LabelReference> scanReferences(Path resourcesRoot) {
         List<LabelReference> refs = new ArrayList<>();
@@ -222,9 +222,9 @@ public final class I18nSeedLinter {
     }
 
     /**
-     * Macht aus dem Quelltext eines EL-String-Literals den Laufzeitwert: EL-Escapes ({@code \'},
-     * {@code \"}, {@code \\}) und die XML-Entitaeten, die der Facelets-Parser vor der EL-Auswertung
-     * aufloest — im Attributwert wie im Body-Text.
+     * Turns the source text of an EL string literal into its runtime value: EL escapes ({@code \'},
+     * {@code \"}, {@code \\}) and the XML entities that the Facelets parser resolves before the EL
+     * evaluation — in an attribute value as well as in body text.
      */
     static String elString(String raw) {
         String s = raw.replace("\\'", "'").replace("\\\"", "\"").replace("\\\\", "\\");

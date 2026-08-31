@@ -18,9 +18,10 @@ Shared interfaces that define the framework's public API and extension points. N
 | `IApiTokenService` | JWT-based API token management |
 | `SearchProvider` | Contribute hits to the global search (Cmd+K) |
 | `ModuleRoleProperties` | `plaintext.menu.module-roles.*` — role required per module |
-| `IKontaktService` | Contact management |
-| `IRechnungService` | Invoice management with PDF generation |
-| `IMermaidService` | Mermaid diagram generation |
+| `SearchProvider` | Contributing results to the global search |
+| `DeepLinkTarget` / `DeepLinkService` | Resolving a deep link to one record |
+| `IUploadTarget` | Receiving a file from the generic upload endpoint |
+| `PlaintextCron` | Scheduled work with an admin UI, per tenant |
 | `IUploadTarget` | File upload handling |
 
 ### plaintext-root-common
@@ -29,9 +30,9 @@ Shared utilities used across modules.
 
 | Class | Purpose |
 |-------|---------|
-| `XStreamSerializer` | XML serialization with XStream |
+| `XstreamBaseJPAConverter` / `SimpleStorableConverter` | XStream-backed JPA converters for `XstreamStorable` fields |
 | `SimpleStorableEntity` | Generic key-value object storage (JPA) |
-| `ObjectStoreService` | CRUD operations for storable entities |
+| `GenericEntityService` / `SimpleStorableEntityRepository` | CRUD for storable entities |
 | `PlaintextRoleProvider` | Module contribution interface for declaring roles (see [Role Registry](ROLE_REGISTRY.md)) |
 | `PlaintextRole` | Declared role: technical name plus human-readable description |
 | `PlaintextRoleRegistry` | Collects all declared roles (union, deduplicated) for selection UIs |
@@ -43,7 +44,7 @@ Base JPA entities with audit fields and soft-delete support.
 | Class | Purpose |
 |-------|---------|
 | `SuperModel` | Base entity with `mandat`, `createdBy`, `createdDate`, `deleted`, `tags` |
-| `GenericRepository` | Generic JPA repository with mandate-aware queries |
+| `PlaintextRepository` / `RepoMaster` | JPA repository base with tenant-aware finders |
 
 ### plaintext-root-flyway
 
@@ -119,8 +120,7 @@ Active session monitoring with user agent parsing, login timestamps, and session
 
 Cron job monitoring and management. Shows all registered `PlaintextCron` implementations with execution history.
 
-### plaintext-admin-requirements
-
+### 
 Requirements management with AI integration (Claude automation). Includes REST API with full OpenAPI documentation.
 
 ### plaintext-admin-i18n
@@ -144,7 +144,7 @@ JWT API tokens for REST/MCP access (`JwtTokenService`, `ApiTokenValidatorService
 ### plaintext-admin-secrets
 
 Secret store with pluggable backends (`SecretService`, `SecretBackendConfig`), ROOT-only.
-Values are encrypted at rest with `ConfigEncryptionService` (see [CRYPTO.md](CRYPTO.md)).
+Secret values are encrypted at rest with `SecretCrypto` (module `plaintext-admin-secrets`); `EncString` carries an encrypted value through the entity layer. The former `ConfigEncryptionService` and its `ENCv2` format were removed together with the legacy e-mail tables — the migration `V1782929880__drop_legacy_email_tables.sql` is the last trace.
 
 ### plaintext-admin-modules
 
@@ -212,8 +212,7 @@ plaintext-root-webapp
 ├── plaintext-admin-settings
 ├── plaintext-admin-sessions
 ├── plaintext-admin-cron
-├── plaintext-admin-requirements
-├── plaintext-admin-i18n
+├── ├── plaintext-admin-i18n
 ├── plaintext-admin-oidc
 ├── plaintext-admin-apitoken
 ├── plaintext-admin-secrets

@@ -212,10 +212,10 @@ class SessionsBackingBeanTest {
         when(facesContext.getExternalContext()).thenReturn(externalContext);
         doThrow(new java.io.IOException("Redirect failed")).when(externalContext).redirect("/index.xhtml");
 
-        // Sonar java:S2699 (Karte 891): die Zusage stand nur als Kommentar da ("Should not throw"),
-        // geprueft wurde sie nicht — der Test waere auch gruen geblieben, wenn onLoad() die
-        // IOException durchgereicht haette, weil JUnit den Aufruf selbst nicht bewertet. Beides
-        // gehoert festgehalten: dass nichts nach aussen dringt UND dass der Versuch stattfand.
+        // Sonar java:S2699 (card 891): the promise was only stated as a comment ("Should not throw"),
+        // it was never checked — the test would have stayed green even if onLoad() had let the
+        // IOException through, because JUnit does not judge the call itself. Both belong on
+        // record: that nothing escapes AND that the attempt took place.
         assertDoesNotThrow(bean::onLoad, "eine fehlgeschlagene Weiterleitung darf die Seite nicht kippen");
         verify(externalContext).redirect("/index.xhtml");
     }

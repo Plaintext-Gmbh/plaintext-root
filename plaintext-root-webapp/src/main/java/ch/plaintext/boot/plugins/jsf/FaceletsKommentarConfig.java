@@ -12,38 +12,38 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Schaltet {@code FACELETS_SKIP_COMMENTS} ein: XML-Kommentare werden beim Uebersetzen der Seite
- * entfernt, statt zu Komponenten zu werden.
+ * Switches {@code FACELETS_SKIP_COMMENTS} on: XML comments are removed while the page is compiled
+ * instead of turning into components.
  *
- * <h2>Wogegen das schuetzt</h2>
+ * <h2>What that protects against</h2>
  *
- * <p>Ein Kommentar in einer Facelets-Seite ist standardmaessig <b>kein</b> Kommentar, sondern eine
- * {@code UIInstruction} im Komponentenbaum. In einem {@code h:panelGrid} belegt er damit eine
- * <b>Zelle</b> wie jede andere Komponente. Ein Raster mit {@code columns="2"} fuellt seine Zeilen
- * der Reihe nach, also verschiebt genau ein Kommentar alles Nachfolgende um eine Zelle: Ab dort
- * steht die Beschriftung in der Eingabespalte und das Eingabefeld in der Beschriftungsspalte.
+ * <p>By default a comment in a Facelets page is <b>not</b> a comment but a
+ * {@code UIInstruction} in the component tree. Inside an {@code h:panelGrid} it therefore occupies a
+ * <b>cell</b> like any other component. A grid with {@code columns="2"} fills its rows
+ * one after the other, so a single comment shifts everything that follows by one cell: from there on
+ * the label stands in the input column and the input field in the label column.
  *
- * <p><b>Der Fund vom 29.08.2026.</b> In {@code useradmin.xhtml} stand zwischen der Zeile
- * „Benutzername" und der Zeile „Vorname" ein erklaerender Kommentar. Genau ab „Vorname" kippte die
- * Maske: Die Beschriftungen rutschten in die rechte Spalte und um eine Zeile nach unten, die
- * Felder in die linke. Die Maske war benutzbar, aber falsch beschriftet, und niemand sucht die
- * Ursache in einem Kommentar. Ein Scan ueber root, app und guild fand <b>16</b> Raster mit
- * Kommentaren oder blossem {@code <br/>} zwischen den Zellen.
+ * <p><b>The finding of 29.08.2026.</b> In {@code useradmin.xhtml} an explanatory comment stood
+ * between the row "Benutzername" and the row "Vorname". From "Vorname" on the
+ * form tipped over: the labels slipped into the right column and one row down, the
+ * fields into the left one. The form was usable, but labelled wrongly, and nobody looks for the
+ * cause in a comment. A scan across root, app and guild found <b>16</b> grids with
+ * comments or a bare {@code <br/>} between the cells.
  *
- * <p><b>Warum das hier steht und nicht in jeder Anwendung.</b> Als Servlet-Parameter gesetzt gilt
- * die Einstellung fuer jede App, die auf diesem Modul aufsetzt. Ueber {@code application.yml} waere
- * sie es nicht: app, guild, iot und schuetu bringen eigene mit, und von zwei gleichnamigen Dateien
- * am Klassenpfad gewinnt genau eine. Eine Schutzmassnahme, die je nach Ladereihenfolge wirkt, ist
- * keine.
+ * <p><b>Why this stands here and not in every application.</b> Set as a servlet parameter, the
+ * setting applies to every app built on this module. Via {@code application.yml} it would not:
+ * app, guild, iot and schuetu bring their own, and of two files with the same name on the classpath
+ * exactly one wins. A protective measure that works depending on the load order is
+ * no protective measure.
  *
- * <p><b>Was sich sonst noch aendert.</b> Die Kommentare verlassen den Server nicht mehr. Bisher
- * standen sie im ausgelieferten HTML — samt Kartennummern, Fundstellen und Begruendungen, die fuer
- * Entwickler geschrieben sind und nicht fuer Besucher. Das ist kein Loch, aber auch kein Gewinn,
- * und es kostet bei jeder Auslieferung Bytes.
+ * <p><b>What else changes.</b> The comments no longer leave the server. Until now they
+ * stood in the delivered HTML — including card numbers, references and justifications written for
+ * developers and not for visitors. That is no hole, but no gain either,
+ * and it costs bytes on every delivery.
  *
- * <p>Wer einen Kommentar bewusst im HTML haben will (etwa ein Conditional Comment), schreibt ihn
- * als Ausgabe, nicht als Quelltextkommentar. {@code <ui:remark>} bleibt unabhaengig davon immer
- * serverseitig.
+ * <p>Whoever deliberately wants a comment in the HTML (a conditional comment, say) writes it
+ * as output, not as a source comment. {@code <ui:remark>} always stays server-side,
+ * independently of this.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -52,15 +52,15 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class FaceletsKommentarConfig {
 
-    /** Name laut Jakarta Faces 4 ({@code jakarta.faces.FACELETS_SKIP_COMMENTS}). */
+    /** Name according to Jakarta Faces 4 ({@code jakarta.faces.FACELETS_SKIP_COMMENTS}). */
     static final String PARAMETER = "jakarta.faces.FACELETS_SKIP_COMMENTS";
 
     /**
-     * Setzt den Parameter, sofern die Anwendung ihn nicht selbst schon gesetzt hat.
+     * Sets the parameter, provided the application has not already set it itself.
      *
-     * <p>Die Pruefung ist nicht Zierde: Eine Anwendung, die den Wert bewusst auf {@code false}
-     * setzt, soll ihn behalten. Ein Rahmenwerk, das die Entscheidung seiner Consumer stillschweigend
-     * ueberschreibt, ist schlimmer als der Fehler, den es verhindern will.
+     * <p>The check is not decoration: an application that deliberately sets the value to
+     * {@code false} shall keep it. A framework that silently overrides the decision of its consumers
+     * is worse than the defect it wants to prevent.
      */
     @Bean
     public ServletContextInitializer faceletsKommentareUeberspringen() {

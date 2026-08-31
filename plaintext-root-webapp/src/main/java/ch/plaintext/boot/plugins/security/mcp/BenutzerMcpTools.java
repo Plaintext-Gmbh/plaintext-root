@@ -39,53 +39,52 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * MCP-Werkzeuge fuer die <b>registrierten Benutzer</b> eines Mandanten: auflisten, ausgeben,
- * einlesen.
+ * MCP tools for the <b>registered users</b> of a tenant: list, export, import.
  *
- * <p><b>Warum es das braucht (Auftrag Daniel, 28.08.2026).</b> Ueber MCP war die Benutzerverwaltung
- * bisher gar nicht erreichbar — von den 139 Werkzeugen der guild-Instanz betraf kein einziges einen
- * Benutzer. Wer Konten von einer Instanz in die andere bringen wollte, musste sie in der Oberflaeche
- * einzeln abtippen. Genau daran haengt der Auszahlungs-Ablauf: Eine Auszahlung gehoert einem
- * Benutzer (Spalte {@code email}), und das Auszahlungsprofil wird ueber dessen Login-Adresse
- * gefunden. Fehlt der Benutzer im Ziel, ist die importierte Auszahlung dort herrenlos.
+ * <p><b>Why this is needed (request from Daniel, 28.08.2026).</b> Via MCP the user administration
+ * was not reachable at all so far — of the 139 tools of the guild instance not a single one concerned a
+ * user. Whoever wanted to move accounts from one instance to another had to type them into the UI
+ * one by one. The payout workflow hangs off exactly this: a payout belongs to a
+ * user (column {@code email}), and the payout profile is found via that user's login address.
+ * If the user is missing in the target, the imported payout is ownerless there.
  *
- * <h2>Was bewusst NICHT ausgegeben wird</h2>
+ * <h2>What is deliberately NOT exported</h2>
  *
- * <p>Der Export traegt <b>kein Passwort, kein TOTP-Secret, keine Recovery-Codes und kein
- * OIDC-Subject</b>. Das ist keine Bequemlichkeitsluecke, sondern der Kern des Entwurfs: Eine
- * Benutzer-Exportdatei wandert per Datei, Mail oder Zwischenablage: sie ist genau die Art Artefakt,
- * die irgendwann irgendwo liegenbleibt. Ein Passwort-Hash darin waere eine Offline-Angriffsflaeche,
- * ein TOTP-Secret waere der zweite Faktor selbst — der Export wuerde die 2FA aushebeln, die er
- * mitexportiert. Wer Zugangsdaten uebertragen will, hat mit Magic-Link, OIDC und Passwortwechsel
- * drei Wege, die den Benutzer einbeziehen. Diese hier ist keiner davon.
+ * <p>The export carries <b>no password, no TOTP secret, no recovery codes and no
+ * OIDC subject</b>. That is no convenience gap but the core of the design: a
+ * user export file travels by file, mail or clipboard: it is exactly the kind of artifact
+ * that ends up lying around somewhere eventually. A password hash in it would be an offline attack
+ * surface, a TOTP secret would be the second factor itself — the export would defeat the 2FA that it
+ * exports along the way. Whoever wants to transfer credentials has three ways that involve the user:
+ * magic link, OIDC and a password change. This one is not among them.
  *
- * <h2>Der Mandant kommt vom Ziel</h2>
+ * <h2>The tenant comes from the target</h2>
  *
- * <p>Wie beim Auszahlungs-Transfer (Karte 936) steht der Quellmandant nur als Herkunftsvermerk im
- * Kopf und wird beim Import <b>ignoriert</b>. Angelegt wird im Mandanten des aufrufenden Tokens.
- * Ein Datensatz, der sein Mandat mitbraechte, legte sonst fremde Benutzer unter falscher Flagge an.
+ * <p>As with the payout transfer (card 936) the source tenant only stands in the header as a
+ * provenance note and is <b>ignored</b> on import. Records are created in the tenant of the calling token.
+ * A record that brought its own tenant along would otherwise create foreign users under a false flag.
  *
- * <h2>Privilegierte Rollen werden nie importiert</h2>
+ * <h2>Privileged roles are never imported</h2>
  *
- * <p>{@code root}, {@code admin} und jede {@code PROPERTY_*}-Rolle werden beim Einlesen
- * <b>verworfen und gezaehlt</b> — unabhaengig davon, wer importiert. Die Begruendung ist dieselbe
- * wie fuer die Allowlist in der Benutzerverwaltung (Karte 307): Eine Importdatei ist Fremdeingabe.
- * Wer aus einer Datei heraus {@code admin} vergeben darf, hat die Rechteausweitung nur um einen
- * Schritt verschoben. Die einzige {@code PROPERTY_*}-Rolle, die ein importierter Benutzer bekommt,
- * ist sein Mandat — und die stammt aus dem <b>Token des Aufrufers</b>, nicht aus der Datei.
+ * <p>{@code root}, {@code admin} and every {@code PROPERTY_*} role are
+ * <b>discarded and counted</b> on import — regardless of who imports. The reasoning is the same
+ * as for the allowlist in the user administration (card 307): an import file is foreign input.
+ * Whoever may grant {@code admin} out of a file has only moved the privilege escalation one
+ * step away. The only {@code PROPERTY_*} role an imported user receives
+ * is their tenant — and that one comes from the <b>caller's token</b>, not from the file.
  *
- * <h2>Autorisierung</h2>
+ * <h2>Authorization</h2>
  *
- * <p>Alle drei Werkzeuge verlangen {@code SCOPE_ADMIN} <b>und</b> die Rolle {@code ADMIN} oder
- * {@code ROOT} — beides zusammen, aus demselben Grund wie in {@code ApiTokenMcpTools}: Der Scope
- * verhindert, dass ein READ-Token schreibt, die Rolle verhindert, dass ein beliebiger Benutzer die
- * Kontenverwaltung uebernimmt. Auch das <em>Lesen</em> steht unter {@code SCOPE_ADMIN}: Die Liste
- * nennt Login-Adressen und Rollen aller Konten eines Mandanten, das ist Kontenverwaltung und keine
- * Alltagsauskunft.
+ * <p>All three tools require {@code SCOPE_ADMIN} <b>and</b> the role {@code ADMIN} or
+ * {@code ROOT} — both together, for the same reason as in {@code ApiTokenMcpTools}: the scope
+ * prevents a READ token from writing, the role prevents an arbitrary user from taking over the
+ * account administration. <em>Reading</em>, too, stands under {@code SCOPE_ADMIN}: the list
+ * names the login addresses and roles of all accounts of a tenant, that is account administration and no
+ * everyday piece of information.
  *
- * <p>{@link ConditionalOnClass} auf die MCP-Annotation: Das Bean laedt nur in Apps mit eigenem
- * spring-ai-MCP-Server (app/guild/schuetu/iot). plaintext-root selbst hat keinen und bleibt
- * unberuehrt.
+ * <p>{@link ConditionalOnClass} on the MCP annotation: the bean only loads in apps with an MCP
+ * server of their own from spring-ai (app/guild/schuetu/iot). plaintext-root itself has none and stays
+ * untouched.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -96,20 +95,20 @@ import java.util.stream.Collectors;
 @ConditionalOnClass(name = "org.springaicommunity.mcp.annotation.McpTool")
 public class BenutzerMcpTools {
 
-    /** Kennung im Kopf der Datei. Ein Import prueft sie, statt beliebiges JSON zu verdauen. */
+    /** Identifier in the header of the file. An import checks it instead of digesting arbitrary JSON. */
     public static final String FORMAT = "plaintext-benutzer";
 
-    /** Formatversion. Steigt, sobald sich die Feldbedeutung aendert — nicht bei blossen Zusaetzen. */
+    /** Format version. Increases as soon as the meaning of a field changes — not on mere additions. */
     public static final int VERSION = 1;
 
     private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
     private static final Set<String> VERWALTER_ROLLEN = Set.of("ROLE_ADMIN", "ROLE_ROOT");
 
     /**
-     * Der Login-Name ist eine E-Mail-Adresse — dieselbe Bedingung, die die Benutzerverwaltung im
-     * Formular prueft. Sie steht hier noch einmal, weil ein Import an der Oberflaeche vorbeigeht und
-     * ein Konto mit unbrauchbarem Login niemandem nuetzt: Es kann sich nie anmelden, taucht aber in
-     * jeder Liste auf.
+     * The login name is an e-mail address — the same condition that the user administration checks in
+     * the form. It stands here once more, because an import bypasses the UI and
+     * an account with an unusable login is of no use to anybody: it can never log in, but shows up in
+     * every list.
      */
     private static final Pattern EMAIL = Pattern.compile("^[\\w.%+-]+@[\\w.-]+\\.[A-Za-z]{2,}$");
 
@@ -117,17 +116,17 @@ public class BenutzerMcpTools {
     private final UserMandateRepository userMandateRepository;
 
     /**
-     * Eigener Mapper statt der Bean aus {@code JacksonConfig}: Der Export ist ein Dateiformat mit
-     * eigenem Vertrag. Haenge er an der global konfigurierten Bean, aenderte eine Umstellung dort
-     * still das Format hier.
+     * A mapper of its own instead of the bean from {@code JacksonConfig}: the export is a file format with
+     * a contract of its own. If it hung off the globally configured bean, a change there would
+     * silently alter the format here.
      */
     private final ObjectMapper json = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT)
-            // Unbekannte Felder NICHT als Fehler: sonst scheitert das Lesen schon am Mapping, und der
-            // Aufrufer bekaeme „keine lesbare Datei" statt der praezisen Auskunft „falsches Format".
+            // Unknown fields NOT as an error: otherwise reading would already fail at the mapping, and the
+            // caller would get "no readable file" instead of the precise information "wrong format".
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
-    // ── Lesen ─────────────────────────────────────────────────────────────────────────────────
+    // ── Reading ───────────────────────────────────────────────────────────────────────────────
 
     @McpTool(name = "list_benutzer",
             description = "Listet die registrierten Benutzer des aktuellen Mandanten: Login-Adresse, "
@@ -176,7 +175,7 @@ public class BenutzerMcpTools {
         u.setFormat(FORMAT);
         u.setVersion(VERSION);
         u.setExportiertAm(LocalDateTime.now().toString());
-        u.setQuellMandat(mandat);           // nur Herkunftsvermerk, beim Import ohne Wirkung
+        u.setQuellMandat(mandat);           // provenance note only, without effect on import
         u.setAnzahl(benutzer.size());
         u.setBenutzer(benutzer.stream().map(BenutzerMcpTools::zuSatz).toList());
 
@@ -190,7 +189,7 @@ public class BenutzerMcpTools {
         }
     }
 
-    // ── Schreiben ─────────────────────────────────────────────────────────────────────────────
+    // ── Writing ───────────────────────────────────────────────────────────────────────────────
 
     @McpTool(name = "import_benutzer",
             description = "Liest eine Datei aus export_benutzer in den AKTUELLEN Mandanten ein. Der "
@@ -219,8 +218,8 @@ public class BenutzerMcpTools {
             return "FEHLER: Das ist keine lesbare Export-Datei: " + e.getMessage();
         }
         if (!FORMAT.equals(u.getFormat())) {
-            // Ohne diese Pruefung wuerde ein beliebiges JSON stillschweigend 0 Datensaetze anlegen und
-            // als Erfolg gemeldet — der Aufrufer haelt die falsche Datei fuer eingelesen.
+            // Without this check an arbitrary JSON would silently create 0 records and
+            // be reported as a success — the caller would think the wrong file had been imported.
             return "FEHLER: Falsches Dateiformat (erwartet: " + FORMAT + ").";
         }
         if (u.getVersion() > VERSION) {
@@ -267,7 +266,7 @@ public class BenutzerMcpTools {
         return b.alsText();
     }
 
-    // ── Abbildung ─────────────────────────────────────────────────────────────────────────────
+    // ── Mapping ───────────────────────────────────────────────────────────────────────────────
 
     private static Satz zuSatz(MyUserEntity u) {
         Satz s = new Satz();
@@ -281,13 +280,13 @@ public class BenutzerMcpTools {
     }
 
     /**
-     * Legt ein Konto an, das noch niemandem gehoert: leeres Passwort und erzwungener Wechsel.
+     * Creates an account that does not belong to anybody yet: empty password and a forced change.
      *
-     * <p>Warum nicht {@code passwordless=true} als Bequemlichkeit: Passwortlos heisst in dieser
-     * Anwendung „darf sich ohne Passwort anmelden" — ein Import wuerde damit fertig nutzbare
-     * Zugaenge erzeugen, deren Inhaber von nichts wissen. Leeres Passwort plus
-     * {@code mustChangePassword} ist der umgekehrte Fall: Das Konto existiert, ist aber bis zu
-     * einer bewussten Handlung (Magic-Link, OIDC, gesetztes Passwort) nicht benutzbar.
+     * <p>Why not {@code passwordless=true} as a convenience: passwordless means in this
+     * application "may log in without a password" — an import would thereby create ready-to-use
+     * accounts whose owners know nothing about them. An empty password plus
+     * {@code mustChangePassword} is the opposite case: the account exists, but is not usable until
+     * a deliberate action (magic link, OIDC, a password that has been set).
      */
     private MyUserEntity neuerBenutzer(String login, Satz s, String zielMandat, Bericht b) {
         MyUserEntity u = new MyUserEntity();
@@ -311,19 +310,19 @@ public class BenutzerMcpTools {
             rollen.add(rolle.trim());
         }
         u.setRoles(rollen);
-        // Das Mandat stammt aus dem Token des Aufrufers, nicht aus der Datei — siehe Klassen-Javadoc.
+        // The tenant comes from the caller's token, not from the file — see the class Javadoc.
         u.setMandat(zielMandat);
         return u;
     }
 
     /**
-     * Ergaenzt bei einem bekannten Konto nur, was dort fehlt.
+     * For a known account, only fills in what is missing there.
      *
-     * <p>Ein Import darf ein bestehendes Konto nicht ueberschreiben: Rollen, Passwort und 2FA
-     * gehoeren dem Ziel, nicht der Datei. Was hier passiert, ist deshalb bewusst wenig — und was
-     * nicht passiert, steht im Bericht als „unveraendert".
+     * <p>An import must not overwrite an existing account: roles, password and 2FA
+     * belong to the target, not to the file. What happens here is therefore deliberately little — and what
+     * does not happen stands in the report as "unchanged".
      *
-     * @return {@code true}, wenn sich etwas geaendert hat
+     * @return {@code true} if something has changed
      */
     private static boolean ergaenzeNamen(MyUserEntity vorhanden, Satz s) {
         boolean geaendert = false;
@@ -342,7 +341,7 @@ public class BenutzerMcpTools {
         return geaendert;
     }
 
-    /** Die Rollen ohne die privilegierten — das ist der Umfang, den ein Import ueberhaupt setzen darf. */
+    /** The roles without the privileged ones — that is the scope an import may set at all. */
     private static List<String> neutraleRollen(Set<String> rollen) {
         if (rollen == null) {
             return List.of();
@@ -354,15 +353,15 @@ public class BenutzerMcpTools {
                 .toList();
     }
 
-    // ── Mandant und Aufrufer ──────────────────────────────────────────────────────────────────
+    // ── Tenant and caller ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Die Benutzer eines Mandanten: die mit ihm als Hauptmandat <b>und</b> die, die ihn als
-     * Zusatzmandat zugeteilt bekommen haben.
+     * The users of a tenant: those with it as their main tenant <b>and</b> those who have been
+     * assigned it as an additional tenant.
      *
-     * <p>Ohne den zweiten Teil fehlten genau die Konten, die zwischen Mandanten wechseln duerfen —
-     * und das sind bei uns die interessanten: Wer nur in einem Mandanten arbeitet, muss nicht
-     * transportiert werden.
+     * <p>Without the second part exactly those accounts would be missing that are allowed to switch
+     * between tenants — and here those are the interesting ones: whoever works in only one tenant does
+     * not need to be transported.
      */
     private List<MyUserEntity> benutzerDesMandanten(String mandat) {
         if (mandat == null || mandat.isBlank()) {
@@ -412,13 +411,13 @@ public class BenutzerMcpTools {
     }
 
     /**
-     * Prueft die Autorisierung des Aufrufers.
+     * Checks the authorization of the caller.
      *
-     * <p>Die {@code @PreAuthorize}-Annotation deckt den Scope ab, dieser Rumpf die Rolle. Beides
-     * einzeln waere zu wenig: Der Scope allein liesse jeden Benutzer mit ADMIN-Token an die
-     * Kontenverwaltung, die Rolle allein liesse ein READ-Token schreiben.
+     * <p>The {@code @PreAuthorize} annotation covers the scope, this method body the role. Either one
+     * alone would be too little: the scope alone would let every user with an ADMIN token into
+     * the account administration, the role alone would let a READ token write.
      *
-     * @return {@code null}, wenn alles stimmt, sonst die fertige Fehlermeldung fuer den Aufrufer
+     * @return {@code null} if everything is in order, otherwise the finished error message for the caller
      */
     private static String aufruferPruefen() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -445,9 +444,9 @@ public class BenutzerMcpTools {
         return istLeer(wert) ? null : wert.trim();
     }
 
-    // ── Datenhalter ───────────────────────────────────────────────────────────────────────────
+    // ── Data holders ──────────────────────────────────────────────────────────────────────────
 
-    /** Kopf der Datei. */
+    /** Header of the file. */
     @Data
     public static class Umschlag {
         private String format;
@@ -459,10 +458,10 @@ public class BenutzerMcpTools {
     }
 
     /**
-     * Ein Benutzer — bewusst ohne Id, Mandat und jedes Geheimnis.
+     * A user — deliberately without an id, a tenant and any secret.
      *
-     * <p>Die Id des Quellsystems sagt im Ziel nichts; sie zu uebernehmen hiesse, einen fremden
-     * Datensatz zu ueberschreiben. Der fachliche Schluessel ist die Login-Adresse.
+     * <p>The id of the source system says nothing in the target; adopting it would mean overwriting a
+     * foreign record. The business key is the login address.
      */
     @Data
     public static class Satz {
@@ -474,7 +473,7 @@ public class BenutzerMcpTools {
         private List<String> rollen;
     }
 
-    /** Was der Import getan hat. */
+    /** What the import has done. */
     @Data
     public static class Bericht {
         private int gelesen;
@@ -486,7 +485,7 @@ public class BenutzerMcpTools {
         private String quellMandat;
         private String zielMandat;
 
-        /** Ein Satz fuer den Aufrufer — nennt auch das Verworfene, nicht nur den Erfolg. */
+        /** One sentence for the caller — it also names what was discarded, not only the success. */
         public String alsText() {
             StringBuilder sb = new StringBuilder();
             sb.append(angelegt).append(" von ").append(gelesen).append(" Benutzern neu angelegt");

@@ -1,16 +1,16 @@
-# Gemeinsame Grundeinstellungen fuer ALLE Plaintext-Anwendungen.
+# Shared baseline settings for ALL Plaintext applications.
 #
-# WARUM DIESE DATEI EXISTIERT (Karte 620):
-# Diese Werte standen frueher in plaintext-root-webapp/application.yml. Spring Boot laedt aber
-# nur EINE classpath:/application.yml — und jede konsumierende Anwendung bringt eine eigene mit.
-# Die root-Fassung war damit in den Consumern unsichtbar.
+# WHY THIS FILE EXISTS (card 620):
+# These values used to live in plaintext-root-webapp/application.yml. Spring Boot, however, loads
+# only ONE classpath:/application.yml — and every consuming application brings its own.
+# The root version was therefore invisible in the consumers.
 #
-# Der Dateiname ist deshalb bewusst NICHT application.yml: Er kann nicht verdeckt werden.
-# Eingespeist wird sie vom PlaintextDefaultsEnvironmentPostProcessor mit der NIEDRIGSTEN
-# Praezedenz — jede App, jedes Profil und jede Umgebungsvariable ueberschreibt sie weiterhin.
+# That is why the file name is deliberately NOT application.yml: it cannot be shadowed.
+# It is fed in by PlaintextDefaultsEnvironmentPostProcessor with the LOWEST precedence — every
+# app, every profile and every environment variable still overrides it.
 #
-# WAS HIER HINEINGEHOERT: Werte, die ohne Zutun der App ueberall gelten sollen.
-# WAS NICHT: alles App-Spezifische. Das gehoert in die application.yml der App.
+# WHAT BELONGS HERE: values that are meant to apply everywhere without the app doing anything.
+# WHAT DOES NOT: anything app-specific. That belongs in the app's own application.yml.
 
 server:
   servlet:
@@ -20,19 +20,19 @@ server:
       cookie:
         http-only: true
         same-site: lax
-        # Haertung — je Instanz per Umgebungsvariable gesetzt, nicht fest verdrahtet.
-        # Der Default ist hier bewusst false (anders als in plaintext-root-webapp, wo er true
-        # lautet); Begruendung und Betriebsfallen stehen in der internen Betriebsdokumentation:
-        # plaintext-config/docs/SECURITY_ENTSCHEIDE.md. Nicht ohne Ruecksprache aendern.
+        # Hardening — set per instance via an environment variable, not hard-wired.
+        # The default here is deliberately false (unlike in plaintext-root-webapp, where it is
+        # true); the rationale and the operational pitfalls are in the internal operations
+        # documentation: plaintext-config/docs/SECURITY_ENTSCHEIDE.md. Do not change without asking.
         secure: ${PLAINTEXT_COOKIE_SECURE:false}
 
-# SECURITY (Karte 623): Swagger-UI und OpenAPI-Beschreibung sind aus.
+# SECURITY (card 623): Swagger UI and the OpenAPI description are off.
 #
-# Zentral hier und nicht je App: Es ist keine neue Bewertung, sondern das Nachziehen einer in
-# root bereits getroffenen Entscheidung (Karte 314). Haertung — nicht ohne Ruecksprache
-# aendern; Hintergrund in plaintext-config/docs/SECURITY_ENTSCHEIDE.md.
+# Centrally here and not per app: this is not a fresh assessment but the roll-out of a decision
+# already taken in root (card 314). Hardening — do not change without asking; background in
+# plaintext-config/docs/SECURITY_ENTSCHEIDE.md.
 #
-# Zum Einschalten in DEV genuegt SPRINGDOC_ENABLED=true.
+# To switch it on in DEV, SPRINGDOC_ENABLED=true is enough.
 springdoc:
   swagger-ui:
     enabled: ${SPRINGDOC_ENABLED:false}

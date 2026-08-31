@@ -6,26 +6,26 @@ package ch.plaintext.apitoken;
 import java.util.Optional;
 
 /**
- * Schmaler, leak-freier Zugriff auf {@code api_token} für die Revocation-Prüfung im
- * MCP-Bearer-Filter.
+ * Narrow, leak-free access to {@code api_token} for the revocation check in the
+ * MCP bearer filter.
  *
- * <p><b>Warum es diese Schnittstelle gibt (Karte 659, aus 655):</b> {@code spring.jpa.open-in-view}
- * steht auf dem Spring-Boot-Default {@code true} (in keinem der Repos abgeschaltet), und der
- * {@code OpenEntityManagerInViewFilter} umschliesst die gesamte Security-Filterkette. Der erste
- * JPA-Zugriff aus dem Filter bindet damit einen EntityManager an den Request und hält dessen
- * DB-Verbindung bis zum Requestende. Bei einer MCP-Sitzung
- * ({@code spring.ai.mcp.server.protocol: STREAMABLE}) ist das die <b>ganze Sitzungsdauer</b>;
- * HikariCP meldet die Verbindung nach 60 Sekunden als {@code Apparent connection leak detected}.
- * Gemessen in PROD: 15 solcher Warnungen in 7 Tagen, mit {@code ApiTokenService} im Stack.
+ * <p><b>Why this interface exists (card 659, out of 655):</b> {@code spring.jpa.open-in-view}
+ * is left at the Spring Boot default {@code true} (switched off in none of the repos), and the
+ * {@code OpenEntityManagerInViewFilter} wraps the entire security filter chain. The first
+ * JPA access from within the filter therefore binds an EntityManager to the request and holds its
+ * DB connection until the end of the request. For an MCP session
+ * ({@code spring.ai.mcp.server.protocol: STREAMABLE}) that is the <b>whole session duration</b>;
+ * after 60 seconds HikariCP reports the connection as {@code Apparent connection leak detected}.
+ * Measured in PROD: 15 such warnings in 7 days, with {@code ApiTokenService} in the stack.
  *
- * <p>Dieselbe Ursache wurde für den Rollen-Lookup im selben Filter bereits behoben
- * ({@link ch.plaintext.McpUserRoles}, Karte 437) — dort wie hier gilt: ein einzelner
- * JDBC-Zugriff öffnet die Verbindung, liest und gibt sie sofort zurück, ohne EntityManager, der
- * am Request hängen bliebe.
+ * <p>The same cause has already been fixed for the role lookup in the same filter
+ * ({@link ch.plaintext.McpUserRoles}, card 437) — there as here it holds: a single
+ * JDBC access opens the connection, reads and returns it immediately, without an EntityManager
+ * that would stay attached to the request.
  *
- * <p><b>Zwei Methoden, nicht eine:</b> Der Best-effort-Schreibzugriff auf {@code last_used_at} /
- * {@code use_count} ist der zweite JPA-Zugriff im selben Pfad und bindet die Session genauso.
- * Ein Umbau, der nur den Lookup umstellt, verschiebt das Problem um zwei Zeilen.
+ * <p><b>Two methods, not one:</b> the best-effort write to {@code last_used_at} /
+ * {@code use_count} is the second JPA access in the same path and binds the session just as much.
+ * A rework that only converts the lookup moves the problem two lines further along.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -33,56 +33,56 @@ import java.util.Optional;
 public interface ApiTokenRevocationLookup {
 
     /**
-     * Liest die Felder, die {@code ApiTokenService.validateVerifiedToken} für die
-     * Revocation-Entscheidung braucht.
+     * Reads the fields that {@code ApiTokenService.validateVerifiedToken} needs for the
+     * revocation decision.
      *
-     * @param tokenHash SHA-256-Hash des JWT (hex, 64 Zeichen); die Spalte ist unique
-     * @return der Zustand des Tokens, oder leer, wenn zu diesem Hash kein Datensatz existiert
-     *         (= widerrufen oder nie ausgestellt)
+     * @param tokenHash SHA-256 hash of the JWT (hex, 64 characters); the column is unique
+     * @return the state of the token, or empty if no record exists for this hash
+     *         (= revoked or never issued)
      */
     Optional<TokenZustand> findForValidation(String tokenHash);
 
     /**
-     * Karte 664: Ist das Token mit diesem {@code jti} widerrufen worden?
+     * Card 664: has the token with this {@code jti} been revoked?
      *
-     * <p>Gegenstück zu {@link #findForValidation(String)} für den <b>JWT-Modus</b>
-     * ({@code plaintext.mcp.validation=JWT}, also app/guild/schuetu). Dort gibt es keinen
-     * Token-Hash zum Nachschlagen — der Filter kennt nur die Claims —, und deshalb war ein
-     * Widerruf dort bis zu einem Jahr lang wirkungslos.
+     * <p>Counterpart to {@link #findForValidation(String)} for <b>JWT mode</b>
+     * ({@code plaintext.mcp.validation=JWT}, i.e. app/guild/schuetu). There is no
+     * token hash to look up there — the filter only knows the claims — and that is why a
+     * revocation was ineffective there for up to a year.
      *
-     * <p><b>Der Unterschied zu {@code findForValidation} ist die Lesart des Nichttreffers</b>, und
-     * sie ist der ganze Punkt: Dort heisst „keine Zeile" <i>widerrufen oder nie ausgestellt</i>;
-     * hier heisst es <i>nicht widerrufen</i>. Nur so bleiben die JWT-only-Tokens unberührt, die
-     * gar keine Zeile in {@code api_token} haben (Zeiterfassungs-Uhr, Juriwagen, {@code minten}) —
-     * genau jene, die ein Umstellen auf {@code validation=DATABASE} aussperren würde (Karte 305).
+     * <p><b>The difference to {@code findForValidation} lies in how a non-match is read</b>, and
+     * that is the entire point: there, "no row" means <i>revoked or never issued</i>;
+     * here it means <i>not revoked</i>. Only this way do the JWT-only tokens stay untouched that
+     * have no row in {@code api_token} at all (time-tracking clock, Juriwagen, {@code minten}) —
+     * exactly those that a switch to {@code validation=DATABASE} would lock out (card 305).
      *
-     * @param jti {@code jti}-Claim des zu prüfenden Tokens
-     * @return {@code true} nur bei einer gefundenen, als {@code invalidated} markierten Zeile
+     * @param jti {@code jti} claim of the token to be checked
+     * @return {@code true} only for a row that was found and marked {@code invalidated}
      */
     boolean isJtiRevoked(String jti);
 
     /**
-     * Schreibt die Nutzungsstatistik fort: {@code last_used_at = jetzt},
-     * {@code use_count = use_count + 1}, {@code updated_at = jetzt}.
+     * Advances the usage statistics: {@code last_used_at = now},
+     * {@code use_count = use_count + 1}, {@code updated_at = now}.
      *
-     * <p><b>Best effort</b> — schlägt der Schreibzugriff fehl, bleibt die bereits getroffene
-     * Zugriffsentscheidung gültig. Die Auditspalten {@code last_modified_by} /
-     * {@code last_modified_date} bleiben bewusst unberührt: Ein Token-<i>Gebrauch</i> ist keine
-     * fachliche Änderung des Datensatzes, und der JPA-Auditor würde im Filterkontext
-     * {@code "system"} eintragen und damit den letzten echten Bearbeiter überschreiben.
+     * <p><b>Best effort</b> — if the write fails, the access decision already taken
+     * remains valid. The audit columns {@code last_modified_by} /
+     * {@code last_modified_date} are deliberately left untouched: <i>using</i> a token is not a
+     * business change to the record, and in the filter context the JPA auditor would enter
+     * {@code "system"} and thereby overwrite the last real editor.
      *
-     * @param id Primärschlüssel aus {@link #findForValidation(String)}
+     * @param id primary key from {@link #findForValidation(String)}
      */
     void markUsed(long id);
 
     /**
-     * Die für die Zugriffsentscheidung gelesenen Felder eines Tokens.
+     * The fields of a token that are read for the access decision.
      *
-     * @param id          Primärschlüssel, für {@link #markUsed(long)}
-     * @param deleted     {@code SuperModel.deleted}; die Spalte ist <b>nullable</b>, {@code NULL}
-     *                    wird als {@code false} gelesen (nie gelöscht worden)
-     * @param invalidated Soft-Invalidierung, Spalte {@code NOT NULL}
-     * @param userEmail   Mailadresse des Besitzers, geht ins Validierungsergebnis ein
+     * @param id          primary key, for {@link #markUsed(long)}
+     * @param deleted     {@code SuperModel.deleted}; the column is <b>nullable</b>, {@code NULL}
+     *                    is read as {@code false} (never having been deleted)
+     * @param invalidated soft invalidation, column {@code NOT NULL}
+     * @param userEmail   mail address of the owner, feeds into the validation result
      */
     record TokenZustand(long id, boolean deleted, boolean invalidated, String userEmail) {
     }

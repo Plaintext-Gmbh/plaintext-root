@@ -25,15 +25,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
- * Karte 303 — Integrationstest ueber die <b>echte</b> Filterkette.
+ * Card 303 — integration test through the <b>real</b> filter chain.
  *
- * <p>Der bestehende {@code RateLimitFilterTest} testet den Filter isoliert und konnte deshalb
- * strukturell nicht auffallen lassen, dass der Filter in der laufenden Anwendung hinter der
- * {@code springSecurityFilterChain} registriert war und die Login-Zweige damit toter Code waren.
- * Dieser Test schickt echte HTTP-Requests gegen den laufenden Server.
+ * <p>The existing {@code RateLimitFilterTest} tests the filter in isolation and therefore
+ * structurally could not reveal that in the running application the filter was registered behind the
+ * {@code springSecurityFilterChain}, which made the login branches dead code.
+ * This test sends real HTTP requests against the running server.
  *
- * <p>Die Requests kommen ueber Loopback (127.0.0.1) — das ist per Default ein vertrauenswuerdiger
- * Proxy, der Test kann also die PROD-Topologie nachbilden:
+ * <p>The requests come in over loopback (127.0.0.1) — which is a trusted proxy by default, so the
+ * test can reproduce the PROD topology:
  * {@code X-Forwarded-For: <vom Angreifer gesetzt>, <von Cloudflare angehaengte echte IP>,
  * <vom nginx angehaengter Tunnel-Host>}.
  */
@@ -49,7 +49,7 @@ class RateLimitChainTest {
 
     private static final int LIMIT = 5;
 
-    /** Adresse, die der nginx auf dem NAS anhaengt — vertrauenswuerdiger Hop. */
+    /** Address that the nginx on the NAS appends — a trusted hop. */
     private static final String PROXY_HOP = "192.168.1.224";
 
 
@@ -65,14 +65,14 @@ class RateLimitChainTest {
 
     private RestTemplate client() {
         RestTemplate template = new RestTemplate();
-        // Keine Exceptions bei 4xx/5xx — wir wollen den Statuscode auswerten.
+        // No exceptions on 4xx/5xx — we want to evaluate the status code.
         template.setErrorHandler(new DefaultResponseErrorHandler() {
             @Override
             public boolean hasError(org.springframework.http.client.ClientHttpResponse response) {
                 return false;
             }
         });
-        // Redirects nicht folgen, sonst verschluckt der Client die Antwort des Filters.
+        // Do not follow redirects, otherwise the client swallows the filter's response.
         org.springframework.http.client.SimpleClientHttpRequestFactory factory =
                 new org.springframework.http.client.SimpleClientHttpRequestFactory();
         template.setRequestFactory(factory);
@@ -98,7 +98,7 @@ class RateLimitChainTest {
                 new HttpEntity<>(headers), String.class);
     }
 
-    /** Bildet die PROD-Kette nach; {@code spoofed=true} setzt zusaetzlich einen gefaelschten Wert. */
+    /** Reproduces the PROD chain; {@code spoofed=true} additionally sets a forged value. */
     private String forwardedFor(String realClientIp, boolean spoofed) {
         String tail = realClientIp + ", " + PROXY_HOP;
         return spoofed ? "1.2.3." + (spoofCounter.incrementAndGet() % 250) + ", " + tail : tail;
@@ -151,7 +151,7 @@ class RateLimitChainTest {
         }
         assertEquals(429, post("/login", forwardedFor("198.51.100.14", false), body)
                 .getStatusCode().value());
-        // Ein anderer Nutzer hinter demselben Proxy darf davon nichts merken.
+        // Another user behind the same proxy must not notice anything of it.
         assertNotEquals(429, post("/login", forwardedFor("198.51.100.15", false), body)
                 .getStatusCode().value());
     }

@@ -12,26 +12,27 @@ import org.springframework.context.annotation.Configuration;
 import java.util.EnumSet;
 
 /**
- * Fuehrt Sitzungen ausschliesslich ueber das Cookie — nie ueber die URL (Karte 612).
+ * Tracks sessions exclusively through the cookie — never through the URL (Card 612).
  *
- * <p><b>Warum programmatisch und nicht in {@code application.yml}:</b> Jede Anwendung bringt eine
- * eigene {@code application.yml} mit, und die verdeckt die aus {@code plaintext-root-webapp}.
- * Gemessen am 07.08.2026 am {@code Set-Cookie}-Header der laufenden Instanzen:
+ * <p><b>Why programmatically and not in {@code application.yml}:</b> every application brings its
+ * own {@code application.yml}, and that one shadows the file from {@code plaintext-root-webapp}.
+ * Measured on 07.08.2026 on the {@code Set-Cookie} header of the running instances:
  *
  * <pre>
  *   root.plaintext.ch              JSESSIONID=...; Path=/; Secure; HttpOnly; SameSite=Lax
  *   app / guild / iot / schuetu    JSESSIONID=...; Path=/; HttpOnly
  * </pre>
  *
- * Die YAML-Einstellungen aus {@code plaintext-root-webapp} wirken also nur in {@code root} selbst.
- * Eine Einstellung, die dort steht, waere in vier von fuenf Anwendungen wirkungslos — und zwar
- * unsichtbar. Dieser Initializer haengt am Modul und wirkt darum ueberall, wo das Modul liegt.
+ * So the YAML settings from {@code plaintext-root-webapp} only take effect in {@code root} itself.
+ * A setting placed there would have no effect in four out of five applications — and it would fail
+ * invisibly. This initializer is attached to the module and therefore takes effect everywhere the
+ * module is used.
  *
- * <p><b>Was das abstellt:</b> Ohne diese Festlegung haengt der Container die Sitzungskennung an
- * die URL, sobald ein Client keine Cookies mitschickt ({@code Location: /login.html;jsessionid=...},
- * am 07.08.2026 an allen Instanzen gemessen). Solche URLs landen in Lesezeichen, im Referer und in
- * Fehlermeldungen; eine davon ist als Zugang ohne Passwort und ohne zweiten Faktor in eine
- * Aufgabenkarte gelangt.
+ * <p><b>What this prevents:</b> without this setting the container appends the session id to the
+ * URL as soon as a client sends no cookies ({@code Location: /login.html;jsessionid=...}, measured
+ * on 07.08.2026 on all instances). Such URLs end up in bookmarks, in the referer and in error
+ * messages; one of them made it into a task card as access without a password and without a second
+ * factor.
  *
  * @author info@plaintext.ch
  * @since 2026

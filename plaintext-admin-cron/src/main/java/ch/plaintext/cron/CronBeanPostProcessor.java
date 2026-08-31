@@ -59,9 +59,9 @@ public class CronBeanPostProcessor implements BeanPostProcessor, ApplicationCont
                 @Override
                 public void run(String mandant, String userId) {
                     // Delegate to the wrapped implementation (Task 005, ExecutionScope.PERSOENLICH) --
-                    // ohne diese Delegation wuerde SuperCron.runProPersoenlich() immer die
-                    // SuperCron-Default-Implementierung (= run(mandant), ignoriert userId) aufrufen,
-                    // nie den echten Cron-Code je Benutzer.
+                    // without this delegation SuperCron.runProPersoenlich() would always call the
+                    // SuperCron default implementation (= run(mandant), ignores userId), never the
+                    // real per-user cron code.
                     cronLogic.run(mandant, userId);
                 }
 
@@ -74,9 +74,9 @@ public class CronBeanPostProcessor implements BeanPostProcessor, ApplicationCont
 
                 @Override
                 public ExecutionScope getScope() {
-                    // Delegate to the wrapped implementation (Task 005) -- ohne diese Delegation
-                    // wuerde SuperCron.getScope() immer auf isGlobal() dieses Wrappers zurueckfallen
-                    // (PlaintextCron-Default), nie die echte getScope()-Ueberschreibung des Crons sehen.
+                    // Delegate to the wrapped implementation (Task 005) -- without this delegation
+                    // SuperCron.getScope() would always fall back to this wrapper's isGlobal()
+                    // (PlaintextCron default), never seeing the cron's real getScope() override.
                     return cronLogic.getScope();
                 }
 

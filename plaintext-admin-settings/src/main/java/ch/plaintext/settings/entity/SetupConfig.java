@@ -35,9 +35,9 @@ public class SetupConfig {
     @Column(name = "PASSWORD_MANAGEMENT_ENABLED", nullable = false)
     private boolean passwordManagementEnabled = true;
 
-    // SECURITY (Karte 306): Default fuer NEU angelegte Konfigurationen (frische Installationen) ist
-    // AUS — kein automatischer Root-Bootstrap-User mehr. Bestandsinstallationen haben bereits eine
-    // persistierte SETUP_CONFIG-Row mit ihrem gespeicherten Wert und bleiben davon unberuehrt.
+    // SECURITY (card 306): the default for NEWLY created configurations (fresh installations) is
+    // OFF — no automatic root bootstrap user any more. Existing installations already have a
+    // persisted SETUP_CONFIG row with their stored value and stay unaffected by this.
     @Column(name = "ROOT_USER_ENABLED", nullable = false)
     private boolean rootUserEnabled = false;
 
@@ -53,13 +53,13 @@ public class SetupConfig {
     @Column(name = "TOTP_ENABLED", nullable = false)
     private boolean totpEnabled = false;
 
-    // Karte 627: Aufzeichnung der Sitzungsinformationen (USER_SESSION). Default AN — heute wird
-    // ohne Schalter aufgezeichnet, und das Bestandsverhalten darf sich durch den Umbau nicht
-    // still aendern.
+    // Card 627: recording of the session information (USER_SESSION). Default ON — today recording
+    // happens without a switch, and the existing behaviour must not change silently because of
+    // this rework.
     @Column(name = "SESSION_TRACKING_ENABLED", nullable = false)
     private boolean sessionTrackingEnabled = true;
 
-    /** GLOBAL-Mailbox-Konto (Id) für System-/Auth-Mails (PW-Reset/Login-Link/Registrierung); null = nicht konfiguriert. */
+    /** GLOBAL mailbox account (id) for system/auth mails (password reset/login link/registration); null = not configured. */
     @Column(name = "SYSTEM_MAIL_ACCOUNT_ID")
     private Long systemMailAccountId;
 

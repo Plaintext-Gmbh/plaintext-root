@@ -16,7 +16,7 @@
 
             <p:growl id="messages" showDetail="true" life="5000"/>
 
-            <!-- ══ Einmalige Klartext-Anzeige des Signing-Secrets nach Anlage/Rotation ══ -->
+            <!-- ══ One-time plaintext display of the signing secret after creation/rotation ══ -->
             <h:panelGroup layout="block" rendered="#{webhookBean.hasNewSecret}"
                           style="margin-bottom:16px; padding:14px 18px; border-radius:8px;
                                  background:#fffdf5; border:1px solid #f0c36d;">
@@ -85,7 +85,7 @@
                 </p:dataTable>
             </p:fieldset>
 
-            <!-- ══ 2. ENDPOINT ANLEGEN / ÄNDERN ══════════════════════════════════════ -->
+            <!-- ══ 2. CREATE / EDIT ENDPOINT ═════════════════════════════════════════ -->
             <p:fieldset legend="2 · Endpoint anlegen / ändern" toggleable="true" collapsed="false" style="margin-bottom:16px;">
                 <p style="color:#666;">Zum Ändern eines bestehenden Endpoints oben in der Liste auf
                     <i class="pi pi-pencil"/> klicken. Bekannte Event-Typen: <code>#{webhookBean.bekannteEventTypes}</code>.</p>

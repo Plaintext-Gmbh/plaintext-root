@@ -39,13 +39,13 @@ public class ApiToken extends SuperModel {
     private String tokenHash;
 
     /**
-     * {@code jti}-Claim (JWT-ID) des ausgestellten Tokens — die Brücke zwischen einem eingehenden
-     * Bearer-Token und seiner Zeile hier, ohne den Token selbst zu kennen (Karte 664).
+     * {@code jti} claim (JWT ID) of the issued token — the bridge between an incoming
+     * Bearer token and its row here, without having to know the token itself (card 664).
      *
-     * <p><b>{@code null} heisst „unbekannt", nicht „widerrufen".</b> Zeilen aus der Zeit vor Karte
-     * 664 können ihren jti nicht nachträglich erfahren; ihr Widerruf bleibt bis zum Ablauf des
-     * Tokens wirkungslos. Genau diese Unterscheidung hält zugleich die JWT-only-Tokens
-     * (Zeiterfassungs-Uhr, Juriwagen, minten) unberührt — sie haben hier gar keine Zeile.</p>
+     * <p><b>{@code null} means "unknown", not "revoked".</b> Rows from the time before card
+     * 664 cannot learn their jti after the fact; revoking them stays ineffective until the
+     * token expires. That very distinction also leaves the JWT-only tokens
+     * (time-tracking clock, Juriwagen, minten) untouched — they have no row here at all.</p>
      */
     @Column(name = "jti", length = 64)
     private String jti;

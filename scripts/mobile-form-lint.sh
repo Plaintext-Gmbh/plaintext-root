@@ -3,23 +3,23 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
-# mobile-form-lint.sh — Reporter (und optionaler Auto-Fixer) fuer Mobile-Anti-Patterns
-# in JSF/PrimeFaces-XHTML. Ergaenzt den zentralen CSS-Fix (mobile-responsive.css) und den
-# JUnit-Linter (MobileFormLinter) fuers Consumer-Rollout: es zeigt pro Datei:Zeile, wo Dialoge
-# / Inputs / PanelGrids auf dem Handy ueberlaufen.
+# mobile-form-lint.sh — reporter (and optional auto-fixer) for mobile anti-patterns
+# in JSF/PrimeFaces XHTML. Complements the central CSS fix (mobile-responsive.css) and the
+# JUnit linter (MobileFormLinter) for the consumer rollout: it shows per file:line where dialogs
+# / inputs / panelGrids overflow on a phone.
 #
-# Gemeldete Anti-Patterns:
-#   1. p:dialog mit fixer px-Breite            (width="NNN" oder width="NNNpx")
-#   2. fixe px-Input-Breite > 480px            (style="...width: 700px..." an Feldern)
-#   3. h:panelGrid / p:panelGrid mit >2 Spalten (columns="3"+)
+# Reported anti-patterns:
+#   1. p:dialog with a fixed px width            (width="NNN" or width="NNNpx")
+#   2. fixed px input width > 480px              (style="...width: 700px..." on fields)
+#   3. h:panelGrid / p:panelGrid with >2 columns (columns="3"+)
 #
-# Verwendung:
-#   scripts/mobile-form-lint.sh <repo-verzeichnis>          # nur Report (exit 1 bei Funden)
-#   scripts/mobile-form-lint.sh --fix <repo-verzeichnis>    # p:dialog fixe Breite -> styleClass="mobile-safe"
+# Usage:
+#   scripts/mobile-form-lint.sh <repo-directory>            # report only (exit 1 on findings)
+#   scripts/mobile-form-lint.sh --fix <repo-directory>      # p:dialog fixed width -> styleClass="mobile-safe"
 #
-# --fix ist idempotent: Dialoge, die bereits styleClass="mobile-safe" / "mobile-exempt" tragen,
-# werden nicht angefasst. Die eigentliche Mobile-Wirkung kommt aus dem zentralen CSS; --fix dient
-# v. a. dem schnellen Umstellen vieler Consumer-Dialoge.
+# --fix is idempotent: dialogs that already carry styleClass="mobile-safe" / "mobile-exempt"
+# are left untouched. The actual mobile effect comes from the central CSS; --fix mainly serves
+# to convert many consumer dialogs quickly.
 
 set -euo pipefail
 
@@ -49,7 +49,7 @@ if [ ! -d "$TARGET" ]; then
     exit 1
 fi
 
-# Nur echte Quell-XHTML, target/build-Verzeichnisse ausklammern.
+# Only real source XHTML; leave target/build directories out.
 mapfile -t XHTML_FILES < <(find "$TARGET" -type f -name '*.xhtml' \
     -not -path '*/target/*' -not -path '*/build/*' -not -path '*/.git/*' | sort)
 
@@ -59,8 +59,8 @@ if [ "${#XHTML_FILES[@]}" -eq 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# AWK-Reporter. Flacht mehrzeilige p:dialog-Oeffnungstags zusammen und meldet
-# Anti-Patterns mit Datei:Zeile.
+# AWK reporter. Flattens multi-line p:dialog opening tags and reports
+# anti-patterns as file:line.
 # ---------------------------------------------------------------------------
 report_awk='
 function flush_dialog(   flat) {
@@ -81,7 +81,7 @@ function flush_dialog(   flat) {
 {
     line = $0
 
-    # --- p:dialog Oeffnungstag (evtl. mehrzeilig) einsammeln ---
+    # --- collect the p:dialog opening tag (possibly spanning several lines) ---
     if (!in_dialog && line ~ /<p:dialog([ \t>]|$)/) {
         in_dialog = 1
         dialog_line = FNR
@@ -95,8 +95,8 @@ function flush_dialog(   flat) {
         next
     }
 
-    # --- fixe px-Input-Breite > 480px in style="..." ---
-    # Nur echtes "width: NNNpx", NICHT "max-width:"/"min-width:" (die sind bereits fluid-vertraeglich).
+    # --- fixed px input width > 480px inside style="..." ---
+    # Only a real "width: NNNpx", NOT "max-width:"/"min-width:" (those are already fluid-friendly).
     tmp = line
     while (match(tmp, /width[ ]*:[ ]*[0-9]+px/)) {
         pre = (RSTART >= 4) ? substr(tmp, RSTART - 4, 4) : ""
@@ -109,7 +109,7 @@ function flush_dialog(   flat) {
         tmp = substr(tmp, RSTART + RLENGTH)
     }
 
-    # --- panelGrid mit >2 Spalten ---
+    # --- panelGrid with >2 columns ---
     if (line ~ /panelGrid/ && match(line, /columns[ ]*=[ ]*"[0-9]+"/)) {
         seg = substr(line, RSTART, RLENGTH)
         cols = seg; gsub(/[^0-9]/, "", cols)
@@ -139,17 +139,17 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# --fix: p:dialog mit fixer Breite -> styleClass="mobile-safe" (idempotent).
-# Ersetzt das width="NNN"-Attribut durch styleClass="mobile-safe", wenn der Dialog
-# noch keinen mobile-* Marker traegt und keine styleClass hat.
+# --fix: p:dialog with a fixed width -> styleClass="mobile-safe" (idempotent).
+# Replaces the width="NNN" attribute with styleClass="mobile-safe" when the dialog
+# does not yet carry a mobile-* marker and has no styleClass.
 # ---------------------------------------------------------------------------
 if [ "$FIX" -eq 1 ]; then
     echo
     echo "== --fix: p:dialog fixe Breite -> styleClass=\"mobile-safe\" =="
     fixed_files=0
     for f in "${XHTML_FILES[@]}"; do
-        # Perl-Slurp: pro p:dialog-Oeffnungstag mit fixer Breite & ohne styleClass/mobile-Marker
-        # das width="NNN"/width="NNNpx" durch styleClass="mobile-safe" ersetzen.
+        # Perl slurp: for every p:dialog opening tag with a fixed width & without a
+        # styleClass/mobile marker, replace width="NNN"/width="NNNpx" with styleClass="mobile-safe".
         if perl -0777 -i -pe '
             my $count = 0;
             s{(<p:dialog\b[^>]*?>)}{
@@ -169,7 +169,7 @@ if [ "$FIX" -eq 1 ]; then
         fi
     done
 
-    # Re-check + Zaehlung, welche Dateien jetzt mobile-safe-Dialoge haben.
+    # Re-check and count which files now have mobile-safe dialogs.
     for f in "${XHTML_FILES[@]}"; do
         if grep -q 'styleClass="mobile-safe"' "$f" 2>/dev/null; then
             fixed_files=$((fixed_files + 1))
@@ -179,7 +179,7 @@ if [ "$FIX" -eq 1 ]; then
     echo "Hinweis: die eigentliche Wirkung kommt aus dem zentralen mobile-responsive.css."
 fi
 
-# Exit-Code: 1 wenn (im reinen Report-Modus) Funde existieren, sonst 0.
+# Exit code: 1 if there are findings (in pure report mode), otherwise 0.
 if [ "$FIX" -eq 0 ] && [ "$report_rc" -ne 0 ]; then
     exit 1
 fi

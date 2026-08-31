@@ -12,29 +12,29 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Die eigentliche Zugriffspruefung hinter {@code /deeplink} (Karte 345) — bewusst ohne Servlet-API,
- * damit sie ohne Web-Kontext testbar ist.
+ * The actual access check behind {@code /deeplink} (card 345) — deliberately without the servlet
+ * API, so that it is testable without a web context.
  *
- * <p><b>Reihenfolge der Pruefungen (jede einzelne ist fail-closed):</b>
+ * <p><b>Order of the checks (each one of them fail-closed):</b>
  * <ol>
- *   <li><b>Zeichenmuster</b> — siehe {@link DeepLinkFormat}. Alles ausserhalb wird abgewiesen,
- *       bevor es in eine Redirect-URL gelangen kann.</li>
- *   <li><b>Registrierter Typ</b> — die Ziel-View kommt aus der Registry, nie aus der URL. Ein
- *       unbekannter Typ wird abgelehnt (kein „einfach durchreichen").</li>
- *   <li><b>Mandat-Zugriff</b> — {@code getAllowedMandate()}, dieselbe Quelle wie die
- *       Topbar-Mandant-Auswahl. Steht das Ziel-Mandat nicht drin, wird <em>nicht</em> gewechselt,
- *       auch nicht kurz zum Anzeigen.</li>
- *   <li><b>Datensatz-Zugriff</b> — {@link DeepLinkTarget#isAccessible(String, String)} des
- *       zustaendigen Moduls. Eine geratene fremde Id scheitert hier serverseitig, unabhaengig
- *       davon, was das Menue anzeigt.</li>
+ *   <li><b>Character pattern</b> — see {@link DeepLinkFormat}. Everything outside it is rejected
+ *       before it can reach a redirect URL.</li>
+ *   <li><b>Registered type</b> — the target view comes from the registry, never from the URL. An
+ *       unknown type is rejected (no "just pass it through").</li>
+ *   <li><b>Tenant access</b> — {@code getAllowedMandate()}, the same source as the
+ *       tenant selector in the topbar. If the target tenant is not in it, there is <em>no</em> switch,
+ *       not even briefly for display purposes.</li>
+ *   <li><b>Record access</b> — {@link DeepLinkTarget#isAccessible(String, String)} of the
+ *       responsible module. A guessed foreign id fails here on the server side, independently
+ *       of what the menu shows.</li>
  * </ol>
  *
- * <p>Der Mandat-Wechsel passiert <em>vor</em> der Datensatz-Pruefung, weil die Module ihre Daten
- * ueber den aktiven Mandanten filtern (Hibernate-Filter/Session-Kontext) und {@code isAccessible}
- * sonst systematisch {@code false} liefern wuerde. Das ist unbedenklich: gewechselt wird nur in
- * einen Mandanten, den der Benutzer ohnehin per Topbar waehlen duerfte. Faellt die Pruefung
- * negativ aus, wird der vorherige Mandat wiederhergestellt, damit ein toter Link den Benutzer
- * nicht stillschweigend umkontextet.
+ * <p>The tenant switch happens <em>before</em> the record check, because the modules filter their
+ * data by the active tenant (Hibernate filter / session context) and {@code isAccessible}
+ * would otherwise systematically return {@code false}. That is harmless: the switch only ever goes
+ * into a tenant that the user would be allowed to select via the topbar anyway. If the check turns
+ * out negative, the previous tenant is restored, so that a dead link does not silently move the
+ * user into another context.
  */
 @Service
 @Slf4j
@@ -86,7 +86,7 @@ public class DeepLinkResolver {
         try {
             erlaubt = target.isAccessible(m, i);
         } catch (Exception e) {
-            // Fail-closed: ein Fehler in der Modul-Pruefung ist ein „nein", kein „vielleicht".
+            // Fail-closed: an error in the module check is a "no", not a "maybe".
             log.warn("Deep-Link: Zugriffspruefung des Ziels '{}' schlug fehl -> abgelehnt: {}", t, e.getMessage());
             erlaubt = false;
         }

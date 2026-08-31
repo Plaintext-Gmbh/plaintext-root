@@ -19,53 +19,52 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilter Vertragstest gegen Inline-JavaScript in ALLEN {@code src/main/resources/**}
- * {@code .xhtml} des jeweiligen Reactors — die Vorbedingung dafuer, dass die
- * Content-Security-Policy ohne {@code script-src 'unsafe-inline'} auskommt (Welle 4).
+ * Shared contract test against inline JavaScript in ALL {@code src/main/resources/**}
+ * {@code .xhtml} of the respective reactor — the precondition for the content security policy to
+ * work without {@code script-src 'unsafe-inline'} (wave 4).
  *
- * <p><b>Warum das noetig ist.</b> {@code PlaintextSecurityConfig} setzt eine ausfuehrliche CSP,
- * aber {@code script-src} fuehrt {@code 'unsafe-inline'}. Damit laeuft jedes eingeschleuste
- * {@code <script>}: die Policy verhindert an dieser Stelle nichts. Sie laesst sich erst scharf
- * schalten, wenn KEIN eigenes Inline-JavaScript mehr im Markup steht — ein einziger verbliebener
- * Block irgendwo im Reactor genuegt, um den Schalter nicht umlegen zu koennen. Und weil neues
- * Inline-JavaScript beim Schreiben nie auffaellt (die Seite funktioniert ja), braucht es dafuer
- * einen Test und nicht eine Konvention.
+ * <p><b>Why this is needed.</b> {@code PlaintextSecurityConfig} sets a detailed CSP, but
+ * {@code script-src} carries {@code 'unsafe-inline'}. With that, every injected {@code <script>}
+ * runs: at this point the policy prevents nothing. It can only be tightened once NO inline
+ * JavaScript of our own is left in the markup — a single remaining block anywhere in the reactor is
+ * enough to make the switch unthrowable. And because new inline JavaScript never draws attention
+ * while it is being written (the page does work, after all), this needs a test and not a convention.
  *
- * <p><b>Zwei Regeln</b> (Scan-Logik in {@link InlineJsLinter}, plaintext-root-common):
+ * <p><b>Two rules</b> (scan logic in {@link InlineJsLinter}, plaintext-root-common):
  * <ol>
- *   <li>{@code <script>} bzw. {@code <h:outputScript>} MIT Rumpf statt ausgelagerter Datei.</li>
- *   <li>{@code on…}-Attribut an einem Nicht-{@code p:}-Tag ({@code onclick} an {@code <a>},
- *       {@code onchange} an {@code <select>} …). {@code on…} an {@code p:}-Komponenten bleibt
- *       unbeanstandet: {@code oncomplete}/{@code onstart}/{@code onerror} sind
- *       PrimeFaces-Ereignisse des Ajax-Lebenszyklus und gar keine HTML-Attribute, und wo
- *       PrimeFaces wirklich einen HTML-Handler erzeugt ({@code onclick} an
- *       {@code p:commandButton}), zieht der CSP-Modus {@code joinfaces.primefaces.csp=true} ihn
- *       selbst heraus und registriert ihn ueber {@code PrimeFaces.csp}.</li>
+ *   <li>{@code <script>} resp. {@code <h:outputScript>} WITH a body instead of an external file.</li>
+ *   <li>An {@code on…} attribute on a non-{@code p:} tag ({@code onclick} on {@code <a>},
+ *       {@code onchange} on {@code <select>} …). {@code on…} on {@code p:} components stays
+ *       unobjected: {@code oncomplete}/{@code onstart}/{@code onerror} are PrimeFaces events of the
+ *       Ajax lifecycle and no HTML attributes at all, and where PrimeFaces really does generate an
+ *       HTML handler ({@code onclick} on {@code p:commandButton}), the CSP mode
+ *       {@code joinfaces.primefaces.csp=true} extracts it itself and registers it via
+ *       {@code PrimeFaces.csp}.</li>
  * </ol>
  *
- * <p><b>Scharf oder nur meldend — {@value #SCHALTER}.</b> Der Test laeuft in zwei Stellungen:
+ * <p><b>Enforcing or only reporting — {@value #SCHALTER}.</b> The test runs in two positions:
  * <ul>
- *   <li>{@code enforce}: jeder Verstoss laesst den Lauf fehlschlagen. So steht es in
- *       {@code plaintext-root-webapp/pom.xml} (Surefire {@code systemPropertyVariables}) — root
- *       ist seit Welle 4 sauber und bleibt es.</li>
- *   <li>{@code report} (Vorgabe): die Fundstellen werden auf {@code System.err} ausgegeben, der
- *       Test besteht. Das ist die Stellung fuer jeden Consumer (app, guild, iot, schuetu), der
- *       seinen Altbestand noch nicht bereinigt hat — ein root-Release darf dort keinen Build
- *       umwerfen, waehrend die Bereinigung noch laeuft. Ist ein Consumer durch, setzt er in
- *       seinem webapp-{@code pom.xml} dieselben zwei Zeilen wie root und ist ab da geschuetzt.</li>
+ *   <li>{@code enforce}: every violation makes the run fail. That is how it is set in
+ *       {@code plaintext-root-webapp/pom.xml} (Surefire {@code systemPropertyVariables}) — root has
+ *       been clean since wave 4 and stays that way.</li>
+ *   <li>{@code report} (default): the findings are printed to {@code System.err}, the test passes.
+ *       That is the position for every consumer (app, guild, iot, schuetu) that has not yet cleaned
+ *       up its legacy code — a root release must not topple a build there while the cleanup is still
+ *       under way. Once a consumer is through, it sets the same two lines as root in its webapp
+ *       {@code pom.xml} and is protected from then on.</li>
  * </ul>
- * Die Vorgabe ist bewusst die schwaechere: eine Regel, die beim Einspielen fremde Builds bricht,
- * wird abgeschaltet statt befolgt.
+ * The default is deliberately the weaker one: a rule that breaks foreign builds when it arrives gets
+ * switched off instead of followed.
  *
- * <p><b>Ausnahmen:</b> {@code <!-- inline-js-ok -->} in derselben Zeile nimmt einen einzelnen
- * Treffer aus; ganze Dateien nimmt die Allowlist des Reactors aus
- * ({@code plaintext-arch-allowlist.txt}, Regel {@code inline-js}, Begruendung Pflicht — siehe
- * {@link ArchAllowlist}). root fuehrt keine Allowlist.
+ * <p><b>Exceptions:</b> {@code <!-- inline-js-ok -->} on the same line exempts a single hit; whole
+ * files are exempted by the reactor's allowlist
+ * ({@code plaintext-arch-allowlist.txt}, rule {@code inline-js}, justification mandatory — see
+ * {@link ArchAllowlist}). root keeps no allowlist.
  *
- * <p>Dieser Test liegt in {@code src/main/java} von {@code plaintext-root-archtests} und laeuft im
- * Consumer via Surefire {@code <dependenciesToScan>} ab dessen Reactor-Wurzel ueber jedes
- * Modul-{@code src/main/resources} (Pfadaufloesung: {@link ReactorLayout}) — nie ueber die
- * Ressourcen von root, die im Consumer als Jar vorliegen.
+ * <p>This test lives in {@code src/main/java} of {@code plaintext-root-archtests} and runs in the
+ * consumer via Surefire {@code <dependenciesToScan>} from that consumer's reactor root over every
+ * module's {@code src/main/resources} (path resolution: {@link ReactorLayout}) — never over the
+ * resources of root, which are present as a jar in the consumer.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -74,7 +73,7 @@ class PlaintextInlineJsVertragTest {
 
     static final String ALLOWLIST_REGEL = "inline-js";
 
-    /** System-Property, die ueber scharf ({@code enforce}) oder nur meldend ({@code report}) entscheidet. */
+    /** System property that decides between enforcing ({@code enforce}) and only reporting ({@code report}). */
     static final String SCHALTER = "plaintext.arch.inline-js";
 
     static final String SCHARF = "enforce";
@@ -82,8 +81,8 @@ class PlaintextInlineJsVertragTest {
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
     /**
-     * Scannt jedes {@code src/main/resources} aller Reactor-Module. Consumer ohne eigene XHTML
-     * haben nichts zu linten — der Test besteht dann.
+     * Scans every {@code src/main/resources} of all reactor modules. Consumers without XHTML of their
+     * own have nothing to lint — the test then passes.
      */
     @Test
     void keinInlineJavascriptInXhtml() {
@@ -120,8 +119,8 @@ class PlaintextInlineJsVertragTest {
         if (scharf()) {
             fail(msg.toString());
         }
-        // Meldend: ausgeben und bestehen lassen. Scharf schalten mit
-        // -Dplaintext.arch.inline-js=enforce bzw. den zwei Surefire-Zeilen aus root.
+        // Reporting: print and let it pass. Switch to enforcing with
+        // -Dplaintext.arch.inline-js=enforce resp. the two Surefire lines from root.
         System.err.println(msg + "\nNUR GEMELDET (" + SCHALTER + " != " + SCHARF + "). Nach der Bereinigung\n"
                 + "in <systemPropertyVariables> des webapp-Moduls " + SCHALTER + "=" + SCHARF + " setzen.\n");
     }
@@ -134,7 +133,7 @@ class PlaintextInlineJsVertragTest {
     void linterErkenntBeideRegelnUndLaesstPrimefacesAttributeStehen(@TempDir Path tmp) throws IOException {
         Path res = Files.createDirectories(tmp.resolve("META-INF/resources"));
 
-        // Verstoss 1: <script> mit Rumpf, und <h:outputScript> mit Rumpf.
+        // Violation 1: <script> with a body, and <h:outputScript> with a body.
         Files.writeString(res.resolve("badScript.xhtml"), """
                 <ui:composition template="/includes/template.xhtml">
                     <script type="text/javascript">
@@ -145,7 +144,7 @@ class PlaintextInlineJsVertragTest {
                     </h:outputScript>
                 </ui:composition>
                 """);
-        // Verstoss 2: on…-Attribute an echten HTML-Elementen.
+        // Violation 2: on… attributes on real HTML elements.
         Files.writeString(res.resolve("badHandler.xhtml"), """
                 <ui:composition template="/includes/template.xhtml">
                     <a href="#" onclick="tuWas(); return false;">los</a>
@@ -155,8 +154,8 @@ class PlaintextInlineJsVertragTest {
                     <span onmouseover="this.style.opacity='1'">x</span>
                 </ui:composition>
                 """);
-        // KEIN Verstoss: ausgelagerte Skripte, PrimeFaces-Attribute, data-Attribute,
-        // ein on…-Beispiel im Kommentar und eine JS-Eigenschaft im Rumpf eines externen Skripts.
+        // NO violation: external scripts, PrimeFaces attributes, data attributes,
+        // an on… example inside a comment and a JS property in the body of an external script.
         Files.writeString(res.resolve("ok.xhtml"), """
                 <ui:composition template="/includes/template.xhtml">
                     <!-- frueher: <a onclick="tuWas()"> und <img src=x onerror=alert(1)> -->
@@ -167,7 +166,7 @@ class PlaintextInlineJsVertragTest {
                     <a href="#" data-pt-dropdown="menu" data-pt-only="x">Menu</a>
                 </ui:composition>
                 """);
-        // KEIN Verstoss: begruendetes Opt-out in derselben Zeile.
+        // NO violation: justified opt-out on the same line.
         Files.writeString(res.resolve("okOptOut.xhtml"), """
                 <ui:composition template="/includes/template.xhtml">
                     <script>window.alert('x');</script> <!-- inline-js-ok: Fremdbibliothek verlangt es -->

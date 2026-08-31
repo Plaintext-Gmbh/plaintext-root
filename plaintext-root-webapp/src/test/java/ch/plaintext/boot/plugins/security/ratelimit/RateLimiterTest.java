@@ -149,7 +149,7 @@ class RateLimiterTest {
         for (int i = 0; i < 500; i++) {
             limiter.tryConsume("flood-" + i);
         }
-        // "legit" hatte erst einen von drei Tokens verbraucht und darf weiterhin durch.
+        // "legit" had only consumed one of three tokens and is still allowed through.
         assertTrue(limiter.tryConsume("legit"));
         assertTrue(limiter.tryConsume("legit"));
     }

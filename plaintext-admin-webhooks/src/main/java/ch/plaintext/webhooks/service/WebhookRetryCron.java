@@ -16,8 +16,8 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Holt fällige {@link WebhookDeliveryStatus#FAILED}-Deliveries des Mandanten nach (Backoff-Zeitpunkt
- * erreicht) und versucht erneut zuzustellen — siehe {@link WebhookDispatchService#BACKOFF}.
+ * Picks up the tenant's due {@link WebhookDeliveryStatus#FAILED} deliveries (backoff time reached)
+ * and attempts to deliver them again — see {@link WebhookDispatchService#BACKOFF}.
  *
  * @author info@plaintext.ch
  * @since 2026

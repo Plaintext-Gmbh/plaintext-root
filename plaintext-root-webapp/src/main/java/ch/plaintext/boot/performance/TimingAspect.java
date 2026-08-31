@@ -17,16 +17,16 @@ public class TimingAspect {
 
     private final PerformanceService performanceService;
 
-    // WICHTIG: @Lazy hier bricht den Circle
+    // IMPORTANT: @Lazy here breaks the cycle
     public TimingAspect(@Lazy PerformanceService performanceService) {
         this.performanceService = performanceService;
     }
 
     /**
-     * Misst NUR Anwendungscode, NICHT das performance-Paket selbst.
+     * Measures ONLY application code, NOT the performance package itself.
      *
-     * Passe die Packages nach Bedarf an.
-     * Beispiel: Services + Controller + Cron in deinem Projekt.
+     * Adjust the packages as needed.
+     * Example: services + controllers + cron in your project.
      */
     @Around("within(ch.plaintext..*) && !within(ch.plaintext.boot.performance..*)")
     public Object time(ProceedingJoinPoint pjp) throws Throwable {

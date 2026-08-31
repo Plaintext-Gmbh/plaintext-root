@@ -26,8 +26,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Missbrauchsfaelle des Deep-Link-Mechanismus (Karte 345). Die Tests sind bewusst nach dem
- * Angriff benannt, den sie verhindern sollen — nicht nach der Methode, die sie aufrufen.
+ * Abuse cases of the deep-link mechanism (card 345). The tests are deliberately named after the
+ * attack they are meant to prevent — not after the method they call.
  */
 class DeepLinkResolverTest {
 
@@ -36,7 +36,7 @@ class DeepLinkResolverTest {
     private DeepLinkResolver resolver;
     private TestZiel ziel;
 
-    /** Minimales Ziel-Modul: kennt genau einen Datensatz, und zwar nur im Mandat „alpha". */
+    /** Minimal target module: knows exactly one record, and only in the tenant "alpha". */
     private static class TestZiel implements DeepLinkTarget {
         boolean gefragt = false;
         String gefragtesMandat;
@@ -99,9 +99,9 @@ class DeepLinkResolverTest {
 
             assertEquals(DeepLinkResolution.Ergebnis.MANDAT_VERWEIGERT, ergebnis.ergebnis());
             assertNull(ergebnis.zielPfad());
-            // Kein Wechsel, auch nicht "kurz zum Anzeigen".
+            // No switch, not even "briefly for display purposes".
             verify(security, never()).switchActiveMandat(anyString());
-            // Und das Modul wird gar nicht erst nach dem Datensatz gefragt.
+            // And the module is not even asked about the record.
             assertFalse(ziel.gefragt, "Bei fehlendem Mandat-Zugriff darf das Modul nicht befragt werden");
         }
 
@@ -172,14 +172,14 @@ class DeepLinkResolverTest {
 
         @ParameterizedTest(name = "Id \"{0}\" wird abgelehnt")
         @ValueSource(strings = {
-                "42&mandat=fremd",          // Parameter-Schmuggel
-                "42#anker",                 // Fragment
-                "../../etc/passwd",         // Pfad-Traversal
-                "42%0d%0aSet-Cookie:x=y",   // Header-Injection (roh)
-                "42\r\nSet-Cookie: a=b",    // Header-Injection
-                "<script>alert(1)</script>",// Reflexion
-                "",                         // leer
-                "1 OR 1=1"                  // SQL-artig
+                "42&mandat=fremd",          // parameter smuggling
+                "42#anker",                 // fragment
+                "../../etc/passwd",         // path traversal
+                "42%0d%0aSet-Cookie:x=y",   // header injection (raw)
+                "42\r\nSet-Cookie: a=b",    // header injection
+                "<script>alert(1)</script>",// reflection
+                "",                         // empty
+                "1 OR 1=1"                  // SQL-like
         })
         void manipulierteIdWirdAbgelehnt(String id) {
             DeepLinkResolution ergebnis = resolver.resolve("auszahlung", "alpha", id);

@@ -109,7 +109,7 @@ class RootEntityBackingBeanTest {
 
     @Test
     void entityTypeChanged_laedtListeUndVerwirftAlteAuswahl() {
-        // Auftrag Daniel, 29.08.2026: Ajax-Listener der Typ-Auswahl.
+        // Request by Daniel, 29.08.2026: Ajax listener of the type selection.
         bean.setSelectedEntityType(descriptor);
         bean.setSelectedEntity("altes-objekt");
         bean.setEditMode(true);

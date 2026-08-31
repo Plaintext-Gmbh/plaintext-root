@@ -5,19 +5,19 @@
                 xmlns:c="http://xmlns.jcp.org/jsp/jstl/core"
                 xmlns="http://www.w3.org/1999/xhtml">
 
-    <!-- Gemeinsamer Seitenkoerper der generischen Datenverwaltung (Zustandsbericht 29.08.2026, R2).
-         rootentities.xhtml und adminentities.xhtml waren zwei Kopien mit 54 Zeilen Unterschied
-         (Bean-Name, Export/Import). Ein Fix musste zweimal gemacht werden — jetzt einmal hier.
+    <!-- Shared page body of the generic data administration (status report 29 August 2026, R2).
+         rootentities.xhtml and adminentities.xhtml were two copies differing by 54 lines
+         (bean name, export/import). Every fix had to be made twice; now it is made once, here.
 
-         Parameter (ui:param):
-           bean         die Backing-Bean (rootEntityBackingBean | adminEntityBackingBean),
-                        beide sind eine AbstractEntityBackingBean
-           pageUrl      URL fuer history.pushState (z. B. /rootentities.html)
-           exportImport true = JSON-Export/-Import anbieten (nur Root; braucht bean.exportFile,
+         Parameters (ui:param):
+           bean         the backing bean (rootEntityBackingBean | adminEntityBackingBean),
+                        both are an AbstractEntityBackingBean
+           pageUrl      URL for history.pushState (e.g. /rootentities.html)
+           exportImport true = offer JSON export/import (root only; needs bean.exportFile,
                         bean.exportEntities(), bean.importEntities())
 
-         Die Komponenten-IDs (selectorForm:entityType, listForm:entityTable, editForm, importForm)
-         sind Vertrag: der Playwright-IT RootPagesPlaywrightIT haengt daran. -->
+         The component IDs (selectorForm:entityType, listForm:entityTable, editForm, importForm)
+         are a contract: the Playwright IT RootPagesPlaywrightIT depends on them. -->
 
     <style>
         /* Defining column widths */
@@ -68,9 +68,9 @@
         }
     </style>
 
-    <!-- Sprechende Adresse in der Adresszeile. Die URL kommt als data-Attribut, nicht als EL im
-         Skriptkoerper: <h:outputScript> MIT Rumpf rendert einen Inline-Block und zwingt die
-         Content-Security-Policy zu script-src 'unsafe-inline' (Welle 4). -->
+    <!-- Readable URL in the address bar. The URL arrives as a data attribute, not as EL in the
+         script body: <h:outputScript> WITH a body renders an inline block and forces the
+         Content Security Policy to script-src 'unsafe-inline' (wave 4). -->
     <div data-pt-pushstate="#{pageUrl}" hidden="hidden"></div>
     <h:outputScript library="plaintext-layout" name="js/pushstate.js"/>
 
@@ -90,11 +90,11 @@
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
             <p:panel header="#{i18n.t('Entitätstyp auswählen')}">
                 <div class="p-fluid">
-                    <!-- Auftrag Daniel, 29.08.2026: Die Auswahl lief ueber onchange="submit()" +
-                         valueChangeListener. Im Betrieb (PrimeFaces 15) loeste das keinen Request
-                         aus — die Auswahl blieb wirkungslos, keine Tabelle erschien. Jetzt ein
-                         regulaeres Ajax-Ereignis: Wert setzen, Listener rufen, Liste und
-                         Meldungen nachladen. -->
+                    <!-- Request from Daniel, 29 August 2026: the selection ran via onchange="submit()" +
+                         valueChangeListener. In production (PrimeFaces 15) that triggered no
+                         request; the selection had no effect, no table appeared. Now a
+                         regular Ajax event: set the value, call the listener, reload the list and
+                         the messages. -->
                     <p:selectOneMenu id="entityType" value="#{bean.selectedEntityType}"
                                      converter="entityDescriptorConverter">
                         <f:attribute name="backingBean" value="#{bean}"/>
@@ -190,7 +190,7 @@
         </p:panel>
     </h:form>
 
-    <!-- Import Dialog (nur Root) -->
+    <!-- Import dialog (root only) -->
     <ui:fragment rendered="#{exportImport}">
         <h:form id="importForm" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
@@ -251,7 +251,7 @@
                     <h:outputText value="#{field.displayName}:"/>
 
                     <h:panelGroup>
-                        <!-- Mandat Dropdown -->
+                        <!-- Tenant dropdown -->
                         <p:selectOneMenu id="mandatDropdown"
                                          value="#{bean.fieldValues[field.fieldName]}"
                                          rendered="#{field.fieldName == 'mandat'}"

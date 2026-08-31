@@ -1,273 +1,226 @@
-# Architecture Documentation
+# Architecture
 
-## Overview
+How Plaintext Root is put together, and why. Every diagram below was drawn from
+the `pom.xml` files and the classes they name — if a diagram and the code
+disagree, the code is right and this page is a bug.
 
-Plaintext Root is a modular Jakarta Faces (JSF) application framework built on Spring Boot. It provides a complete foundation for building multi-tenant web applications with pre-built admin functionality, security, and a pluggable template system.
+> Last checked against release **1.652.0** (24 modules, Spring Boot 4.1.0,
+> Jakarta Faces 4.1.15, PrimeFaces 15.0.15, Java 25).
 
-## System Architecture
+## The idea in one paragraph
 
-```mermaid
-C4Context
-    title Plaintext Root - System Context
+Plaintext Root is the part of a business application that is the same every
+time: logging in, knowing who the user is, keeping one tenant's rows away from
+the next, drawing a menu that only shows what the user may open, and the admin
+screens that come with all of it. An application depends on
+`plaintext-root-webapp`, adds its own modules, and inherits the rest. The
+framework is a set of Maven modules, not a platform — there is no runtime to
+install and no plugin registry.
 
-    Person(user, "User", "Application user")
-    Person(admin, "Admin", "Administrator")
+## Modules
 
-    System(plaintext, "Plaintext Root App", "Multi-tenant web application")
-    System_Ext(postgres, "PostgreSQL", "Primary database")
-    System_Ext(smtp, "SMTP Server", "Email sending")
-    System_Ext(imap, "IMAP Server", "Email receiving")
+24 modules. The dependency graph in the [README](../README.md#architecture) is
+the authoritative view; the short version is four layers:
 
-    Rel(user, plaintext, "Uses", "HTTPS")
-    Rel(admin, plaintext, "Manages", "HTTPS")
-    Rel(plaintext, postgres, "Reads/Writes", "JDBC")
-    Rel(plaintext, smtp, "Sends emails", "SMTP")
-    Rel(plaintext, imap, "Receives emails", "IMAP")
-```
+| Layer | Modules | Depends on |
+|-------|---------|-----------|
+| **Contracts** | `plaintext-root-interfaces` | *nothing* |
+| **Core** | `plaintext-root-menu`, `plaintext-root-common` | interfaces |
+| **Infrastructure** | `plaintext-root-jpa`, `-flyway`, `-menu-visibility`, `-role-assignment`, `-pageguard`, `-web` | interfaces, common, menu |
+| **Shell** | `plaintext-root-webapp`, `plaintext-root-template` | the 20 modules above plus 11 admin modules |
 
-## Module Architecture
+Two rules keep this from turning into a ball of mud:
+
+1. **`plaintext-root-interfaces` never depends on anything.** A module that
+   implements `PlaintextCron`, `SearchProvider`, `DeepLinkTarget` or
+   `IUploadTarget` pulls in one small jar, not the framework. This is what lets
+   an application module register with the framework without the framework
+   knowing the module exists.
+2. **Admin modules are leaves.** All twelve depend only on interfaces, common
+   and menu, and nothing depends on them. That is what makes them removable with
+   a Maven `<exclusion>` — see [Optional modules](OPTIONAL_MODULES.md).
+
+`plaintext-root-archtests` is the odd one out: it ships ArchUnit rules in
+`src/main` so that consuming applications can run the framework's own
+architecture rules against their code with `dependenciesToScan`.
+
+## Multi-tenancy
+
+One database, one schema, one row set — separated by a discriminator column.
 
 ```mermaid
 graph LR
-    subgraph "Presentation"
-        TPL[Template Module<br/><i>UI Layout, CSS, JS</i>]
-        WEB[Webapp Module<br/><i>Security, Login, Config</i>]
+    REQ[HTTP request] --> SEC[PlaintextSecurityImpl<br/>reads the logged-in user]
+    SEC --> MANDAT["getMandat() → 'acme'"]
+    MANDAT --> REPO[PlaintextRepository]
+    REPO --> DB[(PostgreSQL<br/>one row set per tenant)]
+
+    subgraph entity["Every entity extends SuperModel"]
+        SM["mandat · deleted · tags<br/>createdBy · createdDate<br/>lastModifiedBy · lastModifiedDate"]
     end
 
-    subgraph "Business"
-        MENU[Menu Module<br/><i>Dynamic Navigation</i>]
-        MS[Menuesteuerung<br/><i>Visibility Control</i>]
-        ROLE[Rollenzuteilung<br/><i>Role Management</i>]
-        EMAIL[Email Module<br/><i>SMTP/IMAP</i>]
-    end
-
-    subgraph "Infrastructure"
-        JPA[JPA Module<br/><i>Base Entities, Audit</i>]
-        COMMON[Common Module<br/><i>Utilities</i>]
-        IFACE[Interfaces Module<br/><i>Contracts</i>]
-        FW[Flyway Module<br/><i>Migrations</i>]
-    end
-
-    subgraph "Admin"
-        A1[Settings]
-        A2[Sessions]
-        A3[Cron Jobs]
-        A4[Wertelisten]
-        A5[Filelist]
-        A6[Anforderungen]
-    end
-
-    WEB --> TPL
-    WEB --> MENU
-    WEB --> MS
-    WEB --> ROLE
-    WEB --> EMAIL
-    WEB --> A1 & A2 & A3 & A4
-
-    MENU --> IFACE
-    MS --> IFACE
-    ROLE --> IFACE
-    JPA --> COMMON
-    EMAIL --> JPA
+    REPO -.->|filters on| SM
 ```
 
-## Multi-Tenancy Architecture
+`SuperModel` lives in `plaintext-root-common`
+(`ch.plaintext.framework.SuperModel`, `@MappedSuperclass`). It carries the
+tenant column `mandat`, a soft-delete flag, the auditing fields and a tag list.
+Repositories extend `PlaintextRepository`, whose finder methods take the tenant
+into account; `PlaintextSecurityImpl.getMandat()` is the single source for
+"which tenant is this request".
+
+The trade-off is written down in
+[ADR 0002](adr/0002-mandate-per-row-multitenancy.md): a discriminator column is
+cheap to operate and easy to get wrong in a query, which is why the finders live
+in a shared base class instead of in each repository.
+
+## Request flow
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Security
-    participant SuperModel
-    participant Database
-
-    User->>Security: Login
-    Security->>Security: Authenticate + Load Mandate
-    Security-->>User: Session with Mandate
-
-    User->>SuperModel: Create Entity
-    SuperModel->>SuperModel: Auto-set mandate field
-    SuperModel->>Database: INSERT with mandate
-
-    User->>SuperModel: Query Entities
-    SuperModel->>Database: SELECT WHERE mandate = ?
-    Database-->>User: Filtered Results
-```
-
-Every entity extending `SuperModel` automatically:
-- Gets `mandat` field set on creation
-- Gets `createdDate` and `lastModifiedDate` audit fields
-- Can be filtered by mandate for data isolation
-
-## Request Flow
-
-```mermaid
-sequenceDiagram
-    participant Browser
-    participant JSF as Jakarta Faces
-    participant Security as Spring Security
-    participant Bean as Backing Bean
-    participant Service
+    participant B as Browser
+    participant F as Spring Security filter chain
+    participant G as PageAccessGuardFilter
+    participant J as FacesServlet
+    participant BB as Backing bean
+    participant S as Service
     participant DB as PostgreSQL
 
-    Browser->>JSF: HTTP Request (*.xhtml)
-    JSF->>Security: Authentication Check
-    Security->>Security: CSRF Validation
-
-    alt Authenticated
-        Security->>JSF: Allow
-        JSF->>Bean: Invoke Backing Bean
-        Bean->>Service: Business Logic
-        Service->>DB: JPA Query
-        DB-->>Service: Result
-        Service-->>Bean: Data
-        Bean-->>JSF: Update View
-        JSF-->>Browser: Rendered HTML
-    else Not Authenticated
-        Security-->>Browser: Redirect to /login.xhtml
-    end
+    B->>F: GET /settings.html
+    F->>F: authenticated? role on ROOT_ONLY_PAGES / ADMIN_PAGES?
+    F-->>B: 302 to /login.html (if not)
+    F->>G: pass
+    G->>G: is this view reachable from the menu for this user?
+    G-->>B: 403 (STRICT) or log only (REPORT)
+    G->>J: pass
+    J->>BB: restore view, invoke action
+    BB->>S: business call
+    S->>DB: query, tenant-filtered
+    DB-->>S: rows
+    S-->>BB: result
+    BB-->>J: render
+    J-->>B: HTML
 ```
 
-## Menu System
+Two gates, not one, and they answer different questions:
+
+- **Spring Security** (`PlaintextSecurityConfig`) answers *may this user be on
+  this URL at all* — including two hard-wired lists, `ROOT_ONLY_PAGES` and
+  `ADMIN_PAGES`.
+- **The page guard** (`plaintext-root-pageguard`) answers *is this view
+  reachable from the menu this user sees*. It exists because the menu already
+  encodes the answer, and repeating it in URL patterns is how the two drift
+  apart.
+
+A new admin page therefore needs **both**: a menu entry *and*, if it is not
+covered by the patterns, an entry in the security config. Forgetting the second
+is the usual cause of a 403 on a page that shows up in the menu. The guard
+defaults to `REPORT` (log, don't block) so that adding it to an existing
+application does not lock anyone out — see
+[ADR 0004](adr/0004-page-guard-strict-als-default.md) and
+[Page Access Guard](security/PAGE_ACCESS_GUARD.md).
+
+## Menu system
 
 ```mermaid
 graph TD
-    A[Spring Context Scan] -->|Finds @Component| B[MenuItemImpl Beans]
-    B --> C[MenuModelBuilder]
-    C -->|Check roles| D{User has role?}
-    D -->|Yes| E{Mandate visible?}
-    D -->|No| F[Hidden]
-    E -->|Yes| G[Add to MenuModel]
-    E -->|No| F
-    G --> H[Build Hierarchy<br/>parent/child]
-    H --> I[Sort by order]
-    I --> J[PrimeFaces MenuModel]
-    J --> K[Rendered in Template]
+    ANN["@MenuAnnotation on a backing bean<br/>title · icon · roles · link · order"] --> BUILD[MenuBuilder<br/>scans at startup]
+    BUILD --> ROLES{user roles}
+    ROLES --> VIS{tenant menu config<br/>plaintext-root-menu-visibility}
+    VIS --> BEAN[MenuBean<br/>plaintext-root-web]
+    BEAN --> UI[rendered navigation]
+    VIS --> GUARD[PageAccessGuardService<br/>same data, used for authorization]
 ```
 
-Menu items are:
-1. Discovered via Spring component scanning
-2. Filtered by user roles
-3. Filtered by mandate visibility
-4. Organized into parent/child hierarchy
-5. Sorted by order property
-6. Rendered via the template's menu component
+The menu is declared where the page is implemented — an annotation on the
+backing bean, not a central XML file. That single declaration drives three
+things: what the user sees, what a tenant may switch off
+(`MandateMenuConfig`), and what the page guard allows.
 
-## Database Schema (Core)
+**Links end in `.html`, never `.xhtml`.** The application rewrites `.html` to
+the Facelets view; `MenuLinkInvariantTest` fails the build if a menu entry
+points at `.xhtml` directly.
+
+## Data model
+
+The framework owns few tables — it owns the *shape* of them.
 
 ```mermaid
 erDiagram
-    USER_SESSION {
-        long id PK
-        string session_id UK
-        long user_id
-        string username
-        string mandat
-        timestamp login_time
-        timestamp last_activity_time
-        string user_agent
-        boolean active
+    MY_USER_ENTITY {
+        bigint id PK
+        varchar username
+        varchar password
+        varchar mandat
+        set roles
     }
-
-    USER_PREFERENCE {
-        string user PK
-        string menu_mode
-        string dark_mode
-        string component_theme
-        string input_style
-        boolean menu_static
+    USER_MANDATE {
+        bigint id PK
+        bigint user_id FK
+        varchar mandat
     }
-
-    WERTELISTE {
-        long id PK
-        string key
-        string mandat
-        text data
+    MANDATE_MENU_CONFIG {
+        bigint id PK
+        varchar mandat
+        varchar menu_key
+        boolean visible
     }
-
-    CRON_STATISTIC {
-        long id PK
-        string cron_name
-        int counter
-        timestamp last_run
+    ROLLENZUTEILUNG {
+        bigint id PK
+        varchar mandat
+        varchar rolle
     }
+    MY_USER_ENTITY ||--o{ USER_MANDATE : "may switch to"
+    MANDATE_MENU_CONFIG }o--|| MY_USER_ENTITY : "applies to the tenant of"
 ```
 
-## Template System
+Every application entity adds its own tables and inherits the `SuperModel`
+columns. Framework migrations live in `plaintext-root-flyway` and in
+`plaintext-root-webapp`; they are PostgreSQL-only, and
+`FlywayMigrationenTest` rejects H2/HSQLDB idioms — see
+[Flyway migrations](FLYWAY_MIGRATIONS.md).
 
-```mermaid
-graph TB
-    subgraph "Maven Dependencies"
-        APP[plaintext-root-webapp]
-        TPL_P[template-plaintext<br/><i>Open Source</i>]
-    end
-
-    APP -->|Default| TPL_P
-    APP -.->|Swap in pom.xml| TPL_F
-
-    subgraph "Template Contents"
-        T1[template.xhtml<br/>Main layout]
-        T2[topbar.xhtml<br/>Navigation bar]
-        T3[menu.xhtml<br/>Sidebar menu]
-        T4[config.xhtml<br/>Settings panel]
-        T5[footer.xhtml<br/>Footer]
-        T6[layout.js<br/>Layout controller]
-        T7[layout-light.css<br/>Light theme]
-        T8[layout-dark.css<br/>Dark theme]
-    end
-
-    TPL_P --> T1 & T2 & T3 & T4 & T5 & T6 & T7 & T8
-```
-
-Templates are swapped by changing a single Maven dependency. Both templates provide identical file paths under `META-INF/resources/`, so no code changes are needed in consuming applications.
-
-## Security Architecture
-
-```mermaid
-graph TD
-    A[HTTP Request] --> B{Spring Security Filter}
-    B -->|Public URLs| C[Allow]
-    B -->|Protected URLs| D{Authenticated?}
-    D -->|No| E[Redirect to Login]
-    D -->|Yes| F{CSRF Valid?}
-    F -->|No| G[403 Forbidden]
-    F -->|Yes| H{Has Required Role?}
-    H -->|No| I[Access Denied Page]
-    H -->|Yes| J{Page Access Guard}
-    J -->|Menu not visible| K[Redirect to Home]
-    J -->|Allowed| L[Render Page]
-
-    subgraph "Roles"
-        R1[ROLE_USER]
-        R2[ROLE_ADMIN]
-        R3[ROLE_ROOT]
-    end
-
-    R1 -->|Base access| H
-    R2 -->|Admin panels| H
-    R3 -->|Full access + mandate switch| H
-```
-
-## Deployment
+## Template system
 
 ```mermaid
 graph LR
-    subgraph "Development"
-        DEV[mvn spring-boot:run]
-        COMPOSE[docker compose up]
-    end
-
-    subgraph "Production"
-        BUILD[mvn clean package]
-        DOCKER[Docker Image<br/>eclipse-temurin:25-jre]
-        NGINX[Nginx Reverse Proxy<br/>Blue/Green Deploy]
-    end
-
-    DEV --> COMPOSE
-    BUILD --> DOCKER
-    DOCKER --> NGINX
+    TPL[plaintext-root-template<br/>no dependencies] --> INC["META-INF/resources/includes/template.xhtml"]
+    INC --> PAGES[every page: template=&quot;/includes/template.xhtml&quot;]
+    TPL --> CSS[plaintext-layout: CSS, PrimeIcons, dark/light]
+    APP[your application] -.->|replace the jar| TPL
 ```
 
-The project includes:
-- `compose.yaml` for local development (PostgreSQL)
-- `Dockerfile` for production container builds
-- `deploy/docker-compose-bluegreen.yaml` for blue/green deployments with Nginx
+The template module has **no dependencies at all**, which is the point: an
+application that wants a different shell replaces one jar instead of forking the
+webapp. The pages reference the template by resource path, so the swap needs no
+code change.
+
+## Build, test and CI
+
+```mermaid
+graph LR
+    PR[pull request] --> WP[Woodpecker<br/>ci.plaintext.ch]
+    WP --> BUILD[".woodpecker/build.yml<br/>mvn install, embedded PostgreSQL"]
+    WP --> PW[".woodpecker/playwright.yml<br/>browser smoke tests"]
+    MASTER[merge to master] --> DEPLOY[".woodpecker/deploy.yml<br/>release + publish to Reposilite"]
+    CRON[nightly / weekly cron] --> SONAR[".woodpecker/sonar.yml"]
+```
+
+Three things about this repository specifically:
+
+- **It is release-only.** plaintext-root has had no DEV or PROD deployment since
+  12 August 2026; the pipeline builds, tests and publishes the artifacts that
+  the consuming applications pin. There is no `verify-dev`/`verify-prod` here.
+- **Tests use an embedded PostgreSQL** (`io.zonky.test:embedded-postgres`), not
+  Testcontainers and not H2 — the CI step needs no Docker socket.
+- **The CI engine is Woodpecker**, switched over on 30 August 2026. See
+  [CI pipeline](CI.md), and [Setting up Woodpecker](ci/WOODPECKER_SETUP.md) if
+  you need to wire up a new repository.
+
+## Where to read on
+
+- [Module reference](MODULE_REFERENCE.md) — what each module contains
+- [Architecture decisions](adr/) — why it is built this way, with the
+  alternatives that were rejected
+- [Role registry](ROLE_REGISTRY.md) — how a module declares its roles
+- [Deep links](DEEPLINKS.md) — opening one record straight from an e-mail

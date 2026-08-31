@@ -73,7 +73,7 @@ public class RegistrationService {
             return RegistrationOutcome.ACCEPTED;
         }
 
-        // SECURITY (Karte 307, K2.3): Klartext-Token nur im Link, in der DB nur der SHA-256-Hash.
+        // SECURITY (card 307, K2.3): the clear-text token only in the link, in the DB only the SHA-256 hash.
         String rawToken = generateToken();
         RegistrationToken token = new RegistrationToken();
         token.setTokenHash(SelfServiceTokenHash.sha256Hex(rawToken));
@@ -106,21 +106,21 @@ public class RegistrationService {
         }
         RegistrationToken token = tokenOpt.get();
         Instant now = Instant.now();
-        // SECURITY (Karte 307, K2.3): ATOMAR einloesen (bedingtes UPDATE) statt check-then-set —
-        // verhindert TOCTOU/Replay bei parallelen Aufrufen. n==1 => Token exklusiv verbraucht.
+        // SECURITY (card 307, K2.3): redeem ATOMICALLY (conditional UPDATE) instead of check-then-set —
+        // prevents TOCTOU/replay on parallel calls. n==1 => token consumed exclusively.
         if (tokenRepository.consumeToken(hash, now) != 1) {
             return RegistrationResult.invalid();
         }
         if (userRepository.findByUsername(token.getEmail()) != null) {
-            // Token ist bereits (atomar) verbraucht; ein Doppel-Konto entsteht nicht.
+            // The token has already been consumed (atomically); no duplicate account arises.
             return RegistrationResult.invalid();
         }
         MyUserEntity user = new MyUserEntity();
         user.setUsername(token.getEmail());
         user.setPassword(passwordEncoder.encode(password));
-        // Konvention: der NACKTE Rollenname wird gespeichert; MyUserDetailsService praefixt beim
-        // Login zu "ROLE_". Frueher stand hier faelschlich "ROLE_USER" -> die Authority wurde zu
-        // "ROLE_ROLE_USER" (wirkungslos). Korrekt ist "user" (Karte 306, Bestand per Flyway migriert).
+        // Convention: the BARE role name is stored; MyUserDetailsService prefixes it with
+        // "ROLE_" at login. Previously "ROLE_USER" stood here by mistake -> the authority became
+        // "ROLE_ROLE_USER" (ineffective). Correct is "user" (card 306, existing data migrated via Flyway).
         user.addRole("user");
         user.addRole("PROPERTY_MANDAT_" + token.getMandat().toLowerCase());
         userRepository.save(user);

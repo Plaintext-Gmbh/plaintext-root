@@ -19,22 +19,22 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Meldet beim Start, welche ausgelieferten JSF-Views der Seiten-Zugriffsschutz nicht zuordnen kann
- * (Karte 308).
+ * Reports at startup which of the shipped JSF views the page access guard cannot assign to a rule
+ * (card 308).
  *
- * <p>Motivation: Der Guard ist ein Framework-Baustein, die Views kommen aus den konsumierenden
- * Apps. Beim Umstieg auf {@link PageGuardMode#STRICT} wuerde jede View ohne Menueeintrag, Alias
- * oder Allowlist-Eintrag gesperrt. Statt das durch Benutzer-Fehlermeldungen herauszufinden, listet
- * dieser Report die Luecken beim Boot auf:
+ * <p>Motivation: the guard is a framework building block, the views come from the consuming apps.
+ * When switching to {@link PageGuardMode#STRICT}, every view without a menu entry, alias or
+ * allowlist entry would be blocked. Instead of finding that out through user error reports, this
+ * report lists the gaps at boot time:
  * <ul>
- *   <li>Modus {@link PageGuardMode#REPORT}: WARN mit dem Hinweis, dass diese Views nach dem Umstieg
- *       gesperrt wuerden.</li>
- *   <li>Modus {@link PageGuardMode#STRICT}: WARN, dass diese Views jetzt gesperrt SIND.</li>
+ *   <li>Mode {@link PageGuardMode#REPORT}: WARN with the note that these views would be blocked
+ *       after the switch.</li>
+ *   <li>Mode {@link PageGuardMode#STRICT}: WARN that these views ARE blocked now.</li>
  * </ul>
  *
- * <p>Fragmente ({@code includes/}, {@code templates/}) werden ausgenommen: sie werden nur per
- * {@code ui:include} bzw. als {@code template=} eingebunden und sind keine aufrufbaren Seiten.
- * Dass sie bei Direktaufruf gesperrt werden, ist gewollt.
+ * <p>Fragments ({@code includes/}, {@code templates/}) are excluded: they are only pulled in via
+ * {@code ui:include} resp. as {@code template=} and are not callable pages. That they are blocked
+ * on a direct call is intentional.
  */
 @Slf4j
 public class PageAccessGuardStartupReport {
@@ -43,12 +43,12 @@ public class PageAccessGuardStartupReport {
             "classpath*:META-INF/resources/**/*.xhtml"
     };
 
-    /** Pfadbestandteile, die ein Facelet als Fragment/Template kennzeichnen. */
+    /** Path components that mark a facelet as a fragment/template. */
     private static final List<String> FRAGMENT_MARKER = List.of("/includes/", "/templates/");
 
     /**
-     * Ein {@code <ui:composition>} OHNE {@code template=} ist ein Include-Fragment (wird per
-     * {@code ui:include} eingebunden, z.B. {@code menu.xhtml}) und keine aufrufbare Seite.
+     * A {@code <ui:composition>} WITHOUT {@code template=} is an include fragment (pulled in via
+     * {@code ui:include}, e.g. {@code menu.xhtml}) and not a callable page.
      */
     private static final Pattern UI_COMPOSITION = Pattern.compile("<ui:composition\\b([^>]*)>", Pattern.DOTALL);
 
@@ -102,7 +102,7 @@ public class PageAccessGuardStartupReport {
         }
     }
 
-    /** Alle ausgelieferten Views (ohne Fragmente), als Pfad relativ zu {@code META-INF/resources}. */
+    /** All shipped views (without fragments), as a path relative to {@code META-INF/resources}. */
     private List<String> sammleViews() {
         TreeSet<String> ergebnis = new TreeSet<>();
         for (String muster : MUSTER) {

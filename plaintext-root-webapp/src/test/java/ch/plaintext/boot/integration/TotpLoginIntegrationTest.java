@@ -30,18 +30,18 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * End-to-End-Integrationstest der Zwei-Schritt-TOTP-Anmeldung gegen echtes PostgreSQL.
+ * End-to-end integration test of the two-step TOTP login against a real PostgreSQL.
  *
- * <p>Feature global AN (via {@link DynamicPropertySource}). Beweist die zentralen
- * Sicherheits-Invarianten:
+ * <p>Feature globally ON (via {@link DynamicPropertySource}). Proves the central
+ * security invariants:
  * <ul>
- *   <li>User mit {@code totpEnabled} landet nach Passwort-Login auf {@code /login/totp}
- *       (nicht direkt auf der Startseite).</li>
- *   <li><b>Kein Bypass:</b> mit ausstehendem zweitem Faktor ist eine geschuetzte Seite
- *       NICHT erreichbar.</li>
- *   <li>Mit gueltigem TOTP-Code wird der Login vollstaendig und die Startseite erreichbar.</li>
- *   <li>Ein Recovery-Code funktioniert genau einmal (one-time).</li>
- *   <li>Direkter Aufruf von {@code /login/totp} ohne pending-Zustand meldet niemanden an.</li>
+ *   <li>A user with {@code totpEnabled} lands on {@code /login/totp} after the password login
+ *       (not directly on the start page).</li>
+ *   <li><b>No bypass:</b> with the second factor still pending a protected page
+ *       is NOT reachable.</li>
+ *   <li>With a valid TOTP code the login completes and the start page becomes reachable.</li>
+ *   <li>A recovery code works exactly once (one-time).</li>
+ *   <li>Calling {@code /login/totp} directly without a pending state logs nobody in.</li>
  * </ul>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -52,7 +52,7 @@ class TotpLoginIntegrationTest {
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         EmbeddedPg.registrieren(registry, "totploginintegrationtest");
-        // TOTP-Feature fuer diesen Test global scharf schalten.
+        // Arm the TOTP feature globally for this test.
         registry.add("plaintext.security.totp.enabled", () -> "true");
     }
 
@@ -75,12 +75,12 @@ class TotpLoginIntegrationTest {
     private static final String TOTP_PASSWORD = "totp-test-passwort";
 
     /**
-     * Geschuetzte JSF-Seite als Bypass-Sonde. Bewusst {@code /access-denied.xhtml} (SYSTEM_PAGE,
-     * absolute Template-Referenz, kein Dashboard) – identisch zur Wahl im SecurityTest: sie
-     * rendert authentifiziert zuverlaessig 200 und ist ohne Auth nicht erreichbar (Redirect).
-     * (Andere Seiten wie /myuser.xhtml nutzen eine relative Template-Referenz, die erst nach
-     * dem prepare-package-Unpack aufloest und im reinen test-Lauf 500 werfen wuerde – das ist
-     * ein Test-Umgebungs-Artefakt, kein Security-Verhalten.)
+     * A protected JSF page as a bypass probe. Deliberately {@code /access-denied.xhtml} (SYSTEM_PAGE,
+     * absolute template reference, no dashboard) - identical to the choice in SecurityTest: it
+     * renders 200 reliably when authenticated and is not reachable without auth (redirect).
+     * (Other pages such as /myuser.xhtml use a relative template reference that only resolves
+     * after the prepare-package unpack and would throw a 500 in a pure test run - that is
+     * a test environment artifact, not security behaviour.)
      */
     private static final String GESCHUETZTE_SEITE = "/access-denied.xhtml";
 
@@ -102,12 +102,12 @@ class TotpLoginIntegrationTest {
         String secret = totpService.generateSecret();
         anlegenTotpUser(secret, null);
 
-        // 1) Passwort-Login -> Redirect auf /login/totp (NICHT auf Startseite)
+        // 1) Password login -> redirect to /login/totp (NOT to the start page)
         Login login = passwortLogin();
         assertTrue(login.location.contains("/login/totp"),
                 "Nach Passwort-Login mit aktivem TOTP muss auf /login/totp umgeleitet werden, war: " + login.location);
 
-        // 2) BYPASS-CHECK: geschuetzte Seite ist mit ausstehendem 2. Faktor NICHT erreichbar
+        // 2) BYPASS CHECK: with the second factor pending the protected page is NOT reachable
         ResponseEntity<String> geschuetzt = lenientClient().get()
                 .uri(GESCHUETZTE_SEITE)
                 .header(HttpHeaders.COOKIE, login.session)
@@ -119,7 +119,7 @@ class TotpLoginIntegrationTest {
         assertTrue(geschuetztLoc.contains("/login"),
                 "Zugriff ohne zweiten Faktor muss zur Anmeldung zuruecklenken, war: " + geschuetztLoc);
 
-        // 3) Gueltigen TOTP-Code am zweiten Schritt einreichen -> voller Login
+        // 3) Submit a valid TOTP code at the second step -> full login
         String totpCsrf = holeCsrfVon("/login/totp", login.session);
         ResponseEntity<String> verify = lenientClient().post()
                 .uri("/login/totp")
@@ -132,7 +132,7 @@ class TotpLoginIntegrationTest {
         assertNotNull(verifyLoc);
         assertFalse(verifyLoc.contains("/login"), "Nach gueltigem Code darf NICHT zurueck zum Login, war: " + verifyLoc);
 
-        // 4) Jetzt ist die geschuetzte Seite erreichbar (kein Redirect zum Login mehr)
+        // 4) Now the protected page is reachable (no more redirect to the login)
         String sessionNachVerify = extrahiereSessionCookie(verify, login.session);
         ResponseEntity<String> jetztErlaubt = lenientClient().get()
                 .uri(GESCHUETZTE_SEITE)
@@ -163,7 +163,7 @@ class TotpLoginIntegrationTest {
         assertTrue(loc.contains("/login/totp") && loc.contains("error"),
                 "Falscher Code muss mit Fehler zum TOTP-Schritt zurueck, war: " + loc);
 
-        // Weiterhin kein Zugriff auf geschuetzte Seiten
+        // Still no access to protected pages
         ResponseEntity<String> geschuetzt = lenientClient().get()
                 .uri(GESCHUETZTE_SEITE)
                 .header(HttpHeaders.COOKIE, login.session)
@@ -179,7 +179,7 @@ class TotpLoginIntegrationTest {
         hashed.add(totpService.hashRecoveryCode(recoveryPlain));
         anlegenTotpUser(secret, hashed);
 
-        // Erste Nutzung: Recovery-Code loggt ein
+        // First use: the recovery code logs in
         Login login1 = passwortLogin();
         String csrf1 = holeCsrfVon("/login/totp", login1.session);
         ResponseEntity<String> verify1 = lenientClient().post()
@@ -192,7 +192,7 @@ class TotpLoginIntegrationTest {
         assertNotNull(loc1);
         assertFalse(loc1.contains("/login"), "Gueltiger Recovery-Code muss einloggen, war: " + loc1);
 
-        // Zweite Nutzung desselben Recovery-Codes: abgelehnt (one-time)
+        // Second use of the same recovery code: rejected (one-time)
         Login login2 = passwortLogin();
         String csrf2 = holeCsrfVon("/login/totp", login2.session);
         ResponseEntity<String> verify2 = lenientClient().post()
@@ -209,20 +209,20 @@ class TotpLoginIntegrationTest {
 
     @Test
     void kein2faBypassUeberRememberMe() {
-        // Regression: Passwort-Login mit "Angemeldet bleiben" setzt VOR dem SuccessHandler ein
-        // Remember-Me-Cookie. Das TOTP-Gate muss dieses Cookie widerrufen, sonst wuerde der
-        // RememberMeAuthenticationFilter den User beim naechsten Request ohne zweiten Faktor
-        // voll einloggen (Bypass).
+        // Regression: a password login with "stay signed in" sets a remember-me cookie BEFORE the
+        // SuccessHandler. The TOTP gate has to revoke that cookie, otherwise the
+        // RememberMeAuthenticationFilter would log the user in fully on the next request without a
+        // second factor (bypass).
         String secret = totpService.generateSecret();
         anlegenTotpUser(secret, null);
 
-        // /login.xhtml -> Session + CSRF
+        // /login.xhtml -> session + CSRF
         ResponseEntity<String> loginSeite = lenientClient().get()
                 .uri("/login.xhtml").retrieve().toEntity(String.class);
         String session = extrahiereSessionCookie(loginSeite, null);
         String csrf = extrahiereCsrf(loginSeite.getBody());
 
-        // Passwort-Login MIT remember-me=on
+        // Password login WITH remember-me=on
         ResponseEntity<String> login = lenientClient().post()
                 .uri("/login")
                 .header(HttpHeaders.COOKIE, session)
@@ -233,15 +233,15 @@ class TotpLoginIntegrationTest {
         assertNotNull(location);
         assertTrue(location.contains("/login/totp"), "Muss auf TOTP-Schritt umleiten, war: " + location);
 
-        // Das EFFEKTIVE remember-me-Cookie (letztes Set-Cookie gewinnt im Browser) darf KEIN
-        // gueltiges Cookie sein – sonst 2FA-Bypass. Der Handler widerruft ein evtl. vom Filter
-        // gesetztes Cookie mit einem Loesch-Cookie danach.
+        // The EFFECTIVE remember-me cookie (the last Set-Cookie wins in the browser) must NOT be a
+        // valid cookie - otherwise 2FA bypass. The handler revokes a cookie possibly set by the
+        // filter with a deletion cookie afterwards.
         String effektiv = effektivesRememberMeCookie(login);
         assertTrue(effektiv == null || istLoeschCookie(effektiv),
                 "Das effektive remember-me-Cookie muss ein Loesch-Cookie sein (kein 2FA-Bypass), war: " + effektiv);
 
-        // Selbst wenn ein Angreifer das (nicht vorhandene) Cookie mitschickt: kein Zugriff.
-        // Wir schicken nur die Session (ohne gueltiges remember-me) -> geschuetzte Seite bleibt gesperrt.
+        // Even if an attacker sends the (non-existent) cookie along: no access.
+        // We only send the session (without a valid remember-me) -> the protected page stays locked.
         String sessionNachLogin = extrahiereSessionCookie(login, session);
         ResponseEntity<String> geschuetzt = lenientClient().get()
                 .uri(GESCHUETZTE_SEITE)
@@ -253,11 +253,11 @@ class TotpLoginIntegrationTest {
 
     @Test
     void direkterAufrufVonLoginTotpOhnePendingLoggtNichtEin() {
-        // Frische Session, kein Passwort-Login -> kein pending-Zustand.
+        // Fresh session, no password login -> no pending state.
         ResponseEntity<String> get = lenientClient().get()
                 .uri("/login/totp")
                 .retrieve().toEntity(String.class);
-        // Ohne pending: Redirect zurueck zum Login (nie eine geschuetzte Seite).
+        // Without pending: redirect back to the login (never a protected page).
         assertTrue(get.getStatusCode().is3xxRedirection(),
                 "GET /login/totp ohne pending-Zustand muss zum Login umleiten, war: " + get.getStatusCode());
         String loc = get.getHeaders().getFirst(HttpHeaders.LOCATION);
@@ -285,7 +285,7 @@ class TotpLoginIntegrationTest {
     }
 
     private Login passwortLogin() {
-        // /login.xhtml holen -> Session + CSRF
+        // fetch /login.xhtml -> session + CSRF
         ResponseEntity<String> loginSeite = lenientClient().get()
                 .uri("/login.xhtml").retrieve().toEntity(String.class);
         String session = extrahiereSessionCookie(loginSeite, null);
@@ -320,12 +320,12 @@ class TotpLoginIntegrationTest {
 
     private String extrahiereCsrf(String html) {
         assertNotNull(html);
-        // login.xhtml / login-totp.xhtml betten das Token als value="..." ein.
+        // login.xhtml / login-totp.xhtml embed the token as value="...".
         Matcher m = Pattern.compile("name=\"_csrf\"\\s+value=\"([^\"]+)\"").matcher(html);
         if (m.find()) {
             return m.group(1);
         }
-        // Fallback: EL-gerenderte Variante value="TOKEN" nach name-Attribut in beliebiger Reihenfolge
+        // Fallback: EL-rendered variant value="TOKEN" after the name attribute in any order
         m = Pattern.compile("value=\"([^\"]+)\"\\s+name=\"_csrf\"").matcher(html);
         assertTrue(m.find(), "CSRF-Token nicht in HTML gefunden");
         return m.group(1);
@@ -341,7 +341,7 @@ class TotpLoginIntegrationTest {
     }
 
     /**
-     * Liefert das LETZTE remember-me-Set-Cookie (das im Browser gewinnt), oder {@code null}.
+     * Returns the LAST remember-me Set-Cookie (the one that wins in the browser), or {@code null}.
      */
     private String effektivesRememberMeCookie(ResponseEntity<String> response) {
         String last = null;
@@ -353,7 +353,7 @@ class TotpLoginIntegrationTest {
         return last;
     }
 
-    /** Ob ein Set-Cookie ein Loesch-Cookie ist (leerer Wert oder Max-Age=0 / 1970-Expiry). */
+    /** Whether a Set-Cookie is a deletion cookie (empty value or Max-Age=0 / 1970 expiry). */
     private boolean istLoeschCookie(String setCookie) {
         String value = setCookie.substring(setCookie.indexOf('=') + 1).split(";", 2)[0];
         String lc = setCookie.toLowerCase();

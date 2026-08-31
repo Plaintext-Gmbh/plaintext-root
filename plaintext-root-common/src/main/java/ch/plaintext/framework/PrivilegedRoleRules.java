@@ -7,46 +7,46 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Welche Rollen nur {@code root} vergeben darf — und welche ausdruecklich auch {@code admin}.
+ * Which roles only {@code root} may assign — and which ones expressly {@code admin} as well.
  *
- * <p><b>Die Zustaendigkeitsregel.</b> <i>root</i> beantwortet, welche Module zu einem Mandanten
- * gehoeren (Mandanten-White-/Blacklist der Menuesteuerung). <i>admin</i> beantwortet, wer sie
- * benutzen darf — und dafuer braucht admin die Modul-Rollen. Eine Modul-Rolle
- * ({@code plaintext.menu.module-roles.<modul>=<rolle>}) verleiht nichts weiter als den Zugang zu
- * einem fachlichen Modul; sie ist damit <b>keine privilegierte Rolle</b> und fuer admin vergebbar.</p>
+ * <p><b>The responsibility rule.</b> <i>root</i> answers which modules belong to a tenant (the
+ * tenant white/blacklist of the menu control). <i>admin</i> answers who may use them — and for
+ * that admin needs the module roles. A module role
+ * ({@code plaintext.menu.module-roles.<modul>=<rolle>}) grants nothing beyond access to a
+ * business module; it is therefore <b>not a privileged role</b> and can be assigned by admin.</p>
  *
- * <p><b>Privilegiert</b> — und deshalb ausschliesslich fuer root — ist:</p>
+ * <p><b>Privileged</b> — and therefore reserved for root — is:</p>
  * <ul>
- *   <li>{@code root} und {@code admin}: sie vergeben Verwaltungsrechte weiter. Ein admin, der
- *       {@code admin} oder {@code root} vergeben duerfte, koennte seine eigene Beschraenkung
- *       aufheben — die Trennung waere nur noch Dekoration.</li>
- *   <li>jede {@code PROPERTY_*}-Rolle: sie steuert Quereinstiege wie den Mandanten-Wechsel und
- *       wirkt damit ueber den eigenen Mandanten hinaus.</li>
+ *   <li>{@code root} and {@code admin}: they pass administrative rights on. An admin who were
+ *       allowed to assign {@code admin} or {@code root} could lift their own restriction — the
+ *       separation would be nothing but decoration.</li>
+ *   <li>every {@code PROPERTY_*} role: it controls side entrances such as switching the tenant
+ *       and therefore takes effect beyond the own tenant.</li>
  * </ul>
  *
- * <p><b>Bestand bleibt unangetastet.</b> Die Regel gilt fuer das <i>Neu-Vergeben</i>. Eine bereits
- * gespeicherte Zuweisung bleibt bestehen und bleibt editierbar; die aufrufenden Stellen pruefen
- * deshalb gegen den persistierten Stand, nicht gegen das Formular.</p>
+ * <p><b>Existing assignments stay untouched.</b> The rule applies to <i>newly assigning</i> a
+ * role. An assignment that is already stored remains in place and remains editable; the calling
+ * places therefore check against the persisted state, not against the form.</p>
  *
  * @author info@plaintext.ch
  * @since 1.608.0
  */
 public final class PrivilegedRoleRules {
 
-    /** Rollen, die nur root vergeben darf (normalisiert: klein, ohne {@code ROLE_}-Prefix). */
+    /** Roles only root may assign (normalized: lowercase, without the {@code ROLE_} prefix). */
     private static final Set<String> NUR_ROOT = Set.of("root", "admin");
 
-    /** Praefix der Rollen, die ueber den eigenen Mandanten hinaus wirken. */
+    /** Prefix of the roles that take effect beyond the own tenant. */
     private static final String QUERZUGRIFF_PREFIX = "property_";
 
     private PrivilegedRoleRules() {
     }
 
     /**
-     * Darf diese Rolle nur von root vergeben werden?
+     * May this role be assigned by root only?
      *
-     * @param roleName Rollenname in beliebiger Schreibweise, mit oder ohne {@code ROLE_}-Prefix
-     * @return {@code true}, wenn nur root sie neu vergeben darf
+     * @param roleName role name in any spelling, with or without the {@code ROLE_} prefix
+     * @return {@code true} when only root may newly assign it
      */
     public static boolean isPrivileged(String roleName) {
         String normalized = normalize(roleName);
@@ -57,10 +57,10 @@ public final class PrivilegedRoleRules {
     }
 
     /**
-     * Die Meldung, mit der eine abgelehnte Vergabe begruendet wird.
+     * The message with which a rejected assignment is explained.
      *
-     * @param roleName die abgelehnte Rolle
-     * @return Klartext fuer die Oberflaeche
+     * @param roleName the rejected role
+     * @return plain text for the UI
      */
     public static String rejectionMessage(String roleName) {
         return "Nur ROOT darf die Rolle '" + roleName + "' vergeben. "
@@ -68,10 +68,10 @@ public final class PrivilegedRoleRules {
     }
 
     /**
-     * Normalisierte Form eines Rollennamens: getrimmt, klein, ohne {@code ROLE_}-Prefix.
+     * Normalized form of a role name: trimmed, lowercase, without the {@code ROLE_} prefix.
      *
-     * @param roleName roher Rollenname, darf {@code null} sein
-     * @return normalisierter Name, nie {@code null}
+     * @param roleName raw role name, may be {@code null}
+     * @return normalized name, never {@code null}
      */
     private static String normalize(String roleName) {
         if (roleName == null) {

@@ -21,7 +21,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
-/** Unit-Tests für den JSON-Export/Import einer Modul-Datenmenge (Task #016 Phase 2, PR 3). */
+/** Unit tests for the JSON export/import of a module data set (Task #016 phase 2, PR 3). */
 @ExtendWith(MockitoExtension.class)
 class ModuleDataServiceTest {
 

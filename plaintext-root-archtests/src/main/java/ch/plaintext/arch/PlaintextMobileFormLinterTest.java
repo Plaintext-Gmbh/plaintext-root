@@ -20,20 +20,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilter Linter-Guard gegen Mobile-Anti-Patterns in ALLEN Framework-XHTML.
+ * Shared linter guard against mobile anti-patterns in ALL framework XHTML.
  *
- * <p>Ausloeser: {@code <p:dialog width="560">} (fixe px-Breite) laeuft auf dem Handy rechts aus dem
- * Viewport. Das zentrale {@code mobile-responsive.css} (plaintext-root-template) deckelt jeden Dialog
- * auf {@code 96vw}; dieser Test verhindert zusaetzlich, dass NEUE fixe-Breite-Dialoge unbemerkt
- * hinzukommen — sie muessen entweder auf {@code styleClass="mobile-safe"} umgestellt oder begruendet
- * ausgenommen werden ({@code styleClass="mobile-exempt"} bzw. {@code <!-- mobile-ok -->}).
+ * <p>Trigger: {@code <p:dialog width="560">} (fixed px width) runs out of the viewport on the right
+ * on a phone. The central {@code mobile-responsive.css} (plaintext-root-template) caps every dialog
+ * at {@code 96vw}; this test additionally prevents NEW fixed-width dialogs from being added
+ * unnoticed — they must either be switched to {@code styleClass="mobile-safe"} or be exempted with a
+ * justification ({@code styleClass="mobile-exempt"} resp. {@code <!-- mobile-ok -->}).
  *
- * <p>Der eigentliche Scan-Code lebt in {@link MobileFormLinter} (in plaintext-root-common). Dieser
- * Test liegt in {@code src/main/java} des geteilten Moduls {@code plaintext-root-archtests}; Consumer
- * (app, iot, fwtool, schuetu) nehmen das Modul als Test-Dependency auf und lassen den Test via
- * Surefire {@code <dependenciesToScan>} laufen — er scannt ab dem Arbeitsverzeichnis (Consumer-
- * Reactor-Wurzel) jedes {@code src/main/resources/META-INF/resources} und meldet Verstoesse. Kein
- * Copy-Paste mehr noetig.
+ * <p>The actual scan code lives in {@link MobileFormLinter} (in plaintext-root-common). This
+ * test lives in {@code src/main/java} of the shared module {@code plaintext-root-archtests}; consumers
+ * (app, iot, fwtool, schuetu) take the module as a test dependency and let the test run via
+ * Surefire {@code <dependenciesToScan>} — it scans, starting from the working directory (consumer
+ * reactor root), every {@code src/main/resources/META-INF/resources} and reports violations. No more
+ * copy-paste needed.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -43,16 +43,16 @@ class PlaintextMobileFormLinterTest {
     private static final String RESOURCES_SUFFIX = "src/main/resources/META-INF/resources";
 
     /**
-     * Scannt jedes {@code src/main/resources/META-INF/resources} aller Reactor-Module (ab Repo-Wurzel)
-     * und schlaegt bei jedem Mobile-Anti-Pattern mit Datei + Zeile fehl.
-     * Consumer-Apps ohne eigene XHTML-Views (keine META-INF/resources-Verzeichnisse) haben
-     * nichts zu linten — der Test besteht dann, statt zu scheitern.
+     * Scans every {@code src/main/resources/META-INF/resources} of all reactor modules (from the
+     * repository root) and fails with file + line on every mobile anti-pattern.
+     * Consumer apps without XHTML views of their own (no META-INF/resources directories) have
+     * nothing to lint — the test then passes instead of failing.
      */
     @Test
     void keineMobileAntiPatternsInFrameworkXhtml() throws IOException {
         List<Path> resourceRoots = findResourceRoots();
         if (resourceRoots.isEmpty()) {
-            // Kein XHTML im Reactor (z.B. Consumer ohne eigene Views) -> nichts zu pruefen.
+            // No XHTML in the reactor (e.g. a consumer without views of its own) -> nothing to check.
             return;
         }
 
@@ -84,7 +84,7 @@ class PlaintextMobileFormLinterTest {
         Files.writeString(res.resolve("okPercent.xhtml"),
                 "<p:dialog header=\"X\" width=\"100%\"></p:dialog>");
         Files.writeString(res.resolve("noWidthNoSafe.xhtml"),
-                "<p:dialog header=\"X\" modal=\"true\"></p:dialog>"); // keine width, kein mobile-safe -> Verstoss
+                "<p:dialog header=\"X\" modal=\"true\"></p:dialog>"); // no width, no mobile-safe -> violation
         Files.writeString(res.resolve("okNoWidth.xhtml"),
                 "<p:dialog header=\"X\" styleClass=\"mobile-safe\"></p:dialog>");
         Files.writeString(res.resolve("exemptClass.xhtml"),
@@ -94,8 +94,8 @@ class PlaintextMobileFormLinterTest {
 
         List<Violation> violations = MobileFormLinter.scan(res);
 
-        // bad.xhtml + badpx.xhtml (fixe px) und noWidthNoSafe.xhtml (keine width, kein mobile-safe) sind Verstoesse;
-        // okPercent (width="100%"), okNoWidth (mobile-safe), exemptClass/exemptComment sind ok.
+        // bad.xhtml + badpx.xhtml (fixed px) and noWidthNoSafe.xhtml (no width, no mobile-safe) are violations;
+        // okPercent (width="100%"), okNoWidth (mobile-safe), exemptClass/exemptComment are fine.
         assertEquals(3, violations.size(),
                 "Erwartet genau 3 Verstoesse, gefunden: " + violations);
         assertTrue(violations.stream().anyMatch(v -> v.file().getFileName().toString().equals("bad.xhtml")));
@@ -110,14 +110,14 @@ class PlaintextMobileFormLinterTest {
     }
 
     /**
-     * Findet ab dem Arbeitsverzeichnis nach oben die Repo-Wurzel und sammelt jedes
-     * {@code <modul>/src/main/resources/META-INF/resources}. Faellt auf das eigene Modul zurueck,
-     * falls die Wurzel nicht gefunden wird (z. B. isolierter Modul-Build).
+     * Walks upwards from the working directory to the repository root and collects every
+     * {@code <modul>/src/main/resources/META-INF/resources}. Falls back to our own module
+     * if the root is not found (e.g. an isolated module build).
      */
     private static List<Path> findResourceRoots() throws IOException {
         Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath();
 
-        // Eigene Modul-Ressourcen zuerst (garantiert vorhanden, egal von wo gebaut wird).
+        // Own module resources first (guaranteed to be present, no matter where the build runs from).
         List<Path> roots = new ArrayList<>();
         Path own = start.resolve(RESOURCES_SUFFIX);
         if (Files.isDirectory(own)) {
@@ -137,7 +137,7 @@ class PlaintextMobileFormLinterTest {
         return roots;
     }
 
-    /** Repo-Wurzel = erstes Verzeichnis nach oben, das einen Maven-Reactor (pom.xml mit &lt;modules&gt;) hat. */
+    /** Repository root = first directory upwards that holds a Maven reactor (pom.xml with &lt;modules&gt;). */
     private static Path findRepoRoot(Path start) throws IOException {
         Path dir = start;
         for (int i = 0; i < 8 && dir != null; i++) {

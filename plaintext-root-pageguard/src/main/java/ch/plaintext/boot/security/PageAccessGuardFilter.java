@@ -18,49 +18,49 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Setzt den Seiten-Zugriffsschutz VOR dem {@code FacesServlet} durch (Karte 308, H3).
+ * Enforces page access protection BEFORE the {@code FacesServlet} (card 308, H3).
  *
- * <p><b>Warum ein Filter und nicht {@code preRenderView}:</b> {@code preRenderView} feuert in
- * RENDER_RESPONSE (Phase 6), Action-Methoden laufen aber in INVOKE_APPLICATION (Phase 5). Ein
- * AJAX-/POST-Postback auf eine gesperrte Seite hat die Backing-Bean-Action (z.B.
- * {@code RootEntityBackingBean.deleteEntity()}) also bereits <b>vollstaendig ausgefuehrt</b>, bevor
- * der Guard ueberhaupt lief; der Redirect verwarf danach nur noch die Antwort — die Schreiboperation
- * war committet. Dieser Filter greift vor jeder JSF-Phase, also auch vor RESTORE_VIEW.
+ * <p><b>Why a filter and not {@code preRenderView}:</b> {@code preRenderView} fires in
+ * RENDER_RESPONSE (phase 6), but action methods run in INVOKE_APPLICATION (phase 5). For an
+ * AJAX/POST postback to a blocked page the backing bean action (e.g.
+ * {@code RootEntityBackingBean.deleteEntity()}) had therefore already been <b>fully executed</b>
+ * before the guard ran at all; the redirect afterwards only discarded the response — the write
+ * operation was committed. This filter runs before every JSF phase, so before RESTORE_VIEW too.
  *
- * <p><b>Warum der Filter in die Spring-Security-Kette gehaengt wird</b> (siehe
- * {@code PlaintextSecurityConfig}, {@code addFilterAfter(..., AuthorizationFilter.class)}) und nicht
- * per {@code FilterRegistrationBean} registriert wird: {@code UrlRewriteConfig} registriert seinen
- * Rewrite-Filter mit {@code Ordered.HIGHEST_PRECEDENCE + 1}, also <i>vor</i> der
- * Spring-Security-Kette ({@code order = -100}), und schreibt {@code /x.html} per
- * {@code RequestDispatcher.forward()} auf {@code /x.xhtml} um, ohne {@code chain.doFilter()}
- * aufzurufen. Ein eigenstaendig registrierter Filter mit {@code DispatcherType.REQUEST} wuerde
- * darum bei {@code .html}-URLs niemals laufen. Die Security-Kette laeuft dagegen fuer <i>alle</i>
- * Dispatch-Typen ({@code SecurityFilterProperties.dispatcherTypes = EnumSet.allOf(...)}), also auch
- * beim FORWARD — und damit garantiert nach der Authentifizierung.
+ * <p><b>Why the filter is hooked into the Spring Security chain</b> (see
+ * {@code PlaintextSecurityConfig}, {@code addFilterAfter(..., AuthorizationFilter.class)}) instead
+ * of being registered via a {@code FilterRegistrationBean}: {@code UrlRewriteConfig} registers its
+ * rewrite filter with {@code Ordered.HIGHEST_PRECEDENCE + 1}, that is <i>before</i> the
+ * Spring Security chain ({@code order = -100}), and rewrites {@code /x.html} to {@code /x.xhtml}
+ * via {@code RequestDispatcher.forward()} without calling {@code chain.doFilter()}. A
+ * separately registered filter with {@code DispatcherType.REQUEST} would therefore never run for
+ * {@code .html} URLs. The security chain, by contrast, runs for <i>all</i> dispatch types
+ * ({@code SecurityFilterProperties.dispatcherTypes = EnumSet.allOf(...)}), so on FORWARD as well —
+ * and thus guaranteed after authentication.
  *
- * <p>Der bestehende {@code preRenderView}-Guard in {@code includes/template.xhtml} bleibt als
- * zweite Schicht erhalten (Defense in Depth) und entscheidet ueber denselben Service, kommt also
- * nie zu einem anderen Ergebnis.
+ * <p>The existing {@code preRenderView} guard in {@code includes/template.xhtml} remains as a
+ * second layer (defense in depth) and decides via the same service, so it can never arrive at a
+ * different result.
  */
 @Slf4j
 @RequiredArgsConstructor
 public class PageAccessGuardFilter implements Filter {
 
-    /** Verhindert doppelte Pruefung auf REQUEST- und FORWARD-Dispatch derselben Anfrage. */
+    /** Prevents a double check on the REQUEST and FORWARD dispatch of the same request. */
     static final String ATTRIBUT_GEPRUEFT = PageAccessGuardFilter.class.getName() + ".checked";
 
     /**
-     * Endungen, die auf dem {@code FacesServlet} landen ({@code joinfaces.faces-servlet.url-mappings}
-     * plus der {@code .htm}-Rewrite aus {@code UrlRewriteConfig}). Nur diese Pfade werden geprueft;
-     * REST-Endpunkte, statische Dateien und alles ohne Endung sind Sache von Spring Security.
+     * Extensions that end up on the {@code FacesServlet} ({@code joinfaces.faces-servlet.url-mappings}
+     * plus the {@code .htm} rewrite from {@code UrlRewriteConfig}). Only these paths are checked;
+     * REST endpoints, static files and everything without an extension are Spring Security's job.
      */
     private static final List<String> VIEW_ENDUNGEN = List.of(".xhtml", ".jsf", ".html", ".htm");
 
     /**
-     * Technische Pfade, die zwar auf eine View-Endung enden, aber keine JSF-View sind. Insbesondere
-     * die JSF-Ressourcen ({@code /jakarta.faces.resource/primefaces.js.xhtml}) — ohne diese
-     * Ausnahme wuerde der Guard im STRICT-Modus alle PrimeFaces-Ressourcen sperren.
-     * Deckungsgleich mit der Ausnahmeliste in {@code UrlRewriteConfig}.
+     * Technical paths that do end in a view extension but are not a JSF view. In particular the
+     * JSF resources ({@code /jakarta.faces.resource/primefaces.js.xhtml}) — without this exception
+     * the guard would block all PrimeFaces resources in STRICT mode.
+     * Identical to the exception list in {@code UrlRewriteConfig}.
      */
     private static final List<String> TECHNISCHE_PFADE = List.of(
             "/jakarta.faces.resource/",
@@ -110,10 +110,10 @@ public class PageAccessGuardFilter implements Filter {
     }
 
     /**
-     * Antwort bei verweigertem Zugriff. Ein normaler GET wird auf die Access-Denied-Seite
-     * umgeleitet (bisheriges Verhalten des {@code preRenderView}-Guards). Alles andere —
-     * insbesondere POST und JSF-AJAX — bekommt 403: ein 302 auf einen Postback wuerde dem Client
-     * vortaeuschen, die Aktion sei ausgefuehrt worden.
+     * Response when access is denied. A plain GET is redirected to the access denied page (the
+     * previous behaviour of the {@code preRenderView} guard). Everything else — POST and JSF AJAX
+     * in particular — gets a 403: a 302 on a postback would lead the client to believe the action
+     * had been carried out.
      */
     private void verweigere(HttpServletRequest request, HttpServletResponse response) throws IOException {
         boolean ajax = "partial/ajax".equals(request.getHeader("Faces-Request"))
@@ -127,7 +127,7 @@ public class PageAccessGuardFilter implements Filter {
         response.sendError(HttpServletResponse.SC_FORBIDDEN, "Zugriff auf diese Seite ist nicht erlaubt");
     }
 
-    /** Request-URI ohne Context-Path, immer mit fuehrendem Slash. */
+    /** Request URI without the context path, always with a leading slash. */
     private String pfadOhneContextPath(HttpServletRequest request) {
         String uri = request.getRequestURI();
         if (uri == null) {
@@ -140,7 +140,7 @@ public class PageAccessGuardFilter implements Filter {
         return uri.isEmpty() ? "/" : uri;
     }
 
-    /** Nur JSF-View-Pfade pruefen, keine technischen Pfade. */
+    /** Only check JSF view paths, no technical paths. */
     static boolean istZuPruefen(String pfad) {
         if (pfad == null || pfad.isBlank()) {
             return false;
@@ -165,13 +165,13 @@ public class PageAccessGuardFilter implements Filter {
     }
 
     /**
-     * Pfad -> JSF-View-Id ({@code /x.html} -> {@code /x.xhtml}).
+     * Path -> JSF view id ({@code /x.html} -> {@code /x.xhtml}).
      *
-     * <p>Das Praefix {@code /faces} wird abgeschnitten: das {@code FacesServlet} ist laut
-     * {@code joinfaces.faces-servlet.url-mappings} auch auf {@code /faces/*} gemappt.
-     * {@code /faces/mandatemenu.xhtml} rendert dieselbe View wie {@code /mandatemenu.html} — ohne
-     * die Normalisierung waere das eine View-Id, zu der kein Menue passt, und im Modus REPORT
-     * damit ein Weg um den Guard herum.
+     * <p>The prefix {@code /faces} is stripped: according to
+     * {@code joinfaces.faces-servlet.url-mappings} the {@code FacesServlet} is also mapped to
+     * {@code /faces/*}. {@code /faces/mandatemenu.xhtml} renders the same view as
+     * {@code /mandatemenu.html} — without this normalization that would be a view id no menu
+     * matches, and thus a way around the guard in REPORT mode.
      */
     static String viewId(String pfad) {
         String bereinigt = pfad;

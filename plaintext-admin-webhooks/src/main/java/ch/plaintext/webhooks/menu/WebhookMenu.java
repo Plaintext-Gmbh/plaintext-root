@@ -5,11 +5,11 @@ package ch.plaintext.webhooks.menu;
 
 import ch.plaintext.boot.menu.MenuAnnotation;
 
-    // SECURITY (Karte 308, H4): explizite roles. Ohne sie prueft MenuItemImpl.isOn() nichts —
-    // und weil der PageAccessGuardService nur isOn() DIESES Eintrags auswertet (nicht die des
-    // Elternmenues), war die Seite per Direkt-URL fuer jeden eingeloggten USER offen, obwohl sie
-    // im gerenderten Menue nur unter dem ROOT-Elternmenue haengt. Aendert die Menue-Darstellung
-    // nicht: fuer Nicht-ROOT wurde das Elternmenue schon vorher nicht gerendert.
+    // SECURITY (card 308, H4): explicit roles. Without them MenuItemImpl.isOn() checks nothing —
+    // and because the PageAccessGuardService only evaluates isOn() of THIS entry (not that of the
+    // parent menu), the page was open via a direct URL to every logged-in USER, even though in the
+    // rendered menu it only hangs below the ROOT parent menu. Does not change the menu rendering:
+    // for non-ROOT the parent menu was not rendered before either.
 @MenuAnnotation(
     title = "Webhooks",
     link = "webhooks.html",

@@ -13,16 +13,16 @@ import java.util.Optional;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
 
-    // SECURITY (Karte 307, K2.3): Lookup nur ueber den SHA-256-Hash; der Klartext-Token existiert nur
-    // im E-Mail-Link, nie in der DB.
+    // SECURITY (card 307, K2.3): lookup only via the SHA-256 hash; the clear-text token exists only
+    // in the e-mail link, never in the DB.
     Optional<PasswordResetToken> findByTokenHash(String tokenHash);
 
     /**
-     * Loest einen Token atomar ein: setzt {@code consumedAt} genau dann, wenn er existiert, noch nicht
-     * eingeloest und nicht abgelaufen ist. Das bedingte UPDATE verhindert TOCTOU-Races (Doppelklick/Replay):
-     * bei zwei parallelen Aufrufen gewinnt genau einer.
+     * Redeems a token atomically: sets {@code consumedAt} exactly when it exists, has not yet been
+     * redeemed and has not expired. The conditional UPDATE prevents TOCTOU races (double click/replay):
+     * with two parallel calls exactly one wins.
      *
-     * @return Anzahl aktualisierter Zeilen (1 = erfolgreich eingeloest, 0 = ungueltig/abgelaufen/verwendet)
+     * @return number of updated rows (1 = successfully redeemed, 0 = invalid/expired/used)
      */
     @Modifying
     @Query("UPDATE PasswordResetToken t SET t.consumedAt = :now " +

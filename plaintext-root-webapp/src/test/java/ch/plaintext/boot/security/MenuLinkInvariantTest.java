@@ -24,28 +24,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Startup-Invariante fuer den Seiten-Zugriffsschutz (Karte 308, Punkt 5).
+ * Startup invariant for the page access protection (card 308, item 5).
  *
- * <p>Der Guard {@code PageAccessGuardService} leitet den Zugriffsschutz aus der Menue-Sichtbarkeit
- * ab. Damit haengt die Sicherheit einer Seite an einer String-Konvention — und genau daran ist sie
- * gescheitert: {@code MandateMenuBackingBean} deklarierte {@code link = "mandatemenu.xhtml"} statt
- * {@code .html}, der Vergleich fand keinen Treffer, der Guard fiel in den fail-open-Zweig und
- * jeder eingeloggte USER konnte die ROOT-Menuesteuerung aller Mandanten bedienen.
+ * <p>The guard {@code PageAccessGuardService} derives the access protection from the menu
+ * visibility. The security of a page therefore hangs on a string convention — and on exactly that it
+ * failed: {@code MandateMenuBackingBean} declared {@code link = "mandatemenu.xhtml"} instead of
+ * {@code .html}, the comparison found no match, the guard fell into the fail-open branch and
+ * every logged-in USER could operate the ROOT menu control of all tenants.
  *
- * <p>Dieser Test macht daraus einen Build-Fehler statt einer Laufzeit-Luecke. Vorbild:
- * {@code CsrfFormInvariantTest} — reiner Quellcode-Scan ueber alle Module, kein Spring-Kontext.
+ * <p>This test turns that into a build error instead of a runtime gap. Model:
+ * {@code CsrfFormInvariantTest} — a pure source scan across all modules, no Spring context.
  *
- * <p>Geprueft wird:
+ * <p>Checked is:
  * <ol>
- *   <li>jeder explizit deklarierte {@code @MenuAnnotation(link=...)} endet auf {@code .html},</li>
- *   <li>die Zielview jedes Links existiert als {@code .xhtml} im Repo,</li>
- *   <li>jede ausgelieferte View hat einen Menueeintrag, einen Alias oder einen
- *       Allowlist-/Systemseiten-Eintrag.</li>
+ *   <li>every explicitly declared {@code @MenuAnnotation(link=...)} ends in {@code .html},</li>
+ *   <li>the target view of every link exists as an {@code .xhtml} in the repository,</li>
+ *   <li>every shipped view has a menu entry, an alias or an
+ *       allowlist/system-page entry.</li>
  * </ol>
  */
 class MenuLinkInvariantTest {
 
-    /** Modul, an dem das Repo-Root erkannt wird. */
+    /** Module by which the repository root is recognized. */
     private static final String ANKER_MODUL = "plaintext-root-webapp";
 
     private static final String JAVA_PFAD = "src/main/java";
@@ -54,39 +54,39 @@ class MenuLinkInvariantTest {
     private static final String ANNOTATION = "@MenuAnnotation";
     private static final Pattern LINK_ATTRIBUT = Pattern.compile("\\blink\\s*=\\s*\"([^\"]*)\"");
 
-    /** Pfadbestandteile, die ein Facelet als Fragment/Template kennzeichnen (keine aufrufbare Seite). */
+    /** Path components that mark a facelet as a fragment/template (not a callable page). */
     private static final List<String> FRAGMENT_MARKER = List.of("/includes/", "/templates/");
 
-    /** Ein {@code ui:composition} OHNE {@code template=} ist ein Include-Fragment, keine Seite. */
+    /** A {@code ui:composition} WITHOUT {@code template=} is an include fragment, not a page. */
     private static final Pattern UI_COMPOSITION = Pattern.compile("<ui:composition\\b([^>]*)>", Pattern.DOTALL);
 
     /**
-     * Menue-Links, die absichtlich auf keine View im Repo zeigen. {@code swagger-ui/index.html} wird
-     * von springdoc ausgeliefert, nicht von JSF.
+     * Menu links that deliberately point to no view in the repository. {@code swagger-ui/index.html} is
+     * served by springdoc, not by JSF.
      */
     private static final Set<String> LINKS_OHNE_VIEW = Set.of(
             "swagger-ui/index"
     );
 
     /**
-     * Views, die bewusst KEINE Zugriffsregel bekommen und damit in {@code mode=STRICT} gesperrt sind.
-     * Jeder Eintrag hier ist eine Entscheidung, kein Versehen — bitte begruenden.
+     * Views that deliberately get NO access rule and are therefore blocked in {@code mode=STRICT}.
+     * Every entry here is a decision, not an oversight — please give a justification.
      */
     private static final Map<String, String> BEWUSST_GESPERRT = Map.of(
-            // Derzeit leer.
+            // Currently empty.
             //
-            // Hier stand bis zum 04.08.2026 "demo" — die verwaiste Google-Charts-Beispielseite, die
-            // Karte 308 bewusst gesperrt liegen liess ("Loeschen ist eine eigene Aufraeum-Karte").
-            // Das ist Karte 523: demo.xhtml ist geloescht. Der Grund war nicht Ordnungsliebe —
-            // plaintext-root-webapp ist Abhaengigkeit JEDER App, die Seite wurde also in app,
-            // guild, schuetu, iot und fwtool mit ausgeliefert und war dort, weil diese Apps im
-            // Modus REPORT liefen, fuer jeden angemeldeten Benutzer erreichbar.
+            // Until 04.08.2026 "demo" stood here — the orphaned Google Charts example page that
+            // card 308 deliberately left blocked ("deleting it is a cleanup card of its own").
+            // That is card 523: demo.xhtml has been deleted. The reason was not tidiness —
+            // plaintext-root-webapp is a dependency of EVERY app, so the page was shipped in app,
+            // guild, schuetu, iot and fwtool as well and was reachable there for every logged-in
+            // user, because those apps ran in mode REPORT.
     );
 
     /**
-     * Systemseiten, Allowlist-Eintraege, Praefixe und Aliase des Guards. Muss mit den Konstanten in
-     * {@code PageAccessGuardService} uebereinstimmen — {@link #allowlistUndAliasePassenZumGuard()}
-     * prueft genau das.
+     * System pages, allowlist entries, prefixes and aliases of the guard. Has to agree with the
+     * constants in {@code PageAccessGuardService} — {@link #allowlistUndAliasePassenZumGuard()}
+     * checks exactly that.
      */
     private static final Set<String> SYSTEM_UND_ALLOWLIST = Set.of(
             "home", "index", "access-denied", "error", "login",
@@ -110,8 +110,8 @@ class MenuLinkInvariantTest {
         List<String> verstoesse = new ArrayList<>();
         links.forEach((link, quelle) -> {
             if (link.startsWith("/")) {
-                // Nicht-JSF-Ziel (absoluter Pfad auf einen Controller/eine andere UI) — nicht Sache
-                // des Menue-Guards.
+                // Non-JSF target (absolute path to a controller / another UI) — not the business
+                // of the menu guard.
                 return;
             }
             if (!link.endsWith(".html")) {
@@ -195,8 +195,8 @@ class MenuLinkInvariantTest {
 
     @Test
     void allowlistUndAliasePassenZumGuard() {
-        // Haelt die Erwartungen dieses Tests und die Konstanten des Guards zusammen: laeuft eine
-        // Seite auseinander, faellt es hier auf und nicht erst in PROD.
+        // Keeps the expectations of this test and the constants of the guard together: if a
+        // page drifts apart, it shows up here and not only in PROD.
         for (String seite : SYSTEM_UND_ALLOWLIST) {
             assertTrue(new PageAccessGuardServiceProbe().erlaubtOhneMenue(seite),
                     "Der Guard muss '" + seite + "' ohne Menueeintrag erlauben (Systemseite/Allowlist)");
@@ -211,9 +211,9 @@ class MenuLinkInvariantTest {
     }
 
     /**
-     * Minimal-Sonde auf den Guard: STRICT-Modus, leere Menue-Registry. Erlaubt der Guard eine Seite
-     * trotzdem, kommt das aus Systemseiten/Allowlist; ein Alias ist gesetzt, wenn die Seite
-     * zusammen mit einem passenden Menueeintrag erlaubt wird.
+     * Minimal probe on the guard: STRICT mode, empty menu registry. If the guard permits a page
+     * nevertheless, that comes from system pages/allowlist; an alias is set if the page is
+     * permitted together with a matching menu entry.
      */
     private static class PageAccessGuardServiceProbe {
 
@@ -222,9 +222,9 @@ class MenuLinkInvariantTest {
         }
 
         boolean aliasZeigtAuf(String view, String ziel) {
-            // Ohne den Ziel-Menueeintrag muss verweigert werden ...
+            // Without the target menu entry access has to be denied ...
             boolean ohneZiel = PageAccessGuardTestFactory.strictMitMenues().hasAccessToView("/" + view + ".xhtml");
-            // ... mit sichtbarem Ziel-Menueeintrag erlaubt.
+            // ... with a visible target menu entry it is permitted.
             boolean mitZiel = PageAccessGuardTestFactory
                     .strictMitMenues(PageAccessGuardTestFactory.menu(ziel + ".html", true))
                     .hasAccessToView("/" + view + ".xhtml");
@@ -232,9 +232,9 @@ class MenuLinkInvariantTest {
         }
     }
 
-    // ------------------------------------------------------------------ Helfer
+    // ----------------------------------------------------------------- Helpers
 
-    /** Kanonischer View-Name -> Repo-relativer Dateipfad. Fragmente werden ausgelassen. */
+    /** Canonical view name -> repository-relative file path. Fragments are skipped. */
     private Map<String, String> sammleViews(Path repoRoot) throws IOException {
         Map<String, String> ergebnis = new TreeMap<>();
         for (Path resourcesDir : verzeichnisse(repoRoot, RESOURCES_PFAD)) {
@@ -257,8 +257,8 @@ class MenuLinkInvariantTest {
     }
 
     /**
-     * {@code <ui:composition>} ohne {@code template=} ist ein Include-Fragment (wird per
-     * {@code ui:include} eingebunden, z.B. {@code menu.xhtml}) und keine aufrufbare Seite.
+     * A {@code <ui:composition>} without {@code template=} is an include fragment (pulled in via
+     * {@code ui:include}, e.g. {@code menu.xhtml}) and not a callable page.
      */
     private boolean istIncludeFragment(String inhalt) {
         Matcher composition = UI_COMPOSITION.matcher(inhalt);
@@ -268,7 +268,7 @@ class MenuLinkInvariantTest {
         return !composition.group(1).contains("template=");
     }
 
-    /** Deklarierter Link -> "Modul/Klasse". Nur explizit gesetzte {@code link}-Attribute. */
+    /** Declared link -> "module/class". Only explicitly set {@code link} attributes. */
     private Map<String, String> sammleMenueLinks(Path repoRoot) throws IOException {
         Map<String, String> ergebnis = new LinkedHashMap<>();
         for (Path javaDir : verzeichnisse(repoRoot, JAVA_PFAD)) {
@@ -289,9 +289,9 @@ class MenuLinkInvariantTest {
     }
 
     /**
-     * Attributbloecke aller {@code @MenuAnnotation(...)} einer Datei. Bewusst ein Klammer-Zaehler
-     * statt einer Regex: {@code RootApiTokenMenu} hat {@code title = "API Tokens (Root)"} — ein
-     * {@code [^)]*}-Muster bricht dort mitten im String ab und der Link wird nicht gefunden.
+     * Attribute blocks of all {@code @MenuAnnotation(...)} of a file. Deliberately a bracket counter
+     * instead of a regex: {@code RootApiTokenMenu} has {@code title = "API Tokens (Root)"} — a
+     * {@code [^)]*} pattern breaks off in the middle of that string and the link is not found.
      */
     private List<String> annotationsBloecke(String inhalt) {
         List<String> ergebnis = new ArrayList<>();
@@ -306,8 +306,8 @@ class MenuLinkInvariantTest {
             if (klammerAuf < 0) {
                 return ergebnis;
             }
-            // Nur Whitespace zwischen Annotationsnamen und Klammer erlaubt (sonst ist es ein
-            // Import, ein Javadoc-Verweis oder eine Annotation ohne Attribute).
+            // Only whitespace permitted between the annotation name and the bracket (otherwise it is an
+            // import, a Javadoc reference or an annotation without attributes).
             if (!inhalt.substring(suchStart, klammerAuf).isBlank()) {
                 continue;
             }
@@ -351,7 +351,7 @@ class MenuLinkInvariantTest {
         return ergebnis;
     }
 
-    /** Repo-Root ueber das Ankermodul finden (Test laeuft mit wechselndem working directory). */
+    /** Find the repository root via the anchor module (the test runs with a changing working directory). */
     private Path findeRepoRoot() {
         Path kandidat = Path.of("").toAbsolutePath();
         for (int i = 0; i < 6 && kandidat != null; i++) {

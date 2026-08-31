@@ -5,34 +5,34 @@
                 xmlns:p="http://primefaces.org/ui"
                 xmlns:c="http://java.sun.com/jsp/jstl/core">
 <!--
-    Menue-Rendering fuer bis zu drei Ebenen.
+    Menu rendering for up to three levels.
 
-    Bis 1.530.0 wurde die dritte Ebene flachgeklopft: ein verschachteltes
-    Submenue wurde als reines Label gerendert und seine Blaetter als
-    Geschwister darunter gehaengt. Begruendung war, dass ein Submenue kein
-    url-Property hat und #{child.url} darauf eine ELException wirft, die
-    menu.xhtml und damit jede eingeloggte Seite mitreisst.
+    Up to 1.530.0 the third level was flattened: a nested
+    submenu was rendered as a plain label and its leaves were hung
+    below it as siblings. The reasoning was that a submenu has no
+    url property and that #{child.url} on it throws an ELException which
+    takes down menu.xhtml and with it every logged in page.
 
-    Die Sorge ist berechtigt, das Ausweichen war zu grob: Anwendungen mit
-    dreistufigem Menue verlieren dadurch ihre Gliederung. Der MenuModelBuilder
-    baut die Ebene korrekt auf, sie kam nur nicht durch den Renderer.
+    The concern is justified, the workaround was too crude: applications with
+    a three level menu lose their structure that way. The MenuModelBuilder
+    builds the level correctly, it simply did not make it through the renderer.
 
-    Diese Fassung rendert die dritte Ebene als echtes <ul> und haelt die
-    Haertung ein: auf .url wird ausschliesslich bei Nicht-Submenues
-    zugegriffen, geprueft ueber denselben Klassennamen-Test wie zuvor.
+    This version renders the third level as a real <ul> and keeps the
+    hardening: .url is accessed exclusively on non submenus,
+    checked via the same class name test as before.
 
-    STYLING: Das Theme adressiert Untermenues ausschliesslich als
-    '.layout-menu > li > ul'. Eine Stufe tiefer greift KEINE einzige Regel,
-    die dritte Ebene faellt also auf Browser-Defaults zurueck - eckige
-    Aufzaehlungszeichen, 40px Einzug, geerbte Linkfarbe (gruen statt grau),
-    14px statt 0.9rem. Die Regeln unten spiegeln deshalb die Theme-Regeln der
-    zweiten Ebene 1:1 und nutzen dieselben CSS-Variablen des Themes
-    (pt-text-color, pt-surface-hover), damit der Dark-Mode mitgeht. Sie stehen
-    hier ohne die beiden fuehrenden Minuszeichen: ein XML-Kommentar darf die
-    Zeichenfolge nicht enthalten, sonst schlaegt das Facelets-Parsing fehl.
-    Einziger gewollter
-    Unterschied ist der linke Einzug (4.5rem statt 3.25rem), damit die
-    Verschachtelung sichtbar bleibt.
+    STYLING: the theme addresses submenus exclusively as
+    '.layout-menu > li > ul'. One level deeper NOT a single rule applies,
+    so the third level falls back to browser defaults - square
+    bullets, 40px indent, inherited link colour (green instead of grey),
+    14px instead of 0.9rem. The rules below therefore mirror the theme rules of
+    the second level 1:1 and use the same CSS variables of the theme
+    (pt-text-color, pt-surface-hover) so that dark mode goes along with it. They
+    stand here without the two leading minus signs: an XML comment may not contain
+    that character sequence, otherwise Facelets parsing fails.
+    The only intended
+    difference is the left indent (4.5rem instead of 3.25rem), so that the
+    nesting stays visible.
 -->
 
 <div class="menu-wrapper">
@@ -54,9 +54,9 @@
                                         <c:forEach items="#{elem.elements}" var="child">
                                             <c:if test="#{child.rendered}">
                                                 <c:choose>
-                                                    <!-- Dritte Ebene: echtes Untermenue.
-                                                         .url wird hier NICHT angefasst - ein Submenue
-                                                         hat die Property nicht (siehe Kopfkommentar). -->
+                                                    <!-- Third level: a real submenu.
+                                                         .url is NOT touched here - a submenu
+                                                         does not have the property (see the header comment). -->
                                                     <c:when test="#{child['class'].name.contains('Submenu')}">
                                                         <li role="menuitem" class="layout-nested-submenu">
                                                             <a href="#">

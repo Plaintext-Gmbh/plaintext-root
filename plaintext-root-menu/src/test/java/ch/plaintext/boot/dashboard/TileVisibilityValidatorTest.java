@@ -22,9 +22,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 /**
- * Tests für {@link TileVisibilityValidator}: Eine Kachel, deren {@code menuTitle} nicht exakt einem
- * registrierten Menü-Titel entspricht (oder fehlt), muss als Konfig-Fehler erkennbar sein, damit
- * das fail-open-Leck der Pro-Mandant-Sichtbarkeit nicht still durchrutscht.
+ * Tests for {@link TileVisibilityValidator}: a tile whose {@code menuTitle} does not match a
+ * registered menu title exactly (or is missing) must be recognisable as a configuration error, so
+ * that the fail-open leak of the per-tenant visibility does not slip through silently.
  *
  * @author plaintext.ch
  */
@@ -85,7 +85,7 @@ class TileVisibilityValidatorTest {
 
     @Test
     void shouldDetectMismatchAsConfigError() {
-        // Tippfehler/falscher Titel: Kachel würde im Blacklist-Standard fail-open sichtbar bleiben
+        // Typo/wrong title: with the blacklist default the tile would stay visible fail-open
         givenTiles(tile("lauftage", "Lauftage", "Lauftagee"));
         givenMenuTitles("Lauftage", "Root | Mandate");
 
@@ -99,7 +99,7 @@ class TileVisibilityValidatorTest {
 
     @Test
     void shouldDetectMissingMenuTitle() {
-        // Kein menuTitle gesetzt -> Fallback auf title, der hier kein Menü ist
+        // No menuTitle set -> fallback to title, which here is not a menu
         givenTiles(tile("orphan", "Irgendeine Kachel", ""));
         givenMenuTitles("Lauftage");
 
@@ -111,7 +111,7 @@ class TileVisibilityValidatorTest {
 
     @Test
     void shouldFlagMissingMenuTitleEvenWhenTitleMatchesMenu() {
-        // Selbst wenn der title zufällig einem Menü entspricht: menuTitle ist faktisch verpflichtend
+        // Even if the title happens to match a menu: menuTitle is effectively mandatory
         givenTiles(tile("lauftage", "Lauftage", null));
         givenMenuTitles("Lauftage");
 
@@ -129,8 +129,8 @@ class TileVisibilityValidatorTest {
 
     @Test
     void shouldSkipMenuMatchingWhenNoMenuRegistry() {
-        // Ohne MenuRegistry kann nicht gegen Menü-Titel abgeglichen werden -> kein NO_MATCHING,
-        // aber fehlender menuTitle bleibt erkennbar.
+        // Without a MenuRegistry there is nothing to match menu titles against -> no NO_MATCHING,
+        // but a missing menuTitle stays detectable.
         givenTiles(tile("withTitle", "Kachel", "IrgendEinTitel"));
         when(applicationContext.getBean(MenuRegistry.class))
             .thenThrow(new NoSuchBeanDefinitionException(MenuRegistry.class));

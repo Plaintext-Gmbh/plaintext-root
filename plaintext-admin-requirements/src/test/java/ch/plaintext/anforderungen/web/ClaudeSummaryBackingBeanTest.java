@@ -180,7 +180,7 @@ class ClaudeSummaryBackingBeanTest {
     @Test
     void onLoadWithNullFacesContextDoesNotThrow() {
         bean.setAnforderungId(null);
-        // Kein FacesContext im Unit-Test: getCurrentInstance() liefert null; onLoad() muss das tolerieren.
+        // No FacesContext in the unit test: getCurrentInstance() returns null; onLoad() has to tolerate that.
         bean.onLoad();
 
         assertThat(bean.getAnforderung()).isNull();

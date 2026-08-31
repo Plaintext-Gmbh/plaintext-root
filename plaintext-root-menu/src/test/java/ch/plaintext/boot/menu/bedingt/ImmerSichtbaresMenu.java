@@ -5,7 +5,7 @@ package ch.plaintext.boot.menu.bedingt;
 
 import ch.plaintext.boot.menu.MenuAnnotation;
 
-/** Test-Fixture: ein Menuepunkt ohne Bedingung — wird immer gefunden. */
+/** Test fixture: a menu item without a condition — always found. */
 @MenuAnnotation(title = "Immer da", link = "immer.html", parent = "Root", order = 1)
 public class ImmerSichtbaresMenu {
 }

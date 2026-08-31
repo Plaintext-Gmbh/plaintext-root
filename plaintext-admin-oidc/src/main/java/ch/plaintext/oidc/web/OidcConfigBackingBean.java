@@ -90,11 +90,11 @@ public class OidcConfigBackingBean implements Serializable {
     }
 
     /**
-     * Guard für Interaktionen, die einen ausgewählten Eintrag voraussetzen. {@code selected} ist
-     * {@code null}, wenn die Session abgelaufen/neu ist (Session-Scope weg) — dann soll der User
-     * eine klare Meldung sehen statt einer stillen No-Op (oder gar NPE beim Save).
+     * Guard for interactions that require a selected entry. {@code selected} is {@code null} when
+     * the session has expired or is new (session scope gone) — the user should then see a clear
+     * message instead of a silent no-op (or even an NPE on save).
      *
-     * @return true, wenn ein Eintrag ausgewählt ist; false, wenn abgebrochen wurde (Meldung gesetzt)
+     * @return true if an entry is selected; false if it was aborted (message set)
      */
     private boolean requireSelected() {
         if (selected != null) {

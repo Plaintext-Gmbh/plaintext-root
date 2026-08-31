@@ -6,32 +6,32 @@ package ch.plaintext.notifications;
 import java.util.Map;
 
 /**
- * Zentrales In-App-Benachrichtigungssystem. Implementiert in {@code plaintext-admin-notifications}
- * (root); dort transitiv verfuegbar, in anderen Apps (boot/guild) optional als
- * {@code @Autowired(required = false)}-Bean (analog {@code IMailTemplateProvider}).
+ * Central in-app notification system. Implemented in {@code plaintext-admin-notifications} (root);
+ * available transitively there, and in other applications (boot/guild) optionally as an
+ * {@code @Autowired(required = false)} bean (analogous to {@code IMailTemplateProvider}).
  *
- * <p>Rendering von Titel/Text laeuft ueber denselben Mechanismus wie Mailtexte
- * ({@code IMailTemplateProvider}, Key-Namespace {@code notif.*}): der Aufrufer liefert
- * Default-Titel/-Text, ein mandantengescoped Admin-Override in der DB hat Vorrang.</p>
+ * <p>Title and text are rendered through the same mechanism as mail texts
+ * ({@code IMailTemplateProvider}, key namespace {@code notif.*}): the caller supplies the default
+ * title and text, and a tenant-scoped admin override in the DB takes precedence.</p>
  */
 public interface NotificationService {
 
     /**
-     * Erzeugt eine In-App-Benachrichtigung fuer einen einzelnen Benutzer.
+     * Creates an in-app notification for a single user.
      *
-     * @param empfaengerUsername Username (Login-Name) des Empfaengers
-     * @param mandat             Mandant, unter dem gerendert/gespeichert wird
-     * @param typ                Benachrichtigungstyp (wird zum Template-Key {@code notif.<typ>})
-     * @param defaultTitel       Default-Titel, falls kein Admin-Override existiert
-     * @param defaultText        Default-Text, falls kein Admin-Override existiert
-     * @param platzhalter        {@code {key}}-Platzhalter fuer Titel/Text
-     * @param link               optionale Ziel-URL in der App, oder {@code null}
+     * @param empfaengerUsername username (login name) of the recipient
+     * @param mandat             tenant under which it is rendered and stored
+     * @param typ                notification type (becomes the template key {@code notif.<typ>})
+     * @param defaultTitel       default title, if no admin override exists
+     * @param defaultText        default text, if no admin override exists
+     * @param platzhalter        {@code {key}} placeholders for title and text
+     * @param link               optional target URL within the application, or {@code null}
      */
     void notify(String empfaengerUsername, String mandat, String typ, String defaultTitel, String defaultText,
                 Map<String, String> platzhalter, String link);
 
     /**
-     * Erzeugt dieselbe Benachrichtigung fuer alle Benutzer eines Mandanten (Broadcast).
+     * Creates the same notification for all users of a tenant (broadcast).
      */
     void notifyMandant(String mandat, String typ, String defaultTitel, String defaultText,
                         Map<String, String> platzhalter, String link);

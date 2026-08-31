@@ -4,75 +4,74 @@
 package ch.plaintext.boot.deeplink;
 
 /**
- * SPI fuer Deep-Link-Ziele (Karte 345).
+ * SPI for deep link targets (Card 345).
  *
- * <p>Ein Modul, das aus einer Mail (oder sonstwoher) direkt auf einen konkreten Datensatz
- * verlinken will, registriert dafuer eine Spring-Bean, die dieses Interface implementiert.
- * Der Root-Mechanismus ({@code /deeplink}) uebernimmt dann:
+ * <p>A module that wants to link directly to a specific record from a mail (or from anywhere
+ * else) registers a Spring bean implementing this interface. The root mechanism
+ * ({@code /deeplink}) then takes care of:
  * <ol>
- *   <li>Anmeldung erzwingen (und den Deep-Link ueber den Login-Flow durchreichen),</li>
- *   <li>pruefen, ob der Benutzer auf das Ziel-Mandat ueberhaupt Zugriff hat,</li>
- *   <li>auf das Ziel-Mandat umschalten,</li>
- *   <li>{@link #isAccessible(String, String)} fragen — die <em>serverseitige</em> Pruefung, ob der
- *       Benutzer diesen konkreten Datensatz sehen darf,</li>
- *   <li>auf {@link #getView()} weiterleiten und die Id als View-Parameter mitgeben.</li>
+ *   <li>enforcing login (and carrying the deep link through the login flow),</li>
+ *   <li>checking whether the user has access to the target tenant at all,</li>
+ *   <li>switching to the target tenant,</li>
+ *   <li>asking {@link #isAccessible(String, String)} — the <em>server-side</em> check of whether
+ *       the user may see this particular record,</li>
+ *   <li>forwarding to {@link #getView()} and passing the id along as a view parameter.</li>
  * </ol>
  *
- * <h2>Sicherheitsvertrag (bitte genau lesen)</h2>
+ * <h2>Security contract (please read carefully)</h2>
  * <ul>
- *   <li>Ein Deep-Link <b>verleiht keine Berechtigung</b>. Er ist nur eine Navigationshilfe. Die
- *       Ziel-Seite muss ihren Datensatz weiterhin selbst mandantengetrennt laden — die Pruefung
- *       hier ersetzt das nicht, sie verhindert nur, dass der Link ueberhaupt dorthin fuehrt.</li>
- *   <li>{@link #isAccessible(String, String)} muss <b>fail-closed</b> sein: im Zweifel
- *       {@code false}. Wirft die Methode, wertet der Root-Mechanismus das als Ablehnung.</li>
- *   <li>Die Methode muss gegen <b>geratene Ids</b> schuetzen: es genuegt nicht zu pruefen, ob der
- *       Datensatz existiert — er muss zum uebergebenen Mandat gehoeren (und, wo das Modul
- *       feingranulare Rechte kennt, fuer den aktuellen Benutzer sichtbar sein).</li>
- *   <li>{@link #getView()} kommt <b>aus dem Server</b>, nie aus der URL. Damit kann ein
- *       manipulierter Link kein beliebiges Ziel ansteuern (kein Open Redirect).</li>
+ *   <li>A deep link <b>grants no permission</b>. It is only a navigation aid. The target page
+ *       still has to load its record with tenant separation itself — the check here does not
+ *       replace that, it only prevents the link from leading there in the first place.</li>
+ *   <li>{@link #isAccessible(String, String)} has to be <b>fail-closed</b>: when in doubt,
+ *       {@code false}. If the method throws, the root mechanism treats that as a rejection.</li>
+ *   <li>The method has to protect against <b>guessed ids</b>: checking that the record exists is
+ *       not enough — it has to belong to the given tenant (and, where the module has fine-grained
+ *       permissions, be visible to the current user).</li>
+ *   <li>{@link #getView()} comes <b>from the server</b>, never from the URL. That way a tampered
+ *       link cannot target an arbitrary destination (no open redirect).</li>
  * </ul>
  */
 public interface DeepLinkTarget {
 
     /**
-     * Stabiler, technischer Schluessel des Ziels, wie er im Link als {@code type=} steht —
-     * z.B. {@code "auszahlung"}. Nur Kleinbuchstaben, Ziffern, {@code -} und {@code _};
-     * andere Werte werden beim Start abgelehnt.
+     * Stable, technical key of the target, as it appears in the link as {@code type=} —
+     * e.g. {@code "auszahlung"}. Lowercase letters, digits, {@code -} and {@code _} only;
+     * other values are rejected at startup.
      */
     String getType();
 
     /**
-     * Ziel-View, auf die weitergeleitet wird — der gleiche Wert wie in einer
-     * {@code @MenuAnnotation(link=...)}, also z.B. {@code "auszahlungen.html"}. Serverseitig
-     * festgelegt, nie aus der URL uebernommen.
+     * Target view to forward to — the same value as in a {@code @MenuAnnotation(link=...)}, so
+     * e.g. {@code "auszahlungen.html"}. Defined on the server side, never taken from the URL.
      */
     String getView();
 
-    /** Sprechender Name fuer die Root-Uebersicht, z.B. „Auszahlung". */
+    /** Human-readable name for the root overview, e.g. "Auszahlung". */
     String getLabel();
 
-    /** Name des View-Parameters, unter dem die Id an die Ziel-Seite gehaengt wird. */
+    /** Name of the view parameter under which the id is appended to the target page. */
     default String getParamName() {
         return "id";
     }
 
     /**
-     * <b>Die serverseitige Zugriffspruefung.</b> Darf der aktuell angemeldete Benutzer diesen
-     * Datensatz in diesem Mandat sehen?
+     * <b>The server-side access check.</b> May the currently logged-in user see this record in
+     * this tenant?
      *
-     * <p>Wird aufgerufen, <em>nachdem</em> auf das Ziel-Mandat gewechselt wurde und bevor
-     * weitergeleitet wird — die Module filtern ihre Daten ueber den aktiven Mandanten, eine
-     * Pruefung davor wuerde systematisch {@code false} liefern (siehe {@code DeepLinkResolver}).
-     * Gewechselt wird nur in ein Mandat, das der Benutzer ohnehin waehlen duerfte; faellt diese
-     * Pruefung negativ aus, wird der vorherige Mandat wiederhergestellt. Der Mandat wird
-     * zusaetzlich explizit uebergeben, damit die Implementierung dagegen pruefen kann, statt sich
-     * allein auf den Session-Zustand zu verlassen.
+     * <p>Called <em>after</em> the switch to the target tenant and before the forward — the
+     * modules filter their data by the active tenant, so a check made before the switch would
+     * systematically return {@code false} (see {@code DeepLinkResolver}). The switch only ever
+     * goes to a tenant the user would be allowed to select anyway; if this check comes back
+     * negative, the previous tenant is restored. The tenant is additionally passed in explicitly
+     * so that the implementation can check against it instead of relying on the session state
+     * alone.
      *
-     * @param mandat Ziel-Mandat, kleingeschrieben; bereits als „Benutzer hat Zugriff darauf" geprueft
-     * @param id     Datensatz-Id aus dem Link; bereits gegen ein enges Zeichenmuster validiert,
-     *               aber inhaltlich ungeprueft (kann geraten/manipuliert sein)
-     * @return {@code true} nur, wenn der Datensatz existiert, zu {@code mandat} gehoert und fuer
-     *         den aktuellen Benutzer sichtbar ist
+     * @param mandat target tenant, lowercase; already checked for "the user has access to it"
+     * @param id     record id from the link; already validated against a narrow character pattern,
+     *               but unchecked in substance (may be guessed or tampered with)
+     * @return {@code true} only if the record exists, belongs to {@code mandat} and is visible to
+     *         the current user
      */
     boolean isAccessible(String mandat, String id);
 }

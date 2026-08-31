@@ -4,30 +4,30 @@
 package ch.plaintext.boot.deeplink;
 
 /**
- * Ergebnis der Deep-Link-Aufloesung (Karte 345).
+ * Result of the deep-link resolution (card 345).
  *
- * @param ergebnis  Ausgang der Pruefung
- * @param zielPfad  bei {@link Ergebnis#OK} der Pfad relativ zum Context-Path
- *                  (z.B. {@code /auszahlungen.html?id=42}), sonst {@code null}
+ * @param ergebnis  outcome of the check
+ * @param zielPfad  on {@link Ergebnis#OK} the path relative to the context path
+ *                  (e.g. {@code /auszahlungen.html?id=42}), otherwise {@code null}
  */
 public record DeepLinkResolution(DeepLinkResolution.Ergebnis ergebnis, String zielPfad) {
 
     /**
-     * Bewusst nur ein einziger „nein"-Grund nach aussen (die Fehlerseite unterscheidet nicht):
-     * wer einen fremden Datensatz raet, soll nicht am Unterschied zwischen „gibt es nicht" und
-     * „darfst du nicht" ablesen koennen, ob die Id existiert. Die Unterscheidung dient dem Log
-     * und den Tests.
+     * Deliberately only a single "no" reason towards the outside (the error page does not
+     * differentiate): whoever guesses a foreign record must not be able to tell from the difference
+     * between "does not exist" and "you are not allowed" whether the id exists. The distinction
+     * serves the log and the tests.
      */
     public enum Ergebnis {
-        /** Alles geprueft, Mandat gewechselt, Weiterleitung erlaubt. */
+        /** Everything checked, tenant switched, redirect permitted. */
         OK,
-        /** Parameter fehlen oder verletzen das Zeichenmuster. */
+        /** Parameters are missing or violate the character pattern. */
         UNGUELTIGE_PARAMETER,
-        /** Kein Modul hat sich fuer diesen {@code type} registriert — fail-closed. */
+        /** No module has registered for this {@code type} — fail-closed. */
         UNBEKANNTER_TYP,
-        /** Der Benutzer hat auf das Ziel-Mandat keinen Zugriff. Kein Wechsel, auch nicht kurz. */
+        /** The user has no access to the target tenant. No switch, not even briefly. */
         MANDAT_VERWEIGERT,
-        /** Der Benutzer darf diesen Datensatz nicht sehen (oder es gibt ihn nicht). */
+        /** The user must not see this record (or it does not exist). */
         DATENSATZ_VERWEIGERT
     }
 

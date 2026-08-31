@@ -24,24 +24,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Vollstaendigkeit der Seed ueber die <b>Sprachen</b>: zu jedem Schluessel von
- * {@code i18n/plaintext-root.csv} gibt es eine Zeile fuer jede Zielsprache, die
- * {@link I18nService#getAvailableLanguages()} neben {@code de} ausliefert.
+ * Completeness of the seed across the <b>languages</b>: for every key in
+ * {@code i18n/plaintext-root.csv} there is a row for every target language that
+ * {@link I18nService#getAvailableLanguages()} returns besides {@code de}.
  *
- * <p><b>Abgrenzung zu {@code PlaintextI18nSeedTest}</b> (plaintext-root-archtests): der prueft die
- * andere Achse — dass jedes {@code i18n.t('…')} eines Facelets ueberhaupt eine Seed-Zeile hat, und
- * zwar in der Leitsprache {@code en}. Ob derselbe Schluessel auch auf Franzoesisch und Italienisch
- * vorliegt, sieht er nicht. Genau das faellt sonst niemandem auf: {@code I18nService.translate()}
- * legt fuer eine fehlende Sprache still einen {@code X_}-Platzhalter an, und der Benutzer, der in
- * der Topbar auf FR schaltet, sieht {@code X_Speichern} statt {@code Enregistrer}.
+ * <p><b>Delimitation from {@code PlaintextI18nSeedTest}</b> (plaintext-root-archtests): that one
+ * checks the other axis — that every {@code i18n.t('…')} of a facelet has a seed row at all, namely
+ * in the lead language {@code en}. Whether the same key is also present in French and Italian
+ * it does not see. And that is exactly what nobody else notices: {@code I18nService.translate()}
+ * silently creates an {@code X_} placeholder for a missing language, and the user who switches
+ * to FR in the topbar sees {@code X_Speichern} instead of {@code Enregistrer}.
  *
- * <p><b>Warum de nicht dazugehoert:</b> der Schluessel IST der deutsche Text, und
- * {@code translate()} gibt fuer {@code de} den Vorgabetext unveraendert zurueck — eine
- * {@code de}-Zeile waere wirkungslos (siehe {@link I18nSeedLinter}).
+ * <p><b>Why de is not part of it:</b> the key IS the German text, and
+ * {@code translate()} returns the default text unchanged for {@code de} — a
+ * {@code de} row would have no effect (see {@link I18nSeedLinter}).
  *
- * <p><b>Begruendete Luecke eintragen:</b> Ein Schluessel, der in einer Sprache bewusst keine Zeile
- * hat, gehoert in {@link #BEGRUENDETE_LUECKEN} — mit Grund. Heute ist die Liste leer; ein
- * unbegruendetes Loch laesst diesen Test fehlschlagen.
+ * <p><b>Recording a justified gap:</b> a key that deliberately has no row in one language
+ * belongs in {@link #BEGRUENDETE_LUECKEN} — with a reason. Today the list is empty; an
+ * unjustified hole makes this test fail.
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -49,12 +49,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 @DisplayName("i18n-Seed plaintext-root.csv: jeder Schluessel in allen Zielsprachen")
 class I18nSeedSprachabdeckungTest {
 
-    /** Die Seed dieses Moduls — bewusst als Datei, nicht ueber den Classpath: der traegt im Test
-     *  zusaetzlich {@code src/test/resources/i18n/seed-test.csv} (Fixture mit Absicht kaputten
-     *  Zeilen), die hier nichts zu suchen hat. */
+    /** The seed of this module — deliberately as a file, not through the classpath: in the test the
+     *  latter also carries {@code src/test/resources/i18n/seed-test.csv} (a fixture with deliberately
+     *  broken rows), which has no business here. */
     private static final Path SEED = Path.of("src/main/resources/i18n/plaintext-root.csv");
 
-    /** {@code "<Schluessel>::<Sprache>"} -> Grund, warum die Zeile fehlen darf. */
+    /** {@code "<Schluessel>::<Sprache>"} -> reason why the row may be missing. */
     private static final Map<String, String> BEGRUENDETE_LUECKEN = Map.of();
 
     @Test
@@ -128,7 +128,7 @@ class I18nSeedSprachabdeckungTest {
         I18nSeedLinter.parse(SEED).rows().forEach(r -> schluessel.add(r.defaultLabel()));
         List<String> titel = menuetitel();
 
-        // Positivkontrolle: ein leerer Scan wuerde die Pruefung unten stillschweigend bestehen.
+        // Positive control: an empty scan would silently pass the check below.
         assertTrue(titel.size() >= 30, "Menuescan hat zu wenig gefunden: " + titel);
         assertTrue(titel.contains("Übersetzungen") && titel.contains("Mandate"),
                 "Menuescan findet die bekannten Root-Eintraege nicht: " + titel);
@@ -146,10 +146,10 @@ class I18nSeedSprachabdeckungTest {
     }
 
     /**
-     * Die {@code title}-Werte aller {@code @MenuAnnotation}-Klassen des Reactors, aus dem Quelltext
-     * gelesen. Bewusst kein Classpath-Scan: die Menueklassen liegen in Modulen, von denen
-     * plaintext-admin-i18n nichts weiss (plaintext-admin-cron, -oidc, …), stehen aber alle unter
-     * derselben Repo-Wurzel.
+     * The {@code title} values of all {@code @MenuAnnotation} classes in the reactor, read from the
+     * source code. Deliberately not a classpath scan: the menu classes live in modules that
+     * plaintext-admin-i18n knows nothing about (plaintext-admin-cron, -oidc, …), but they all sit
+     * under the same repository root.
      */
     private static List<String> menuetitel() {
         Path repoWurzel = Path.of("").toAbsolutePath().getParent();
@@ -168,9 +168,9 @@ class I18nSeedSprachabdeckungTest {
     }
 
     /**
-     * Der {@code title} einer echten Annotation. Erwaehnungen in Javadoc ({@code {@link
-     * MenuAnnotation}}, Beispielbloecke) scheiden aus, weil dort weder {@code link =} noch
-     * {@code parent =} steht und der Block einen Javadoc-Stern enthaelt.
+     * The {@code title} of a real annotation. Mentions in Javadoc ({@code {@link
+     * MenuAnnotation}}, example blocks) are ruled out, because neither {@code link =} nor
+     * {@code parent =} appears there and the block contains a Javadoc asterisk.
      */
     private static final java.util.regex.Pattern ANNOTATION = java.util.regex.Pattern.compile(
             "@MenuAnnotation\\s*\\(([^)]*)\\)", java.util.regex.Pattern.DOTALL);

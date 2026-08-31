@@ -16,35 +16,35 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.*;
 
-// TODO-REFACTOR-005: Utility-Klasse ist als @Controller annotiert
-// Begründung: TimeUtil ist eine Utility-Klasse mit nur static methods, sollte nicht @Controller sein
-// Vorschlag: @Controller entfernen, private Constructor hinzufügen, oder zu Component wechseln
+// TODO-REFACTOR-005: Utility class is annotated as @Controller
+// Rationale: TimeUtil is a utility class with only static methods, it should not be @Controller
+// Suggestion: remove @Controller, add a private constructor, or switch to Component
 
-// TODO-REFACTOR-109: Massive Code-Duplikation durch wiederholte SimpleDateFormat Instanziierung
-// Begründung: In jeder Methode wird neues SimpleDateFormat erstellt (20+ mal im Code)
-// Vorschlag: Private static final DateTimeFormatter Constants definieren
-//            z.B. private static final DateTimeFormatter DATE_SHORT = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+// TODO-REFACTOR-109: Massive code duplication through repeated SimpleDateFormat instantiation
+// Rationale: a new SimpleDateFormat is created in every method (20+ times in the code)
+// Suggestion: define private static final DateTimeFormatter constants
+//             e.g. private static final DateTimeFormatter DATE_SHORT = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
-// TODO-REFACTOR-401: Performance - SimpleDateFormat ist nicht thread-safe und langsam
-// Begründung: SimpleDateFormat bei jedem Aufruf neu erstellen ist ineffizient
-//             SimpleDateFormat ist nicht thread-safe (Problem bei concurrent calls)
-// Vorschlag: Migration zu java.time.DateTimeFormatter (thread-safe, performanter)
-//            Als Alternative: ThreadLocal<SimpleDateFormat> verwenden
+// TODO-REFACTOR-401: Performance - SimpleDateFormat is not thread-safe and slow
+// Rationale: creating a new SimpleDateFormat on every call is inefficient
+//            SimpleDateFormat is not thread-safe (a problem with concurrent calls)
+// Suggestion: migrate to java.time.DateTimeFormatter (thread-safe, better performing)
+//             as an alternative: use ThreadLocal<SimpleDateFormat>
 
-// TODO-REFACTOR-110: Mix von java.util.Date und Joda-Time DateTime
-// Begründung: Klasse verwendet sowohl java.util.Date als auch org.joda.time.DateTime
-//             Joda-Time ist deprecated seit Java 8 (java.time Package verfügbar)
-// Vorschlag: Vollständige Migration zu java.time.* (LocalDate, LocalDateTime, ZonedDateTime)
+// TODO-REFACTOR-110: Mix of java.util.Date and Joda-Time DateTime
+// Rationale: the class uses both java.util.Date and org.joda.time.DateTime
+//            Joda-Time has been deprecated since Java 8 (the java.time package is available)
+// Suggestion: complete migration to java.time.* (LocalDate, LocalDateTime, ZonedDateTime)
 
-// TODO-REFACTOR-204: Inkonsistente und unklare Naming Convention
-// Begründung: getTodayAsString() vs getDateAsStringShort() sind nicht selbsterklärend
-//             "Tec" in getDateAsTecString() ist unklar (Technical?)
-// Vorschlag: Umbenennen zu: formatToday(), formatDateShort(), formatDateTechnical()
+// TODO-REFACTOR-204: Inconsistent and unclear naming convention
+// Rationale: getTodayAsString() vs getDateAsStringShort() are not self-explanatory
+//            "Tec" in getDateAsTecString() is unclear (Technical?)
+// Suggestion: rename to: formatToday(), formatDateShort(), formatDateTechnical()
 
-// TODO-REFACTOR-304: Schlechtes Error Handling - Exception wird verschluckt
-// Begründung: fromEmadDate() catcht ParseException, loggt nur, gibt null zurück
-//             Caller weiß nicht, ob null = fehler oder null = kein Datum
-// Vorschlag: Checked Exception werfen oder Optional<Date> zurückgeben
+// TODO-REFACTOR-304: Poor error handling - the exception is swallowed
+// Rationale: fromEmadDate() catches ParseException, only logs and returns null
+//            the caller does not know whether null = error or null = no date
+// Suggestion: throw a checked exception or return Optional<Date>
 
 /**
  * Time / Date Utils
@@ -246,7 +246,7 @@ public class TimeUtil {
         return ret;
     }
 
-    // zum testen auf nicht prod stages
+    // for testing on non-prod stages
     public static List<String> getJahre2() {
         List<String> ret = new ArrayList<>();
         Integer dieses = TimeUtil.getJahr(new Date());

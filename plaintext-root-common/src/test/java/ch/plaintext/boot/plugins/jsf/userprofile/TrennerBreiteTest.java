@@ -14,12 +14,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 
 /**
- * Karte 937: Die gespeicherte Breite eines verschiebbaren Trenners.
+ * Karte 937: the stored width of a draggable splitter.
  *
- * <p><b>Der wichtigste Test ist {@link #nullBreiteSperrtNichtAus()}.</b> Ohne untere Grenze laesst
- * sich der Baum auf 0 Pixel ziehen; danach ist der Griff nicht mehr zu treffen — und weil der Wert
- * gespeichert wird, bleibt es so, auch nach einem Neustart. Der Benutzer sperrt sich dauerhaft aus
- * einer Ansicht aus, und zwar mit einer einzigen Mausbewegung.
+ * <p><b>The most important test is {@link #nullBreiteSperrtNichtAus()}.</b> Without a lower
+ * bound the tree can be dragged down to 0 pixels; after that the handle can no longer be hit —
+ * and because the value is persisted, it stays that way, even after a restart. The user locks
+ * themselves out of a view for good, and does so with a single movement of the mouse.
  */
 class TrennerBreiteTest {
 
@@ -133,9 +133,9 @@ class TrennerBreiteTest {
     @Test
     @DisplayName("Die Breite ist aus EL erreichbar — genau daran ist wiki.xhtml gescheitert")
     void ausElErreichbar() throws Exception {
-        // wiki.xhtml las #{userPreferencesBackingBean.prefs.wikiTreeWidth}. 'prefs' ist privat und
-        // transient, also keine Property: EL warf zur Laufzeit. Dieser Test haelt fest, dass der
-        // Lesepfad eine oeffentliche Methode ist und bleibt.
+        // wiki.xhtml read #{userPreferencesBackingBean.prefs.wikiTreeWidth}. 'prefs' is private and
+        // transient, so not a property: EL threw at runtime. This test pins down that the read
+        // path is and stays a public method.
         assertThat(UserPreferencesBackingBean.class.getMethod("trennerBreite", String.class))
                 .as("ohne oeffentlichen Lesepfad rendert die Seite wieder ins Leere")
                 .isNotNull();

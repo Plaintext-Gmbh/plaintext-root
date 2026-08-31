@@ -6,15 +6,15 @@ package ch.plaintext.mailtemplate.menu;
 import ch.plaintext.boot.menu.MenuAnnotation;
 
 /**
- * Menuepunkt „Mailtexte" im Untermenue <b>Admin</b> (Auftrag Daniel, 29.08.2026 — vorher Root).
+ * "Mailtexte" menu item in the <b>Admin</b> submenu (Daniel's request, 29.08.2026 — previously Root).
  *
- * <p>Die Overrides gelten je Mandant, und der Backing-Bean arbeitet ohnehin nur auf dem Mandanten
- * der Session ({@code PlaintextSecurityHolder.getMandat()}). Ein admin soll die Mailtexte seines
- * Mandanten selbst pflegen koennen, ohne root zu bemuehen. Die Seite ist in
- * {@code PlaintextSecurityConfig.ADMIN_PAGES} hart auf ADMIN/ROOT verdrahtet.</p>
+ * <p>The overrides apply per tenant, and the Backing Bean works only on the tenant of the session
+ * anyway ({@code PlaintextSecurityHolder.getMandat()}). An admin should be able to maintain the
+ * mail texts of their own tenant without having to bother root. The page is hard-wired to
+ * ADMIN/ROOT in {@code PlaintextSecurityConfig.ADMIN_PAGES}.</p>
  *
- * <p>SECURITY (Karte 308, H4): explizite {@code roles}. Ohne sie prueft {@code MenuItemImpl.isOn()}
- * nichts, und der PageAccessGuardService wertet nur diesen Eintrag aus, nicht das Elternmenue.</p>
+ * <p>SECURITY (card 308, H4): explicit {@code roles}. Without them {@code MenuItemImpl.isOn()}
+ * checks nothing, and the PageAccessGuardService only evaluates this entry, not the parent menu.</p>
  */
 @MenuAnnotation(
     title = "Mailtexte",

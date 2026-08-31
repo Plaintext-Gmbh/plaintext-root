@@ -277,11 +277,11 @@ class PlaintextAuthenticationSuccessHandlerTest {
         verify(response).sendRedirect("/first.html");
     }
 
-    // --- Erzwungener Passwortwechsel (Karte 306) ---------------------------------------
+    // --- Forced password change (card 306) ----------------------------------------------
 
     @Test
     void onAuthenticationSuccess_shouldRedirectToPasswordPage_whenMustChangePassword() throws Exception {
-        // Auch mit konfigurierter Startseite gewinnt der erzwungene Passwortwechsel.
+        // Even with a configured start page the forced password change wins.
         Authentication auth = new UsernamePasswordAuthenticationToken("root@root.root", "pass",
                 Arrays.asList(
                         new SimpleGrantedAuthority("ROLE_ROOT"),

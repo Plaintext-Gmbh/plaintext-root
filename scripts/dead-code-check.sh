@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dead Code Check: Findet unbenutzte Klassen, Methoden und Imports
+# Dead code check: finds unused classes, methods and imports
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
@@ -9,16 +9,16 @@ echo "=== Plaintext-Root: Dead Code Analyse ==="
 echo "Datum: $(date '+%Y-%m-%d %H:%M')"
 echo ""
 
-# 1. Unbenutzte Imports
+# 1. Unused imports
 echo "=== 1. Unbenutzte Imports ==="
 UNUSED_IMPORTS=0
 while IFS= read -r file; do
     while IFS= read -r line; do
-        # Extrahiere Klassenname aus Import
+        # Extract the class name from the import statement
         CLASS=$(echo "$line" | sed 's/import .*\.\([A-Z][A-Za-z0-9]*\);/\1/' | tr -d ' ')
         [[ -z "$CLASS" ]] && continue
         [[ "$CLASS" == "*" ]] && continue
-        # Prüfe ob die Klasse im File verwendet wird (ausser in der Import-Zeile selbst)
+        # Check whether the class is used in the file (other than in the import line itself)
         COUNT=$(grep -c "\b$CLASS\b" "$file" 2>/dev/null || echo 0)
         if [[ "$COUNT" -le 1 ]]; then
             echo "  $file: $line"
@@ -30,7 +30,7 @@ echo "  Gesamt: $UNUSED_IMPORTS unbenutzte Imports"
 
 echo ""
 
-# 2. Leere Klassen (nur Klassen-Definition, kein Inhalt)
+# 2. Empty classes (class definition only, no body)
 echo "=== 2. Leere/Minimale Klassen ==="
 EMPTY_CLASSES=0
 while IFS= read -r file; do
@@ -45,7 +45,7 @@ echo "  Gesamt: $EMPTY_CLASSES minimale Klassen"
 
 echo ""
 
-# 3. TODO/FIXME/HACK Kommentare
+# 3. TODO/FIXME/HACK comments
 echo "=== 3. TODO/FIXME/HACK Kommentare ==="
 TODO_COUNT=0
 while IFS= read -r match; do
@@ -57,7 +57,7 @@ echo "  Gesamt: $TODO_COUNT Kommentare"
 
 echo ""
 
-# 4. Duplizierte String-Literale (potentielle Konstanten)
+# 4. Duplicated string literals (candidates for constants)
 echo "=== 4. Häufige String-Literale (Kandidaten für Konstanten) ==="
 grep -roh '"[^"]\{10,\}"' "$PROJECT_ROOT"/plaintext-*/src/main/java --include='*.java' 2>/dev/null \
     | sort | uniq -c | sort -rn | head -15 | while IFS= read -r line; do
@@ -67,7 +67,7 @@ done
 
 echo ""
 
-# 5. Zusammenfassung
+# 5. Summary
 echo "=== Zusammenfassung ==="
 JAVA_FILES=$(find "$PROJECT_ROOT"/plaintext-*/src/main/java -name '*.java' 2>/dev/null | wc -l | tr -d ' ')
 TOTAL_LOC=$(find "$PROJECT_ROOT"/plaintext-*/src/main/java -name '*.java' 2>/dev/null -exec cat {} + | wc -l | tr -d ' ')

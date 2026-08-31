@@ -20,43 +20,43 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Dauerhafte Leitplanke gegen Stored XSS in Facelets (SECURITY-Karte 304): In keiner View des
- * Repos darf {@code escape="false"} stehen.
+ * Permanent guardrail against stored XSS in Facelets (SECURITY card 304): in no view of the
+ * repository may {@code escape="false"} appear.
  * <p>
- * Hintergrund: {@code escape="false"} schreibt den Wert roh in die Antwort. Steht dort ein
- * DB-/Benutzerwert (Benutzername, Mandant, i18n-Uebersetzung, LLM-Ausgabe), wird daraus Stored
- * XSS — und zwar bevorzugt auf Admin-Seiten wie {@code useradmin.xhtml}, also im hoechsten
- * Rechtekontext. Die CSP faengt das nicht ab, solange sie {@code 'unsafe-inline'} erlaubt.
+ * Background: {@code escape="false"} writes the value raw into the response. If a
+ * database/user value stands there (user name, tenant, i18n translation, LLM output), it turns into
+ * stored XSS — preferably on admin pages such as {@code useradmin.xhtml}, i.e. in the highest
+ * privilege context. The CSP does not catch that as long as it permits {@code 'unsafe-inline'}.
  * <p>
- * Bei Karte 304 wurden alle 59 Vorkommen entfernt: keine einzige Stelle brauchte echtes HTML
- * (Cron-Hilfetexte, Labels, Benutzernamen, Feldnamen, i18n-Strings). Deshalb ist hier ein
- * <b>vollstaendiges Verbot</b> formuliert statt einer Heuristik auf EL-Muster wie {@code #{obj.}
- * — ein Verbot laesst sich nicht durch einen neuen Ausdrucksnamen ({@code #{row.},
- * #{field.} …}) umgehen.
+ * With card 304 all 59 occurrences were removed: not a single place needed real HTML
+ * (cron help texts, labels, user names, field names, i18n strings). That is why a
+ * <b>complete ban</b> is formulated here instead of a heuristic on EL patterns such as {@code #{obj.}
+ * — a ban cannot be circumvented by a new expression name ({@code #{row.},
+ * #{field.} …}).
  * <p>
- * <b>Opt-out</b> fuer den Fall, dass eine View wirklich HTML rendern muss: den Marker
- * {@code escape-false-ok} als Kommentar in dieselbe Zeile schreiben, zusammen mit der Begruendung,
- * woher das HTML kommt. Dann gilt: der Inhalt muss serverseitig sanitisiert sein (jsoup
- * {@code Safelist} ist als Dependency vorhanden) — Escaping ist die Default-Antwort,
- * Sanitizing die begruendete Ausnahme.
+ * <b>Opt-out</b> for the case that a view really has to render HTML: write the marker
+ * {@code escape-false-ok} as a comment on the same line, together with the justification of
+ * where the HTML comes from. Then the rule is: the content must be sanitized on the server side (jsoup
+ * {@code Safelist} is available as a dependency) — escaping is the default answer,
+ * sanitizing the justified exception.
  * <p>
- * Aufbau analog {@link CsrfFormInvariantTest}: repo-weiter Scan aller Module mit
+ * Structure analogous to {@link CsrfFormInvariantTest}: repository-wide scan of all modules with
  * {@code src/main/resources/META-INF/resources}.
  */
 class EscapeFalseInvariantTest {
 
-    /** {@code escape="false"} in allen Schreibweisen (Whitespace, einfache/doppelte Quotes, Case). */
+    /** {@code escape="false"} in every spelling (whitespace, single/double quotes, case). */
     private static final Pattern ESCAPE_FALSE =
             Pattern.compile("escape\\s*=\\s*[\"']\\s*false\\s*[\"']", Pattern.CASE_INSENSITIVE);
 
-    /** XML-Kommentar (auch mehrzeilig) — wird vor dem Scan ausgeblendet, damit Doku-Text
-     *  ueber das Verbot (und auskommentierter Alt-Code) keinen Fehlalarm erzeugt. */
+    /** XML comment (also multi-line) — hidden before the scan, so that documentation text
+     *  about the ban (and commented-out legacy code) causes no false alarm. */
     private static final Pattern COMMENT = Pattern.compile("<!--.*?-->", Pattern.DOTALL);
 
-    /** Opt-out-Marker als Kommentar in derselben Zeile. */
+    /** Opt-out marker as a comment on the same line. */
     private static final String EXEMPT_COMMENT = "escape-false-ok";
 
-    /** Modul, an dem das Repo-Root erkannt wird. */
+    /** Module by which the repository root is recognized. */
     private static final String ANKER_MODUL = "plaintext-root-webapp";
 
     private static final String RESOURCES_PFAD = "src/main/resources/META-INF/resources";
@@ -100,8 +100,8 @@ class EscapeFalseInvariantTest {
     }
 
     /**
-     * Selbsttest der Erkennung: verhindert, dass der Scan durch einen kaputten Regex still
-     * zum No-Op wird und die Leitplanke unbemerkt wegfällt.
+     * Self-test of the detection: prevents the scan from silently becoming a no-op through a broken
+     * regex, which would make the guardrail fall away unnoticed.
      */
     @Test
     void erkennungFunktioniert() {
@@ -124,10 +124,10 @@ class EscapeFalseInvariantTest {
     }
 
     /**
-     * Findet alle nicht befreiten {@code escape="false"} und liefert "&lt;zeile&gt; — &lt;zeileninhalt&gt;".
-     * <p>Erkannt wird auf dem kommentarfreien Text (Doku/auskommentierter Code zaehlt nicht),
-     * der Opt-out-Marker dagegen auf der Originalzeile — er steht ja per Definition in einem
-     * Kommentar.
+     * Finds all {@code escape="false"} that are not exempted and returns "&lt;zeile&gt; — &lt;zeileninhalt&gt;".
+     * <p>Detection runs on the comment-free text (documentation/commented-out code does not count),
+     * whereas the opt-out marker is looked for on the original line — by definition it stands in a
+     * comment.
      */
     private List<String> findeTreffer(String inhalt) {
         List<String> treffer = new ArrayList<>();
@@ -142,7 +142,7 @@ class EscapeFalseInvariantTest {
         return treffer;
     }
 
-    /** Ersetzt den Inhalt von XML-Kommentaren durch Leerzeichen; Zeilenstruktur bleibt erhalten. */
+    /** Replaces the content of XML comments with blanks; the line structure is preserved. */
     private String kommentareAusblenden(String inhalt) {
         StringBuilder sb = new StringBuilder(inhalt);
         Matcher matcher = COMMENT.matcher(inhalt);
@@ -156,7 +156,7 @@ class EscapeFalseInvariantTest {
         return sb.toString();
     }
 
-    /** Alle Modul-Verzeichnisse mit JSF-Resources (direkt unterhalb des Repo-Roots). */
+    /** All module directories with JSF resources (directly below the repository root). */
     private List<Path> findeResourceVerzeichnisse(Path repoRoot) throws IOException {
         List<Path> ergebnis = new ArrayList<>();
         try (Stream<Path> module = Files.list(repoRoot)) {
@@ -170,16 +170,16 @@ class EscapeFalseInvariantTest {
     }
 
     /**
-     * Findet das Repo-Root unabhängig vom user.dir-Kontext (Maven aus Modul oder Repo-Root, IDE):
-     * läuft von der Test-Class-Location (target/test-classes) bzw. von user.dir aufwärts,
-     * bis ein Verzeichnis das Anker-Modul enthält.
+     * Finds the repository root independently of the user.dir context (Maven from a module or from the
+     * repository root, IDE): walks upwards from the test class location (target/test-classes) resp.
+     * from user.dir until a directory contains the anchor module.
      */
     private Path findeRepoRoot() {
         List<Path> startpunkte = new ArrayList<>();
         try {
             startpunkte.add(Path.of(getClass().getProtectionDomain().getCodeSource().getLocation().toURI()));
         } catch (URISyntaxException | RuntimeException _) {
-            // z.B. exotischer ClassLoader — dann greift der user.dir-Fallback
+            // e.g. an exotic class loader — then the user.dir fallback applies
         }
         startpunkte.add(Path.of(System.getProperty("user.dir")));
 

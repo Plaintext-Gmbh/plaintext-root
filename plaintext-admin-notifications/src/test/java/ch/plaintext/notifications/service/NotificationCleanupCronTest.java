@@ -19,8 +19,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): der Aufraeum-Cron ist global und
- * loescht nur gelesene Benachrichtigungen aelter als 90 Tage — die Grenze ist der Vertrag.
+ * Status report 29.08.2026, measure 13 (JaCoCo gate): the cleanup cron is global and
+ * only deletes read notifications older than 90 days — that cut-off is the contract.
  *
  * @author info@plaintext.ch
  * @since 2026

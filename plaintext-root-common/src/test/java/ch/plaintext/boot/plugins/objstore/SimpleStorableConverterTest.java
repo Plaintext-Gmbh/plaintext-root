@@ -20,15 +20,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Der Converter schreibt JSON und liest JSON wie XML.
+ * The converter writes JSON and reads JSON as well as XML.
  * <p>
- * Der Test verwendet einen eigenen Typ statt einer Anwendungsklasse: der
- * Converter liegt seit der Auslagerung in plaintext-root-common, und ein Test
- * dort darf nicht auf das webapp-Modul zeigen.
+ * The test uses a type of its own instead of an application class: the
+ * converter has lived in plaintext-root-common since it was moved out, and a
+ * test there must not point at the webapp module.
  */
 class SimpleStorableConverterTest {
 
-    /** Testtyp - oeffentlich und nicht final, damit Jackson ihn erzeugen kann. */
+    /** Test type - public and not final, so that Jackson can create it. */
     @Getter
     @Setter
     public static class TestPref implements SimpleStorable<TestPref> {
@@ -81,9 +81,9 @@ class SimpleStorableConverterTest {
     @Test
     @DisplayName("Altbestand im XStream-Format bleibt lesbar")
     void readsLegacyXml() {
-        // Der eigentliche Zweck dieser Fassung: bestehende Spalten enthalten
-        // XStream-XML. Ohne diesen Weg waeren sie nach dem Update unlesbar und
-        // jede Installation braeuchte ein Migrationsskript.
+        // The actual purpose of this version: existing columns contain
+        // XStream XML. Without this path they would be unreadable after the update and
+        // every installation would need a migration script.
         XstreamBaseJPAConverter<SimpleStorable> alt = new XstreamBaseJPAConverter<>();
         String xml = alt.convertToDatabaseColumn(pref());
         assertTrue(xml.startsWith("<"), "Vorbedingung: XStream schreibt XML");
@@ -100,8 +100,8 @@ class SimpleStorableConverterTest {
     @Test
     @DisplayName("Ein einmal gelesener Altbestand wird als JSON zurueckgeschrieben")
     void legacyIsRewrittenAsJson() {
-        // So wandert der Bestand ohne Migrationsskript hinueber: lesen, und beim
-        // naechsten Speichern liegt JSON in der Spalte.
+        // This is how the existing data moves over without a migration script: read it, and at
+        // the next save JSON sits in the column.
         XstreamBaseJPAConverter<SimpleStorable> alt = new XstreamBaseJPAConverter<>();
         String xml = alt.convertToDatabaseColumn(pref());
 
@@ -124,7 +124,7 @@ class SimpleStorableConverterTest {
     @Test
     @DisplayName("Ein defekter Wert sprengt die Abfrage nicht")
     void brokenValueReturnsNull() {
-        // Eine Ausnahme hier wuerde jede Abfrage reissen, die die Spalte laedt.
+        // An exception here would tear down every query that loads the column.
         assertNull(converter.convertToEntityAttribute("{kein gueltiges json"));
     }
 }

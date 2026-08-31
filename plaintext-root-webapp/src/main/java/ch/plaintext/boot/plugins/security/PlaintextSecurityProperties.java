@@ -18,12 +18,12 @@ import java.util.Map;
 public class PlaintextSecurityProperties {
 
     /**
-     * Zusätzliche Pfade für die CSRF wird ignoriert (ergänzend zu Framework-Defaults).
+     * Additional paths for which CSRF is ignored (in addition to the framework defaults).
      */
     private List<String> csrfIgnorePatterns = new ArrayList<>();
 
     /**
-     * Zusätzliche Pfade die ohne Authentication erreichbar sind (ergänzend zu Framework-Defaults).
+     * Additional paths that are reachable without authentication (in addition to the framework defaults).
      */
     private List<String> permitAllPatterns = new ArrayList<>();
 
@@ -39,13 +39,13 @@ public class PlaintextSecurityProperties {
     private String rememberMeKey = "";
 
     /**
-     * Schluesselmaterial fuer die Verschluesselung der TOTP-Secrets in {@code MY_USER_ENTITY}
-     * (Zustandsbericht 29.08.2026, H3-Nebenbefund: das Secret lag im Klartext, die Recovery-Codes
-     * daneben gehasht). Leer = es gilt {@link #rememberMeKey} (in PROD Pflicht, also ist die
-     * Verschluesselung dort immer aktiv). Ein eigener Schluessel ist die bessere Wahl: dann
-     * kann der Remember-Me-Schluessel rotiert werden, ohne dass jeder 2FA-Nutzer neu einrichten
-     * muss. Rotation dieses Schluessels bedeutet Neu-Einrichtung fuer alle 2FA-Nutzer
-     * (Recovery-Codes bleiben gueltig).
+     * Key material for encrypting the TOTP secrets in {@code MY_USER_ENTITY}
+     * (status report 29.08.2026, H3 side finding: the secret lay in clear text, the recovery codes
+     * next to it hashed). Empty = {@link #rememberMeKey} applies (mandatory in PROD, so the
+     * encryption is always active there). A dedicated key is the better choice: then
+     * the remember-me key can be rotated without every 2FA user having to set up their
+     * second factor again. Rotating this key means re-enrollment for all 2FA users
+     * (recovery codes stay valid).
      */
     private String totpEncryptionKey = "";
 
@@ -74,126 +74,126 @@ public class PlaintextSecurityProperties {
     private boolean rememberMeOnOauth = true;
 
     /**
-     * SECURITY (Karte 314, Punkt 13): Gueltigkeitsdauer des persistenten Remember-Me-Cookies.
-     * Vorher hart auf 14 Tage verdrahtet. Weil {@link #rememberMeOnOauth} in dieser Installation
-     * {@code true} ist und damit JEDER Login — auch der Form-Login ohne Haekchen — einen
-     * persistenten Cookie erhaelt, ist eine kuerzere Standardgueltigkeit die risikoaermere
-     * Voreinstellung. Ueber {@code plaintext.security.remember-me-validity} anpassbar.
+     * SECURITY (card 314, item 13): validity period of the persistent remember-me cookie.
+     * Previously hard-wired to 14 days. Because {@link #rememberMeOnOauth} is {@code true} in this
+     * installation and therefore EVERY login — including the form login without a checkmark — receives
+     * a persistent cookie, a shorter default validity is the lower-risk
+     * default. Adjustable via {@code plaintext.security.remember-me-validity}.
      */
     private java.time.Duration rememberMeValidity = java.time.Duration.ofDays(7);
 
     /**
-     * SECURITY (Karte 314, Punkt 12): verlangt beim ERSTMALIGEN Verlinken eines bestehenden
-     * lokalen Kontos mit einem OIDC-Subject den Claim {@code email_verified=true}. Fail-closed
-     * (Default {@code true}); nur abschalten, wenn der eingesetzte IdP den Claim nachweislich
-     * nicht liefert. Bereits verlinkte Konten und Auto-Create sind nicht betroffen.
+     * SECURITY (card 314, item 12): requires the claim {@code email_verified=true} when an existing
+     * local account is linked to an OIDC subject FOR THE FIRST TIME. Fail-closed
+     * (default {@code true}); switch it off only if the IdP in use demonstrably does not deliver the
+     * claim. Already linked accounts and auto-create are not affected.
      */
     private boolean oidcRequireVerifiedEmail = true;
 
     /**
-     * TOTP / Zwei-Faktor-Authentifizierung (nur fuer lokale Passwort-User).
-     * Additive Sub-Konfiguration; Default-OFF (siehe {@link TotpProperties}).
+     * TOTP / two-factor authentication (only for local password users).
+     * Additive sub-configuration; default OFF (see {@link TotpProperties}).
      */
     private TotpProperties totp = new TotpProperties();
 
     /**
-     * Content-Security-Policy. Additive Sub-Konfiguration; die Voreinstellung ist das bisherige
-     * Verhalten (siehe {@link CspProperties}).
+     * Content security policy. Additive sub-configuration; the default is the previous
+     * behaviour (see {@link CspProperties}).
      */
     private CspProperties csp = new CspProperties();
 
 
-    // Karte 560 (05.08.2026): plaintext.security.token-login.* ist ersatzlos entfallen, zusammen mit
-    // dem Endpunkt /token-login selbst (TokenLoginController). Er war eine zweite Tuer neben der
-    // markierten -- ein fuer Maschinen ausgestelltes Token ergab dort eine Browser-Session mit den
-    // vollen DB-Rollen seines Besitzers. Karte 309 hat ihn abgesichert, Karte 544 den Scope-Zwang
-    // auf SESSION verengt, und diese Karte baut ihn ab. Vorbedingung war eine Messung, keine
-    // Annahme: in 30 Tagen kein einziger erfolgreicher Token-Login in PROD (Graylog, gegen die
-    // Erfolgsmeldung des SessionLoginFinalizer geprueft, nicht gegen die Abwesenheit von Fehlern).
+    // Card 560 (05.08.2026): plaintext.security.token-login.* has been dropped without replacement, together
+    // with the endpoint /token-login itself (TokenLoginController). It was a second door next to the
+    // marked one -- a token issued for machines produced a browser session there with the
+    // full DB roles of its owner. Card 309 secured it, card 544 narrowed the scope requirement
+    // to SESSION, and this card dismantles it. The precondition was a measurement, not an
+    // assumption: in 30 days not a single successful token login in PROD (Graylog, checked against the
+    // success message of the SessionLoginFinalizer, not against the absence of errors).
     //
-    // Eine noch gesetzte Property dieses Praefixes ist ab hier wirkungslos. Sie loest keinen
-    // Startfehler aus (Spring bindet unbekannte Schluessel ausserhalb dieses Objekts nicht) --
-    // wer sie in einer app.env stehen hat, sollte sie beim naechsten Anfassen entfernen.
+    // A property of this prefix that is still set has no effect from here on. It does not cause a
+    // startup error (Spring does not bind unknown keys outside this object) --
+    // whoever has it in an app.env should remove it the next time they touch that file.
 
 
     /**
-     * Konfiguration des optionalen zweiten Faktors (TOTP, Authenticator-App).
+     * Configuration of the optional second factor (TOTP, authenticator app).
      *
-     * <p><b>Sicherheits-Default:</b> {@code enabled=false}. Solange das Flag {@code false}
-     * ist, aendert sich fuer niemanden etwas: kein zweiter Login-Schritt, kein Redirect,
-     * keine Profil-Option, kein aktiver Verifikations-Gate. Nur bei {@code true} wird 2FA
-     * ueberhaupt angeboten – und dann greift es ausschliesslich fuer User, die es selbst
-     * aktiviert haben ({@code MyUserEntity.totpEnabled=true}). OIDC-only-User
-     * ({@code passwordless}) sind grundsaetzlich nicht betroffen.
+     * <p><b>Security default:</b> {@code enabled=false}. As long as the flag is {@code false},
+     * nothing changes for anybody: no second login step, no redirect,
+     * no profile option, no active verification gate. Only on {@code true} is 2FA
+     * offered at all - and then it applies exclusively to users who have enabled it
+     * themselves ({@code MyUserEntity.totpEnabled=true}). OIDC-only users
+     * ({@code passwordless}) are fundamentally unaffected.
      */
     @Data
     public static class TotpProperties {
 
         /**
-         * Master-Schalter fuer das gesamte TOTP-Feature. Default {@code false}
-         * (PROD-sicher: ohne dieses Flag verhaelt sich das System exakt wie zuvor).
+         * Master switch for the whole TOTP feature. Default {@code false}
+         * (PROD-safe: without this flag the system behaves exactly as before).
          */
         private boolean enabled = false;
 
         /**
-         * Name, der in der Authenticator-App als Aussteller (Issuer) erscheint.
-         * Teil der {@code otpauth://}-URI.
+         * Name that appears as the issuer in the authenticator app.
+         * Part of the {@code otpauth://} URI.
          */
         private String issuer = "Plaintext";
 
         /**
-         * Toleranz in 30-Sekunden-Zeitfenstern bei der Code-Pruefung. {@code 1} erlaubt
-         * je ein Fenster in Vergangenheit/Zukunft (RFC-6238-Empfehlung gegen Uhr-Drift).
+         * Tolerance in 30-second time windows when checking a code. {@code 1} permits
+         * one window each into the past/future (RFC 6238 recommendation against clock drift).
          */
         private int allowedTimePeriodDiscrepancy = 1;
 
         /**
-         * Anzahl der bei der Einrichtung generierten Einmal-Recovery-Codes.
+         * Number of one-time recovery codes generated during enrollment.
          */
         private int recoveryCodeCount = 10;
 
         /**
-         * PLATZHALTER fuer einen Folge-PR: Rollen, fuer die ein ADMIN/ROOT den zweiten
-         * Faktor erzwingen koennte (z.B. {@code ADMIN}). Aktuell NICHT durchgesetzt –
-         * Enforcement (User ohne eingerichtetes TOTP zur Einrichtung zwingen) ist bewusst
-         * einem separaten PR vorbehalten. Dokumentiert in docs/security/TOTP_2FA.md.
+         * PLACEHOLDER for a follow-up PR: roles for which an ADMIN/ROOT could enforce the second
+         * factor (e.g. {@code ADMIN}). Currently NOT enforced -
+         * enforcement (forcing users without configured TOTP to enroll) is deliberately
+         * reserved for a separate PR. Documented in docs/security/TOTP_2FA.md.
          */
         private List<String> enforceForRoles = new ArrayList<>();
     }
 
     /**
-     * Steuerung einzelner Direktiven der Content-Security-Policy (gesetzt in
+     * Control over individual directives of the content security policy (set in
      * {@link PlaintextSecurityConfig}).
      *
-     * <p>Es gibt hier genau einen Schalter, und der ist mit Absicht so klein: alles andere an der
-     * Policy ist fuer alle Apps gleich und hat keinen Grund, konfigurierbar zu sein. Was eine App
-     * zusaetzlich laden darf (Kartenkacheln, CDN), steht als Liste in der Policy selbst.
+     * <p>There is exactly one switch here, and it is deliberately that small: everything else about the
+     * policy is the same for all apps and has no reason to be configurable. What an app
+     * may additionally load (map tiles, CDN) stands as a list in the policy itself.
      */
     @Data
     public static class CspProperties {
 
         /**
-         * Fuehrt {@code script-src} weiterhin {@code 'unsafe-inline'}? Vorgabe {@code true} —
-         * das ist das Verhalten von vor Welle 4, und es bleibt es, bis eine App ausdruecklich
-         * umschaltet.
+         * Does {@code script-src} still carry {@code 'unsafe-inline'}? Default {@code true} —
+         * that is the behaviour from before wave 4, and it stays that way until an app explicitly
+         * switches over.
          *
-         * <p><b>Was der Schalter bedeutet.</b> Mit {@code 'unsafe-inline'} fuehrt der Browser
-         * jedes {@code <script>} aus, das im Dokument steht — auch eines, das ein Angreifer
-         * hineingeschrieben hat. Die CSP schuetzt an dieser Stelle also nicht; sie sieht nur so
-         * aus. Auf {@code false} gesetzt, laeuft ausschliesslich JavaScript aus Dateien gleicher
-         * Herkunft, und eine XSS-Luecke ohne Datei-Schreibrecht wird wirkungslos.
+         * <p><b>What the switch means.</b> With {@code 'unsafe-inline'} the browser executes
+         * every {@code <script>} that stands in the document — including one that an attacker
+         * has written into it. At this point the CSP therefore does not protect; it only looks
+         * as if it did. Set to {@code false}, only JavaScript from files of the same
+         * origin runs, and an XSS hole without write access to files becomes ineffective.
          *
-         * <p><b>Wann eine App umschalten darf.</b> Erst wenn zweierlei gilt:
+         * <p><b>When an app may switch over.</b> Only once two things hold:
          * <ol>
-         *   <li>{@code joinfaces.primefaces.csp=true} ist gesetzt — dann zieht PrimeFaces seine
-         *       eigenen Handler aus dem Markup und versieht seine Bloecke mit einem Nonce;</li>
-         *   <li>im eigenen Markup steht kein Inline-JavaScript mehr. Genau das prueft
-         *       {@code PlaintextInlineJsVertragTest} (plaintext-root-archtests): scharf ueber
-         *       {@code -Dplaintext.arch.inline-js=enforce} bzw. die Surefire-Zeilen im
-         *       webapp-pom. Fuer root ist beides seit Welle 4 erfuellt.</li>
+         *   <li>{@code joinfaces.primefaces.csp=true} is set — then PrimeFaces pulls its
+         *       own handlers out of the markup and gives its blocks a nonce;</li>
+         *   <li>there is no inline JavaScript left in the app's own markup. Exactly that is checked by
+         *       {@code PlaintextInlineJsVertragTest} (plaintext-root-archtests): enforcing via
+         *       {@code -Dplaintext.arch.inline-js=enforce} resp. the Surefire lines in the
+         *       webapp pom. For root both have been fulfilled since wave 4.</li>
          * </ol>
-         * Umgeschaltet wird app-weise ({@code plaintext.security.csp.script-unsafe-inline=false}),
-         * damit ein Fehlschlag eine App betrifft und nicht die ganze Familie.
+         * The switch is thrown per app ({@code plaintext.security.csp.script-unsafe-inline=false}),
+         * so that a failure affects one app and not the whole family.
          */
         private boolean scriptUnsafeInline = true;
     }

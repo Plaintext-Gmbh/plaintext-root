@@ -45,9 +45,9 @@ public class AnforderungenBackingBean implements Serializable {
     }
 
     /**
-     * preRenderView-Listener (session-scoped): setzt die Rolle, sperrt Nicht-Admins per Redirect aus und
-     * laedt die Daten FRISCH bei jedem GET. Der isPostback-Guard verhindert das Neuladen bei Ajax-Postbacks.
-     * Ersetzt das fruehere @PostConstruct init() + checkAccess().
+     * preRenderView listener (session-scoped): sets the role, locks out non-admins via redirect and
+     * loads the data FRESH on every GET. The isPostback guard prevents a reload on Ajax postbacks.
+     * Replaces the former @PostConstruct init() + checkAccess().
      */
     public void onLoad() {
         admin = security.ifGranted("ROLE_ADMIN") || security.ifGranted("ROLE_ROOT");

@@ -19,27 +19,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Geteilte Leitplanke gegen <b>private Schlüssel im ausgelieferten Artefakt</b>: scannt in ALLEN
- * Modulen des jeweiligen Reactors die {@code src/main/resources} und schlägt fehl, sobald dort eine
- * Datei mit privatem Schlüsselmaterial liegt.
+ * Shared guardrail against <b>private keys in the shipped artifact</b>: scans the
+ * {@code src/main/resources} in ALL modules of the respective reactor and fails as soon as a
+ * file with private key material lies there.
  *
- * <p><b>Hintergrund (Karte 305/347):</b> In {@code plaintext-admin-apitoken/src/main/resources/keys/}
- * lag der private JWT-Signierschlüssel im Repo — und damit im gebauten JAR, das über das NAS-Maven-Repo
- * an alle Apps verteilt wird. Wer Zugriff auf Repo, JAR oder Image hatte, konnte damit ein Token für
- * einen ROOT-Benutzer signieren und die MCP-Endpoints jeder Instanz übernehmen. Der Schlüssel ist
- * entfernt, jede Instanz signiert und validiert seither ausschliesslich mit ihrem eigenen Schlüsselpaar
- * aus dem Vault. Dieser Test verhindert, dass so etwas versehentlich zurückkommt — auch in einem der
- * Consumer-Repos (app/guild/schuetu/iot), wo der Linter als Jar mitläuft.</p>
+ * <p><b>Background (card 305/347):</b> in {@code plaintext-admin-apitoken/src/main/resources/keys/}
+ * the private JWT signing key was kept in the repository — and thereby in the built JAR that is
+ * distributed to all apps via the NAS Maven repository. Anyone with access to the repository, the JAR
+ * or the image could sign a token for a ROOT user with it and take over the MCP endpoints of every
+ * instance. The key has been removed; since then every instance signs and validates exclusively with
+ * its own key pair from the vault. This test prevents such a thing from coming back by accident —
+ * also in one of the consumer repositories (app/guild/schuetu/iot), where the linter runs along as a jar.</p>
  *
- * <p><b>Warum ein Dateiscan statt ArchUnit?</b> Schlüssel sind Ressourcen, kein Bytecode — ArchUnit
- * sieht sie gar nicht. Gescannt wird ab der Reactor-Wurzel jedes Modul-{@code src/main/resources};
- * {@code src/test/resources} bleibt bewusst aussen vor: ein reiner Test-Schlüssel wird nicht
- * ausgeliefert und kann in PROD nichts signieren (dort ist der Classpath-Fallback fail-closed
- * abgeschaltet).</p>
+ * <p><b>Why a file scan instead of ArchUnit?</b> Keys are resources, not bytecode — ArchUnit
+ * does not see them at all. Scanned is every module's {@code src/main/resources} from the reactor root;
+ * {@code src/test/resources} deliberately stays out: a pure test key is not
+ * shipped and can sign nothing in PROD (the classpath fallback is switched off fail-closed
+ * there).</p>
  *
- * <p>Wie die übrigen Klassen dieses Moduls liegt der Test in {@code src/main/java} von
- * {@code plaintext-root-archtests} und läuft im Consumer via Surefire {@code <dependenciesToScan>}
- * gegen dessen Ressourcen.</p>
+ * <p>Like the other classes of this module the test lives in {@code src/main/java} of
+ * {@code plaintext-root-archtests} and runs in the consumer via Surefire {@code <dependenciesToScan>}
+ * against that consumer's resources.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -49,8 +49,8 @@ class PlaintextPrivateKeyBanTest {
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
     /**
-     * PEM-Kopfzeilen privater Schlüssel. Der öffentliche Teil ({@code BEGIN PUBLIC KEY}) ist
-     * ausdrücklich erlaubt — er darf und soll ausgeliefert werden.
+     * PEM header lines of private keys. The public part ({@code BEGIN PUBLIC KEY}) is
+     * explicitly allowed — it may and should be shipped.
      */
     private static final List<String> PRIVATE_KEY_MARKERS = List.of(
             "-----BEGIN PRIVATE KEY-----",
@@ -61,13 +61,13 @@ class PlaintextPrivateKeyBanTest {
             "-----BEGIN PGP PRIVATE KEY BLOCK-----",
             "-----BEGIN ENCRYPTED PRIVATE KEY-----");
 
-    /** Kleiner Deckel, damit der Scan nicht an einer grossen Binärdatei hängen bleibt. */
+    /** A small cap so that the scan does not get stuck on a large binary file. */
     private static final long MAX_SCAN_BYTES = 2L * 1024 * 1024;
 
     /**
-     * Marker der eigenen Linter-Quelle: Dieses Modul liefert den Linter aus und trägt die
-     * PEM-Kopfzeilen als String-Literale — es darf sich nicht selbst prüfen. Im Consumer liegt der
-     * Linter als Jar vor, dort greift die Ausnahme nie.
+     * Marker of our own linter source: this module ships the linter and carries the
+     * PEM header lines as string literals — it must not check itself. In a consumer the
+     * linter is present as a jar, where the exemption never applies.
      */
     private static final String OWN_SOURCE_MARKER = "ch/plaintext/arch/PlaintextPrivateKeyBanTest.java";
 
@@ -79,7 +79,7 @@ class PlaintextPrivateKeyBanTest {
 
         List<String> violations = new ArrayList<>();
         for (Path root : resourceRoots) {
-            // Modulpfad mit ausgeben, sonst sagt "keys/private.pem" nicht, WELCHES Modul betroffen ist.
+            // Print the module path as well, otherwise "keys/private.pem" does not say WHICH module is affected.
             String modul = (repoRoot != null && root.startsWith(repoRoot)) ? repoRoot.relativize(root).toString()
                                                                           : root.toString();
             for (String hit : scanForPrivateKeys(root)) {
@@ -124,8 +124,8 @@ class PlaintextPrivateKeyBanTest {
     }
 
     /**
-     * Die Modulsuche muss auch <b>verschachtelte</b> Module finden (Karte 350) und
-     * Build-Ausgabeverzeichnisse ({@code target}) auslassen — dort liegen Kopien, keine Quellen.
+     * The module lookup must also find <b>nested</b> modules (card 350) and
+     * skip build output directories ({@code target}) — those hold copies, not sources.
      */
     @Test
     void modulsucheFindetVerschachtelteModuleUndUeberspringtTarget(@TempDir Path reactor) throws IOException {
@@ -151,8 +151,8 @@ class PlaintextPrivateKeyBanTest {
     }
 
     /**
-     * Meldet jede Datei unter {@code root}, die eine PEM-Kopfzeile eines PRIVATEN Schlüssels enthält.
-     * Entscheidend ist der Inhalt, nicht der Dateiname — ein umbenannter Schlüssel rutscht so nicht durch.
+     * Reports every file below {@code root} that contains a PEM header line of a PRIVATE key.
+     * What counts is the content, not the file name — a renamed key does not slip through this way.
      */
     static List<String> scanForPrivateKeys(Path root) throws IOException {
         List<String> hits = new ArrayList<>();
@@ -177,15 +177,15 @@ class PlaintextPrivateKeyBanTest {
             String inhalt = Files.readString(file).toUpperCase(Locale.ROOT);
             return PRIVATE_KEY_MARKERS.stream().anyMatch(inhalt::contains);
         } catch (IOException e) {
-            return false; // nicht lesbar/kein Text -> kein PEM
+            return false; // not readable / not text -> no PEM
         }
     }
 
     /**
-     * Alle {@code src/main/resources} des Reactors — eigenes Modul, Geschwistermodule und
-     * <b>verschachtelte</b> Module (Karte 350). Ein Modul in einem Unterverzeichnis
-     * ({@code gruppe/modul/src/main/resources}) wurde vorher nicht gescannt und war damit ein
-     * blinder Fleck: dort abgelegtes Schlüsselmaterial landete unbemerkt im Artefakt.
+     * All {@code src/main/resources} of the reactor — our own module, sibling modules and
+     * <b>nested</b> modules (card 350). A module in a subdirectory
+     * ({@code gruppe/modul/src/main/resources}) used not to be scanned and was therefore a
+     * blind spot: key material placed there ended up in the artifact unnoticed.
      */
     private static List<Path> findResourceRoots() throws IOException {
         Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath();
@@ -203,10 +203,10 @@ class PlaintextPrivateKeyBanTest {
         return roots;
     }
 
-    /** Verzeichnisse, in denen keine Modulquellen liegen — nicht betreten (Laufzeit + Fehlalarme). */
+    /** Directories that contain no module sources — do not descend into them (runtime + false alarms). */
     private static final List<String> SKIP_DIRS = List.of("target", "src", ".git", "node_modules", ".mvn", ".idea");
 
-    /** Maximale Modultiefe unter der Reactor-Wurzel. */
+    /** Maximum module depth below the reactor root. */
     private static final int MAX_MODULE_DEPTH = 5;
 
     private static void collectResourceRoots(Path dir, List<Path> roots, int depth) throws IOException {

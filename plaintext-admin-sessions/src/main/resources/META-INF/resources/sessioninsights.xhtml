@@ -51,9 +51,9 @@
             }
         </style>
 
-        <!-- Sprechende Adresse in der Adresszeile. Die URL kommt als data-Attribut, nicht als EL
-             bzw. Literal im Skriptkoerper: <h:outputScript> MIT Rumpf rendert einen Inline-Block
-             und zwingt die Content-Security-Policy zu script-src 'unsafe-inline' (Welle 4). -->
+        <!-- Readable URL in the address bar. The URL arrives as a data attribute, not as EL
+             or as a literal in the script body: <h:outputScript> WITH a body renders an inline block
+             and forces the Content Security Policy to script-src 'unsafe-inline' (wave 4). -->
         <div data-pt-pushstate="/sessioninsights.html" hidden="hidden"></div>
         <h:outputScript library="plaintext-layout" name="js/pushstate.js"/>
 

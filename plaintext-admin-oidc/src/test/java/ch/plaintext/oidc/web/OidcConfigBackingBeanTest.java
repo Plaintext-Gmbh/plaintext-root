@@ -27,9 +27,9 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 /**
- * Fokus: Session-abgelaufen-Härtung — Interaktionen ohne {@code selected}
- * (Session war abgelaufen/neu) müssen eine klare FacesMessage liefern statt
- * still nichts zu tun oder mit NPE zu crashen.
+ * Focus: session-expired hardening — interactions without {@code selected}
+ * (the session had expired or is new) must produce a clear FacesMessage instead
+ * of silently doing nothing or crashing with an NPE.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OidcConfigBackingBean Session-abgelaufen-Guard")

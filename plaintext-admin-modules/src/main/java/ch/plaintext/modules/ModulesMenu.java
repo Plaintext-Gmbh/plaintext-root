@@ -5,7 +5,7 @@ package ch.plaintext.modules;
 
 import ch.plaintext.boot.menu.MenuAnnotation;
 
-/** Menüpunkt „Module" (Root, nur ROOT) — Feature-Module auflisten, Version, ein-/ausschalten. */
+/** "Module" menu item (Root, ROOT only) — list feature modules, version, switch on/off. */
 @MenuAnnotation(
     title = "Module",
     link = "module.html",

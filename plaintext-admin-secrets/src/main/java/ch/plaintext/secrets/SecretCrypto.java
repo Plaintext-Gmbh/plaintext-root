@@ -16,19 +16,19 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * AES-GCM Ver-/Entschlüsselung für lokal abgelegte Secrets und das Backend-Zugriffstoken.
+ * AES-GCM encryption/decryption for locally stored secrets and the backend access token.
  *
- * <p>Der Schlüssel kommt aus der Env-Variable {@code PLAINTEXT_SECRET_KEY} (base64, 32 Byte =
- * AES-256) — das EINZIGE per Docker-Env injizierte Secret, pro App/Instanz zufällig. Fehlt/ungültig,
- * wird ein deterministischer Dev-Fallback-Key benutzt (laut Warnung, NUR für Dev/Test — in PROD MUSS
- * die Env gesetzt sein, sonst wären lokal abgelegte Secrets unsicher/nicht portabel).</p>
+ * <p>The key comes from the env variable {@code PLAINTEXT_SECRET_KEY} (base64, 32 bytes = AES-256) —
+ * the ONLY secret injected via Docker env, random per app/instance. If it is missing/invalid, a
+ * deterministic dev fallback key is used (with a loud warning, ONLY for dev/test — in PROD the env
+ * MUST be set, otherwise locally stored secrets would be insecure/not portable).</p>
  */
 @Slf4j
 @Component
 public class SecretCrypto {
 
     private static final String ENV_KEY = "PLAINTEXT_SECRET_KEY";
-    private static final int IV_LEN = 12;         // GCM empfohlen: 96 bit
+    private static final int IV_LEN = 12;         // GCM recommendation: 96 bit
     private static final int TAG_BITS = 128;
     private static final SecureRandom RNG = new SecureRandom();
 
@@ -39,7 +39,7 @@ public class SecretCrypto {
         this(environment != null && isProduction(environment));
     }
 
-    /** Test-Konstruktor: erzwingt den Dev-Fallback ohne Spring-Kontext. */
+    /** Test constructor: forces the dev fallback without a Spring context. */
     SecretCrypto() {
         this(false);
     }
@@ -48,12 +48,12 @@ public class SecretCrypto {
         byte[] raw = ladeKey();
         this.devFallback = raw == null;
         if (devFallback) {
-            // SECURITY (Karte 314, Punkt 8): der Dev-Fallback leitet den Schluessel aus
-            // sha256("plaintext-dev-fallback-" + HOSTNAME) ab. Ist HOSTNAME nicht gesetzt
-            // (weder Dockerfile noch compose.yaml setzen die Variable), ist der Wert der
-            // konstante String "null" und der Schluessel damit oeffentlich berechenbar —
-            // jeder, der die abgelegten Secrets in die Haende bekommt, kann sie entschluesseln.
-            // In PROD deshalb Fail-Fast beim Start statt einer leicht zu uebersehenden WARN.
+            // SECURITY (card 314, item 8): the dev fallback derives the key from
+            // sha256("plaintext-dev-fallback-" + HOSTNAME). If HOSTNAME is not set
+            // (neither the Dockerfile nor compose.yaml set the variable), the value is the
+            // constant string "null" and the key is therefore publicly computable —
+            // anyone who gets hold of the stored secrets can decrypt them.
+            // In PROD therefore fail fast at startup instead of an easily overlooked WARN.
             if (production) {
                 throw new IllegalStateException(ENV_KEY + " ist in PROD Pflicht (base64, 32 Byte). "
                         + "Der deterministische Dev-Fallback-Schluessel ist oeffentlich berechenbar "
@@ -66,7 +66,7 @@ public class SecretCrypto {
         this.key = new SecretKeySpec(raw, "AES");
     }
 
-    /** Produktivumgebung = aktives Spring-Profil {@code prod} (so setzt es das Dockerfile). */
+    /** Production environment = active Spring profile {@code prod} (that is how the Dockerfile sets it). */
     private static boolean isProduction(Environment environment) {
         for (String profile : environment.getActiveProfiles()) {
             if ("prod".equalsIgnoreCase(profile)) {
@@ -83,7 +83,7 @@ public class SecretCrypto {
         }
         try {
             byte[] k = Base64.getDecoder().decode(b64.trim());
-            return k.length == 32 ? k : sha256(k);   // toleriere abweichende Längen via SHA-256
+            return k.length == 32 ? k : sha256(k);   // tolerate deviating lengths via SHA-256
         } catch (RuntimeException e) {
             log.warn("{} ist kein gueltiges base64 — Dev-Fallback.", ENV_KEY);
             return null;
@@ -98,12 +98,12 @@ public class SecretCrypto {
         }
     }
 
-    /** true, wenn KEIN echter Env-Key gesetzt ist (UI-Warnung). */
+    /** true if NO real env key is set (UI warning). */
     public boolean isDevFallback() {
         return devFallback;
     }
 
-    /** Klartext → base64(iv||ciphertext||tag). */
+    /** Plaintext → base64(iv||ciphertext||tag). */
     public String encrypt(String plaintext) {
         if (plaintext == null) {
             return null;
@@ -123,7 +123,7 @@ public class SecretCrypto {
         }
     }
 
-    /** base64(iv||ciphertext||tag) → Klartext. */
+    /** base64(iv||ciphertext||tag) → plaintext. */
     public String decrypt(String encoded) {
         if (encoded == null) {
             return null;

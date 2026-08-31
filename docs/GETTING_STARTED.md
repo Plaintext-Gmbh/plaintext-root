@@ -67,18 +67,33 @@ After cloning, the project looks like this:
 
 ```
 plaintext-root/
-├── plaintext-root-interfaces/          # Shared API contracts
-├── plaintext-root-common/              # Common utilities
-├── plaintext-root-jpa/                 # JPA base entities
-├── plaintext-root-menu/                # Menu system
-├── plaintext-root-menu-visibility/      # Menu visibility
-├── plaintext-root-role-assignment/     # Role management
-├── plaintext-root-flyway/              # DB migrations
-├── plaintext-root-template/  # UI template
-├── plaintext-root-webapp/              # Main application
-├── plaintext-admin-*/                  # Admin modules
-├── compose.yaml                        # Dev database
-└── pom.xml                             # Parent POM
+├── plaintext-root-interfaces/       # contracts only — no dependencies
+├── plaintext-root-common/           # security SPI, utilities, SuperModel
+├── plaintext-root-menu/             # annotation-driven menu
+├── plaintext-root-jpa/              # JPA base, auditing, entity registry
+├── plaintext-root-flyway/           # framework migrations
+├── plaintext-root-menu-visibility/  # per-tenant menu configuration
+├── plaintext-root-role-assignment/  # assigning roles to users
+├── plaintext-root-pageguard/        # per-view authorization
+├── plaintext-root-web/              # URL rewrite, MenuBean
+├── plaintext-root-template/         # UI template (no dependencies)
+├── plaintext-root-webapp/           # the application shell — depends on 22 of the above
+├── plaintext-root-archtests/        # shared ArchUnit rules, shipped in src/main
+├── plaintext-admin-settings/        # ┐
+├── plaintext-admin-sessions/        # │
+├── plaintext-admin-cron/            # │
+├── plaintext-admin-i18n/            # │
+├── plaintext-admin-oidc/            # │ twelve admin modules, each removable
+├── plaintext-admin-apitoken/        # │ with a Maven <exclusion> — see
+├── plaintext-admin-secrets/         # │ docs/OPTIONAL_MODULES.md
+├── plaintext-admin-modules/         # │
+├── plaintext-admin-mailtemplate/    # │
+├── plaintext-admin-webhooks/        # │
+├── plaintext-admin-notifications/   # │
+├── plaintext-admin-requirements/    # ┘ (the only one not in the aggregator)
+├── .woodpecker/                     # CI pipelines
+├── compose.yaml                     # dev database, PostgreSQL on 5434
+└── pom.xml                          # parent POM
 ```
 
 ## Configuration
@@ -128,7 +143,7 @@ public class MyPageMenu extends MenuItemImpl {
     public MyPageMenu() {
         setTitle("My Page");
         setParent("Admin");
-        setCommand("mypage.xhtml");
+        setCommand("mypage.html");
         setIcon("pi pi-star");
         setOrder(200);
     }

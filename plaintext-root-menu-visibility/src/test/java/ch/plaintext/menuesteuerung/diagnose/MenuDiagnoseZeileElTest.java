@@ -21,11 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Auftrag Daniel, 29.08.2026: {@code menudiagnose.html} blieb leer — {@code MenuDiagnoseZeile} ist ein
- * Record, und der {@code RecordELResolver} loest {@code #{z.modulKeysText}} ausschliesslich ueber
- * eine parameterlose Methode <i>namens</i> {@code modulKeysText()} auf; {@code getModulKeysText()}
- * kennt er nicht. Dieser Test liest jede {@code #{z.…}}-Referenz aus der Seite und verlangt dazu
- * genau so eine Methode am Record.
+ * Order from Daniel, 29.08.2026: {@code menudiagnose.html} stayed empty — {@code MenuDiagnoseZeile}
+ * is a record, and the {@code RecordELResolver} resolves {@code #{z.modulKeysText}} exclusively
+ * through a parameterless method <i>named</i> {@code modulKeysText()}; it does not know about
+ * {@code getModulKeysText()}. This test reads every {@code #{z.…}} reference from the page and
+ * demands exactly such a method on the record.
  */
 @DisplayName("Menue-Diagnose: jede EL-Referenz der Seite hat eine Record-Methode")
 class MenuDiagnoseZeileElTest {

@@ -13,47 +13,47 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Ermittelt die Client-IP, die als Rate-Limit-Schluessel dient.
+ * Determines the client IP that serves as the rate-limit key.
  *
- * <p>SECURITY (Karte 303, Befund 2): Frueher wurde ungeprueft das <em>erste</em> Element von
- * {@code X-Forwarded-For} genommen. Dieses Element stammt aber vom Client selbst — jeder Request
- * mit {@code X-Forwarded-For: 1.2.3.<zufall>} bekam einen frischen Bucket und umging damit
- * saemtliche Limits. Ein pauschales Ignorieren des Headers ist aber genauso falsch: hinter dem
- * Reverse-Proxy landeten sonst alle Nutzer im selben Bucket und wuerden sich gegenseitig
- * aussperren.
+ * <p>SECURITY (card 303, finding 2): previously the <em>first</em> element of
+ * {@code X-Forwarded-For} was taken without any check. That element, however, comes from the client
+ * itself — every request with {@code X-Forwarded-For: 1.2.3.<zufall>} got a fresh bucket and thereby
+ * bypassed all limits. Ignoring the header altogether is just as wrong, though: behind the
+ * reverse proxy all users would otherwise end up in the same bucket and would lock each other
+ * out.
  *
- * <p>Korrekt ist das Standardverfahren „von rechts nach links bis zum ersten nicht
- * vertrauenswuerdigen Hop":
+ * <p>The correct approach is the standard procedure "from right to left up to the first
+ * untrusted hop":
  * <ol>
- *   <li>Ist die echte Peer-Adresse ({@code getRemoteAddr()}) <b>kein</b> vertrauenswuerdiger Proxy,
- *       ist der Request direkt bei uns angekommen — {@code X-Forwarded-For} wird komplett
- *       ignoriert, der Peer ist der Client.</li>
- *   <li>Sonst wird {@code X-Forwarded-For} von rechts nach links durchlaufen. Jeder Proxy
- *       <em>haengt</em> die von ihm gesehene Peer-Adresse rechts an; alles was ein Angreifer
- *       selbst schreiben kann, steht deshalb zwingend <em>links</em> vom echten Wert. Der erste
- *       Eintrag von rechts, der kein vertrauenswuerdiger Proxy ist, ist die echte Client-IP.</li>
- *   <li>Sind alle Eintraege vertrauenswuerdig (typisch: Zugriff direkt aus dem LAN), wird der
- *       linkeste Eintrag genommen — sonst teilten sich alle LAN-Nutzer einen Bucket.</li>
+ *   <li>If the real peer address ({@code getRemoteAddr()}) is <b>not</b> a trusted proxy,
+ *       the request arrived at us directly — {@code X-Forwarded-For} is ignored
+ *       completely, the peer is the client.</li>
+ *   <li>Otherwise {@code X-Forwarded-For} is walked from right to left. Every proxy
+ *       <em>appends</em> the peer address it saw on the right; everything an attacker can
+ *       write themselves therefore necessarily stands <em>to the left</em> of the real value. The first
+ *       entry from the right that is not a trusted proxy is the real client IP.</li>
+ *   <li>If all entries are trusted (typically: access directly from the LAN), the
+ *       leftmost entry is taken — otherwise all LAN users would share one bucket.</li>
  * </ol>
  *
- * <p>Konkrete Topologie von plaintext-root: Cloudflare-Edge → {@code cloudflared}-Tunnel →
- * {@code plaintext-*-nginx} ({@code proxy_add_x_forwarded_for}) → App. Beide internen Hops liegen
- * in privaten Netzen und sind per Default vertrauenswuerdig; die von Cloudflare angehaengte echte
- * Client-IP ist damit der erste nicht vertrauenswuerdige Eintrag von rechts.
+ * <p>The concrete topology of plaintext-root: Cloudflare edge → {@code cloudflared} tunnel →
+ * {@code plaintext-*-nginx} ({@code proxy_add_x_forwarded_for}) → app. Both internal hops lie
+ * in private networks and are trusted by default; the real client IP appended by Cloudflare
+ * is therefore the first untrusted entry from the right.
  */
 @Slf4j
 public class ClientIpResolver {
 
     /**
-     * Default-Liste vertrauenswuerdiger Proxy-Netze: Loopback, RFC1918, Link-Local, IPv6-ULA.
-     * Deckt sowohl das Docker-Netz als auch die NAS-/LAN-Adresse des Tunnel-Containers ab.
-     * Betreiber mit anderer Topologie sollten die Liste ueber
-     * {@code plaintext.rate-limit.trusted-proxies} enger fassen.
+     * Default list of trusted proxy networks: loopback, RFC1918, link-local, IPv6 ULA.
+     * Covers both the Docker network and the NAS/LAN address of the tunnel container.
+     * Operators with a different topology should narrow the list via
+     * {@code plaintext.rate-limit.trusted-proxies}.
      */
     public static final String DEFAULT_TRUSTED_PROXIES =
             "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,fc00::/7,fe80::/10";
 
-    /** Obergrenze fuer die Anzahl ausgewerteter XFF-Elemente (Schutz vor Riesen-Headern). */
+    /** Upper limit for the number of evaluated XFF elements (protection against huge headers). */
     private static final int MAX_XFF_ELEMENTS = 32;
 
     private final List<CidrRange> trustedProxies;
@@ -83,12 +83,12 @@ public class ClientIpResolver {
     }
 
     /**
-     * @return Rate-Limit-Schluessel (Client-IP als Text), nie {@code null}.
+     * @return rate-limit key (client IP as text), never {@code null}.
      */
     public String resolve(HttpServletRequest request) {
         byte[] peer = toAddress(request.getRemoteAddr());
         if (peer == null) {
-            // Kann praktisch nicht passieren; lieber ein gemeinsamer Bucket als gar kein Limit.
+            // Practically cannot happen; better a shared bucket than no limit at all.
             return "unknown";
         }
         String peerText = format(peer);
@@ -107,8 +107,8 @@ public class ClientIpResolver {
         for (int i = last; i >= 0; i--) {
             byte[] candidate = toAddress(elements[i]);
             if (candidate == null) {
-                // Kein IP-Literal: von einem echten Proxy stammt so etwas nicht. Nicht als
-                // Schluessel verwenden (sonst waere der Schluesselraum beliebig gross).
+                // Not an IP literal: something like this does not come from a real proxy. Do not use
+                // as a key (otherwise the key space would be arbitrarily large).
                 continue;
             }
             leftmostValid = candidate;
@@ -116,7 +116,7 @@ public class ClientIpResolver {
                 return format(candidate);
             }
         }
-        // Alle Hops vertrauenswuerdig -> Zugriff aus dem internen Netz.
+        // All hops trusted -> access from the internal network.
         return leftmostValid != null ? format(leftmostValid) : peerText;
     }
 
@@ -130,9 +130,9 @@ public class ClientIpResolver {
     }
 
     /**
-     * Parst ein IP-Literal. Gibt {@code null} zurueck, wenn der Text kein Literal ist — es wird
-     * bewusst <b>keine</b> Namensaufloesung ausgeloest (ein XFF-Header darf keinen DNS-Lookup
-     * anstossen koennen).
+     * Parses an IP literal. Returns {@code null} if the text is not a literal — deliberately
+     * <b>no</b> name resolution is triggered (an XFF header must not be able to trigger a DNS
+     * lookup).
      */
     static byte[] toAddress(String text) {
         if (text == null) {
@@ -146,7 +146,7 @@ public class ClientIpResolver {
             }
             value = value.substring(1, end);
         } else if (value.chars().filter(c -> c == ':').count() == 1) {
-            // "1.2.3.4:56789" — Port abschneiden.
+            // "1.2.3.4:56789" — cut off the port.
             value = value.substring(0, value.indexOf(':'));
         }
         int percent = value.indexOf('%');
@@ -172,12 +172,12 @@ public class ClientIpResolver {
                 return false;
             }
         }
-        // Ein reiner Hex-/Dezimalstring ohne Trenner ist kein IP-Literal, waere fuer
-        // InetAddress.getByName aber eine gueltige 32-Bit-Zahl ("123" -> 0.0.0.123).
+        // A pure hex/decimal string without separators is not an IP literal, but would be
+        // a valid 32-bit number for InetAddress.getByName ("123" -> 0.0.0.123).
         return value.indexOf('.') >= 0 || value.indexOf(':') >= 0;
     }
 
-    /** {@code ::ffff:1.2.3.4} auf {@code 1.2.3.4} zurueckfuehren, damit Vergleiche greifen. */
+    /** Reduce {@code ::ffff:1.2.3.4} to {@code 1.2.3.4}, so that comparisons work. */
     private static byte[] unwrapV4Mapped(byte[] address) {
         if (address.length != 16) {
             return address;
@@ -201,7 +201,7 @@ public class ClientIpResolver {
         }
     }
 
-    /** Ein CIDR-Bereich, verglichen auf Byte-Ebene. */
+    /** A CIDR range, compared at the byte level. */
     record CidrRange(byte[] prefix, int bits) {
 
         static CidrRange parse(String cidr) {

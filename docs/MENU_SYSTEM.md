@@ -1,4 +1,11 @@
-# Plaintext WebApp Menu
+# Menu system
+
+> **Links end in `.html`, never `.xhtml`.** The application rewrites `.html` to
+> the Facelets view, and `MenuLinkInvariantTest` fails the build for a menu entry
+> that points at `.xhtml` directly. Older examples in this file used to show the
+> wrong form — corrected on 30 August 2026.
+
+
 
 Programmatic menu builder for PrimeFaces using annotations.
 
@@ -28,7 +35,7 @@ Create classes and annotate them with `@MenuAnnotation`:
 ```java
 @MenuAnnotation(
     title = "Dashboard",
-    link = "dashboard.xhtml",
+    link = "dashboard.html",
     order = 10,
     icon = "pi pi-home"
 )
@@ -37,7 +44,7 @@ public class DashboardMenu {
 
 @MenuAnnotation(
     title = "Users",
-    link = "users.xhtml",
+    link = "users.html",
     parent = "Administration",
     order = 20,
     icon = "pi pi-users",

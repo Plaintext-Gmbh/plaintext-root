@@ -14,21 +14,20 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.ConfigurableEnvironment;
 
 /**
- * Prueft die Praezedenz gegen <b>echtes ConfigData</b> — also gegen den Mechanismus, der die
- * {@code application.yml} laedt.
+ * Checks the precedence against <b>real ConfigData</b> — that is, against the mechanism that
+ * loads the {@code application.yml}.
  *
- * <h2>Warum es diesen Test zusaetzlich gibt</h2>
- * <p>{@link PlaintextDefaultsEnvironmentPostProcessorTest} prueft dasselbe gegen ein
- * {@code MockEnvironment} — und war <b>gruen, waehrend die Praezedenz auf PROD falsch war</b>.
- * Am 08.08.2026 verlor {@code plaintext-root} sein {@code Secure}-Cookie, weil der Processor
- * mit {@code HIGHEST_PRECEDENCE} <em>vor</em> dem {@code ConfigDataEnvironmentPostProcessor}
- * lief: Die mit {@code addLast} eingefuegte Source landete damit <em>ueber</em> der erst danach
- * eingefuegten {@code application.yml}.
+ * <h2>Why this test exists in addition</h2>
+ * <p>{@link PlaintextDefaultsEnvironmentPostProcessorTest} checks the same thing against a
+ * {@code MockEnvironment} — and was <b>green while the precedence on PROD was wrong</b>.
+ * On 08.08.2026 {@code plaintext-root} lost its {@code Secure} cookie, because the processor
+ * ran with {@code HIGHEST_PRECEDENCE} <em>before</em> the {@code ConfigDataEnvironmentPostProcessor}:
+ * the source inserted with {@code addLast} thereby ended up <em>above</em> the
+ * {@code application.yml} that was only inserted afterwards.
  *
- * <p>{@code MockEnvironment} bildet diese Reihenfolge gar nicht ab. Der Unit-Test konnte den
- * Fehler deshalb nicht finden — er hat die Absicht geprueft, nicht das Verhalten. Dieser Test
- * startet stattdessen eine echte Anwendung mit einer eigenen Konfigurationsdatei und liest ab,
- * welcher Wert tatsaechlich gewinnt.
+ * <p>{@code MockEnvironment} does not model that ordering at all. The unit test could therefore
+ * not find the bug — it checked the intention, not the behaviour. This test instead starts a
+ * real application with a configuration file of its own and reads off which value actually wins.
  */
 class PlaintextDefaultsPraezedenzTest {
 
@@ -44,7 +43,7 @@ class PlaintextDefaultsPraezedenzTest {
             builder.properties("spring.config.name=" + konfigName);
         }
         try (ConfigurableApplicationContext context = builder.run()) {
-            // Environment ueberlebt das Schliessen — nur der Kontext wird abgeraeumt.
+            // The environment survives the close — only the context is torn down.
             return context.getEnvironment();
         }
     }
@@ -54,8 +53,8 @@ class PlaintextDefaultsPraezedenzTest {
     void anwendungsdateiGewinnt() {
         ConfigurableEnvironment environment = starteMit("test-eigene-app");
 
-        // plaintext-defaults.yml sagt lax/false, test-eigene-app.yml sagt strict/true.
-        // Gewinnt hier lax, ist die Praezedenz verdreht — genau der PROD-Fehler vom 08.08.2026.
+        // plaintext-defaults.yml says lax/false, test-eigene-app.yml says strict/true.
+        // If lax wins here, the precedence is inverted — exactly the PROD bug of 08.08.2026.
         assertThat(environment.getProperty("server.servlet.session.cookie.same-site"))
                 .as("Die Anwendung muss die Grundeinstellung ueberschreiben koennen")
                 .isEqualTo("strict");

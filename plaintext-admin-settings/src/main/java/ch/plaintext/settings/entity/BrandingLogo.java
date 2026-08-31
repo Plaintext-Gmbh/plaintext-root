@@ -37,10 +37,10 @@ public class BrandingLogo {
     @Column(name = "theme", nullable = false, length = 10)
     private String theme; // "light" or "dark"
 
-    // LONGVARCHAR statt columnDefinition="text": "text" ist PostgreSQL-Dialekt und laesst
-    // HSQLDB-Konsumenten beim CREATE TABLE scheitern (ddl-auto:update loggt nur WARN, die
-    // Tabelle fehlt dann). Hibernate uebersetzt LONGVARCHAR je Dialekt: PostgreSQL -> text,
-    // HSQLDB -> LONGVARCHAR. Fuer die Root-Webapp (Flyway, ddl-auto:none) aendert sich nichts.
+    // LONGVARCHAR instead of columnDefinition="text": "text" is PostgreSQL dialect and makes
+    // HSQLDB consumers fail on CREATE TABLE (ddl-auto:update only logs a WARN, the table is
+    // then missing). Hibernate translates LONGVARCHAR per dialect: PostgreSQL -> text,
+    // HSQLDB -> LONGVARCHAR. For the root webapp (Flyway, ddl-auto:none) nothing changes.
     @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(name = "image_data", nullable = false)
     private String imageData; // Base64-encoded

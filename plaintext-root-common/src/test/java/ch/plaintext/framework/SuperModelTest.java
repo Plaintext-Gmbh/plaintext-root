@@ -239,19 +239,19 @@ class SuperModelTest {
     }
 
     // -------------------------------------------------------------------------
-    // Karte 687: Id-Abbildung
+    // Karte 687: id mapping
     // -------------------------------------------------------------------------
 
     /**
-     * Die Id kommt von der Datenbank, und zwar über die IDENTITY-Strategie — <b>ohne</b> benannten
-     * Generator. Bis zum 12.08.2026 hing hier {@code UseExistingIdOtherwiseGenerateUsingIdentity},
-     * eine Attrappe: ihre {@code generate}-Methode überschrieb unter Hibernate 7 nichts (falsche
-     * Oberklasse, falsche Signatur, kein {@code @Override}), gelaufen ist die ganze Zeit IDENTITY.
+     * The id comes from the database, by way of the IDENTITY strategy — <b>without</b> a named
+     * generator. Until 12.08.2026 {@code UseExistingIdOtherwiseGenerateUsingIdentity} hung here,
+     * a dummy: its {@code generate} method overrode nothing under Hibernate 7 (wrong
+     * superclass, wrong signature, no {@code @Override}); what ran all along was IDENTITY.
      *
-     * <p><b>Warum das eine Zusicherung braucht.</b> Ein Verhaltenstest kann diesen Rückfall nicht
-     * erwischen: Solange der Generator wirkungslos ist, verhält sich alles wie IDENTITY, und ein
-     * grüner Test wäre genau das, was den Befund elf Monate lang verdeckt hat. Sichtbar ist der
-     * Unterschied nur an der Abbildung selbst — deshalb wird sie hier geprüft und nicht ihr Effekt.
+     * <p><b>Why this needs an assertion.</b> A behavioural test cannot catch this relapse:
+     * as long as the generator has no effect, everything behaves like IDENTITY, and a
+     * green test would be exactly what concealed the finding for eleven months. The
+     * difference is visible only in the mapping itself — which is why it is checked here, not its effect.
      */
     @Test
     void id_haengtAnIdentityUndAnKeinemBenanntenGenerator() throws Exception {
@@ -272,9 +272,9 @@ class SuperModelTest {
     }
 
     /**
-     * Gegenprobe zur Prüfung oben: Sie liest wirklich das Feld dieser Klasse und nicht irgendeines.
-     * Ohne sie wäre eine grüne Zusicherung auch dann möglich, wenn {@code getDeclaredField} auf ein
-     * anderes Feld zeigte.
+     * Counter-check for the assertion above: it really reads the field of this class and not of some other.
+     * Without it a green assertion would be possible even if {@code getDeclaredField} pointed at
+     * a different field.
      */
     @Test
     void gegenprobe_dieIdPruefungLiestDasRichtigeFeld() throws Exception {

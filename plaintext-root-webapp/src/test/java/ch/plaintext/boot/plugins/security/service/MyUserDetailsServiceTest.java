@@ -439,7 +439,7 @@ class MyUserDetailsServiceTest {
         assertTrue(authorities.contains("ROLE_SUPER ADMIN")); // Spring Security handles this
     }
 
-    // ==================== mustChangePassword (Karte 306) ====================
+    // ==================== mustChangePassword (card 306) ====================
 
     @Test
     void loadUserByUsername_shouldAddMustChangePasswordAuthority_whenFlagSet() {

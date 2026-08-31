@@ -22,14 +22,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 514/519: Aus einer Datentabelle heraus muss ein Ajax-Ziel ABSOLUT benannt sein —
- * geprueft ueber ALLE Module dieses Repositories.
+ * Card 514/519: from within a data table an Ajax target has to be named ABSOLUTELY —
+ * checked across ALL modules of this repository.
  *
- * <p><b>Der Defekt.</b> Steht eine Schaltflaeche innerhalb einer {@code p:dataTable}/
- * {@code p:dataList} und nennt ihr {@code update} ein Ziel relativ, sucht PrimeFaces es im
- * naechsten Namenscontainer — der Tabelle — und als letzte Rueckfallebene an der View-Wurzel. Ein
- * Ziel, das UNTERHALB des Formulars liegt (etwa {@code fm:versionenDialog}), ist von beiden
- * Stellen aus nicht auffindbar:</p>
+ * <p><b>The defect.</b> If a button stands inside a {@code p:dataTable}/
+ * {@code p:dataList} and its {@code update} names a target relatively, PrimeFaces looks for it in
+ * the nearest naming container — the table — and, as a last fallback level, at the view root. A
+ * target that lies BELOW the form (say {@code fm:versionenDialog}) cannot be found from either of
+ * those two places:</p>
  *
  * <pre>
  * ComponentNotFoundException: Cannot find component for expressions "versionenDialog"
@@ -37,24 +37,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *     at DataTableRenderer.encodeCell(DataTableRenderer.java:1331)
  * </pre>
  *
- * <p><b>Warum das so teuer war.</b> Die Ausnahme fliegt beim <em>Rendern</em> der Zelle. Die
- * Partial-Response bricht mitten im Markup ab — gemessen am 03.08.2026 auf PROD: 1667 Bytes, kein
- * schliessendes {@code partial-response}. Der Browser kann sie nicht parsen und behaelt den alten
- * Zustand. Sichtbar ist allein: <em>es passiert nichts.</em> Serverseitig blieb nur eine
- * WARN-Zeile, die in Graylog nicht ankam. Im Wiki hat Daniel den Versionsverlauf deshalb
- * <b>nie</b> gesehen (Karte 473), und es kostete drei Diagnoserunden.
+ * <p><b>Why that was so expensive.</b> The exception is thrown while the cell is being
+ * <em>rendered</em>. The partial response breaks off in the middle of the markup — measured on
+ * 03.08.2026 in PROD: 1667 bytes, no closing {@code partial-response}. The browser cannot parse it
+ * and keeps the old state. The only visible symptom is: <em>nothing happens.</em> On the server side
+ * only a WARN line was left, which never reached Graylog. In the wiki Daniel therefore
+ * <b>never</b> saw the version history (card 473), and it cost three rounds of diagnosis.
  *
- * <p><b>Warum repositoryweit.</b> Karte 519 hat 34 Kandidaten in diesem Repo gezaehlt, verteilt
- * ueber die Admin-Module und root-webapp. Eine Pruefung je Modul zu kopieren ist der Weg, auf dem
- * die naechste Fundstelle unbemerkt bleibt (dieselbe Begruendung wie bei
- * {@code AjaxAntwortLesbarTest}, Karte 502). Die wortgleiche Fassung liegt in plaintext-app —
- * bewusst, denn beide Repositories werden getrennt gebaut und getrennt zurueckgedreht.
+ * <p><b>Why repository-wide.</b> Card 519 counted 34 candidates in this repository, spread
+ * across the admin modules and root-webapp. Copying a check into every module is the road on which
+ * the next occurrence goes unnoticed (the same reasoning as with
+ * {@code AjaxAntwortLesbarTest}, card 502). The word-identical version lives in plaintext-app —
+ * deliberately, because both repositories are built separately and rolled back separately.
  *
- * <p><b>Was der Test NICHT prueft:</b> ob das Ziel existiert. Nur, dass es aus einer Tabellenzeile
- * heraus ueberhaupt auffindbar <em>formuliert</em> ist — mit fuehrendem Doppelpunkt oder als
- * {@code @}-Schluesselwort. Nicht angeschlagen wird ausserdem bei einer Formular-Id: ein
- * {@code h:form} ist direktes Kind der View-Wurzel und damit auch aus der Zeile heraus
- * aufloesbar. Genau deshalb funktioniert {@code update="fm"} im Seitenbaum des Wikis nachweislich.
+ * <p><b>What the test does NOT check:</b> whether the target exists. Only that it is
+ * <em>formulated</em> in a way that makes it findable from a table row at all — with a leading colon
+ * or as an {@code @} keyword. It also does not trip on a form id: an
+ * {@code h:form} is a direct child of the view root and can therefore be resolved from the row as
+ * well. Exactly for that reason {@code update="fm"} demonstrably works in the page tree of the wiki.
  */
 class AjaxZielAufloesbarTest {
 
@@ -67,8 +67,8 @@ class AjaxZielAufloesbarTest {
     private static final Pattern KOMMENTAR = Pattern.compile("<!--.*?-->", Pattern.DOTALL);
 
     /**
-     * PrimeFaces trennt mehrere Ziele durch Leerzeichen ODER Komma
-     * ({@code update="runningTable,:fm:messages"} kommt im Repo vor).
+     * PrimeFaces separates several targets by a blank OR a comma
+     * ({@code update="runningTable,:fm:messages"} does occur in the repository).
      */
     private static final Pattern TRENNER = Pattern.compile("[\\s,]+");
 
@@ -99,9 +99,9 @@ class AjaxZielAufloesbarTest {
     }
 
     /**
-     * Gegenprobe zur Suche selbst. Ohne sie waere der Test oben auch dann gruen, wenn
-     * {@link #relativeZieleInTabellen(String)} grundsaetzlich nichts findet — und die vier
-     * Nicht-Treffer verhindern das Gegenteil: einen Test, der die halbe Anwendung falsch meldet.
+     * Counter-check on the search itself. Without it the test above would be green even if
+     * {@link #relativeZieleInTabellen(String)} finds nothing at all — and the four
+     * non-hits prevent the opposite: a test that reports half the application wrongly.
      */
     @Test
     void dieSucheFindetGenauDenPROD_Fehler() {
@@ -134,24 +134,24 @@ class AjaxZielAufloesbarTest {
     }
 
     /**
-     * Zwei Faelle, an denen die erste Fassung dieser Suche danebenlag — beide real im Repo
-     * (Karte 519).
+     * Two cases in which the first version of this search got it wrong — both real in the repository
+     * (card 519).
      */
     @Test
     void dieSucheLiestKommentareNichtUndKenntDasKomma() {
-        // korrespondenz.xhtml erklaert in einem Kommentar MITTEN in einer dataTable, warum dort ein
-        // GET-Link steht — und zitiert dabei update="messages". Ein Fehlalarm behauptet
-        // Handlungsbedarf, wo keiner ist, und kostet damit genauso viel Zeit wie ein uebersehener
-        // Fehler.
+        // korrespondenz.xhtml explains in a comment IN THE MIDDLE of a dataTable why a
+        // GET link stands there — and quotes update="messages" while doing so. A false alarm claims
+        // that action is needed where none is, and thereby costs just as much time as an overlooked
+        // defect.
         String mitKommentar = "<p:dataTable var=\"v\"><p:column>"
                 + "<!-- frueher stand hier update=\"messages\", siehe Karte 430 -->"
                 + "<h:outputLink value=\"detail.xhtml\"/></p:column></p:dataTable>";
         assertTrue(relativeZieleInTabellen(mitKommentar).isEmpty(),
                 "Ein zitiertes update= in einem XML-Kommentar ist kein Ajax-Ziel.");
 
-        // PrimeFaces trennt Ziele auch mit Komma. Ohne diesen Trenner sieht die Suche
-        // "runningTable,:fm:messages" als EIN Ziel und meldet den ganzen String — der Befund
-        // stimmt dann zufaellig, die Meldung ist aber unbrauchbar.
+        // PrimeFaces also separates targets with a comma. Without that separator the search sees
+        // "runningTable,:fm:messages" as ONE target and reports the whole string — the finding
+        // then happens to be right, but the message is useless.
         String komma = "<h:form id=\"fm\"><p:dataTable var=\"v\"><p:column>"
                 + "<p:commandButton update=\"runningTable,:fm:messages\"/></p:column>"
                 + "</p:dataTable></h:form>";
@@ -160,9 +160,9 @@ class AjaxZielAufloesbarTest {
         assertEquals("runningTable", funde.get(0).ziel(),
                 "Gemeldet werden muss das einzelne Ziel, nicht die ganze Liste.");
 
-        // Dritter Fall, real in plaintext-root: ein Ziel MIT Formular-Praefix, aber ohne
-        // fuehrenden Doppelpunkt. Von der View-Wurzel aus ist "fm:messages" auffindbar, weil das
-        // Formular deren direktes Kind ist — hier darf nichts anschlagen.
+        // Third case, real in plaintext-root: a target WITH a form prefix, but without a
+        // leading colon. From the view root "fm:messages" can be found, because the
+        // form is its direct child — nothing must trip here.
         String mitFormularPraefix = "<h:form id=\"fm\"><p:dataTable var=\"v\"><p:column>"
                 + "<p:commandButton update=\"fm:messages\"/></p:column></p:dataTable></h:form>";
         assertTrue(relativeZieleInTabellen(mitFormularPraefix).isEmpty(),
@@ -170,21 +170,21 @@ class AjaxZielAufloesbarTest {
                         + "anschlagen — sonst meldet der Test drei Stellen im Framework falsch.");
     }
 
-    // ── Hilfsmittel ──────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────
 
-    /** Ein relativ benanntes Ajax-Ziel innerhalb einer Datentabelle. */
+    /** A relatively named Ajax target inside a data table. */
     private record Fund(int position, String ziel) {
     }
 
     /**
-     * Ein Ziel ist unkritisch, wenn es ein Formular <em>ist</em> oder <em>unter</em> einem liegt:
-     * {@code fm} und {@code fm:messages} werden beide an der View-Wurzel gefunden, weil das
-     * {@code h:form} deren direktes Kind ist. Nur ein Ziel, das weder mit {@code :} noch mit
-     * {@code @} noch mit einer Formular-Id beginnt, kann von der Wurzel aus ins Leere laufen.
+     * A target is uncritical if it <em>is</em> a form or lies <em>below</em> one:
+     * {@code fm} and {@code fm:messages} are both found at the view root, because the
+     * {@code h:form} is its direct child. Only a target that begins neither with {@code :} nor with
+     * {@code @} nor with a form id can run into the void from the root.
      *
-     * <p>Ohne den Praefix-Fall meldet der Test {@code update="fm:messages"} als Verstoss — im
-     * Framework-Repo betraf das drei Stellen ({@code webhooks.xhtml}, {@code useradmin.xhtml}),
-     * an denen nichts kaputt ist.
+     * <p>Without the prefix case the test reports {@code update="fm:messages"} as a violation — in the
+     * framework repository that affected three places ({@code webhooks.xhtml}, {@code useradmin.xhtml})
+     * where nothing is broken.
      */
     private static boolean ueberEinFormularAufloesbar(String ziel, Set<String> formulare) {
         for (String formular : formulare) {
@@ -196,8 +196,8 @@ class AjaxZielAufloesbarTest {
     }
 
     /**
-     * Ids der Formulare der Datei. Sie sind direkte Kinder der View-Wurzel und darum auch aus
-     * einer Tabellenzeile heraus relativ aufloesbar (PrimeFaces faellt auf die Wurzel zurueck).
+     * Ids of the forms of the file. They are direct children of the view root and therefore
+     * resolvable relatively from a table row as well (PrimeFaces falls back to the root).
      */
     private static Set<String> formularIds(String text) {
         Set<String> ids = new HashSet<>();
@@ -209,20 +209,20 @@ class AjaxZielAufloesbarTest {
     }
 
     /**
-     * Ersetzt XML-Kommentare durch Leerzeichen — Inhalt weg, Positionen (und damit die
-     * Zeilennummern in der Fehlermeldung) bleiben erhalten.
+     * Replaces XML comments with blanks — the content is gone, the positions (and thereby the
+     * line numbers in the error message) are preserved.
      *
-     * <p>Ohne das meldet der Test Stellen, an denen nichts zu tun ist: In
-     * {@code korrespondenz.xhtml} erklaert ein Kommentar mitten in einer {@code p:dataTable}, warum
-     * dort ein GET-Link statt eines Ajax-Buttons steht — und zitiert dabei {@code update="messages"}.
-     * Ein Fehlalarm in einem Test, der Handlungsbedarf behauptet, kostet genauso viel Zeit wie ein
-     * uebersehener Fehler.
+     * <p>Without this the test reports places where there is nothing to do: in
+     * {@code korrespondenz.xhtml} a comment in the middle of a {@code p:dataTable} explains why
+     * a GET link stands there instead of an Ajax button — and quotes {@code update="messages"} in doing so.
+     * A false alarm in a test that claims action is needed costs just as much time as an
+     * overlooked defect.
      */
     private static String ohneKommentare(String text) {
         return KOMMENTAR.matcher(text).replaceAll(treffer -> " ".repeat(treffer.group().length()));
     }
 
-    /** Alle relativ benannten update/process-Ziele innerhalb einer Datentabelle. */
+    /** All relatively named update/process targets inside a data table. */
     private static List<Fund> relativeZieleInTabellen(String roh) {
         String text = ohneKommentare(roh);
         Set<String> formulare = formularIds(text);
@@ -251,7 +251,7 @@ class AjaxZielAufloesbarTest {
         return treffer;
     }
 
-    /** Alle Facelets des Repositories (alle Module), ohne Buildverzeichnisse. */
+    /** All Facelets of the repository (all modules), without build directories. */
     private static List<Path> facelets() throws IOException {
         try (Stream<Path> s = Files.walk(repoWurzel())) {
             return s.filter(p -> p.toString().endsWith(".xhtml"))
@@ -272,7 +272,7 @@ class AjaxZielAufloesbarTest {
                         return p;
                     }
                 } catch (IOException ignored) {
-                    // weiter nach oben
+                    // keep going upwards
                 }
             }
         }

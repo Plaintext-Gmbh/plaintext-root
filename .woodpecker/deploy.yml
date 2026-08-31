@@ -1,48 +1,48 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-#  Woodpecker-Workflow 2 von 3: RELEASE (Maven-Artefakt) — OHNE Container-Deploy
+#  Woodpecker workflow 2 of 3: RELEASE (Maven artifact) — WITHOUT container deploy
 #
-#  Entspricht dem Job `deploy` aus
+#  Corresponds to the job `deploy` from
 #  Plaintext-Gmbh/plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml.
 #
 #  ┌───────────────────────────────────────────────────────────────────────────┐
-#  │ ROOT IST KEINE ANWENDUNG, SONDERN DAS FRAMEWORK.                          │
-#  │ Sein deploy-target auf master ist `release-only`, nicht `release-all`:     │
-#  │ Version-Bump, Tag, Push, `mvn clean deploy`. KEIN Blue-Green, KEIN         │
-#  │ Container. Der root-Container auf dem NAS ist seit dem 12.08.2026          │
-#  │ stillgelegt (Karte 776); das MAVEN-ARTEFAKT lebt weiter, denn              │
-#  │ plaintext-root-parent ist der Parent-POM von app, guild, iot und schuetu.  │
+#  │ ROOT IS NOT AN APPLICATION, IT IS THE FRAMEWORK.                          │
+#  │ Its deploy target on master is `release-only`, not `release-all`:         │
+#  │ version bump, tag, push, `mvn clean deploy`. NO blue-green, NO            │
+#  │ container. The root container on the NAS has been decommissioned          │
+#  │ since 12.08.2026 (card 776); the MAVEN ARTIFACT lives on, because         │
+#  │ plaintext-root-parent is the parent POM of app, guild, iot and schuetu.   │
 #  └───────────────────────────────────────────────────────────────────────────┘
 #
-#  DIE RELEASE-LOGIK IST NICHT PORTIERT UND MUSS ES AUCH NICHT SEIN. Sie steht in
-#  plaintext-scripts/tui-build-logic.sh (do_release) und im lokalen ./build. Dieser
-#  Workflow stellt nur die Umgebung her, in der `./build` genau so laeuft wie auf einem
-#  NAS-Runner: JDK + Maven, settings.xml mit BEIDEN Server-IDs, gh, SSH-Schluessel,
-#  plaintext-scripts und plaintext-config unter $HOME/codeplain, eine Test-Datenbank fuer
-#  die Unit-Tests des Release-Builds.
+#  THE RELEASE LOGIC IS NOT PORTED AND DOES NOT NEED TO BE. It lives in
+#  plaintext-scripts/tui-build-logic.sh (do_release) and in the local ./build. This
+#  workflow only provides the environment in which `./build` runs exactly as it does on a
+#  NAS runner: JDK + Maven, settings.xml with BOTH server IDs, gh, SSH key,
+#  plaintext-scripts and plaintext-config under $HOME/codeplain, a test database for
+#  the unit tests of the release build.
 #
-#  Der ./build-Aufruf unten ist ZEICHENGLEICH aus der GitHub-Pipeline uebernommen
-#  (`release-only` -> `./build release`). Wer daran dreht, dreht an der
-#  Release-Nummernrechnung, am Tag und an der Veroeffentlichung.
+#  The ./build call below is taken over CHARACTER FOR CHARACTER from the GitHub pipeline
+#  (`release-only` -> `./build release`). Whoever fiddles with it fiddles with the
+#  release number arithmetic, with the tag and with the publication.
 #
-#  ── WAS EIN ROOT-RELEASE VEROEFFENTLICHT: DREI ZIELE, EINE REIHENFOLGE ──────────
+#  ── WHAT A ROOT RELEASE PUBLISHES: THREE TARGETS, ONE ORDER ─────────────────────
 #  1. GitHub Packages   — <distributionManagement>, server-id `plaintext`
 #                         (https://maven.pkg.github.com/Plaintext-Gmbh/plaintext-mvn)
-#  2. Reposilite (NAS)  — Profil `dual-publish-nas`, server-id `plaintext-nas`,
+#  2. Reposilite (NAS)  — profile `dual-publish-nas`, server-id `plaintext-nas`,
 #                         altDeploymentRepository https://maven.plaintext.ch/releases.
-#                         Aktiviert wird es NICHT von der Pipeline, sondern von
-#                         .mvn/maven.config (-Droot.dual.publish=true) — deshalb gilt es
-#                         fuer beide CI-Motoren gleich, und deshalb steht hier kein `-P`.
-#  3. Plaintext-Gmbh/plaintext-mvn — der git-basierte Spiegel, den ./build nach einem
-#                         erfolgreichen `release` selbst anstoesst (mirror_to_plaintext_mvn,
-#                         steht im ./build von root und NICHT in plaintext-scripts).
-#                         Braucht GITHUB_TOKEN; scheitert er, bleibt das Release gueltig.
+#                         It is activated NOT by the pipeline but by
+#                         .mvn/maven.config (-Droot.dual.publish=true) — which is why it
+#                         applies to both CI engines alike, and why there is no `-P` here.
+#  3. Plaintext-Gmbh/plaintext-mvn — the git-based mirror that ./build itself triggers
+#                         after a successful `release` (mirror_to_plaintext_mvn,
+#                         which lives in root's ./build and NOT in plaintext-scripts).
+#                         Needs GITHUB_TOKEN; if it fails, the release stays valid.
 #
-#  KEIN `deployAtEnd`, UND ZWAR NIE WIEDER. Der Versuch vom 29.08.2026 (Release 1.636.0)
-#  ist in pom.xml:620 festgehalten: das Deploy-Plugin fuehrt hier ZWEI Ausfuehrungen aus
-#  (default -> GitHub Packages, deploy-nas -> Reposilite), und mit deployAtEnd endete das
-#  in einem 409 des Reposilite und einem halben Release. Die Reihenfolge bleibt, wie sie ist.
+#  NO `deployAtEnd`, AND NEVER AGAIN. The attempt of 29.08.2026 (release 1.636.0)
+#  is recorded in pom.xml:620: the deploy plugin runs TWO executions here
+#  (default -> GitHub Packages, deploy-nas -> Reposilite), and with deployAtEnd that ended
+#  in a 409 from the Reposilite and half a release. The order stays as it is.
 #
-#  Laeuft NUR, wenn `.ci-engine` das Wort `woodpecker` enthaelt (waechter.sh).
+#  Runs ONLY if `.ci-engine` contains the word `woodpecker` (waechter.sh).
 # ═══════════════════════════════════════════════════════════════════════════════
 
 when:
@@ -54,27 +54,27 @@ clone:
   git:
     image: woodpeckerci/plugin-git
     settings:
-      # ZWINGEND VOLL UND MIT TAGS — hier, anders als in build.yml, nicht kosmetisch:
-      #   * init_versions() liest die letzte Release-Nummer aus `git describe --tags`;
-      #     ein flacher Klon ohne Tags liefert 0.0.0 und die naechste Version waere falsch.
-      #   * do_release() vergleicht HEAD mit origin/master und pusht Release-Commit UND Tag,
-      #     BEVOR irgendetwas veroeffentlicht wird (Karte 518).
-      #   * mirror_to_plaintext_mvn() nimmt die Version aus `git describe --tags`, nicht aus
-      #     dem POM — das steht zu diesem Zeitpunkt schon auf dem naechsten SNAPSHOT.
+      # MANDATORILY FULL AND WITH TAGS — here, unlike in build.yml, not cosmetic:
+      #   * init_versions() reads the last release number from `git describe --tags`;
+      #     a shallow clone without tags yields 0.0.0 and the next version would be wrong.
+      #   * do_release() compares HEAD with origin/master and pushes release commit AND tag
+      #     BEFORE anything at all is published (card 518).
+      #   * mirror_to_plaintext_mvn() takes the version from `git describe --tags`, not from
+      #     the POM — by that time it already points at the next SNAPSHOT.
       partial: false
       depth: 0
       tags: true
 
 services:
-  # Eigene Test-Datenbank fuer die Unit-Tests, die im Release-Build mitlaufen (M1: der
-  # Deploy-Job ist der EINZIGE Build). In der GitHub-Pipeline heisst der Container
-  # `ci-postgres-deploy-5541` (root-Port 5441 + 100) und braucht diesen je Projekt
-  # reservierten Port, damit zwei Repos auf demselben Docker-Daemon sich nicht treffen.
-  # Hier nicht: der Service haengt am Netz DIESES Workflows und ist von aussen unsichtbar.
+  # A test database of its own for the unit tests that run along in the release build (M1:
+  # the deploy job is the ONLY build). In the GitHub pipeline the container is called
+  # `ci-postgres-deploy-5541` (root port 5441 + 100) and needs that per-project
+  # reserved port so that two repos on the same Docker daemon do not collide.
+  # Not here: the service hangs on THIS workflow's network and is invisible from outside.
   #
-  # UND ER IST PFLICHT, nicht Komfort: EmbeddedPg im plaintext-root-webapp startet nur dann
-  # einen eingebetteten Server, wenn SPRING_DATASOURCE_URL fehlt — und `initdb` verweigert
-  # den Dienst als root, was der Step-Container ist (Karte 451 / PR #22).
+  # AND IT IS MANDATORY, not comfort: EmbeddedPg in plaintext-root-webapp only starts
+  # an embedded server when SPRING_DATASOURCE_URL is missing — and `initdb` refuses
+  # to run as root, which is what the step container is (card 451 / PR #22).
   postgres:
     image: postgres:18-alpine
     environment:
@@ -86,41 +86,41 @@ steps:
   release:
     image: maven:3.9-eclipse-temurin-25
     environment:
-      # ── DIE WICHTIGSTE ZEILE DIESER DATEI ────────────────────────────────────────
-      # Woodpecker setzt von sich aus CI=woodpecker. tui-build-logic.sh prueft aber an
-      # mehreren Stellen auf den WERT "true", nicht auf "gesetzt":
+      # ── THE MOST IMPORTANT LINE OF THIS FILE ───────────────────────────────────
+      # Woodpecker sets CI=woodpecker on its own. tui-build-logic.sh, however, checks in
+      # several places for the VALUE "true", not for "is set":
       #     if [ "${CI:-}" != "true" ]; then lokal_vorflug; fi
-      # Ohne diese Ueberschreibung liefe also der VORFLUG DES LOKAL-RELEASE mit — er
-      # prueft den Arbeitsbaum, fragt per `gh` nach laufenden GitHub-Actions-Laeufen
-      # ("CI-Sperre") und bricht ab. Ein Release, das daran scheitert, sieht aus wie ein
-      # Netzproblem. Dieselbe Variable waehlt in tui-build-logic.sh Zeile 33 ausserdem
-      # `docker` als Container-Laufzeit — siehe Schritt 1.
+      # Without this override the PREFLIGHT OF THE LOCAL RELEASE would run along — it
+      # checks the working tree, asks `gh` about running GitHub Actions runs
+      # ("CI lock") and aborts. A release that fails on that looks like a
+      # network problem. The same variable also selects, in tui-build-logic.sh line 33,
+      # `docker` as container runtime — see step 1.
       CI: "true"
-      # Der Vorgabewert fuer `push` auf master. Entspricht dem deploy-target-Ausdruck im
-      # Aufrufer (.github/workflows/ci-cd.yaml): `github.ref == 'refs/heads/master' &&
-      # 'release-only'`. Manuelle Laeufe ueberschreiben ihn unten — nach oben begrenzt.
+      # The default value for `push` on master. Corresponds to the deploy-target expression
+      # in the caller (.github/workflows/ci-cd.yaml): `github.ref == 'refs/heads/master' &&
+      # 'release-only'`. Manual runs override it below — bounded by the allowlist.
       DEPLOY_TARGET: release-only
-      # Ohne das wartet git bei fehlenden Zugangsdaten auf eine Eingabe, die nie kommt —
-      # aus einem klaren Fehlschlag wuerde ein Lauf, der bis zum Repo-Timeout haengt.
+      # Without this, git waits for an input that never comes when credentials are missing —
+      # a clear failure would turn into a run that hangs until the repo timeout.
       GIT_TERMINAL_PROMPT: "0"
-      # server-id `plaintext` (GitHub Packages) UND Push von Release-Commit und Tag.
+      # server-id `plaintext` (GitHub Packages) AND push of release commit and tag.
       MVN_DEPLOY_TOKEN:
         from_secret: mvn_deploy_token
-      # `mvn deploy` in den Reposilite (maven.plaintext.ch) braucht die server-id
-      # `plaintext-nas` aus dem Profil dual-publish-nas; das Token steht in settings.xml.
+      # `mvn deploy` into the Reposilite (maven.plaintext.ch) needs the server-id
+      # `plaintext-nas` from the dual-publish-nas profile; the token lives in settings.xml.
       MAVEN_NAS_TOKEN:
         from_secret: maven_nas_token
       SSH_PRIVATE_KEY:
         from_secret: ssh_private_key
-      # DERSELBE WERT WIE MVN_DEPLOY_TOKEN, wortgleich zur GitHub-Pipeline
-      # (GITHUB_TOKEN aus secrets.MVN_DEPLOY_TOKEN am Schritt Build & Deploy).
-      # Zwei Dinge in root haengen daran, und beide sind still, wenn er fehlt:
-      #   * mirror_to_plaintext_mvn (./build) — ohne Token: "kein GITHUB_TOKEN -
-      #     Spiegelung uebersprungen", return 0. Der git-basierte Bezugsweg aus dem
-      #     README von plaintext-mvn bliebe also unbefuellt, und niemand saehe es.
-      #   * release_notes_erzeugen (tui-build-logic.sh) — legt das GitHub-Release zum
-      #     eben gepushten Tag an. Es existiert fuer jedes root-Release (geprueft
-      #     30.08.2026: 1.643.0 bis 1.647.0 alle vorhanden).
+      # THE SAME VALUE AS MVN_DEPLOY_TOKEN, word for word as in the GitHub pipeline
+      # (GITHUB_TOKEN from secrets.MVN_DEPLOY_TOKEN at the Build & Deploy step).
+      # Two things in root depend on it, and both are silent when it is missing:
+      #   * mirror_to_plaintext_mvn (./build) — without a token: "kein GITHUB_TOKEN -
+      #     Spiegelung uebersprungen", return 0. The git-based way of obtaining it,
+      #     described in plaintext-mvn's README, would stay unfilled, and nobody would see it.
+      #   * release_notes_erzeugen (tui-build-logic.sh) — creates the GitHub release for
+      #     the tag just pushed. It exists for every root release (checked
+      #     30.08.2026: 1.643.0 through 1.647.0 all present).
       GITHUB_TOKEN:
         from_secret: mvn_deploy_token
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plaintext_root
@@ -128,30 +128,30 @@ steps:
       SPRING_DATASOURCE_PASSWORD: plaintext
       MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
       JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
-      # Der Release-Lauf ist EIN Step, nicht mehrere. Das ist keine Bequemlichkeit,
-      # sondern Woodpeckers Modell: jeder Step ist ein eigener Container, und geteilt
-      # wird NUR das Workspace-Volume. $HOME/codeplain, ~/.ssh und /tmp eines Steps
-      # existieren fuer den naechsten Step nicht mehr. Die GitHub-Pipeline kann das
-      # auf acht Steps verteilen, weil dort alle Steps im selben Runner-Container
-      # laufen. Ein Aufteilen hier waere ein Nachbau ohne Nutzen.
+      # The release run is ONE step, not several. That is not convenience but
+      # Woodpecker's model: every step is a container of its own, and the ONLY thing
+      # shared is the workspace volume. $HOME/codeplain, ~/.ssh and /tmp of one step
+      # no longer exist for the next step. The GitHub pipeline can spread this
+      # over eight steps, because there all steps run in the same runner
+      # container. Splitting it up here would be a replica without benefit.
     commands:
       - . .woodpecker/waechter.sh
 
-      # ── 0. Was soll dieser Lauf tun? ────────────────────────────────────────────
-      # In Woodpecker gibt es keine typisierten Eingaben; ein manueller Lauf uebergibt
-      # stattdessen im "Run pipeline"-Dialog die Variable  deploy_target=<ziel> .
-      # Ohne sie tut ein manueller Lauf NICHTS — die sichere Richtung.
+      # ── 0. What is this run supposed to do? ────────────────────────────────────
+      # In Woodpecker there are no typed inputs; a manual run instead passes the
+      # variable  deploy_target=<target>  in the "Run pipeline" dialog.
+      # Without it a manual run does NOTHING — the safe direction.
       #
-      # DIE ALLOWLIST IST DER ERSATZ FUER EINE GELOESCHTE AUSWAHLOPTION. Im GitHub-UI
-      # (.github/workflows/ci-cd.yaml) ist `release-all` seit Karte 904 ABSICHTLICH nicht
-      # mehr waehlbar, weil es in
+      # THE ALLOWLIST IS THE SUBSTITUTE FOR A DELETED SELECTION OPTION. In the GitHub UI
+      # (.github/workflows/ci-cd.yaml) `release-all` has DELIBERATELY not been selectable
+      # since card 904, because it ends in
       #     sudo docker compose up -d --no-deps --force-recreate <slot>
-      # endet und `profiles: ["stillgelegt"]` NICHT greift, sobald ein Service namentlich
-      # gestartet wird (gemessen 13.08.2026 auf dem NAS). Genau so ist am 17.08.2026 die
-      # Stilllegung versehentlich aufgehoben worden. Ein Kommentar allein hat das damals
-      # nicht verhindert — im Dialog sieht man nur die Optionen.
-      # Woodpeckers Dialog kennt keine Auswahlliste, sondern nur ein Textfeld. Die
-      # Begrenzung muss deshalb HIER stehen und laut sein.
+      # and `profiles: ["stillgelegt"]` does NOT take effect as soon as a service is
+      # started by name (measured 13.08.2026 on the NAS). That is exactly how the
+      # decommissioning was accidentally undone on 17.08.2026. A comment alone did not
+      # prevent it back then — in the dialog you only see the options.
+      # Woodpecker's dialog has no selection list, only a text field. The
+      # limitation must therefore stand HERE, and be loud.
       - >-
         if [ "$CI_PIPELINE_EVENT" = "manual" ]; then
           DEPLOY_TARGET="${deploy_target:-ci-only}";
@@ -181,23 +181,23 @@ steps:
         esac;
         echo "$DEPLOY_TARGET" > /tmp/deploy-target
 
-      # ── 1. Werkzeuge nachruesten ────────────────────────────────────────────────
-      # maven:3.9-eclipse-temurin-25 bringt git, ssh, scp, curl, tar und Maven 3.9.16 schon
-      # mit. Es fehlen zwei Binaries, und sie haben sehr unterschiedliches Gewicht:
+      # ── 1. Retrofit the tools ──────────────────────────────────────────────────
+      # maven:3.9-eclipse-temurin-25 already brings git, ssh, scp, curl, tar and Maven
+      # 3.9.16. Two binaries are missing, and they carry very different weight:
       #
-      # (a) docker — ZWINGEND, deshalb ohne Auffangnetz. Gebraucht wird es NICHT zum Bauen:
-      #     plaintext-root traegt `.m3-jar-volume`, ruft also weder `docker build` noch
-      #     `docker save`, und bei release-only wird ohnehin kein Container angefasst.
-      #     Gebraucht wird es allein, weil tui-build-logic.sh beim SOURCEN eine
-      #     Container-Laufzeit sucht und ohne Fund `exit 1` macht (Zeile 33 ff.) — `./build`
-      #     stuerbe also, bevor es irgendetwas tut. Ein Stub waere gefaehrlich: bei einem
-      #     Repo ohne `.m3-jar-volume` wuerde der Image-Bau still nichts tun statt laut zu
-      #     scheitern.
+      # (a) docker — MANDATORY, hence without a safety net. It is NOT needed for building:
+      #     plaintext-root carries `.m3-jar-volume`, so it calls neither `docker build` nor
+      #     `docker save`, and with release-only no container is touched anyway.
+      #     It is needed solely because tui-build-logic.sh looks for a container runtime
+      #     while being SOURCED and does `exit 1` if it finds none (line 33 ff.) — `./build`
+      #     would therefore die before doing anything at all. A stub would be dangerous: in
+      #     a repo without `.m3-jar-volume` the image build would silently do nothing
+      #     instead of failing loudly.
       #
-      # DAS IST DIE PROVISORISCHE LOESUNG. Ein Release sollte nicht an einem Download von
-      # download.docker.com haengen. Die dauerhafte steht in docs/CI-UMSCHALTEN.md: ein
-      # eigenes Step-Image, in dem docker-cli und gh schon drin sind; dann faellt dieser
-      # Block ersatzlos weg und nur die `image:`-Zeile aendert sich.
+      # THIS IS THE STOPGAP SOLUTION. A release should not hang on a download from
+      # download.docker.com. The permanent one is in docs/ci/WOODPECKER_SETUP.md: a step image
+      # of our own with docker-cli and gh already inside; then this
+      # block disappears entirely and only the `image:` line changes.
       - >-
         DOCKER_CLI_VERSION=28.1.1;
         curl -fsSL --retry 3 --retry-delay 5
@@ -205,16 +205,16 @@ steps:
         | tar -xz -C /usr/local/bin --strip-components=1 docker/docker
       - docker --version
 
-      # (b) gh — BEST-EFFORT, deshalb mit Auffangnetz. release_notes_erzeugen()
-      #     (tui-build-logic.sh) legt zum eben gepushten Tag ein GitHub-Release mit
-      #     generierten Notes an; fehlt `gh`, steigt die Funktion mit einer gelben Warnung
-      #     aus und gibt 0 zurueck — Tag und Artefakte sind unberuehrt, aber das Release
-      #     fehlt lautlos. Auf den NAS-Runnern ist gh im Runner-Image, hier nicht; ohne
-      #     diesen Block waere der Motorwechsel also ein stiller Funktionsverlust.
-      #     iot/app/guild/schuetu haben das nicht — dort ist das GitHub-Release Beiwerk,
-      #     bei root ist die Veroeffentlichung das ganze Produkt des Laufs.
-      #     Version fest verdrahtet statt "latest": ein Release-Lauf soll nicht davon
-      #     abhaengen, was heute Nacht auf api.github.com als neueste Fassung steht.
+      # (b) gh — BEST EFFORT, hence with a safety net. release_notes_erzeugen()
+      #     (tui-build-logic.sh) creates a GitHub release with generated notes for the
+      #     tag just pushed; if `gh` is missing, the function bails out with a yellow
+      #     warning and returns 0 — tag and artifacts are untouched, but the release
+      #     is missing silently. On the NAS runners gh is in the runner image, here it is
+      #     not; without this block the engine switch would be a silent loss of function.
+      #     iot/app/guild/schuetu do not have this — there the GitHub release is a trimming,
+      #     in root the publication is the entire product of the run.
+      #     Version hard-wired instead of "latest": a release run should not depend on
+      #     what api.github.com calls the newest version tonight.
       - >-
         if curl -fsSL --retry 3 --retry-delay 5
         "https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.tar.gz"
@@ -226,26 +226,26 @@ steps:
           echo "  gh release create <version> -R Plaintext-Gmbh/plaintext-root --generate-notes";
         fi
 
-      # ── 2. Git: Identitaet, Zweig, Push-Zugang ─────────────────────────────────
-      # Woodpeckers Klon-Plugin laesst den Arbeitsbaum je nach Ereignis auf einem losgeloesten
-      # HEAD stehen und legt KEINE Push-Zugangsdaten ab, die ein normaler Step lesen koennte
-      # (CI_NETRC_* bekommen nur vertrauenswuerdige Repos und Plugins). Beides wird hier
-      # ausdruecklich hergestellt, statt sich auf das Plugin zu verlassen: `do_release` macht
-      # `git push` auf den Zweig und `git push origin refs/tags/<version>`, und beides VOR
-      # der Veroeffentlichung.
+      # ── 2. Git: identity, branch, push access ──────────────────────────────────
+      # Depending on the event, Woodpecker's clone plugin leaves the working tree on a
+      # detached HEAD and deposits NO push credentials a normal step could read
+      # (CI_NETRC_* go only to trusted repos and plugins). Both are established here
+      # explicitly instead of relying on the plugin: `do_release` does a
+      # `git push` on the branch and `git push origin refs/tags/<version>`, and both BEFORE
+      # the publication.
       #
-      # REIHENFOLGE: die Zugangsdaten stehen VOR dem ersten Netzzugriff. plaintext-root ist
-      # zwar ein OEFFENTLICHES Repo — anders als iot — aber `git fetch` ist hier nicht der
-      # einzige Netzzugriff: plaintext-config ist privat, und das Klonen weiter unten
-      # scheitert ohne den Helper.
+      # ORDER: the credentials come BEFORE the first network access. plaintext-root is
+      # a PUBLIC repo — unlike iot — but `git fetch` is not the only network access
+      # here: plaintext-config is private, and the clone further down
+      # fails without the helper.
       #
-      # Das Token kommt ueber einen credential-Helper aus /tmp, NICHT als
-      # `https://token@github.com/...` in eine remote-URL: `do_release` ruft `git add -A` auf,
-      # und alles, was im Repo-Verzeichnis liegt, landet im Release-Commit. Die Regel "kein
-      # Geheimnis ins Repo-Verzeichnis" gilt hier ohne Ausnahme — sie ist auch der Grund,
-      # warum die settings.xml unten in /tmp steht. `--global` (also /root/.gitconfig,
-      # Schreibschicht dieses Containers), damit die beiden Klone weiter unten ohne Token in
-      # der URL auskommen.
+      # The token arrives through a credential helper in /tmp, NOT as
+      # `https://token@github.com/...` in a remote URL: `do_release` calls `git add -A`,
+      # and everything lying in the repo directory ends up in the release commit. The rule
+      # "no secret in the repo directory" holds here without exception — it is also the
+      # reason why the settings.xml below lives in /tmp. `--global` (that is /root/.gitconfig,
+      # the write layer of this container), so that the two clones further down manage
+      # without a token in the URL.
       - mkdir -p /tmp/ci && chmod 700 /tmp/ci
       - >-
         umask 077;
@@ -258,25 +258,25 @@ steps:
       - git checkout -B "$CI_COMMIT_BRANCH" "$CI_COMMIT_SHA"
       - git branch --set-upstream-to="origin/$CI_COMMIT_BRANCH" "$CI_COMMIT_BRANCH"
 
-      # ── 3. Maven-Zugangsdaten: BEIDE Server-IDs ────────────────────────────────
-      # Zeichengleich zur settings.xml der GitHub-Pipeline. root ist das einzige Repo, das
-      # BEIDE Eintraege wirklich braucht:
+      # ── 3. Maven credentials: BOTH server IDs ──────────────────────────────────
+      # Character for character the settings.xml of the GitHub pipeline. root is the only
+      # repo that really needs BOTH entries:
       #   * `plaintext`      -> GitHub Packages (<distributionManagement>)
-      #   * `plaintext-nas`  -> Reposilite (Profil dual-publish-nas, altDeploymentRepository)
-      # Fehlt einer, scheitert `mvn deploy` NACH Tag und Push — der Tag waere dann draussen
-      # und das Artefakt halb. Genau dieser Fall ist am 29.08.2026 in plaintext-app passiert
-      # (2.1709.0: Tag ohne Artefakt, 401 vom Reposilite).
+      #   * `plaintext-nas`  -> Reposilite (profile dual-publish-nas, altDeploymentRepository)
+      # If one is missing, `mvn deploy` fails AFTER tag and push — the tag would then be out
+      # and the artifact half done. Exactly that case happened in plaintext-app on 29.08.2026
+      # (2.1709.0: tag without artifact, 401 from the Reposilite).
       #
-      # NICHT nach ~/.m2/settings.xml. /root/.m2 ist das Volume `woodpecker-m2`, das der Agent
-      # in JEDEN Step-Container JEDES Repos haengt — dieselbe Falle wie Karte 313 auf den
-      # GitHub-Runnern, wo ein geteiltes m2-Volume die Tokens im Klartext an fremde Repos
-      # weiterreichte. /tmp liegt in der Schreibschicht dieses einen Containers.
+      # NOT into ~/.m2/settings.xml. /root/.m2 is the volume `woodpecker-m2`, which the agent
+      # mounts into EVERY step container of EVERY repo — the same trap as card 313 on the
+      # GitHub runners, where a shared m2 volume passed the tokens in clear text on to
+      # foreign repos. /tmp lies in the write layer of this one container.
       #
-      # KEIN mvn-Shim wie in der GitHub-Pipeline: der Shim existiert dort, weil auf den
-      # twingate-Runnern einmal Maven 3.6.3 lag, das MAVEN_ARGS nicht auswertet. Dieses Image
-      # ist auf 3.9.16 festgelegt, also traegt MAVEN_ARGS — auch fuer die mvn-Aufrufe
-      # innerhalb von ./build und mirror_to_plaintext_mvn, ohne eine einzige Aufrufstelle
-      # anzufassen.
+      # NO mvn shim as in the GitHub pipeline: the shim exists there because the
+      # twingate runners once carried Maven 3.6.3, which does not evaluate MAVEN_ARGS. This
+      # image is pinned to 3.9.16, so MAVEN_ARGS takes effect — also for the mvn calls
+      # inside ./build and mirror_to_plaintext_mvn, without touching a single call
+      # site.
       - >-
         umask 077;
         printf '%s\n'
@@ -287,38 +287,38 @@ steps:
         '  </servers>'
         '</settings>' > /tmp/ci/settings.xml
       - chmod 600 /tmp/ci/settings.xml
-      # Eine Alt-Datei im GETEILTEN Volume wegraeumen: sie wuerde MAVEN_ARGS zwar nicht
-      # ueberstimmen, laege aber weiterhin fuer jedes andere Repo lesbar da.
+      # Clear away an old file in the SHARED volume: it would not override MAVEN_ARGS,
+      # but would still lie there readable for every other repo.
       - rm -f /root/.m2/settings.xml
       - export MAVEN_ARGS="-s /tmp/ci/settings.xml"
 
-      # ── 4. SSH zum NAS ─────────────────────────────────────────────────────────
-      # DOCH, AUCH BEI release-only. Das ist der Punkt, an dem "root deployt ja nichts"
-      # in die Irre fuehrt: plaintext-root traegt `.m3-jar-volume`, also setzt
-      # tui-build-logic.sh JAR_VOLUME_DEPLOY=true, und do_release ruft nach dem
-      # `mvn deploy` unbedingt stage_jar_to_nas() auf — SSH nach mad@192.168.1.224,
-      # Deploy-Lock, Jar nach DEPLOY_PATH/jars/staging. Erst deploy_to_dev/deploy_to_prod
-      # bleiben bei release-only aus, das Staging nicht. Ohne Schluessel bricht der Lauf
-      # NACH der Veroeffentlichung ab: Artefakte draussen, Lauf rot.
+      # ── 4. SSH to the NAS ──────────────────────────────────────────────────────
+      # YES, WITH release-only TOO. This is the point where "root doesn't deploy anything"
+      # is misleading: plaintext-root carries `.m3-jar-volume`, so
+      # tui-build-logic.sh sets JAR_VOLUME_DEPLOY=true, and after the
+      # `mvn deploy` do_release unconditionally calls stage_jar_to_nas() — SSH to
+      # mad@192.168.1.224, deploy lock, jar to DEPLOY_PATH/jars/staging. Only
+      # deploy_to_dev/deploy_to_prod are skipped with release-only, the staging is not.
+      # Without a key the run aborts AFTER the publication: artifacts out, run red.
       - mkdir -p ~/.ssh && chmod 700 ~/.ssh
       - umask 077; printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
       - chmod 600 ~/.ssh/id_rsa
       - ssh-keyscan -H 192.168.1.224 >> ~/.ssh/known_hosts 2>/dev/null || true
       - ssh-keyscan -H 192.168.0.7   >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      # ── 5. plaintext-scripts und plaintext-config ──────────────────────────────
-      # `./build` sucht die Bibliothek fest unter $HOME/codeplain/plaintext-scripts, und
-      # load_build_conf() sucht die Projektkonfiguration unter
-      # $HOME/codeplain/plaintext-config/<basename des Projektverzeichnisses>.
+      # ── 5. plaintext-scripts and plaintext-config ──────────────────────────────
+      # `./build` looks for the library at the fixed path $HOME/codeplain/plaintext-scripts,
+      # and load_build_conf() looks for the project configuration under
+      # $HOME/codeplain/plaintext-config/<basename of the project directory>.
       #
-      # ACHTUNG, STILLE FALLE: der <basename> ist der Verzeichnisname des Auscheckens. Er MUSS
-      # `plaintext-root` lauten, sonst faellt load_build_conf auf ein nicht vorhandenes lokales
-      # build-conf.txt zurueck und ./build bricht mit "build-conf.txt not found" ab. Aus dieser
-      # Datei kommt unter anderem MVN_RELEASE_DEPLOY=true — also der Unterschied zwischen
-      # `mvn clean deploy` und `mvn clean package`. Sie zu verfehlen hiesse: gruener Lauf,
-      # nichts veroeffentlicht.
-      # Woodpeckers Vorgabe-Workspace endet auf .../Plaintext-Gmbh/plaintext-root, passt also —
-      # aber nur solange niemand `workspace:` umsetzt. Deshalb wird es unten geprueft.
+      # CAREFUL, SILENT TRAP: the <basename> is the directory name of the checkout. It MUST
+      # read `plaintext-root`, otherwise load_build_conf falls back to a non-existent local
+      # build-conf.txt and ./build aborts with "build-conf.txt not found". That file supplies,
+      # among other things, MVN_RELEASE_DEPLOY=true — that is, the difference between
+      # `mvn clean deploy` and `mvn clean package`. Missing it would mean: green run,
+      # nothing published.
+      # Woodpecker's default workspace ends in .../Plaintext-Gmbh/plaintext-root, so it fits —
+      # but only as long as nobody changes `workspace:`. That is why it is checked below.
       - mkdir -p "$HOME/codeplain"
       - git clone --depth 1 https://github.com/Plaintext-Gmbh/plaintext-scripts.git "$HOME/codeplain/plaintext-scripts"
       - git clone --depth 1 https://github.com/Plaintext-Gmbh/plaintext-config.git  "$HOME/codeplain/plaintext-config"
@@ -332,7 +332,7 @@ steps:
           exit 1;
         fi
 
-      # ── 6. Warten auf die Test-Datenbank ───────────────────────────────────────
+      # ── 6. Waiting for the test database ───────────────────────────────────────
       - >-
         bash -c 'for i in $(seq 1 60); do
           (echo > /dev/tcp/postgres/5432) 2>/dev/null && { echo "postgres bereit nach $i Versuchen"; exit 0; };
@@ -343,14 +343,14 @@ steps:
         exit 1'
 
       # ── 7. Release ─────────────────────────────────────────────────────────────
-      # Ab hier ZEICHENGLEICH mit dem Schritt "Build & Deploy" der GitHub-Pipeline.
-      # MVN_TEST_FLAG: Unit-Tests laufen im EINZIGEN Build mit (ITs separat). Der Marker
-      # [fast] in der Commit-Betreffzeile ueberspringt ALLE Tests. -DexcludedGroups=quality-gate:
-      # der Gate-Waechter darf den RELEASE nicht blockieren (Hotfix muss trotz rotem Gate raus).
+      # From here on CHARACTER FOR CHARACTER the step "Build & Deploy" of the GitHub pipeline.
+      # MVN_TEST_FLAG: unit tests run along in the ONLY build (ITs separately). The marker
+      # [fast] in the commit subject line skips ALL tests. -DexcludedGroups=quality-gate:
+      # the gate guard must not block the RELEASE (a hotfix has to get out despite a red gate).
       #
-      # Die vier uebrigen case-Zweige stehen hier, damit die Datei mit der GitHub-Pipeline
-      # Zeile fuer Zeile vergleichbar bleibt. Erreichbar ist von ihnen keiner: die Allowlist
-      # in Schritt 0 laesst nur release-only durch.
+      # The four remaining case branches are here so that the file stays comparable with the
+      # GitHub pipeline line by line. None of them is reachable: the allowlist
+      # in step 0 lets only release-only through.
       - >-
         case "$CI_COMMIT_MESSAGE" in
           *"[fast]"*) export MVN_TEST_FLAG="-DskipTests" ;;
@@ -391,9 +391,9 @@ steps:
     when:
       - status: [success, failure]
     commands:
-      # Der Step-Container ist ohnehin gleich weg — dieser Step raeumt das, was es NICHT ist:
-      # das geteilte Volume woodpecker-m2, das der Agent in jeden Step jedes Repos haengt.
-      # Ein dort liegengebliebenes settings.xml waere fuer jeden fremden Lauf lesbar (Karte 313).
-      # Eigener Step, weil ein `status:`-Filter nur auf Step-Ebene existiert; er laeuft in einem
-      # neuen Container, sieht also weder /tmp/ci noch ~/.ssh des Release-Steps.
+      # The step container is about to vanish anyway — this step clears what is NOT vanishing:
+      # the shared volume woodpecker-m2, which the agent mounts into every step of every repo.
+      # A settings.xml left behind there would be readable for every foreign run (card 313).
+      # A step of its own, because a `status:` filter exists only at step level; it runs in a
+      # new container and therefore sees neither /tmp/ci nor ~/.ssh of the release step.
       - 'rm -f /root/.m2/settings.xml && echo "Geteiltes Volume geprueft: kein settings.xml in /root/.m2."'

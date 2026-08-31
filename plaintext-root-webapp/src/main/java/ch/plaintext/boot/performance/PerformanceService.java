@@ -20,21 +20,21 @@ import java.util.concurrent.atomic.LongAdder;
 @Component
 public class PerformanceService {
 
-    /** Key: Methodensignatur (Label) */
+    /** Key: method signature (label) */
     private final ConcurrentMap<String, PlaintextMethodStats> stats = new ConcurrentHashMap<>();
 
-    /** Diese Liste wird von JSF/PrimeFaces verwendet (wie frueher bei Jamon). */
+    /** This list is used by JSF/PrimeFaces (as it used to be with Jamon). */
     private final List<Object[]> dataArr = Collections.synchronizedList(new ArrayList<>());
 
-    /** Wird vom Aspect aufgerufen. */
+    /** Called by the aspect. */
     public void record(String label, long durationNanos) {
         PlaintextMethodStats s = stats.computeIfAbsent(label, PlaintextMethodStats::new);
         s.record(durationNanos);
     }
 
     /**
-     * Baut die anzuzeigende Tabelle neu aus den aktuellen Stats.
-     * Diese Methode rufst du in der Seite per #{performanceService.reload()} und per Button auf.
+     * Rebuilds the table to be displayed from the current stats.
+     * You call this method from the page via #{performanceService.reload()} and from a button.
      */
     public void reload() {
         synchronized (dataArr) {
@@ -54,7 +54,7 @@ public class PerformanceService {
 
                 double avgMs = 0.0;
                 if (count > 0) {
-                    avgMs = totalMs / (double) count;   // Durchschnitt in ms
+                    avgMs = totalMs / (double) count;   // average in ms
                 }
 
                 double minMs  = (minNs == Long.MAX_VALUE) ? 0.0 : nanosToMillis(minNs);
@@ -66,21 +66,21 @@ public class PerformanceService {
 
                 Object[] row = new Object[14];
 
-                // Indizes exakt an dein performance.xhtml angepasst:
-                row[0]  = "method";                 // aktuell unbenutzt
-                row[1]  = s.getLabel() + ", ms.";   // Methode
-                row[2]  = count;                    // Hits
-                row[3]  = avgMs;                    // Durchschnitt (ms)
-                row[4]  = totalMs;                  // Total (ms) (optional)
-                row[5]  = lastMs;                   // letzter Wert (optional)
-                row[6]  = null;                     // frei
-                row[7]  = minMs;                    // Min (ms)
-                row[8]  = maxMs;                    // Max (ms)
+                // indices matched exactly to your performance.xhtml:
+                row[0]  = "method";                 // currently unused
+                row[1]  = s.getLabel() + ", ms.";   // method
+                row[2]  = count;                    // hits
+                row[3]  = avgMs;                    // average (ms)
+                row[4]  = totalMs;                  // total (ms) (optional)
+                row[5]  = lastMs;                   // last value (optional)
+                row[6]  = null;                     // free
+                row[7]  = minMs;                    // min (ms)
+                row[8]  = maxMs;                    // max (ms)
                 row[9]  = 0L;                       // Active (dummy)
                 row[10] = 0.0;                      // Avg Active (dummy)
                 row[11] = 0L;                       // Max Active (dummy)
                 row[12] = firstAccess;              // First Access
-                row[13] = lastAccess;               // Letzter Aufruf
+                row[13] = lastAccess;               // last call
 
                 dataArr.add(row);
             }
@@ -89,7 +89,7 @@ public class PerformanceService {
         log.debug("reload() built {} performance rows", dataArr.size());
     }
 
-    /** JSF/PrimeFaces greift hierauf zu. */
+    /** JSF/PrimeFaces accesses this. */
     public List<Object[]> getDataArr() {
         return dataArr;
     }

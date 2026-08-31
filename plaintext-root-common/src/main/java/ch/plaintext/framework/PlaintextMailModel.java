@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Sicherheitskopie einer Mail
+ * Backup copy of a mail
  *
  * @author Plaintext GmbH
  * @since 0.0.1

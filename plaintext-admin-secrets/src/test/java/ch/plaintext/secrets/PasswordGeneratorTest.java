@@ -12,9 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Zustandsbericht 29.08.2026, Massnahme 13 (JaCoCo-Gate): der Generator verspricht mindestens
- * ein Zeichen je gewaehlter Klasse, keine verwechselbaren Zeichen (0/O, 1/l/I) und eine
- * Mindestlaenge — das ist pruefbar, ohne den Zufall zu fixieren.
+ * Status report 2026-08-29, measure 13 (JaCoCo gate): the generator promises at least
+ * one character per selected class, no confusable characters (0/O, 1/l/I) and a
+ * minimum length — that is verifiable without pinning down the randomness.
  *
  * @author info@plaintext.ch
  * @since 2026

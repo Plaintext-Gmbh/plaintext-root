@@ -14,31 +14,29 @@ import jakarta.persistence.Converter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Speichert {@link SimpleStorable}-Objekte als Text in einer Datenbankspalte.
+ * Stores {@link SimpleStorable} objects as text in a database column.
  * <p>
- * <b>Geschrieben wird JSON, gelesen wird JSON und XML.</b> Das ist eine
- * Migration ohne Stichtag: Bestandsdaten liegen als XStream-XML in der Spalte
- * und bleiben lesbar, jeder Schreibvorgang wandelt einen Datensatz nach JSON.
- * Nach einer Weile im Betrieb ist der Bestand von selbst umgestellt, ohne
- * Migrationsskript und ohne Ausfallfenster.
+ * <b>JSON is written, JSON and XML are read.</b> This is a migration without a
+ * cut-off date: existing data sits in the column as XStream XML and stays
+ * readable, while every write converts one record to JSON. After a while in
+ * operation the stock has converted itself, without a migration script and
+ * without a maintenance window.
  * <p>
- * Der Grund fuer den Wechsel ist XStream selbst: die Bibliothek hat eine lange
- * Reihe von Deserialisierungs-CVEs hinter sich, und ihre Absicherung besteht
- * darin, Typen per Allowlist zuzulassen. Jackson ist hier die kleinere
- * Angriffsflaeche - dieselbe Allowlist gibt es unten trotzdem, siehe
- * {@link #typeValidator()}.
+ * The reason for the switch is XStream itself: the library has a long series of
+ * deserialization CVEs behind it, and the way it is secured is by allowing types
+ * through an allowlist. Jackson is the smaller attack surface here - the same
+ * allowlist exists below nevertheless, see {@link #typeValidator()}.
  * <p>
- * <b>Achtung bei einem Rollback:</b> Sobald diese Fassung gelaufen ist, stehen
- * JSON-Werte in der Spalte. Eine aeltere Programmfassung liest ausschliesslich
- * XStream und kann damit nichts anfangen. Der Weg zurueck fuehrt also ueber ein
- * Einspielen der Datensicherung, nicht ueber ein blosses Zurueckstellen der
- * Version.
+ * <b>Careful with a rollback:</b> once this version has run, JSON values sit in
+ * the column. An older program version reads XStream only and cannot do anything
+ * with them. The way back therefore leads through restoring the backup, not
+ * through merely rolling the version back.
  */
 @Slf4j
 @Converter(autoApply = true)
 public class SimpleStorableConverter implements AttributeConverter<SimpleStorable, String> {
 
-    /** Liest den Altbestand. Faellt weg, sobald keine XML-Werte mehr vorkommen. */
+    /** Reads the legacy data. Goes away as soon as no XML values occur any more. */
     private final XstreamBaseJPAConverter<SimpleStorable> legacy = new XstreamBaseJPAConverter<>();
 
     private final ObjectMapper mapper = createMapper();
@@ -46,23 +44,23 @@ public class SimpleStorableConverter implements AttributeConverter<SimpleStorabl
     private static ObjectMapper createMapper() {
         ObjectMapper m = new ObjectMapper();
         m.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-        // Der konkrete Typ steht im JSON, sonst laesst sich das Interface nicht
-        // zurueckbauen. activateDefaultTyping statt einer Annotation am
-        // Interface: SimpleStorable soll frei von Jackson-Bezuegen bleiben.
+        // The concrete type is part of the JSON, otherwise the interface cannot be
+        // reconstructed. activateDefaultTyping instead of an annotation on the
+        // interface: SimpleStorable is meant to stay free of Jackson references.
         m.activateDefaultTyping(typeValidator(), ObjectMapper.DefaultTyping.NON_FINAL,
                 JsonTypeInfo.As.PROPERTY);
         return m;
     }
 
     /**
-     * Dieselbe Einschraenkung, die der XStream-Weg per {@code allowTypesByWildcard}
-     * hatte: nur Typen der Produktlinie und der Anwendungen darauf, dazu die
-     * Sammlungen aus {@code java.util}.
+     * The same restriction the XStream path had via {@code allowTypesByWildcard}:
+     * only types of the product line and of the applications built on it, plus the
+     * collections from {@code java.util}.
      * <p>
-     * Ohne diese Schranke koennte ein manipulierter Spaltenwert die Erzeugung
-     * beliebiger Klassen anstossen - das ist genau die Schwachstellenklasse, die
-     * XStream seinen Ruf eingebracht hat, und sie waere mit Jackson nicht
-     * automatisch behoben.
+     * Without that barrier a manipulated column value could trigger the creation of
+     * arbitrary classes - that is exactly the class of vulnerability that earned
+     * XStream its reputation, and it would not be fixed automatically by moving to
+     * Jackson.
      */
     private static PolymorphicTypeValidator typeValidator() {
         return BasicPolymorphicTypeValidator.builder()
@@ -78,7 +76,7 @@ public class SimpleStorableConverter implements AttributeConverter<SimpleStorabl
         }
         try {
             return mapper.writeValueAsString(object);
-        } catch (Exception e) { // NOSONAR - ein Serialisierungsfehler darf die Transaktion nicht sprengen
+        } catch (Exception e) { // NOSONAR - a serialization failure must not blow up the transaction
             log.error("[SimpleStorableConverter] Serialisierung fehlgeschlagen | typ={} | fehler={}",
                     object.getClass().getName(), e.getMessage());
             return null;
@@ -92,9 +90,9 @@ public class SimpleStorableConverter implements AttributeConverter<SimpleStorabl
         }
         String trimmed = text.trim();
 
-        // Die Unterscheidung am ersten Zeichen genuegt und kostet nichts: JSON
-        // beginnt mit '{', XStream-XML mit '<'. Ein Rateverfahren ueber
-        // Probe-Deserialisierung waere teurer und im Fehlerfall mehrdeutig.
+        // Telling them apart by the first character is enough and costs nothing: JSON
+        // starts with '{', XStream XML with '<'. Guessing by way of a trial
+        // deserialization would be more expensive and ambiguous when it fails.
         if (trimmed.startsWith("<")) {
             log.debug("[SimpleStorableConverter] Altbestand im XML-Format gelesen");
             return legacy.convertToEntityAttribute(trimmed);
@@ -102,7 +100,7 @@ public class SimpleStorableConverter implements AttributeConverter<SimpleStorabl
 
         try {
             return mapper.readValue(trimmed, SimpleStorable.class);
-        } catch (Exception e) { // NOSONAR - ein defekter Wert darf die Abfrage nicht sprengen
+        } catch (Exception e) { // NOSONAR - a broken value must not blow up the query
             log.error("[SimpleStorableConverter] Deserialisierung fehlgeschlagen | fehler={}", e.getMessage());
             return null;
         }

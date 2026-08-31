@@ -18,9 +18,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Zustandsbericht 29.08.2026 (R2): {@link I18nEL} holt die Benutzersprache typsicher aus dem
- * Scoped-Proxy von {@link UserPreferencesBackingBean} statt per Reflection bei jedem Aufruf.
- * Die Tests sichern die drei Wege: Sprache vorhanden, Proxy ohne Session (wirft), keine Bean.
+ * Status report 29.08.2026 (R2): {@link I18nEL} obtains the user language type-safely from the
+ * scoped proxy of {@link UserPreferencesBackingBean} instead of by reflection on every call.
+ * The tests cover the three paths: language present, proxy without a session (throws), no bean.
  */
 class I18nELTest {
 
@@ -53,7 +53,7 @@ class I18nELTest {
 
     @Test
     void ohneAktiveSessionWirftDerScopedProxyUndEsBleibtBeiDeutsch() {
-        // So verhaelt sich der TARGET_CLASS-Proxy ausserhalb einer HTTP-Session (Cron, REST).
+        // This is how the TARGET_CLASS proxy behaves outside an HTTP session (cron, REST).
         when(prefs.getLanguage()).thenThrow(new IllegalStateException("No thread-bound request found"));
 
         assertEquals("Speichern", el.t("Speichern"));

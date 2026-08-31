@@ -67,9 +67,9 @@ class SessionTrackingFilterTest {
     @BeforeEach
     void setUp() {
         filter = new SessionTrackingFilter(sessionAuditWriter, security, sessionRegistry, setupConfigProvider);
-        // Karte 627: Voreinstellung fuer die bestehenden Faelle ist „Schalter an" — sie pruefen das
-        // Verhalten VOR dem Schalter und muessen es unveraendert weiter belegen. lenient(), weil die
-        // meisten Faelle abbrechen, bevor der Schalter ueberhaupt gelesen wird.
+        // Card 627: the default for the existing cases is "switch on" — they check the
+        // behaviour BEFORE the switch and must keep documenting it unchanged. lenient(), because
+        // most cases bail out before the switch is even read.
         lenient().when(setupConfigProvider.getIfAvailable()).thenReturn(setupConfigService);
         lenient().when(setupConfigService.isSessionTrackingEnabled(any())).thenReturn(true);
     }
@@ -206,11 +206,11 @@ class SessionTrackingFilterTest {
         verify(filterChain).doFilter(httpRequest, httpResponse);
     }
 
-    // ── Karte 627: der Schalter ────────────────────────────────────────────────────────────────
+    // ── Card 627: the switch ────────────────────────────────────────────────────────────────
 
     /**
-     * Der Zweck der Karte: Schalter aus → kein neuer Eintrag. Die Registrierung in der flüchtigen
-     * {@link HttpSessionRegistry} läuft weiter, sonst verlöre ROOT das Zwangs-Abmelden.
+     * The point of the card: switch off → no new entry. The registration in the transient
+     * {@link HttpSessionRegistry} keeps running, otherwise ROOT would lose the forced logout.
      */
     @Test
     void schalterAusZeichnetNichtAufLaesstAberDasAbmeldenIntakt() throws Exception {
@@ -235,7 +235,7 @@ class SessionTrackingFilterTest {
         verify(sessionAuditWriter).schreibe(7L, "sess-an", authentication, "Firefox/1.0");
     }
 
-    /** Anwendung ohne Modul {@code plaintext-admin-settings}: aufzeichnen wie vor der Karte. */
+    /** Application without the module {@code plaintext-admin-settings}: record as before the card. */
     @Test
     void ohneSettingsModulWirdAufgezeichnet() throws Exception {
         angemeldeteSitzung("sess-ohne", 8L, "curl/8.0");
@@ -247,8 +247,8 @@ class SessionTrackingFilterTest {
     }
 
     /**
-     * Ein Fehler beim Lesen des Schalters darf die Aufzeichnung nicht stillschweigend beenden —
-     * das wäre ein Datenverlust, den niemand bemerkt, weil kein Request fehlschlägt.
+     * An error while reading the switch must not silently end the recording —
+     * that would be a data loss nobody notices, because no request fails.
      */
     @Test
     void schalterNichtLesbarZeichnetAuf() throws Exception {
@@ -271,16 +271,16 @@ class SessionTrackingFilterTest {
         when(httpRequest.getHeader("User-Agent")).thenReturn(userAgent);
     }
 
-    // ---------------------------------------------------------------- Karte 968: Proxy-Vertrag
+    // ---------------------------------------------------------------- card 968: proxy contract
 
     /**
-     * Haelt fest, warum {@code @Async} nicht mehr im Filter steht (Sonar {@code java:S6809}).
+     * Records why {@code @Async} no longer sits in the filter (Sonar {@code java:S6809}).
      *
-     * <p>Vorher trug {@code trackSessionAsync} die Annotation und wurde per {@code this} gerufen —
-     * am Spring-Proxy vorbei, also wirkungslos. Wer sie zurueckholt, muss sie an eine <b>andere</b>
-     * Bean haengen: die Methode las {@code SecurityContextHolder}, den {@code HttpServletRequest}
-     * und {@code PlaintextSecurity}, und die sind auf einem Pool-Thread nicht mehr da. Die
-     * Aufzeichnung haette still aufgehoert — ein Datenverlust, den niemand bemerkt.
+     * <p>Previously {@code trackSessionAsync} carried the annotation and was called via {@code this} —
+     * past the Spring proxy, so without effect. Whoever brings it back must attach it to a
+     * <b>different</b> bean: the method read {@code SecurityContextHolder}, the
+     * {@code HttpServletRequest} and {@code PlaintextSecurity}, and those are gone on a pool thread.
+     * The recording would have stopped silently — a data loss nobody notices.
      */
     @Test
     void asyncGehoertAnDenSchreiber_nichtAnDenFilter() {

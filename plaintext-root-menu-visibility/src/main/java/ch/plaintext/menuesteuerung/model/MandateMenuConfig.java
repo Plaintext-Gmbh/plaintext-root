@@ -18,22 +18,22 @@ import java.util.TreeSet;
  * Entity representing mandate-specific menu configuration.
  * Stores which menu items should be hidden for each mandate.
  *
- * <p><b>Zwei Formen von Listen-Eintraegen</b> (seit 1.608.0):</p>
+ * <p><b>Two forms of list entries</b> (since 1.608.0):</p>
  * <ul>
- *   <li><b>Menue-Titel</b> — der volle Titel {@code "Parent | Titel"} bzw. {@code "Titel"}. Die
- *       historische und weiterhin gueltige Form; ein Eintrag schaltet genau einen Menuepunkt.</li>
- *   <li><b>Modul-Key</b> — {@code "modul:<moduleId>"}. Ein Eintrag schaltet das ganze Modul,
- *       also auch alle Untermenues, ohne dass jeder Titel einzeln gepflegt werden muss.</li>
+ *   <li><b>Menu title</b> — the full title {@code "Parent | Titel"} or just {@code "Titel"}. The
+ *       historical and still valid form; one entry switches exactly one menu item.</li>
+ *   <li><b>Module key</b> — {@code "modul:<moduleId>"}. One entry switches the whole module, and
+ *       therefore all submenus too, without having to maintain every single title.</li>
  * </ul>
  *
- * <p><b>Warum der Praefix {@code modul:} und nicht die nackte {@code moduleId}.</b> Die Umstellung
- * muss verlustfrei sein: kein gespeicherter Eintrag darf seine Bedeutung aendern. Nackte Keys
- * koennten kollidieren — ein Modul mit der {@code moduleId} {@code wiki} hat sein Wurzelmenue in
- * aller Regel unter dem Titel {@code Wiki}, und im Bestand stehen ausserdem Eintraege, die auf
- * keinen Titel mehr passen (Umbenennungen). Ein nackter Key waere damit mal Titel, mal Modul, je
- * nach Zustand des Menuebaums. Der Praefix macht die Absicht am Eintrag selbst sichtbar: alles
- * ohne ihn ist und bleibt ein Titel, und weil kein Menue-Titel mit {@code "modul:"} beginnt, kann
- * kein Bestandseintrag versehentlich zum Modul-Eintrag werden.</p>
+ * <p><b>Why the prefix {@code modul:} and not the bare {@code moduleId}.</b> The migration has to
+ * be lossless: no stored entry may change its meaning. Bare keys could collide — a module with the
+ * {@code moduleId} {@code wiki} usually has its root menu under the title {@code Wiki}, and the
+ * existing data also contains entries that no longer match any title (renames). A bare key would
+ * therefore be a title sometimes and a module other times, depending on the state of the menu tree.
+ * The prefix makes the intent visible on the entry itself: everything without it is and stays a
+ * title, and because no menu title begins with {@code "modul:"}, no existing entry can accidentally
+ * turn into a module entry.</p>
  *
  * @author plaintext.ch
  * @since 1.39.0
@@ -44,7 +44,7 @@ import java.util.TreeSet;
 public class MandateMenuConfig implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /** Praefix, der einen Listen-Eintrag als Modul-Key statt als Menue-Titel ausweist. */
+    /** Prefix that marks a list entry as a module key rather than a menu title. */
     public static final String MODULE_PREFIX = "modul:";
 
     @Id
@@ -108,15 +108,14 @@ public class MandateMenuConfig implements Serializable {
     }
 
     /**
-     * Steht dieser Menuepunkt in der Liste — als Menue-Titel <b>oder</b> ueber einen seiner
-     * Modul-Keys?
+     * Is this menu item on the list — as a menu title <b>or</b> through one of its module keys?
      *
-     * <p>Die Titel-Pruefung ist unveraendert exakt (Gross-/Kleinschreibung und Leerzeichen zaehlen),
-     * damit kein Bestandseintrag seine Wirkung aendert.</p>
+     * <p>The title check remains exact (case and whitespace matter), so that no existing entry
+     * changes its effect.</p>
      *
-     * @param menuTitle  voller Menue-Titel
-     * @param moduleKeys Modul-Keys des Menuepunkts, darf leer oder {@code null} sein
-     * @return {@code true}, wenn der Menuepunkt von der Liste erfasst wird
+     * @param menuTitle  full menu title
+     * @param moduleKeys module keys of the menu item, may be empty or {@code null}
+     * @return {@code true} if the menu item is covered by the list
      * @since 1.608.0
      */
     public boolean isListed(String menuTitle, Collection<String> moduleKeys) {
@@ -124,10 +123,10 @@ public class MandateMenuConfig implements Serializable {
     }
 
     /**
-     * Enthaelt die Liste einen {@code modul:}-Eintrag, der auf einen dieser Keys passt?
+     * Does the list contain a {@code modul:} entry that matches one of these keys?
      *
-     * @param moduleKeys zu pruefende Modul-Keys, darf leer oder {@code null} sein
-     * @return {@code true} bei einem Treffer
+     * @param moduleKeys module keys to check, may be empty or {@code null}
+     * @return {@code true} on a match
      * @since 1.608.0
      */
     public boolean containsAnyModuleKey(Collection<String> moduleKeys) {
@@ -147,9 +146,9 @@ public class MandateMenuConfig implements Serializable {
     }
 
     /**
-     * Die Modul-Keys der Liste (kanonisch, ohne Praefix), alphabetisch.
+     * The module keys of the list (canonical, without prefix), alphabetically.
      *
-     * @return Modul-Keys der {@code modul:}-Eintraege (nie {@code null})
+     * @return module keys of the {@code modul:} entries (never {@code null})
      * @since 1.608.0
      */
     public Set<String> getModuleKeyEntries() {
@@ -167,9 +166,9 @@ public class MandateMenuConfig implements Serializable {
     }
 
     /**
-     * Die Titel-Eintraege der Liste — alles, was kein {@code modul:}-Eintrag ist.
+     * The title entries of the list — everything that is not a {@code modul:} entry.
      *
-     * @return Menue-Titel der Liste in Einfuegereihenfolge (nie {@code null})
+     * @return menu titles of the list in insertion order (never {@code null})
      * @since 1.608.0
      */
     public Set<String> getTitleEntries() {
@@ -186,10 +185,10 @@ public class MandateMenuConfig implements Serializable {
     }
 
     /**
-     * Der Modul-Key eines Listen-Eintrags — oder leer, wenn der Eintrag ein Menue-Titel ist.
+     * The module key of a list entry — or empty when the entry is a menu title.
      *
-     * @param entry Listen-Eintrag, darf {@code null} sein
-     * @return kanonischer Modul-Key ohne Praefix, sonst {@code ""}
+     * @param entry list entry, may be {@code null}
+     * @return canonical module key without the prefix, otherwise {@code ""}
      * @since 1.608.0
      */
     public static String moduleKeyOf(String entry) {
@@ -205,10 +204,10 @@ public class MandateMenuConfig implements Serializable {
     }
 
     /**
-     * Der Listen-Eintrag zu einem Modul-Key: {@code "modul:<key>"}.
+     * The list entry for a module key: {@code "modul:<key>"}.
      *
-     * @param moduleKey Modul-Key, darf {@code null} sein
-     * @return Listen-Eintrag, oder {@code ""} bei leerem Key
+     * @param moduleKey module key, may be {@code null}
+     * @return list entry, or {@code ""} for an empty key
      * @since 1.608.0
      */
     public static String moduleEntryOf(String moduleKey) {
@@ -217,11 +216,11 @@ public class MandateMenuConfig implements Serializable {
     }
 
     /**
-     * Kanonische Form eines Modul-Keys: getrimmt und kleingeschrieben — dieselbe Normalisierung
-     * wie bei den Modul-Rollen ({@code ModuleRoleProperties.canonicalKey}).
+     * Canonical form of a module key: trimmed and lower-cased — the same normalisation as for the
+     * module roles ({@code ModuleRoleProperties.canonicalKey}).
      *
-     * @param moduleKey roher Key, darf {@code null} sein
-     * @return kanonischer Key, nie {@code null}
+     * @param moduleKey raw key, may be {@code null}
+     * @return canonical key, never {@code null}
      * @since 1.608.0
      */
     public static String canonicalModuleKey(String moduleKey) {

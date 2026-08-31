@@ -26,8 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 
 /**
- * Aufloesung von {@code modul:}-Eintraegen in <b>beiden</b> Modi, der Klartext-Grund fuer die
- * Diagnose und die Erkennung toter Eintraege.
+ * Resolution of {@code modul:} entries in <b>both</b> modes, the plain-text reason for the
+ * diagnostics, and the detection of dead entries.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Mandanten-Liste: Modul-Keys, Gruende, tote Eintraege")

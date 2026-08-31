@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Meldet das Cron-Modul an die zentrale Modul-Verwaltung (Task #016). */
+/** Registers the cron module with the central module management (Task #016). */
 @Component
 public class CronModuleDescriptor implements ModuleDescriptor {
     @Override

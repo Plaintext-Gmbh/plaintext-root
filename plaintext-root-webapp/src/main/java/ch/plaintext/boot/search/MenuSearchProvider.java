@@ -12,14 +12,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Root-eigener {@link SearchProvider}: macht jede <b>sichtbare</b> Menü-Seite per Titel auffindbar
- * („springe zu Seite X"). Zieht die Ziele direkt aus {@link MenuRegistry#getAllMenuItems()} und
- * verwendet deren {@code link} als Deep-Link – exakt das Muster, das das Konzept vorgibt.
+ * Root's own {@link SearchProvider}: makes every <b>visible</b> menu page findable by its title
+ * ("jump to page X"). Pulls the targets straight from {@link MenuRegistry#getAllMenuItems()} and
+ * uses their {@code link} as a deep link - exactly the pattern the concept prescribes.
  * <p>
- * Quer schneidend (nicht an ein einzelnes Modul-Menü gebunden), daher {@link #isMenuScoped()}
- * {@code = false}. Die Sichtbarkeit wird hier selbst erzwungen: es werden ausschliesslich Menüs
- * berücksichtigt, für die {@link MenuRegistry.MenuItem#isOn()} true ist (Rollen + Mandanten-
- * Sichtbarkeit).
+ * Cross-cutting (not bound to a single module menu), hence {@link #isMenuScoped()}
+ * {@code = false}. Visibility is enforced here by the provider itself: only menus are
+ * taken into account for which {@link MenuRegistry.MenuItem#isOn()} is true (roles + tenant
+ * visibility).
  *
  * @author plaintext.ch
  */
@@ -42,7 +42,7 @@ public class MenuSearchProvider implements SearchProvider {
 
     @Override
     public boolean isMenuScoped() {
-        // Quer schneidend: an kein einzelnes Menü gebunden, filtert intern über isOn().
+        // Cross-cutting: bound to no single menu, filters internally via isOn().
         return false;
     }
 
@@ -67,7 +67,7 @@ public class MenuSearchProvider implements SearchProvider {
             if (hit != null) {
                 hits.add(hit);
                 if (hits.size() >= limit * 3L) {
-                    // grober Deckel vor dem Sortieren/Cappen im SearchService
+                    // coarse cap before sorting/capping in the SearchService
                     break;
                 }
             }
@@ -76,14 +76,14 @@ public class MenuSearchProvider implements SearchProvider {
     }
 
     /**
-     * Baut aus einem sichtbaren, passenden Menü-Item einen Treffer, sonst {@code null}
-     * (unvollständig, unsichtbar oder kein Query-Match).
+     * Builds a hit from a visible, matching menu item, otherwise {@code null}
+     * (incomplete, invisible or no query match).
      */
     private SearchHit toHit(MenuRegistry.MenuItem item, String needle) {
         if (item == null || item.getTitle() == null || item.getLink() == null || item.getLink().isBlank()) {
             return null;
         }
-        // Sichtbarkeit selbst erzwingen: nur Menüs, die der Benutzer/Mandant sehen darf.
+        // Enforce visibility ourselves: only menus that the user/tenant is allowed to see.
         if (!isOnSafe(item)) {
             return null;
         }
@@ -100,17 +100,17 @@ public class MenuSearchProvider implements SearchProvider {
     }
 
     /**
-     * Score gegen den vollen sichtbaren Menü-Pfad ({@code parent + " " + title}).
+     * Score against the full visible menu path ({@code parent + " " + title}).
      * <p>
-     * <b>Einzel-Token:</b> gewichtet wie bisher — exakter Titel &gt; Titel-Präfix &gt; enthaltener Titel
-     * &gt; Treffer im Parent.
+     * <b>Single token:</b> weighted as before — exact title &gt; title prefix &gt; contained title
+     * &gt; hit in the parent.
      * <p>
-     * <b>Mehrere Tokens</b> (durch Leerzeichen getrennt, „Teile"): JEDES Token muss als Teilstring
-     * irgendwo im Pfad vorkommen — so findet z. B. {@code "roo sett"} den Eintrag „Root | Settings"
-     * ({@code roo}→Root, {@code sett}→Settings). Fehlt ein Token, kein Treffer.
+     * <b>Several tokens</b> (separated by spaces, "parts"): EVERY token has to occur as a substring
+     * somewhere in the path — this way {@code "roo sett"}, for example, finds the entry "Root | Settings"
+     * ({@code roo}→Root, {@code sett}→Settings). If a token is missing, there is no hit.
      *
-     * @param needle bereits klein­geschriebene Query
-     * @return Score &gt; 0 bei Treffer, sonst 0
+     * @param needle query, already lower-cased
+     * @return score &gt; 0 on a hit, otherwise 0
      */
     private int matchScore(String title, String parent, String needle) {
         String t = title.toLowerCase();
@@ -138,7 +138,7 @@ public class MenuSearchProvider implements SearchProvider {
             return 0;
         }
 
-        // Mehr-Token: ALLE Teile müssen im Pfad (Parent + Titel) vorkommen.
+        // Multiple tokens: ALL parts have to occur in the path (parent + title).
         boolean titleHit = false;
         for (String tok : tokens) {
             if (!path.contains(tok)) {
@@ -148,7 +148,7 @@ public class MenuSearchProvider implements SearchProvider {
                 titleHit = true;
             }
         }
-        // Etwas höher, wenn mindestens ein Teil im Titel selbst sitzt (nicht nur im Parent).
+        // Slightly higher when at least one part sits in the title itself (not only in the parent).
         return 50 + (titleHit ? 10 : 0);
     }
 
@@ -156,7 +156,7 @@ public class MenuSearchProvider implements SearchProvider {
         try {
             return item.isOn();
         } catch (Exception _) {
-            // Im Zweifel nicht anzeigen (fail-closed) – Sichtbarkeit soll strikt sein.
+            // When in doubt do not display (fail-closed) - visibility is meant to be strict.
             return false;
         }
     }

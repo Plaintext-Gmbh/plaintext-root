@@ -31,11 +31,11 @@ public class AnforderungApiSettings implements Serializable {
     private String apiToken;
 
     /**
-     * SHA-256-Hash (hex, 64 Zeichen) des API-Tokens — die serverseitige Vergleichsbasis
-     * (konstantzeitig, siehe {@link ApiTokenHasher}). Wird beim Persistieren automatisch
-     * aus {@link #apiToken} abgeleitet ({@link #syncApiTokenHash()}); für Alt-Zeilen zieht
-     * die Lazy-Migration in {@code ClaudeAutomationService} den Hash beim ersten
-     * erfolgreichen Klartext-Match nach.
+     * SHA-256 hash (hex, 64 characters) of the API token — the server-side basis for
+     * comparison (constant-time, see {@link ApiTokenHasher}). Derived automatically
+     * from {@link #apiToken} on persist ({@link #syncApiTokenHash()}); for legacy rows
+     * the lazy migration in {@code ClaudeAutomationService} backfills the hash on the
+     * first successful cleartext match.
      */
     @Column(name = "api_token_hash", length = 64)
     private String apiTokenHash;
@@ -44,10 +44,10 @@ public class AnforderungApiSettings implements Serializable {
     private Boolean claudeAutomationEnabled;
 
     /**
-     * Hält den Hash beim Speichern konsistent zum Klartext-Token: Übergangsphase — der
-     * Klartext ist (noch) die Quelle der Wahrheit (Settings-UI zeigt/setzt ihn). Wird der
-     * Token geleert, wird auch der Hash geleert, sonst bliebe der alte Token gültig.
-     * Follow-up: Klartext-Spalte entfernen, Token nur noch einmalig anzeigen.
+     * Keeps the hash consistent with the cleartext token on save: transitional phase — the
+     * cleartext is (still) the source of truth (the settings UI shows/sets it). If the
+     * token is cleared, the hash is cleared as well, otherwise the old token would stay valid.
+     * Follow-up: drop the cleartext column, show the token only once.
      */
     @PrePersist
     @PreUpdate

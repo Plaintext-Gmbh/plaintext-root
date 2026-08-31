@@ -30,12 +30,12 @@
                         <h:outputText value="Es gibt keine aktiven API-Tokens in diesem Mandat." style="color: #666; font-style: italic;"/>
                     </h:panelGrid>
 
-                    <!-- Karte 984, Pilotmigration auf die pt:-Taglib.
-                         paginator="false" ist hier Absicht und keine Nachlaessigkeit: Diese
-                         Migration soll BELEGEN, dass die Tag-Files identisches Markup erzeugen.
-                         Mit den Hausvorgaben (Paginator an) waere der Vergleich vorher/nachher
-                         verrauscht und bewiese nichts. Die Uebernahme der Vorgaben ist ein
-                         eigener, sichtbarer Schritt. -->
+                    <!-- Card 984, pilot migration to the pt: taglib.
+                         paginator="false" is deliberate here and not sloppiness: this
+                         migration is meant to PROVE that the tag files produce identical markup.
+                         With the house defaults (paginator on) the before/after comparison
+                         would be noisy and would prove nothing. Adopting the defaults is a
+                         separate, visible step. -->
                     <pt:table value="#{adminApiTokenBean.tokens}"
                               paginator="false"
                               rendered="#{adminApiTokenBean.hasTokens()}"

@@ -10,14 +10,14 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 
 /**
- * Dedizierter, kleiner Thread-Pool für die Bus-Zustellung ({@link PlaintextBusDispatcher}) —
- * getrennt vom Default-{@code SimpleAsyncTaskExecutor}, den {@code @Async} sonst im gesamten Repo
- * mangels eines benannten Executor-Beans nutzt (unbounded, Thread-pro-Aufruf).
+ * Dedicated, small thread pool for the bus delivery ({@link PlaintextBusDispatcher}) —
+ * separate from the default {@code SimpleAsyncTaskExecutor} that {@code @Async} otherwise uses
+ * throughout the repository for lack of a named executor bean (unbounded, one thread per call).
  *
- * <p>Falls die konsumierende App kein {@code @EnableAsync} aktiviert hat, greift {@code @Async} auf
- * {@link PlaintextBusDispatcher} einfach nicht (Spring ignoriert die Annotation dann) — die
- * Zustellung läuft in diesem Fall synchron auf dem Commit-Thread weiter, bleibt also korrekt, nur
- * ohne den Nebenläufigkeits-Vorteil.</p>
+ * <p>If the consuming app has not enabled {@code @EnableAsync}, {@code @Async} simply does not
+ * take effect on {@link PlaintextBusDispatcher} (Spring ignores the annotation then) — the
+ * delivery then continues synchronously on the commit thread, so it stays correct, only without
+ * the concurrency benefit.</p>
  *
  * @author info@plaintext.ch
  * @since 2026

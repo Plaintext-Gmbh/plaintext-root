@@ -21,23 +21,23 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mockStatic;
 
 /**
- * Karte 855, Schritt 1: <b>belegt</b>, dass OpenBao die Vault-KV-v2-API so spricht, wie
- * {@link HashiCorpVaultBackend} sie benutzt — statt es anzunehmen.
+ * Card 855, step 1: <b>proves</b> that OpenBao speaks the Vault KV v2 API the way
+ * {@link HashiCorpVaultBackend} uses it — instead of assuming it.
  *
- * <p><b>Warum gegen die echte Klasse und nicht per {@code curl}.</b> Ein {@code curl} zeigt nur,
- * dass OpenBao HTTP beantwortet. Die Frage dieser Karte ist eine andere: Kommt <i>unser</i> Client
- * damit zurecht — mit seinen Pfaden ({@code /v1/<mount>/data/<name>}), seinem Header
- * ({@code X-Vault-Token}) und seiner Erwartung an die Antwortform? Deshalb laeuft hier der
- * unveraenderte Produktionscode; gemockt ist ausschliesslich die Herkunft der Konfiguration
- * (sie kaeme sonst verschluesselt aus der Datenbank).</p>
+ * <p><b>Why against the real class and not via {@code curl}.</b> A {@code curl} only shows that
+ * OpenBao answers HTTP. The question of this card is a different one: does <i>our</i> client cope
+ * with it — with its paths ({@code /v1/<mount>/data/<name>}), its header
+ * ({@code X-Vault-Token}) and its expectation about the response shape? That is why the unchanged
+ * production code runs here; the only thing mocked is where the configuration comes from
+ * (otherwise it would come encrypted out of the database).</p>
  *
- * <p><b>Was dieser Test NICHT beantwortet:</b> die Betriebsfragen der Karte. Die Instanz laeuft im
- * Dev-Modus und ist damit dauerhaft entsiegelt — die Unseal-Frage (Schritt 2) ist hier
- * ausgeklammert, nicht geloest. Wer aus diesem gruenen Test schliesst, der Betrieb sei geklaert,
- * macht genau den Fehler, vor dem die Karte warnt.</p>
+ * <p><b>What this test does NOT answer:</b> the operational questions of the card. The instance runs
+ * in dev mode and is therefore permanently unsealed — the unseal question (step 2) is left out here,
+ * not solved. Anyone concluding from this green test that operations are settled makes exactly the
+ * mistake the card warns about.</p>
  *
- * <p>Doppelt gegen die CI abgesichert ({@code @Tag} + Umgebungsvariable), weil er eine laufende
- * Instanz braucht. Lokaler Lauf:</p>
+ * <p>Doubly guarded against the CI ({@code @Tag} + environment variable), because it needs a running
+ * instance. Local run:</p>
  * <pre>
  * docker run -d --rm --name openbao855 -p 8200:8200 \
  *   -e BAO_DEV_ROOT_TOKEN_ID=test-root-855 -e BAO_DEV_LISTEN_ADDRESS=0.0.0.0:8200 \
@@ -63,9 +63,9 @@ class OpenBaoKompatibilitaetLiveTest {
     }
 
     /**
-     * Baut das echte Backend, aber mit einer Konfiguration aus der Umgebung statt aus der
-     * verschluesselten Datenbankzeile. {@code config()} ist privat und liest ueber Repository und
-     * {@link SecretCrypto} — beide werden hier so gemockt, dass sie unser Test-JSON liefern.
+     * Builds the real backend, but with a configuration from the environment instead of from the
+     * encrypted database row. {@code config()} is private and reads via the repository and
+     * {@link SecretCrypto} — both are mocked here so that they return our test JSON.
      */
     private static HashiCorpVaultBackend backendMitTestConfig() {
         String json = "{\"url\":\"" + env("OPENBAO_URL", "http://127.0.0.1:8200")
@@ -89,13 +89,13 @@ class OpenBaoKompatibilitaetLiveTest {
     @Test
     @DisplayName("OpenBao beantwortet Health, Schreiben und Lesen so, wie der Vault-Client es erwartet")
     void schreibenUndLesenMitGegenprobe() {
-        // config() liest den Mandanten aus dem statischen Holder; im Test ist kein Kontext
-        // aufgespannt, deshalb hier einer vorgegeben.
+        // config() reads the tenant from the static holder; in the test no context is
+        // set up, therefore one is provided here.
         try (MockedStatic<PlaintextSecurityHolder> sec = mockStatic(PlaintextSecurityHolder.class)) {
         sec.when(PlaintextSecurityHolder::getMandat).thenReturn("test");
         HashiCorpVaultBackend backend = backendMitTestConfig();
 
-        // --- Health: der Client fragt /v1/auth/token/lookup-self ---
+        // --- Health: the client queries /v1/auth/token/lookup-self ---
         assertThat(backend.isAvailable())
                 .as("Config muss gelesen werden, sonst prueft der Test nichts")
                 .isTrue();
@@ -104,13 +104,13 @@ class OpenBaoKompatibilitaetLiveTest {
                 .as("health() sagt: %s", health.detail())
                 .isTrue();
 
-        // --- Schreibpfad ---
+        // --- Write path ---
         String name = "karte855-probe-" + UUID.randomUUID().toString().substring(0, 8);
         String wert = "wert-" + UUID.randomUUID();
         String notiz = "Kompatibilitaetsprobe Karte 855";
         backend.set(name, wert, notiz);
 
-        // --- Lesepfad, Gegenprobe zum Schreiben ---
+        // --- Read path, cross-check of the write ---
         assertThat(backend.readValue(name))
                 .as("zurueckgelesener Wert muss dem geschriebenen entsprechen")
                 .isEqualTo(wert);
@@ -118,9 +118,9 @@ class OpenBaoKompatibilitaetLiveTest {
                 .as("die Notiz wird in demselben Eintrag neben dem Wert gefuehrt")
                 .isEqualTo(notiz);
 
-        // --- NEGATIVKONTROLLE: ohne sie waere der Test auch gruen, wenn readValue immer denselben
-        //     Wert lieferte oder Fehler still verschluckte. Ein unbekannter Schluessel MUSS als
-        //     "nicht gefunden" ankommen, nicht als Erfolg mit leerem Wert.
+        // --- NEGATIVE CONTROL: without it the test would also be green if readValue always returned
+        //     the same value or silently swallowed errors. An unknown key MUST arrive as
+        //     "not found", not as a success with an empty value.
         assertThat(backend.readValue("gibt-es-nicht-" + UUID.randomUUID()))
                 .as("unbekannter Schluessel darf keinen Wert liefern")
                 .isNull();
@@ -138,7 +138,7 @@ class OpenBaoKompatibilitaetLiveTest {
         backend.set(name, "erst", "v1");
         backend.set(name, "dann", "v2");
 
-        // KV v2 versioniert: der Client muss die aktuelle Version bekommen, nicht die erste.
+        // KV v2 versions entries: the client must get the current version, not the first one.
         assertThat(backend.readValue(name)).isEqualTo("dann");
         assertThat(backend.comment(name)).isEqualTo("v2");
         }

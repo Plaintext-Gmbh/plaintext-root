@@ -5,11 +5,11 @@ package ch.plaintext.anforderungen.menu;
 
 import ch.plaintext.boot.menu.MenuAnnotation;
 
-    // SECURITY (Karte 308, H4): explizite roles. Ohne sie prueft MenuItemImpl.isOn() nichts —
-    // und weil der PageAccessGuardService nur isOn() DIESES Eintrags auswertet (nicht die des
-    // Elternmenues), war die Seite per Direkt-URL fuer jeden eingeloggten USER offen, obwohl sie
-    // im gerenderten Menue nur unter dem ADMIN-Elternmenue haengt. Aendert die Menue-Darstellung
-    // nicht: fuer Nicht-ADMIN wurde das Elternmenue schon vorher nicht gerendert.
+    // SECURITY (card 308, H4): explicit roles. Without them MenuItemImpl.isOn() checks nothing —
+    // and because the PageAccessGuardService only evaluates isOn() of THIS entry (not the one of
+    // the parent menu), the page was reachable by direct URL for every logged-in USER, although in
+    // the rendered menu it only hangs below the ADMIN parent menu. Does not change how the menu is
+    // rendered: for non-ADMIN the parent menu was not rendered before either.
 @MenuAnnotation(
     title = "Howtos",
     link = "howtos.html",

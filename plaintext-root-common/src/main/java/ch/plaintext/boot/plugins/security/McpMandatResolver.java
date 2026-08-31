@@ -11,18 +11,18 @@ import org.springframework.stereotype.Component;
 import java.util.Set;
 
 /**
- * Zentrale Auflösung des Mandanten für MCP-Tools (und andere token-basierte Zugriffe).
+ * Central resolution of the tenant for MCP tools (and other token-based accesses).
  *
- * <p>Regel (nutzt {@link PlaintextSecurity#getAllowedMandate()} — dort steckt bereits „ROOT darf
- * alle Mandate, sonst Heimat-Mandant + zugeordnete Zusatz-Mandate"):</p>
+ * <p>Rule (uses {@link PlaintextSecurity#getAllowedMandate()} — that already encodes "ROOT may
+ * use all tenants, everybody else their home tenant plus the assigned additional tenants"):</p>
  * <ul>
- *   <li>Kein Mandat angegeben → aktueller Mandant des Tokens ({@link PlaintextSecurity#getMandat()}).</li>
- *   <li>Angegebener Mandat ist erlaubt → dieser Mandant.</li>
- *   <li>Sonst → {@link SecurityException} (cross-tenant verweigert).</li>
+ *   <li>No mandat given → the token's current tenant ({@link PlaintextSecurity#getMandat()}).</li>
+ *   <li>The given mandat is allowed → that tenant.</li>
+ *   <li>Otherwise → {@link SecurityException} (cross-tenant denied).</li>
  * </ul>
  *
- * <p>Voraussetzung: der Security-Context enthält die echten Rollen des Token-Users (der MCP-
- * BearerToken-Filter lädt sie), damit {@code getAllowedMandate()} für ROOT alle Mandate liefert.</p>
+ * <p>Precondition: the security context contains the real roles of the token user (the MCP
+ * bearer token filter loads them), so that {@code getAllowedMandate()} returns all tenants for ROOT.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -35,18 +35,18 @@ public class McpMandatResolver {
     private final PlaintextSecurity security;
 
     /**
-     * Löst den effektiven Mandanten auf.
+     * Resolves the effective tenant.
      *
-     * @param requestedMandat optionaler Mandat-Parameter (null/leer = aktueller Mandant)
-     * @return der zu verwendende Mandant
-     * @throws SecurityException wenn der angefragte Mandant nicht erlaubt ist
+     * @param requestedMandat optional mandat parameter (null/empty = current tenant)
+     * @return the tenant to use
+     * @throws SecurityException when the requested tenant is not allowed
      */
     public String resolve(String requestedMandat) {
         if (requestedMandat == null || requestedMandat.isBlank()) {
             return security.getMandat();
         }
         String req = requestedMandat.trim();
-        Set<String> allowed = security.getAllowedMandate(); // kleingeschrieben
+        Set<String> allowed = security.getAllowedMandate(); // lowercased
         if (allowed.contains(req.toLowerCase())) {
             return req;
         }
@@ -54,7 +54,7 @@ public class McpMandatResolver {
         throw new SecurityException("Mandant '" + req + "' ist für diesen Token nicht erlaubt");
     }
 
-    /** @return true, wenn der aktuelle Token den angefragten Mandanten nutzen darf. */
+    /** @return true when the current token may use the requested tenant. */
     public boolean isAllowed(String requestedMandat) {
         if (requestedMandat == null || requestedMandat.isBlank()) {
             return true;

@@ -10,9 +10,9 @@ import jakarta.persistence.Id;
 import lombok.Data;
 
 /**
- * Ein zusätzlicher Mandant, der einem Benutzer zugeordnet ist. Der Heimat-Mandant
- * steckt weiterhin in der {@code PROPERTY_MANDAT_}-Rolle des Benutzers; diese Entität
- * listet die WEITEREN Mandate, zwischen denen der Benutzer wechseln darf.
+ * An additional tenant assigned to a user. The home tenant
+ * still sits in the {@code PROPERTY_MANDAT_} role of the user; this entity
+ * lists the FURTHER tenants the user is allowed to switch between.
  *
  * @author mad
  * @since 2026
@@ -25,12 +25,12 @@ public class UserMandate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Login-Name des Benutzers (kein FK, analog zu {@code ROLLENZUTEILUNG}). */
+    /** Login name of the user (no FK, analogously to {@code ROLLENZUTEILUNG}). */
     private String username;
 
-    /** Zugeordneter (zusätzlicher) Mandant, kleingeschrieben gespeichert. */
+    /** Assigned (additional) tenant, stored in lower case. */
     private String mandat;
 
-    /** Ob die Zuordnung aktiv ist. */
+    /** Whether the assignment is active. */
     private boolean active = true;
 }

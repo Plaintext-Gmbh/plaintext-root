@@ -23,20 +23,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Deterministischer Guard gegen die Bug-Klasse des index-500 vom 30.05.: {@code #{dashboardBean.empty}}
- * warf eine Facelets-{@code ParseException}, weil {@code empty} ein reserviertes EL-Keyword ist, und
- * traf damit die eingeloggte Startseite jeder abhängigen App (über die root-Releases 1.200.0/1.201.0
- * bis zum Fix in 1.202.0).
+ * Deterministic guard against the bug class of the index 500 of 30.05.: {@code #{dashboardBean.empty}}
+ * threw a Facelets {@code ParseException}, because {@code empty} is a reserved EL keyword, and thereby
+ * hit the logged-in start page of every dependent app (across the root releases 1.200.0/1.201.0
+ * up to the fix in 1.202.0).
  *
- * <p>Dieser Test validiert JEDEN EL-Ausdruck ({@code #{...}} und {@code ${...}}) aller Framework-XHTML
- * mit der Jakarta-EL-Factory ({@link ExpressionFactory#createValueExpression} parst eager und wirft bei
- * Syntaxfehlern). Ein nicht parsebarer Ausdruck (z. B. ein reserviertes Keyword als {@code .property})
- * lässt den Test mit Datei + Ausdruck im Fehlertext fehlschlagen. Auflösung/Beans werden nicht benötigt;
- * die Framework-XHTML enthalten keine namespaced EL-Funktionen, daher genügt eine {@link StandardELContext}.
+ * <p>This test validates EVERY EL expression ({@code #{...}} and {@code ${...}}) of all framework XHTML
+ * with the Jakarta EL factory ({@link ExpressionFactory#createValueExpression} parses eagerly and throws
+ * on syntax errors). An expression that cannot be parsed (e.g. a reserved keyword as a {@code .property})
+ * makes the test fail with file + expression in the error text. Resolution/beans are not needed;
+ * the framework XHTML contain no namespaced EL functions, so a {@link StandardELContext} suffices.
  */
 class IndexXhtmlElParseTest {
 
-    /** Erfasst einzelne EL-Token #{...} und ${...} (kein '}' innerhalb eines Ausdrucks). */
+    /** Captures individual EL tokens #{...} and ${...} (no '}' within an expression). */
     private static final Pattern EL = Pattern.compile("[#$]\\{[^}]*\\}");
 
     private static Path resourcesDir() {
@@ -87,7 +87,7 @@ class IndexXhtmlElParseTest {
 
     @Test
     void reserviertesKeywordAlsPropertyWirdAlsFehlerErkannt() {
-        // Exakt der index-500-Bug: 'empty' (reserviertes EL-Keyword) als .property -> nicht parsebar.
+        // Exactly the index-500 bug: 'empty' (a reserved EL keyword) as a .property -> not parseable.
         assertThrows(ELException.class, () -> parse("#{dashboardBean.empty}"));
     }
 }

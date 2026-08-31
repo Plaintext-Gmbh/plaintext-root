@@ -17,11 +17,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests für {@link PlaintextBusDispatcher}: Typ-/Scope-Zustellmatrix, Kontext-Setzen/-Reset,
- * Fehler-Isolation (Task 004). Ruft {@code onBusEvent} direkt auf (wie
- * {@code WebhookDispatchServiceTest} — kein Spring-Testkontext, die
- * {@code @TransactionalEventListener}/{@code @Async}-Semantik selbst wird nicht mitgetestet,
- * sondern nur die Business-Logik der Methode).
+ * Tests for {@link PlaintextBusDispatcher}: type/scope delivery matrix, setting/resetting the
+ * context, error isolation (Task 004). Calls {@code onBusEvent} directly (like
+ * {@code WebhookDispatchServiceTest} — no Spring test context, the
+ * {@code @TransactionalEventListener}/{@code @Async} semantics themselves are not covered,
+ * only the business logic of the method).
  */
 class PlaintextBusDispatcherTest {
 
@@ -66,7 +66,7 @@ class PlaintextBusDispatcherTest {
         return new PlaintextBusEvent<>(new Foo("x"), scope, mandant, userId, Instant.now());
     }
 
-    // ── Typ-Match ────────────────────────────────────────────
+    // ── Type match ───────────────────────────────────────────
 
     @Test
     void onBusEvent_falscherPayloadTyp_wirdNichtZugestellt() {
@@ -87,7 +87,7 @@ class PlaintextBusDispatcherTest {
         assertThat(sub.empfangen).hasSize(1);
     }
 
-    // ── Scope-Zustellmatrix ──────────────────────────────────
+    // ── Scope delivery matrix ────────────────────────────────
 
     @Test
     void scopeMatrix_applicationSubscriber_nurApplicationEvents() {
@@ -129,7 +129,7 @@ class PlaintextBusDispatcherTest {
         assertThat(sub.empfangen.get(0).scope()).isEqualTo(ExecutionScope.PERSOENLICH);
     }
 
-    // ── Kontext-Setzen/-Reset ────────────────────────────────
+    // ── Setting/resetting the context ────────────────────────
 
     @Test
     void onEvent_kontextEnthaeltMandantAlsAuthority() {
@@ -180,7 +180,7 @@ class PlaintextBusDispatcherTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
-    // ── Fehler-Isolation ─────────────────────────────────────
+    // ── Error isolation ──────────────────────────────────────
 
     @Test
     void onEvent_einSubscriberWirftException_andereWerdenTrotzdemAufgerufen() {

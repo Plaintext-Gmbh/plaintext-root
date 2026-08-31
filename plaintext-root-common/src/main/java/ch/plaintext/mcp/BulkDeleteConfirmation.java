@@ -7,46 +7,46 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Wiederverwendbare Bestaetigungs-Pruefung fuer Mengen-/Cascade-Loeschungen ueber MCP — geht auf
- * das urspruengliche Muster in {@code RechnungenMcpTools#delete_alle_stornierten_rechnungen}
- * zurueck (Exact-Phrase statt Zwei-Schritt-Token, damit ein LLM-Client die Phrase direkt aus der
- * abgelehnten Antwort lesen und im zweiten Aufruf mitgeben kann).
+ * Reusable confirmation check for bulk/cascade deletions through MCP — it goes back to the
+ * original pattern in {@code RechnungenMcpTools#delete_alle_stornierten_rechnungen} (an exact
+ * phrase instead of a two-step token, so that an LLM client can read the phrase straight out of
+ * the rejected response and pass it along in a second call).
  *
- * <p><b>Konvention fuer jedes Mengen-/Cascade-Lösch-Tool:</b></p>
+ * <p><b>Convention for every bulk/cascade delete tool:</b></p>
  * <ol>
- *   <li>Optionaler Parameter {@code bestaetigung}; ohne/mit falscher Phrase liefert
- *       {@link #check} einen Dry-Run-Report ({@code confirmed() == false}) — der Aufrufer gibt
- *       diesen Report unveraendert als Tool-Ergebnis zurueck, OHNE etwas zu loeschen.</li>
- *   <li>Bei korrekter Phrase ({@code confirmed() == true}) fuehrt der Aufrufer die Loeschung
- *       selbst aus und ruft danach IMMER
- *       {@code DestructiveActionAuditService.logDestructiveAction("MCP", ...)} auf.</li>
- *   <li>Batch-Tools mit id-Liste: bis {@link #BULK_THRESHOLD} Ids direkt wie bisher ausfuehren
- *       (Alltag nicht ausbremsen), erst darueber eine Bestaetigung verlangen.</li>
- *   <li>Cascade-Tools (ein Elternobjekt loescht mehrere Kinder mit): Bestaetigung verlangen,
- *       sobald die Kinderzahl &gt; 0 ist.</li>
+ *   <li>Optional parameter {@code bestaetigung}; without it or with a wrong phrase
+ *       {@link #check} returns a dry-run report ({@code confirmed() == false}) — the caller
+ *       returns that report unchanged as the tool result, WITHOUT deleting anything.</li>
+ *   <li>With the correct phrase ({@code confirmed() == true}) the caller performs the deletion
+ *       itself and ALWAYS calls
+ *       {@code DestructiveActionAuditService.logDestructiveAction("MCP", ...)} afterwards.</li>
+ *   <li>Batch tools with an id list: up to {@link #BULK_THRESHOLD} ids run directly as before
+ *       (do not slow everyday work down), only beyond that is a confirmation required.</li>
+ *   <li>Cascade tools (one parent object deletes several children along with it): require a
+ *       confirmation as soon as the number of children is &gt; 0.</li>
  * </ol>
  */
 public final class BulkDeleteConfirmation {
 
-    /** Ab dieser Batch-Groesse (id-Liste) verlangen Batch-Tools ebenfalls eine Bestaetigung. */
+    /** From this batch size (id list) on, batch tools likewise require a confirmation. */
     public static final int BULK_THRESHOLD = 10;
 
     private BulkDeleteConfirmation() {
     }
 
-    /** Die vom Aufrufer erwartete Phrase fuer eine gegebene Aktionsbeschreibung. */
+    /** The phrase expected from the caller for a given action description. */
     public static String phrase(String aktionsBeschreibung) {
         return "ja wirklich " + aktionsBeschreibung;
     }
 
     /**
-     * Prueft die Bestaetigungsphrase gegen die Konvention {@code "ja wirklich " + aktionsBeschreibung}.
+     * Checks the confirmation phrase against the convention {@code "ja wirklich " + aktionsBeschreibung}.
      *
-     * @param bestaetigung        vom Aufrufer uebergebener Wert (kann {@code null} sein)
-     * @param aktionsBeschreibung Aktionsbeschreibung, z. B. {@code "alle stornierten löschen"}
-     * @param betroffenAnzahl     Anzahl der betroffenen Datensaetze (fuer den Dry-Run-Report)
-     * @return {@code confirmed() == true} bei korrekter Phrase (nichts weiter zu tun ausser
-     *         Loeschen + Audit); sonst ein fertiger Dry-Run-Report als Tool-Rueckgabe
+     * @param bestaetigung        value passed in by the caller (may be {@code null})
+     * @param aktionsBeschreibung action description, e.g. {@code "alle stornierten löschen"}
+     * @param betroffenAnzahl     number of affected records (for the dry-run report)
+     * @return {@code confirmed() == true} on a correct phrase (nothing left to do but delete and
+     *         audit); otherwise a ready-made dry-run report as the tool's return value
      */
     public static BulkCheckResult check(String bestaetigung, String aktionsBeschreibung, long betroffenAnzahl) {
         String erwartet = phrase(aktionsBeschreibung);
@@ -62,8 +62,8 @@ public final class BulkDeleteConfirmation {
     }
 
     /**
-     * @param confirmed    {@code true}, wenn die Phrase korrekt war — der Aufrufer darf loeschen
-     * @param dryRunReport fertiger Report als Tool-Rueckgabe, oder {@code null} wenn {@code confirmed}
+     * @param confirmed    {@code true} when the phrase was correct — the caller may delete
+     * @param dryRunReport ready-made report as the tool's return value, or {@code null} when {@code confirmed}
      */
     public record BulkCheckResult(boolean confirmed, Map<String, Object> dryRunReport) {
     }

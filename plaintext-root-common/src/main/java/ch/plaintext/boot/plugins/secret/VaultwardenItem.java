@@ -7,13 +7,13 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Ein entschluesseltes Vaultwarden-Login-Item.
+ * A decrypted Vaultwarden login item.
  *
- * @param id       Cipher-Id (fuer spaetere Rotation)
- * @param name     entschluesselter Item-Name
- * @param username entschluesselter Benutzername (kann {@code null} sein)
- * @param password entschluesseltes Passwort (kann {@code null} sein)
- * @param fields   entschluesselte benutzerdefinierte Felder (Name → Wert)
+ * @param id       cipher id (for a later rotation)
+ * @param name     decrypted item name
+ * @param username decrypted user name (may be {@code null})
+ * @param password decrypted password (may be {@code null})
+ * @param fields   decrypted custom fields (name → value)
  */
 public record VaultwardenItem(
         String id,
@@ -22,7 +22,7 @@ public record VaultwardenItem(
         String password,
         Map<String, String> fields) {
 
-    /** Benutzerdefiniertes Feld nach Namen (case-insensitive). */
+    /** Custom field by name (case-insensitive). */
     public Optional<String> field(String fieldName) {
         if (fieldName == null || fields == null) {
             return Optional.empty();

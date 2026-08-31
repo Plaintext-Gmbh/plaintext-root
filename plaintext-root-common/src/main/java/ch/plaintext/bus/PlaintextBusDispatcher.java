@@ -22,18 +22,18 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Zentraler Zustell-Punkt des internen Event-Bus. Sammelt alle {@link PlaintextBusSubscriber}-Beans
- * (Standard-Collection-Injection) und verteilt jedes {@link PlaintextBusEvent} nach Commit an alle
- * passenden Subscriber (Typ- und Scope-Match, siehe {@link #passtScope}).
+ * Central delivery point of the internal event bus. Collects all {@link PlaintextBusSubscriber}
+ * beans (standard collection injection) and distributes every {@link PlaintextBusEvent} after
+ * commit to all matching subscribers (type and scope match, see {@link #passtScope}).
  *
- * <p><b>Kontext:</b> vor jedem {@code onEvent}-Aufruf wird ein {@link SecurityContext} nach dem
- * Muster von {@code SuperCron.loginMandat} gesetzt (Mandant aus dem Event, bei
- * {@link ExecutionScope#PERSOENLICH} zusätzlich der Benutzer) und danach zwingend zurückgesetzt
- * (finally) — wichtig, da der dedizierte Bus-Thread-Pool Threads über mehrere Events hinweg
- * wiederverwendet und sonst ein Kontext-Leck zwischen unabhängigen Events entstünde.</p>
+ * <p><b>Context:</b> before every {@code onEvent} call a {@link SecurityContext} is set following
+ * the pattern of {@code SuperCron.loginMandat} (tenant from the event, with
+ * {@link ExecutionScope#PERSOENLICH} additionally the user) and is reset afterwards without fail
+ * (finally) — important, because the dedicated bus thread pool reuses threads across several
+ * events and a context leak between independent events would arise otherwise.</p>
  *
- * <p><b>Fehler-Isolation:</b> je Subscriber try/catch + {@code log.warn} — ein kaputter Subscriber
- * darf weder andere Subscriber noch den Publisher stören (Best-effort-Philosophie wie
+ * <p><b>Error isolation:</b> try/catch + {@code log.warn} per subscriber — a broken subscriber
+ * must disturb neither the other subscribers nor the publisher (the best-effort philosophy of
  * {@code DestructiveActionAuditService}/{@code WebhookDispatchService}).</p>
  *
  * @author info@plaintext.ch
@@ -64,9 +64,9 @@ public class PlaintextBusDispatcher {
     }
 
     /**
-     * Zustellregel (= Cron-Semantik): MANDAT-Subscriber erhalten MANDAT- UND PERSOENLICH-Events
-     * (Kontext kommt aus dem Event); APPLICATION-Subscriber nur APPLICATION-Events;
-     * PERSOENLICH-Subscriber nur PERSOENLICH-Events. Keine Cross-Scope-Zustellung darüber hinaus.
+     * Delivery rule (= cron semantics): MANDAT subscribers receive MANDAT AND PERSOENLICH events
+     * (the context comes from the event); APPLICATION subscribers only APPLICATION events;
+     * PERSOENLICH subscribers only PERSOENLICH events. No cross-scope delivery beyond that.
      */
     private boolean passtScope(ExecutionScope subscriberScope, ExecutionScope eventScope) {
         return switch (subscriberScope) {
@@ -97,7 +97,7 @@ public class PlaintextBusDispatcher {
         }
     }
 
-    /** Setzt einen minimalen SecurityContext aus dem Event-Kontext, analog {@code SuperCron.loginMandat}. */
+    /** Sets a minimal SecurityContext from the event context, analogous to {@code SuperCron.loginMandat}. */
     private void loginContext(PlaintextBusEvent<?> envelope) {
         Set<GrantedAuthority> authorities = new LinkedHashSet<>();
         authorities.add(new SimpleGrantedAuthority(ROLE_SYSTEM));

@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Scanner zum Finden von mit {@link DashboardTile} annotierten Klassen – analog zum
+ * Scanner for finding classes annotated with {@link DashboardTile} – analogous to the
  * {@link ch.plaintext.boot.menu.MenuAnnotationScanner}.
  *
  * @author plaintext.ch

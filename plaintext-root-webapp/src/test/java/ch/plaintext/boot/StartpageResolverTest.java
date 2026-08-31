@@ -13,8 +13,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Tests für {@link StartpageResolver}: gültige individuelle Startseiten bleiben erhalten, leere oder
- * ungültige Werte fallen verlässlich auf {@code index.html} zurück.
+ * Tests for {@link StartpageResolver}: valid individual start pages are preserved, empty or
+ * invalid values fall back reliably to {@code index.html}.
  */
 class StartpageResolverTest {
 
@@ -44,7 +44,7 @@ class StartpageResolverTest {
 
     @Test
     void resolve_firstStartpageWins() {
-        // Bei mehreren konfigurierten Startseiten gewinnt die erste (wie der Login-Redirect).
+        // With several configured start pages the first one wins (like the login redirect).
         assertEquals("first.html", StartpageResolver.resolve(Arrays.asList(
                 new SimpleGrantedAuthority("PROPERTY_STARTPAGE_first.html"),
                 new SimpleGrantedAuthority("PROPERTY_STARTPAGE_second.html"))));

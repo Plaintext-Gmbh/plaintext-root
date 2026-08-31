@@ -345,7 +345,7 @@ class MandateBackingBeanTest {
     }
 
     // ------------------------------------------------------------------
-    // „Aus Verwaltung entfernen" — was die Aktion wirklich tut (Teil 7)
+    // "Remove from administration" — what the action really does (part 7)
     // ------------------------------------------------------------------
 
     @Test
@@ -361,8 +361,8 @@ class MandateBackingBeanTest {
             bean.setSelectedMandat("dev");
             bean.deleteMandat();
 
-            // Vorher entfernte die Methode den Mandanten NUR aus einer ArrayList in der Session und
-            // meldete trotzdem Erfolg — nach reload() war er wieder da.
+            // Previously the method removed the tenant ONLY from an ArrayList in the session and
+            // still reported success — after reload() it was back again.
             verify(mandateMenuConfigRepository).delete(config);
             assertFalse(bean.getMandate().contains("dev"));
         }
@@ -391,7 +391,7 @@ class MandateBackingBeanTest {
         try (MockedStatic<FacesContext> mocked = mockStatic(FacesContext.class)) {
             mocked.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
 
-            // Kein Benutzer hat 'dev' als Heimat-Mandant — aber einer hat ihn als Zusatz-Mandant.
+            // No user has 'dev' as their home tenant — but one has it as an additional tenant.
             UserMandate zuordnung = new UserMandate();
             zuordnung.setUsername("anna@example.com");
             zuordnung.setMandat("dev");
@@ -412,7 +412,7 @@ class MandateBackingBeanTest {
     void zugeordneteBenutzer_shouldCountBothFormsCaseInsensitively() {
         MyUserEntity heimat = new MyUserEntity();
         heimat.setUsername("bob@example.com");
-        // Mandantennamen sind im Bestand nicht case-konsistent (user_session: 'BUTSCHER').
+        // Tenant names are not case-consistent in the existing data (user_session: 'BUTSCHER').
         heimat.setMandat("BUTSCHER");
         when(userRepository.findAll()).thenReturn(List.of(heimat));
 

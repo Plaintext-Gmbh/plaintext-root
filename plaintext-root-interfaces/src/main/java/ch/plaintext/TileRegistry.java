@@ -6,65 +6,65 @@ package ch.plaintext;
 import java.util.List;
 
 /**
- * Zugriff auf alle registrierten Dashboard-Kacheln – analog zu {@link MenuRegistry}.
+ * Access to all registered dashboard tiles – the counterpart to {@link MenuRegistry}.
  * <p>
- * Liefert die {@code @DashboardTile}-annotierten Klassen als {@link TileItem}, die für Konfigurations-
- * oder Admin-Oberflächen sowie zum Aufbau der Startseite verwendet werden können.
+ * Returns the {@code @DashboardTile}-annotated classes as {@link TileItem}s, which can be used for
+ * configuration or admin pages as well as for assembling the home page.
  *
  * @author plaintext.ch
  */
 public interface TileRegistry {
 
     /**
-     * Liefert die Titel aller registrierten Kacheln.
+     * Returns the titles of all registered tiles.
      *
-     * @return Liste aller Kachel-Titel
+     * @return list of all tile titles
      */
     List<String> getAllTileTitles();
 
     /**
-     * Liefert alle registrierten Kacheln mit ihren Metadaten.
+     * Returns all registered tiles with their metadata.
      *
-     * @return Liste aller Kacheln
+     * @return list of all tiles
      */
     List<TileItem> getAllTileItems();
 
     /**
-     * Eine registrierte Dashboard-Kachel mit ihren Metadaten.
+     * A registered dashboard tile with its metadata.
      */
     interface TileItem {
 
-        /** @return die technische ID der Kachel. */
+        /** @return the technical ID of the tile. */
         String getId();
 
-        /** @return den Titel der Kachel. */
+        /** @return the title of the tile. */
         String getTitle();
 
-        /** @return die Icon-Klasse oder leeren String. */
+        /** @return the icon class, or an empty string. */
         String getIcon();
 
-        /** @return die Bild-URL oder leeren String. */
+        /** @return the image URL, or an empty string. */
         String getImage();
 
-        /** @return den Haupt-Link oder leeren String. */
+        /** @return the main link, or an empty string. */
         String getLink();
 
-        /** @return die Sortierreihenfolge (kleinere Werte zuerst). */
+        /** @return the sort order (lower values first). */
         int getOrder();
 
-        /** @return die erlaubten Rollen oder leere Liste, wenn für alle sichtbar. */
+        /** @return the permitted roles, or an empty list if it is visible to everyone. */
         List<String> getRoles();
 
         /**
-         * @return den Menü-Titel, gegen den die mandatsspezifische Sichtbarkeit geprüft wird.
+         * @return the menu title against which the tenant-specific visibility is checked.
          */
         String getMenuTitle();
 
         /**
-         * Prüft, ob die Kachel für den aktuellen Benutzer sichtbar ist (Rollen- und
-         * mandatsspezifische Sichtbarkeit kombiniert).
+         * Checks whether the tile is visible to the current user (role-based and tenant-specific
+         * visibility combined).
          *
-         * @return true, wenn sichtbar
+         * @return true if visible
          */
         boolean isOn();
     }

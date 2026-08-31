@@ -12,8 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.io.IOException;
 
 /**
- * JSF Backing Bean für Page Access Guard.
- * Wird in template.xhtml via f:event preRenderView aufgerufen.
+ * JSF backing bean for the page access guard.
+ * Invoked in template.xhtml via f:event preRenderView.
  *
  * @author plaintext.ch
  * @since 1.42.0
@@ -27,12 +27,12 @@ public class PageAccessGuardBackingBean {
     private PageAccessGuardService pageAccessGuardService;
 
     /**
-     * Wird bei jedem Seitenaufruf über f:event type="preRenderView" aufgerufen.
-     * Prüft ob der aktuelle Benutzer Zugriff auf die Seite hat basierend auf:
-     * - Rollen (MenuItem.roles)
-     * - Mandate (MenuVisibilityProvider)
+     * Invoked on every page request via f:event type="preRenderView".
+     * Checks whether the current user has access to the page based on:
+     * - roles (MenuItem.roles)
+     * - tenants (MenuVisibilityProvider)
      *
-     * @throws IOException wenn Redirect fehlschlägt
+     * @throws IOException if the redirect fails
      */
     public void checkPageAccess() throws IOException {
         FacesContext context = FacesContext.getCurrentInstance();
@@ -43,7 +43,7 @@ public class PageAccessGuardBackingBean {
 
         String viewId = context.getViewRoot().getViewId();
 
-        // Prüfe Zugriff
+        // Check access
         boolean hasAccess = pageAccessGuardService.hasAccessToView(viewId);
 
         if (!hasAccess) {

@@ -6,11 +6,11 @@
                 xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
 
     <ui:define name="content">
-        <!-- Der Code steht seit Welle 4 (CSP ohne 'unsafe-inline') in einer eigenen Datei. Damit
-             ist auch die alte Falle weg, die ihn hierher vor das Formular gezwungen hat: ein
-             woertliches CDATA-Ende innerhalb von h:form beendet die CDATA-Sektion jeder
-             Ajax-Antwort vorzeitig, und der Browser verwirft sie dann stillschweigend
-             (Karte 502, Ursache belegt in Karte 430). -->
+        <!-- Since wave 4 (CSP without 'unsafe-inline') the code lives in its own file. That also
+             removes the old trap that forced it in front of the form here: a literal
+             CDATA end inside h:form terminates the CDATA section of every
+             Ajax response early, and the browser then silently discards it
+             (card 502, cause documented in card 430). -->
         <h:outputScript library="plaintext-root" name="js/myuser.js"/>
 
         <h:form id="fm">
@@ -63,7 +63,7 @@
 
                 <p:outputPanel id="dynamicContentPanel">
 
-                <!-- Basis Informationen -->
+                <!-- Basic information -->
                 <h3 style="margin-top: 0; margin-bottom: 20px; color: var(--text-color, #333);">#{i18n.t('Basis Informationen')}</h3>
                 <p:panelGrid columns="2" styleClass="user-info-grid" style="margin-bottom: 30px; width: 100%; max-width: 800px;">
 
@@ -81,7 +81,7 @@
 
                 </p:panelGrid>
 
-                <!-- Passwort ändern -->
+                <!-- Change password -->
                 <p:outputPanel rendered="#{myUserInfoBackingBean.passwordManagementEnabled}">
                 <h3 style="margin-bottom: 20px; color: var(--text-color, #333);">#{i18n.t('Passwort ändern')}</h3>
                 <p:outputPanel id="passwordPanel">
@@ -121,7 +121,7 @@
                 </p:outputPanel>
                 </p:outputPanel>
 
-                <!-- Zwei-Faktor-Authentifizierung (nur wenn Feature aktiv + lokaler User) -->
+                <!-- Two-factor authentication (only when the feature is active + local user) -->
                 <p:outputPanel id="totpPanel" rendered="#{myUserInfoBackingBean.totpFeatureAvailable}">
                     <h3 style="margin-bottom: 20px; color: var(--text-color, #333);">#{i18n.t('Zwei-Faktor-Authentifizierung')}</h3>
                     <p:messages id="totpMessages" showDetail="true" closable="true"/>
@@ -132,7 +132,7 @@
                         </span>
                     </div>
 
-                    <!-- ZUSTAND A: nicht aktiviert, keine Einrichtung laeuft -> Start-Button -->
+                    <!-- STATE A: not activated, no setup in progress -> start button -->
                     <p:outputPanel rendered="#{not myUserInfoBackingBean.totpEnabled and empty myUserInfoBackingBean.totpSetupSecret and empty myUserInfoBackingBean.generatedRecoveryCodes}">
                         <p style="color: var(--text-color-secondary, #6c757d); max-width: 640px;">
                             #{i18n.t('Schützen Sie Ihr Konto mit einem zweiten Faktor (Authenticator-App wie Google Authenticator, Aegis, 1Password).')}
@@ -146,7 +146,7 @@
                                          ajax="true"/>
                     </p:outputPanel>
 
-                    <!-- ZUSTAND B: Einrichtung laeuft -> QR + Secret + Bestaetigungscode -->
+                    <!-- STATE B: setup in progress -> QR + secret + confirmation code -->
                     <p:outputPanel rendered="#{not empty myUserInfoBackingBean.totpSetupSecret}">
                         <p:panelGrid columns="2" styleClass="user-info-grid" style="margin-bottom: 20px; width: 100%; max-width: 800px;">
                             <h:outputText value="#{i18n.t('QR-Code scannen')}:" styleClass="info-label"/>
@@ -184,7 +184,7 @@
                         </p:panelGrid>
                     </p:outputPanel>
 
-                    <!-- Recovery-Codes: EINMALIG nach erfolgreicher Aktivierung -->
+                    <!-- Recovery codes: ONCE ONLY, after successful activation -->
                     <p:outputPanel rendered="#{not empty myUserInfoBackingBean.generatedRecoveryCodes}">
                         <div style="background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 6px; padding: 12px 16px; margin-bottom: 12px; max-width: 640px;">
                             #{i18n.t('Bewahren Sie diese Recovery-Codes sicher auf. Jeder Code funktioniert genau einmal, falls Sie keinen Zugriff auf Ihre App haben. Sie werden nur JETZT angezeigt.')}
@@ -193,7 +193,7 @@
 </ui:repeat></pre>
                     </p:outputPanel>
 
-                    <!-- ZUSTAND C: aktiviert -> Deaktivieren (mit Passwort) -->
+                    <!-- STATE C: activated -> deactivate (with password) -->
                     <p:outputPanel rendered="#{myUserInfoBackingBean.totpEnabled and empty myUserInfoBackingBean.generatedRecoveryCodes}">
                         <p:panelGrid columns="2" styleClass="user-info-grid" style="margin-bottom: 20px; width: 100%; max-width: 800px;">
                             <h:outputText value="#{i18n.t('Passwort zur Bestätigung')}:" styleClass="info-label"/>
@@ -243,7 +243,7 @@
                 </p:panelGrid>
                 </p:outputPanel>
 
-                <!-- Rollen -->
+                <!-- Roles -->
                 <h3 style="margin-bottom: 15px; color: var(--text-color, #333);">#{i18n.t('Zugewiesene Rollen')}</h3>
                 <div style="margin-bottom: 30px;">
                     <ui:repeat value="#{myUserInfoBackingBean.roles}" var="role">
@@ -253,7 +253,7 @@
                                   style="color: var(--text-color-secondary, #6c757d); font-style: italic;"/>
                 </div>
 
-                <!-- Properties (nur in advanced mode sichtbar) -->
+                <!-- Properties (only visible in advanced mode) -->
                 <p:outputPanel rendered="#{myUserInfoBackingBean.advancedMode}">
                 <h3 style="margin-bottom: 15px; color: var(--text-color, #333);">#{i18n.t('Weitere Eigenschaften')}</h3>
                 <div style="margin-bottom: 30px;">
@@ -265,7 +265,7 @@
                 </div>
                 </p:outputPanel>
 
-                <!-- Magic-Link per E-Mail -->
+                <!-- Magic link by email -->
                 <p:outputPanel id="magicLinkPanel">
                     <h3 style="margin-bottom: 15px; color: var(--text-color, #333);">#{i18n.t('Magic-Link')}</h3>
                     <p:messages id="magicLinkMessages" showDetail="true" closable="true"/>

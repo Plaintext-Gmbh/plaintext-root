@@ -101,7 +101,7 @@ class RegistrationServiceTest {
         RegistrationToken saved = tokenCaptor.getValue();
         assertEquals("new@example.com", saved.getEmail());
         assertEquals("default", saved.getMandat());
-        // Karte 307, K2.3: in der DB liegt der 64-stellige SHA-256-Hex, nicht der Klartext-Token.
+        // Card 307, K2.3: the DB holds the 64-character SHA-256 hex, not the plain-text token.
         assertNotNull(saved.getTokenHash());
         assertEquals(64, saved.getTokenHash().length());
         assertTrue(saved.getTokenHash().matches("[0-9a-f]{64}"));
@@ -120,7 +120,7 @@ class RegistrationServiceTest {
     void completeRegistration_rejectsExpiredToken() {
         RegistrationToken expired = newToken("u@x", "default", Duration.ofHours(-1));
         when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(expired));
-        // Abgelaufen -> das bedingte UPDATE trifft 0 Zeilen (Karte 307, K2.3).
+        // Expired -> the conditional UPDATE hits 0 rows (card 307, K2.3).
         when(tokenRepository.consumeToken(anyString(), any(Instant.class))).thenReturn(0);
 
         RegistrationService.RegistrationResult result = service.completeRegistration("expired", "long-enough-1");
@@ -134,7 +134,7 @@ class RegistrationServiceTest {
         RegistrationToken consumed = newToken("u@x", "default", Duration.ofHours(1));
         consumed.setConsumedAt(Instant.now());
         when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(consumed));
-        // Bereits verbraucht -> bedingtes UPDATE trifft 0 Zeilen.
+        // Already consumed -> the conditional UPDATE hits 0 rows.
         when(tokenRepository.consumeToken(anyString(), any(Instant.class))).thenReturn(0);
 
         RegistrationService.RegistrationResult result = service.completeRegistration("consumed", "long-enough-1");
@@ -160,13 +160,13 @@ class RegistrationServiceTest {
         MyUserEntity user = userCaptor.getValue();
         assertEquals("u@example.com", user.getUsername());
         assertEquals("BCRYPT::hunter2-strong", user.getPassword());
-        // Karte 306: nackter Rollenname "user" (MyUserDetailsService praefixt beim Login zu ROLE_USER);
-        // frueher faelschlich "ROLE_USER" -> Authority "ROLE_ROLE_USER" (wirkungslos).
+        // Card 306: bare role name "user" (MyUserDetailsService prefixes it to ROLE_USER on login);
+        // previously wrongly "ROLE_USER" -> authority "ROLE_ROLE_USER" (without effect).
         assertTrue(user.getRoles().contains("user"));
         assertFalse(user.getRoles().contains("ROLE_USER"),
                 "Der praefixte Name darf NICHT gespeichert werden (sonst entsteht ROLE_ROLE_USER)");
         assertTrue(user.getRoles().contains("PROPERTY_MANDAT_tenanta"));
-        // Atomar eingeloest (consumeToken == 1) — kein manuelles setConsumedAt mehr.
+        // Redeemed atomically (consumeToken == 1) — no manual setConsumedAt any more.
         verify(tokenRepository).consumeToken(anyString(), any(Instant.class));
     }
 

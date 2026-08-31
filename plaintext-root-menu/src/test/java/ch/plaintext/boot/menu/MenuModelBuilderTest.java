@@ -539,18 +539,18 @@ class MenuModelBuilderTest {
     }
 
     /**
-     * Karte 521: Ein Kind ohne einhaengbaren Elterncontainer wird uebersprungen — die Frage ist,
-     * ob das eine Warnung wert ist.
+     * Card 521: a child without an attachable parent container is skipped — the question is
+     * whether that is worth a warning.
      *
-     * <p>In plaintext-app erzeugten acht solche Eintraege <b>1218 WARN-Zeilen pro Tag, 79 % aller
-     * Warnungen der Anwendung</b> (Graylog, 24 h). Und zwar erwartungsgemaess: {@code API Token}
-     * und {@code Benachrichtigungen} deklarieren {@code roles={"USER","ADMIN","ROOT"}}, haengen
-     * aber unter {@code Admin} bzw. {@code Root} — fuer einen normalen Benutzer ist das
-     * Elternmenue unsichtbar und das Kind sichtbar. Eine Warnung, die immer dasteht, wird nicht
-     * mehr gelesen; echte Warnungen gehen darin unter.
+     * <p>In plaintext-app eight such entries produced <b>1218 WARN lines per day, 79 % of all
+     * warnings of the application</b> (Graylog, 24 h). And that was to be expected:
+     * {@code API Token} and {@code Benachrichtigungen} declare
+     * {@code roles={"USER","ADMIN","ROOT"}} but hang under {@code Admin} resp. {@code Root} — for
+     * a normal user the parent menu is invisible and the child is visible. A warning that is
+     * always there stops being read; real warnings drown in it.
      *
-     * <p>Die beiden Faelle unten sind die Gegenprobe zueinander: waere die Unterscheidung nicht
-     * da, muesste einer von beiden fehlschlagen.
+     * <p>The two cases below are each other's control: if the distinction were not there, one of
+     * the two would have to fail.
      */
     @Nested
     class ParentNotFoundLogLevel {
@@ -578,7 +578,7 @@ class MenuModelBuilderTest {
 
         @Test
         void shouldLogDebugNotWarnWhenParentExistsButIsInvisible() {
-            // Der Musterfall aus PROD: Elternmenue nur fuer ADMIN, Kind fuer jeden.
+            // The textbook case from PROD: parent menu for ADMIN only, child for everyone.
             MenuItemImpl admin = createVisibleMenuItem("Admin", "", 2, "/index.xhtml", "", false);
             MenuItemImpl apiToken = createMenuItem("API Token", "Admin", 90, "/api-token.xhtml", "");
 
@@ -600,7 +600,7 @@ class MenuModelBuilderTest {
 
         @Test
         void shouldStillWarnWhenParentDoesNotExistAtAll() {
-            // Der echte Konfigurationsfehler: Tippfehler im parent. Fuer NIEMANDEN erreichbar.
+            // The genuine configuration error: typo in parent. Reachable for NOBODY.
             MenuItemImpl orphan = createMenuItem("Kontaktliste", "Kontakteee", 10, "/kontakte.xhtml", "");
 
             Map<String, MenuItemImpl> beans = Map.of("orphan", orphan);

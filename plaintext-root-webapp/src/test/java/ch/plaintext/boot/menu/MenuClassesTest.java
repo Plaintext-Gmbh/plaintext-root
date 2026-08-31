@@ -37,7 +37,7 @@ class MenuClassesTest {
         assertEquals("Admin", annotation.parent());
         assertEquals(50, annotation.order());
         assertEquals("pi pi-wrench", annotation.icon());
-        // Zustandsbericht 29.08.2026 (H4): /debug.* steht in ADMIN_PAGES (ADMIN|ROOT).
+        // Status report 29.08.2026 (H4): /debug.* stands in ADMIN_PAGES (ADMIN|ROOT).
         assertArrayEquals(new String[]{"ADMIN", "ROOT"}, annotation.roles());
     }
 

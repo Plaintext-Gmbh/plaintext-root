@@ -16,19 +16,19 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 664: Der Checker, der {@code revoke_api_token} auch im JWT-Modus wirksam macht.
+ * Card 664: The checker that makes {@code revoke_api_token} effective in JWT mode as well.
  *
- * <p>Die wichtigste Prüfung ist nicht „widerrufen wird abgewiesen", sondern die Gegenrichtung:
- * <b>ein unbekannter jti muss durchgelassen werden.</b> Daran hängt, ob die JWT-only-Tokens
- * (Zeiterfassungs-Uhr, Juriwagen, {@code minten}) weiter funktionieren — genau die, die ein
- * Umstellen auf {@code validation=DATABASE} aussperren würde.</p>
+ * <p>The most important check is not "a revoked token is rejected" but the opposite direction:
+ * <b>an unknown jti must be let through.</b> Whether the JWT-only tokens
+ * (time-tracking clock, Juriwagen, {@code minten}) keep working depends on it — exactly the ones
+ * that a switch to {@code validation=DATABASE} would lock out.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
  */
 class ApiTokenJtiRevocationCheckerTest {
 
-    /** Zählt die Lookups mit, damit der Cache nicht nur behauptet, sondern belegt wird. */
+    /** Counts the lookups, so that the cache is not merely claimed but proven. */
     private static final class ZaehlenderLookup implements ApiTokenRevocationLookup {
         private final AtomicInteger aufrufe = new AtomicInteger();
         private final String widerrufenerJti;
@@ -69,8 +69,8 @@ class ApiTokenJtiRevocationCheckerTest {
 
     @Test
     void unbekannterJtiLaeuftDurch() {
-        // DAS ist der Unterschied zu validation=DATABASE: kein Eintrag heisst "nicht widerrufen",
-        // nicht "unbekannt, also sperren". Sonst faellt die Zeiterfassungs-Uhr aus.
+        // THIS is the difference from validation=DATABASE: no row means "not revoked",
+        // not "unknown, therefore block". Otherwise the time-tracking clock stops working.
         var lookup = new ZaehlenderLookup("jti-weg", null);
         var checker = new ApiTokenJtiRevocationChecker(lookup);
 
@@ -89,8 +89,8 @@ class ApiTokenJtiRevocationCheckerTest {
 
     @Test
     void datenbankfehlerLaesstDurchStattAlleAuszusperren() {
-        // Fail-open mit Absicht: Bei einem DB-Aussetzer waere fail-closed ein Totalausfall aller
-        // MCP-Zugaenge — fuer eine Luecke ohne bekannten Missbrauchsfall der falsche Tausch.
+        // Fail-open on purpose: on a DB outage, fail-closed would be a total outage of all
+        // MCP accesses — the wrong trade-off for a gap with no known case of abuse.
         var lookup = new ZaehlenderLookup(null, new IllegalStateException("DB weg"));
         var checker = new ApiTokenJtiRevocationChecker(lookup);
 
@@ -99,8 +99,8 @@ class ApiTokenJtiRevocationCheckerTest {
 
     @Test
     void fehlerWirdNichtAlsNichtWiderrufenGecacht() {
-        // Sonst wuerde ein einzelner DB-Aussetzer ein widerrufenes Token eine Minute lang
-        // freischalten — die Panne haette eine Nachwirkung, die niemand erwartet.
+        // Otherwise a single DB outage would unlock a revoked token for a whole minute —
+        // the glitch would have an after-effect that nobody expects.
         var lookup = new ZaehlenderLookup("jti-weg", new IllegalStateException("DB kurz weg"));
         var checker = new ApiTokenJtiRevocationChecker(lookup);
 
@@ -132,8 +132,8 @@ class ApiTokenJtiRevocationCheckerTest {
 
     @Test
     void einWiderrufWirktTrotzVorherigemNegativCacheNachAblaufDerTtl() throws Exception {
-        // Der Cache darf einen Widerruf verzoegern, aber nicht verhindern. Ohne kuenstliche Uhr
-        // gemessen: der Eintrag wird mit abgelaufener TTL vorbelegt.
+        // The cache may delay a revocation, but must not prevent it. Measured without an
+        // artificial clock: the entry is pre-seeded with an expired TTL.
         var lookup = new ZaehlenderLookup("jti-dreht", null);
         var checker = new ApiTokenJtiRevocationChecker(lookup);
 

@@ -6,34 +6,36 @@ package ch.plaintext;
 import java.util.List;
 
 /**
- * Versendet System-/Auth-Mails (Passwort-Reset, Login-Link/Magic-Link, Registrierungs-Bestätigung) über ein
- * <b>GLOBAL</b>-Systemmailkonto der Mailbox (SMTP). Das Interface liegt in {@code plaintext-root-interfaces};
- * die <b>Implementierung liefert die App</b> ({@code plaintext-z-mailbox}). Root konsumiert sie optional
- * (z. B. {@code @Autowired(required=false)} / {@link org.springframework.beans.factory.ObjectProvider}),
- * damit root auch ohne die App baut/testet.
+ * Sends system/auth mails (password reset, login link / magic link, registration confirmation)
+ * through a <b>GLOBAL</b> system mail account of the mailbox (SMTP). The interface lives in
+ * {@code plaintext-root-interfaces}; the <b>implementation is supplied by the application</b>
+ * ({@code plaintext-z-mailbox}). Root consumes it optionally (e.g.
+ * {@code @Autowired(required=false)} / {@link org.springframework.beans.factory.ObjectProvider}),
+ * so that root also builds and tests without the application.
  *
- * <p>Löst die frühere, {@code configName}-basierte Root-Mail-Infrastruktur ({@code plaintext-root-email})
- * für Auth-Mails ab. Welches GLOBAL-Konto verwendet wird, wird in der Root-Konfiguration (Setup) gewählt
- * und in {@code SetupConfig#systemMailAccountId} abgelegt.</p>
+ * <p>Supersedes the earlier, {@code configName}-based root mail infrastructure
+ * ({@code plaintext-root-email}) for auth mails. Which GLOBAL account is used is chosen in the
+ * root configuration (setup) and stored in {@code SetupConfig#systemMailAccountId}.</p>
  */
 public interface SystemMailSender {
 
     /**
-     * Die verfügbaren GLOBAL-Systemmailkonten (Scope {@code GLOBAL}, nur ROOT) – für die Auswahl in der
-     * Root-Konfiguration. Leere Liste, wenn keines angelegt ist (dann Hinweis anzeigen).
+     * The available GLOBAL system mail accounts (scope {@code GLOBAL}, ROOT only) – for the
+     * selection in the root configuration. Empty list if none has been created (show a hint then).
      */
     List<SystemMailAccount> listGlobalAccounts();
 
     /**
-     * Versendet eine System-Mail über das angegebene GLOBAL-Konto.
+     * Sends a system mail through the given GLOBAL account.
      *
-     * @param accountId Id des GLOBAL-Systemmailkontos
-     * @param to        Empfänger-Adresse
-     * @param subject   Betreff
-     * @param body      Nachrichtentext
-     * @param html      {@code true} = HTML-Body, sonst Text
-     * @return {@code true} bei erfolgreichem Versand; {@code false}, wenn das Konto fehlt, kein
-     * GLOBAL-Konto ist oder der Versand nicht möglich war (nie eine Exception nach aussen)
+     * @param accountId id of the GLOBAL system mail account
+     * @param to        recipient address
+     * @param subject   subject
+     * @param body      message text
+     * @param html      {@code true} = HTML body, otherwise plain text
+     * @return {@code true} if the mail was sent successfully; {@code false} if the account is
+     * missing, is not a GLOBAL account, or sending was not possible (never an exception to the
+     * outside)
      */
     boolean sendSystemMail(Long accountId, String to, String subject, String body, boolean html);
 }

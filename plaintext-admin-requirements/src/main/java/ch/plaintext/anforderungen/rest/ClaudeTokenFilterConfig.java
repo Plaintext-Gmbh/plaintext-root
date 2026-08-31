@@ -10,9 +10,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Registriert den {@link ClaudeTokenRequestFilter} eng begrenzt auf die
- * Claude-Automation-Endpoints ({@code /nosec/api/claude/*}) — bewusst NICHT breiter,
- * damit kein anderer Request den Parameter-Wrapper abbekommt.
+ * Registers the {@link ClaudeTokenRequestFilter} narrowly scoped to the
+ * Claude automation endpoints ({@code /nosec/api/claude/*}) — deliberately NOT wider,
+ * so that no other request gets the parameter wrapper applied to it.
  *
  * @author info@plaintext.ch
  * @since 2026

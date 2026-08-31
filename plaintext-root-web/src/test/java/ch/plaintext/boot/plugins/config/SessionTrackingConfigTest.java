@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 
 /**
- * Test fuer die Festlegung des Session-Trackings (Karte 612).
+ * Test for pinning down the session tracking mode (Card 612).
  */
 @ExtendWith(MockitoExtension.class)
 class SessionTrackingConfigTest {
@@ -37,7 +37,7 @@ class SessionTrackingConfigTest {
         verify(servletContext).setSessionTrackingModes(modes.capture());
 
         assertEquals(Set.of(SessionTrackingMode.COOKIE), modes.getValue());
-        // Der Punkt der Karte: URL-Tracking darf NICHT dabei sein.
+        // The whole point of the card: URL tracking must NOT be among them.
         assertFalse(modes.getValue().contains(SessionTrackingMode.URL));
     }
 }

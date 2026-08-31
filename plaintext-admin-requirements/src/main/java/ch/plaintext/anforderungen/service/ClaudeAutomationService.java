@@ -64,10 +64,10 @@ public class ClaudeAutomationService {
      * Validate API token against mandat settings
      * For nosec endpoints (without auth), search by token across all mandats
      *
-     * <p>H3-Härtung: der Vergleich läuft serverseitig NUR noch über den SHA-256-Hash des
-     * Tokens und konstantzeitig ({@code MessageDigest.isEqual} via {@link ApiTokenHasher}).
-     * Alt-Zeilen ohne Hash werden beim ersten erfolgreichen Klartext-Match automatisch
-     * migriert (Hash geschrieben, Lazy-Migration).</p>
+     * <p>H3 hardening: on the server side the comparison runs ONLY over the SHA-256 hash of
+     * the token and in constant time ({@code MessageDigest.isEqual} via {@link ApiTokenHasher}).
+     * Legacy rows without a hash are migrated automatically on the first successful cleartext
+     * match (the hash is written, lazy migration).</p>
      */
     public boolean validateToken(String token) {
         if (token == null || token.trim().isEmpty()) {
@@ -95,10 +95,10 @@ public class ClaudeAutomationService {
     /**
      * Get settings by token (for nosec endpoints).
      *
-     * <p>Kanonischer Weg: Lookup + konstantzeitiger Vergleich über den SHA-256-Hash.
-     * Übergangsphase: Alt-Zeilen, die nur den Klartext-Token tragen (Bestand vor der
-     * Hash-Migration), matchen weiterhin — konstantzeitig — und bekommen dabei den Hash
-     * nachgezogen (Lazy-Migration), sodass alle Folge-Requests über den Hash laufen.</p>
+     * <p>Canonical way: lookup + constant-time comparison via the SHA-256 hash.
+     * Transitional phase: legacy rows that only carry the cleartext token (stock from before
+     * the hash migration) still match — in constant time — and get the hash backfilled in the
+     * process (lazy migration), so that all subsequent requests go through the hash.</p>
      */
     private Optional<AnforderungApiSettings> getSettingsByToken(String token) {
         if (token == null || token.trim().isEmpty()) {
@@ -112,7 +112,7 @@ public class ClaudeAutomationService {
             return byHash;
         }
 
-        // Legacy-Fallback (Übergangsphase): Klartext-Match, konstantzeitig verglichen.
+        // Legacy fallback (transitional phase): cleartext match, compared in constant time.
         Optional<AnforderungApiSettings> byPlaintext = apiSettingsRepository.findByApiToken(token);
         if (byPlaintext.isPresent()
                 && ApiTokenHasher.constantTimeEquals(token, byPlaintext.get().getApiToken())) {
@@ -124,8 +124,8 @@ public class ClaudeAutomationService {
     }
 
     /**
-     * Hash-bewusster, konstantzeitiger Token-Vergleich gegen eine konkrete Settings-Zeile:
-     * Hash vorhanden → nur Hash-Vergleich; sonst Legacy-Klartext-Vergleich + Lazy-Migration.
+     * Hash-aware, constant-time token comparison against one concrete settings row:
+     * hash present → hash comparison only; otherwise legacy cleartext comparison + lazy migration.
      */
     private boolean tokenMatchesSettings(String token, AnforderungApiSettings settings) {
         String tokenHash = ApiTokenHasher.sha256Hex(token);
@@ -141,9 +141,9 @@ public class ClaudeAutomationService {
     }
 
     /**
-     * Lazy-Migration: schreibt den SHA-256-Hash in Alt-Zeilen, die bisher nur den
-     * Klartext-Token tragen. Fehler beim Persistieren dürfen die (bereits erfolgreiche)
-     * Validierung NICHT brechen — der aktive Automation-Client muss weiterlaufen.
+     * Lazy migration: writes the SHA-256 hash into legacy rows that so far only carry the
+     * cleartext token. Errors while persisting must NOT break the (already successful)
+     * validation — the active automation client has to keep running.
      */
     private void migrateTokenHash(AnforderungApiSettings settings, String tokenHash) {
         if (tokenHash.equals(settings.getApiTokenHash())) {
@@ -169,8 +169,8 @@ public class ClaudeAutomationService {
     }
 
     /**
-     * Mandanten-Isolation: prüft, dass die Anforderung dem Mandanten des Tokens gehört.
-     * Verhindert cross-tenant-Zugriff über die {@code /nosec/api/claude}-by-id-Endpoints (IDOR).
+     * Tenant isolation: checks that the requirement belongs to the token's tenant.
+     * Prevents cross-tenant access via the {@code /nosec/api/claude} by-id endpoints (IDOR).
      */
     private boolean anforderungGehoertZuToken(Anforderung anf, String token) {
         String tokenMandat = getMandatFromToken(token).orElse(null);
@@ -495,20 +495,21 @@ public class ClaudeAutomationService {
      * Check all recurring tasks (wiederkehrend=true) that are ERLEDIGT
      * and reopen them if lastModifiedDate is older than wiederkehrendTage days
      *
-     * <p><b>Karte 968 (Sonar {@code java:S6809}): das {@code @Transactional} ist entfallen.</b> Es
-     * stand an einer <i>privaten</i> Methode und war damit doppelt wirkungslos — Spring legt seinen
-     * Proxy um die Bean, private Methoden erreicht er nie, und gerufen wurde sie zusaetzlich per
-     * Selbstaufruf aus {@link #getNextTask(String)}, die selbst keine Klammer aufspannt. Es gab
-     * hier also nie eine Transaktion; die Annotation behauptete nur eine.
+     * <p><b>Card 968 (Sonar {@code java:S6809}): the {@code @Transactional} has been dropped.</b> It
+     * sat on a <i>private</i> method and was therefore doubly ineffective — Spring puts its
+     * proxy around the bean and never reaches private methods, and on top of that the method was
+     * called by self-invocation from {@link #getNextTask(String)}, which does not open a
+     * transaction boundary itself. So there never was a transaction here; the annotation only
+     * claimed one.
      *
-     * <p><b>Warum sie nicht stattdessen nach oben gewandert ist.</b> Jeder
-     * {@code anforderungRepository.save(...)} laeuft ohnehin in seiner eigenen Transaktion
-     * (Spring Data). Faellt der Lauf in der Mitte aus, sind einige Aufgaben wieder offen und
-     * andere noch nicht — das ist hier harmlos, weil der naechste Aufruf genau dieselbe Pruefung
-     * erneut macht und den Rest nachholt. Eine Klammer um {@code getNextTask} haette dafuer die
-     * gesamte Leseschleife in eine Transaktion gezogen und die zurueckgegebene Anforderung
-     * verwaltet gehalten. Wer Atomizitaet wirklich braucht, muss die Klammer an eine
-     * <b>oeffentliche</b> Methode haengen — an dieser hier wuerde sie wieder nichts tun.
+     * <p><b>Why it did not move up one level instead.</b> Every
+     * {@code anforderungRepository.save(...)} runs in its own transaction anyway
+     * (Spring Data). If the run fails halfway through, some tasks are open again and
+     * others are not yet — that is harmless here, because the next call performs exactly the same
+     * check again and catches up on the rest. A transaction boundary around {@code getNextTask}
+     * would in return have pulled the entire read loop into a transaction and kept the returned
+     * requirement managed. Anyone who really needs atomicity has to put the boundary on a
+     * <b>public</b> method — on this one it would again do nothing.
      */
     private void checkAndReopenRecurringTasks(List<Anforderung> allAnforderungen) {
         LocalDateTime now = LocalDateTime.now();
@@ -671,7 +672,7 @@ public class ClaudeAutomationService {
 
     /**
      * Save user's answer/feedback and re-enable automation
-     * WICHTIG: Der "answer" Parameter ist die FRAGE von Claude an den User (nicht die Antwort des Users)
+     * IMPORTANT: the "answer" parameter is the QUESTION from Claude to the user (not the user's answer)
      */
     @Transactional
     public boolean saveUserAnswer(Long anforderungId, String answer, String token) {
@@ -695,22 +696,22 @@ public class ClaudeAutomationService {
         anf.setRequiresUserAnswer(false); // Clear the flag
         anf.setNextExecutionDate(LocalDateTime.now()); // Schedule for immediate processing
 
-        // Erstelle ClaudePrompt-Eintrag mit der Frage von Claude
-        // Damit kann die Frage später in der UI angezeigt werden (anforderungdetail.xhtml)
+        // Create a ClaudePrompt entry holding the question from Claude
+        // This allows the question to be displayed later in the UI (anforderungdetail.xhtml)
         try {
             ClaudePrompt questionPrompt = new ClaudePrompt();
             questionPrompt.setPromptNumber("FEEDBACK-" + anforderungId + "-" + System.currentTimeMillis());
             questionPrompt.setAnforderungId(anforderungId);
             questionPrompt.setMandat(anf.getMandat());
             questionPrompt.setStatus("FEEDBACK_QUESTION");
-            questionPrompt.setPromptText(answer); // Die Frage von Claude
+            questionPrompt.setPromptText(answer); // The question from Claude
             questionPrompt.setCreatedDate(LocalDateTime.now());
 
             claudePromptRepository.save(questionPrompt);
             log.info("Claude feedback question saved as prompt for anforderung {}", anforderungId);
         } catch (Exception e) {
             log.error("Error saving Claude feedback question as prompt", e);
-            // Fahre trotzdem fort - ist kein kritischer Fehler
+            // Continue anyway - this is not a critical error
         }
 
         anforderungRepository.save(anf);

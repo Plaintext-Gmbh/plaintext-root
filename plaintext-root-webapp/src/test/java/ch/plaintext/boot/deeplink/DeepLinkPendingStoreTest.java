@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Der Login-Umweg darf kein offener Umleitungspunkt werden (Karte 345).
+ * The login detour must not become an open redirect (card 345).
  */
 class DeepLinkPendingStoreTest {
 
@@ -50,9 +50,9 @@ class DeepLinkPendingStoreTest {
 
     @ParameterizedTest(name = "Ziel \"{0}\" wird nicht gemerkt")
     @ValueSource(strings = {
-            "https://example.com",     // fremde Absprungadresse
-            "//example.com",           // protokollrelativ
-            "/index.html",             // eigener, aber freier Pfad
+            "https://example.com",     // foreign jump-off address
+            "//example.com",           // protocol-relative
+            "/index.html",             // our own, but free-form path
             "42&x=y",
             "\r\nLocation: https://example.com"
     })
@@ -60,7 +60,7 @@ class DeepLinkPendingStoreTest {
     void keineUrlWirdGemerkt(String boesartig) {
         MockHttpServletRequest request = new MockHttpServletRequest();
 
-        // Egal an welcher Stelle der Wert steht — er passt in kein Muster und wird verworfen.
+        // No matter where the value stands — it fits no pattern and is discarded.
         DeepLinkPendingStore.merke(request, boesartig, "alpha", "42");
         DeepLinkPendingStore.merke(request, "auszahlung", boesartig, "42");
         DeepLinkPendingStore.merke(request, "auszahlung", "alpha", boesartig);

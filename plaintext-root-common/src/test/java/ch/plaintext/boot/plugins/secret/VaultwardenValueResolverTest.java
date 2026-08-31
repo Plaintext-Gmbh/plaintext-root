@@ -26,10 +26,10 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 /**
- * Unit-Tests fuer {@link VaultwardenValueResolver}: Aufloesung von Passwort / Username /
- * Custom-Feld, Fail-fast bei deaktiviertem Vault bzw. fehlendem Item, Namenskonventions-WARN,
- * Item-Namen mit Leerzeichen und das Caching (ein Sync reicht). Der {@link VaultwardenSecretService}
- * wird gemockt.
+ * Unit tests for {@link VaultwardenValueResolver}: resolution of password / username /
+ * custom field, fail-fast on a disabled vault resp. a missing item, the naming convention WARN,
+ * item names with spaces and the caching (one sync is enough). The
+ * {@link VaultwardenSecretService} is mocked.
  */
 class VaultwardenValueResolverTest {
 
@@ -61,7 +61,7 @@ class VaultwardenValueResolverTest {
                         && e.getFormattedMessage().contains("Namenskonvention app.key"));
     }
 
-    // ── Aufloesung der drei Syntaxformen ──────────────────────────────────────
+    // ── Resolution of the three syntax forms ──────────────────────────────────
 
     @Test
     void passwortWirdAufgeloest() {
@@ -90,18 +90,18 @@ class VaultwardenValueResolverTest {
         assertThat(resolver.resolve("p", "vault:app.sciforma#password")).isEqualTo("pw");
     }
 
-    // ── Item-Namen mit Leerzeichen ────────────────────────────────────────────
+    // ── Item names with spaces ────────────────────────────────────────────────
 
     @Test
     void itemNameMitLeerzeichenBleibtErhalten() {
         when(svc.getUsername("my login item")).thenReturn(Optional.of("admin"));
         assertThat(resolver.resolve("some.prop", "vault:my login item#username")).isEqualTo("admin");
-        // Name folgt nicht app.key -> WARN, aber trotzdem aufgeloest.
+        // The name does not follow app.key -> WARN, but resolved nonetheless.
         assertThat(warnedAboutConvention()).isTrue();
         verify(svc).getUsername("my login item");
     }
 
-    // ── Namenskonvention app.key ──────────────────────────────────────────────
+    // ── Naming convention app.key ─────────────────────────────────────────────
 
     @Test
     void nichtKonformerNameWarntAberLoestAuf() {
@@ -150,7 +150,7 @@ class VaultwardenValueResolverTest {
     @Test
     void failFastMeldungEnthaeltKeinSecret() {
         when(svc.getPassword("app.geheim")).thenReturn(Optional.empty());
-        // Selbst wenn der Wert existierte: die Meldung darf nur Property- und Item-Namen nennen.
+        // Even if the value existed: the message may name only property and item names.
         assertThatThrownBy(() -> resolver.resolve("zeit.token", "vault:app.geheim"))
                 .isInstanceOf(VaultwardenPropertyResolutionException.class)
                 .hasMessageContaining("zeit.token")
@@ -159,7 +159,7 @@ class VaultwardenValueResolverTest {
                 .hasMessageNotContaining("password=");
     }
 
-    // ── Caching: ein Sync reicht ──────────────────────────────────────────────
+    // ── Caching: one sync is enough ───────────────────────────────────────────
 
     @Test
     void aufgeloesterWertWirdGecacht() {
@@ -167,13 +167,13 @@ class VaultwardenValueResolverTest {
         String raw = "vault:app.jira-bit-admin";
         assertThat(resolver.resolve("p", raw)).isEqualTo("geheim");
         assertThat(resolver.resolve("p", raw)).isEqualTo("geheim");
-        // Zweiter Zugriff aus dem Cache -> Service nur einmal befragt.
+        // Second access from the cache -> the service is asked only once.
         verify(svc, times(1)).getPassword("app.jira-bit-admin");
     }
 
     @Test
     void serviceWirdLazyNurEinmalBezogen() {
-        // Supplier zaehlt Zugriffe; erst beim ersten vault:-Wert, danach gecacht.
+        // The supplier counts accesses; only on the first vault: value, cached afterwards.
         int[] calls = {0};
         VaultwardenValueResolver lazy = new VaultwardenValueResolver(() -> {
             calls[0]++;
@@ -189,9 +189,9 @@ class VaultwardenValueResolverTest {
         assertThat(calls[0]).isEqualTo(1);
     }
 
-    // ── Boot-Retry bei transienter Vault-Stoerung (Vorfaelle 18.+21.08.2026) ──
+    // ── Boot retry on a transient vault disturbance (incidents 18.+21.08.2026) ─
 
-    /** Rekorder statt Echtzeit: sammelt die angeforderten Wartezeiten. */
+    /** Recorder instead of real time: collects the requested waiting times. */
     private List<Long> schlaefe;
 
     private VaultwardenValueResolver resolverMitSchlafRekorder() {
@@ -201,7 +201,7 @@ class VaultwardenValueResolverTest {
 
     @Test
     void transienteStoerungWirdMitRetryUeberbrueckt() {
-        // Erster Versuch leer (Vault-Zugriff gescheitert), zweiter liefert den Wert.
+        // First attempt empty (the vault access failed), the second returns the value.
         when(svc.getPassword("app.wackel")).thenReturn(Optional.empty(), Optional.of("pw"));
         when(svc.istLetzterZugriffTransientGescheitert()).thenReturn(true);
         when(svc.warLetzterFehlerRateLimit()).thenReturn(false);
@@ -230,8 +230,8 @@ class VaultwardenValueResolverTest {
 
     @Test
     void rateLimitWartetLangUndNenntDen429ImFehler() {
-        // Der Deploy-Retry (plaintext-scripts) erkennt die Transienz am String "HTTP 429" im
-        // Container-Log — die Fail-fast-Meldung muss ihn deshalb transportieren.
+        // The deploy retry (plaintext-scripts) recognizes the transience by the string "HTTP 429" in
+        // the container log — the fail-fast message therefore has to carry it.
         when(svc.getPassword("app.wackel")).thenReturn(Optional.empty());
         when(svc.istLetzterZugriffTransientGescheitert()).thenReturn(true);
         when(svc.warLetzterFehlerRateLimit()).thenReturn(true);
@@ -247,8 +247,8 @@ class VaultwardenValueResolverTest {
 
     @Test
     void definitivFehlendesItemFailtSofortOhneRetry() {
-        // Sync war erfolgreich, das Item fehlt wirklich (Tippfehler-Fall schuetu.remember-me-keyn
-        // vom 18.08.2026): kein Warten, keine weiteren Versuche — der Boot bricht sofort ab.
+        // The sync succeeded, the item really is missing (the typo case schuetu.remember-me-keyn
+        // of 18.08.2026): no waiting, no further attempts — the boot aborts immediately.
         when(svc.getPassword("app.fehlt")).thenReturn(Optional.empty());
         when(svc.istLetzterZugriffTransientGescheitert()).thenReturn(false);
         VaultwardenValueResolver r = resolverMitSchlafRekorder();
@@ -275,7 +275,7 @@ class VaultwardenValueResolverTest {
                     .isInstanceOf(VaultwardenPropertyResolutionException.class);
             assertThat(Thread.currentThread().isInterrupted()).isTrue();
         } finally {
-            Thread.interrupted(); // Flag loeschen, damit Folge-Tests sauber laufen
+            Thread.interrupted(); // clear the flag so that subsequent tests run cleanly
         }
     }
 

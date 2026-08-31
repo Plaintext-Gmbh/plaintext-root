@@ -25,10 +25,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Export/Import einer kompletten Modul-Datenmenge als JSON (Task #016 Phase 2, PR 3). Nutzt den
- * bestehenden {@link JpaEntityService} (Muster {@code RootEntityBackingBean}) statt eigener
- * Persistenz-Logik — ein Modul meldet seine exportwürdigen Entities über
- * {@link ModuleDescriptor#entities()} an.
+ * Export/import of a complete module data set as JSON (Task #016 phase 2, PR 3). Uses the
+ * existing {@link JpaEntityService} (pattern {@code RootEntityBackingBean}) instead of its own
+ * persistence logic — a module registers the entities worth exporting via
+ * {@link ModuleDescriptor#entities()}.
  */
 @Service
 @Slf4j
@@ -38,11 +38,11 @@ public class ModuleDataService {
     private final List<ModuleDescriptor> descriptors;
     private final JpaEntityService entityService;
 
-    /** Ergebnis eines Imports: wie viele Zeilen insgesamt/erfolgreich, plus Fehlermeldungen je Zeile. */
+    /** Result of an import: how many rows in total/successful, plus error messages per row. */
     public record ImportResult(int gesamt, int gespeichert, List<String> fehler) {
     }
 
-    /** Exportiert alle Tabellen eines Moduls als JSON-Umschlag {@code {module, version, tables}}. */
+    /** Exports all tables of a module as the JSON envelope {@code {module, version, tables}}. */
     public String export(String moduleId) {
         ModuleDescriptor descriptor = findDescriptor(moduleId);
 
@@ -65,9 +65,9 @@ public class ModuleDataService {
     }
 
     /**
-     * Importiert eine zuvor exportierte Modul-Datei zurück — bestehende Zeilen werden anhand der
-     * ID überschrieben (Semantik von {@link JpaEntityService#save}), neue angelegt. Ein
-     * fehlerhafter Datensatz bricht den restlichen Import nicht ab (Best-Effort, wie
+     * Imports a previously exported module file back — existing rows are overwritten based on
+     * their ID (semantics of {@link JpaEntityService#save}), new ones are created. A faulty
+     * record does not abort the rest of the import (best effort, like
      * {@code RootEntityBackingBean.importEntities()}).
      */
     @Transactional
@@ -134,7 +134,7 @@ public class ModuleDataService {
                 .orElseThrow(() -> new IllegalArgumentException("Unbekanntes Modul: " + moduleId));
     }
 
-    /** Eigene Instanz (nicht als Bean geteilt) — Konfiguration analog {@code RootEntityBackingBean}. */
+    /** Own instance (not shared as a bean) — configured analogously to {@code RootEntityBackingBean}. */
     private ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());

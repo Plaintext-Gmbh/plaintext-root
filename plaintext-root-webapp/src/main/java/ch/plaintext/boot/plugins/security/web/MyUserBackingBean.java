@@ -46,14 +46,14 @@ public class MyUserBackingBean implements Serializable {
             "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
     );
 
-    /** Spaltenbreite von {@code destructive_action_audit.detail}; laengere Texte werden gekuerzt. */
+    /** Column width of {@code destructive_action_audit.detail}; longer texts are truncated. */
     private static final int AUDIT_DETAIL_MAX = 2000;
 
     /**
-     * SECURITY (Karte 314, Punkt 7): zentrale {@link PasswordEncoder}-Bean statt eines lokalen
-     * {@code new BCryptPasswordEncoder()}. Der lokale Aufruf haette den Spring-Default-Kostenfaktor
-     * 10 behalten, waehrend die Bean in {@code PlaintextSecurityConfig} auf 12 steht — die
-     * Kostenfaktoren waeren also je nach Codepfad auseinandergedriftet.
+     * SECURITY (card 314, item 7): the central {@link PasswordEncoder} bean instead of a local
+     * {@code new BCryptPasswordEncoder()}. The local call would have kept the Spring default cost
+     * factor 10, while the bean in {@code PlaintextSecurityConfig} stands at 12 — the
+     * cost factors would therefore have drifted apart depending on the code path.
      */
     private transient PasswordEncoder passwordEncoder;
     private boolean remlistcolapsed = false;
@@ -64,9 +64,9 @@ public class MyUserBackingBean implements Serializable {
     private MyUserRepository repo;
 
     /**
-     * Rollen-Registry (Karte: Modul-Rollen-Registrierung): liefert die von den Modulen
-     * deklarierten Rollen fuer die Auswahl im Benutzer-Dialog. Optional verdrahtet, damit
-     * Kontexte ohne Registry (z.B. schlanke Tests) weiter funktionieren.
+     * Role registry (card: module role registration): supplies the roles declared by the modules
+     * for the selection in the user dialog. Wired optionally, so that
+     * contexts without a registry (e.g. lean tests) keep working.
      */
     private transient PlaintextRoleRegistry roleRegistry;
 
@@ -79,37 +79,37 @@ public class MyUserBackingBean implements Serializable {
     private transient MagicLinkService magicLinkService;
 
     /**
-     * SECURITY (Forensik 23.08.2026): Audit-Schreiber fuer Rollenaenderungen und Benutzerloeschungen. Wie
-     * {@link #roleRegistry} optional verdrahtet, damit schlanke Kontexte (Tests ohne JPA) die Bean
-     * weiter bauen koennen — fehlt er, bleibt nur das {@code log.warn} als Spur.
+     * SECURITY (forensics 23.08.2026): audit writer for role changes and user deletions. Like
+     * {@link #roleRegistry} wired optionally, so that lean contexts (tests without JPA) can still
+     * build the bean — if it is missing, only the {@code log.warn} remains as a trace.
      */
     private transient DestructiveActionAuditService auditService;
 
     /**
-     * SECURITY (Forensik 23.08.2026): Die Rueckfrage, die beim Entzug privilegierter Rollen durch einen
-     * root-Akteur angezeigt wird. {@code null} = keine Rueckfrage offen.
+     * SECURITY (forensics 23.08.2026): the confirmation prompt shown when privileged roles are
+     * revoked by a root actor. {@code null} = no prompt pending.
      */
     private String rollenEntzugFrage;
 
     /**
-     * SECURITY (Forensik 23.08.2026): {@code true}, sobald der root-Akteur den Entzug im Dialog bestaetigt hat.
-     * Wird nach jedem abgeschlossenen Vorgang (Speichern, Abbruch, Auswahlwechsel) zurueckgesetzt,
-     * damit eine Bestaetigung nie fuer einen zweiten, ungesehenen Entzug weitergilt.
+     * SECURITY (forensics 23.08.2026): {@code true} as soon as the root actor has confirmed the revocation in the dialog.
+     * Is reset after every completed operation (save, cancel, change of selection),
+     * so that a confirmation never carries over to a second, unseen revocation.
      */
     private boolean rollenEntzugBestaetigt;
 
     /**
-     * Konstruktor-Injection statt Feld-Injection (Sonar S6813): die Abhaengigkeiten stehen damit
-     * schon vor {@code @PostConstruct} fest und die Bean laesst sich ohne Spring bauen.
+     * Constructor injection instead of field injection (Sonar S6813): the dependencies are thereby
+     * fixed before {@code @PostConstruct} already, and the bean can be built without Spring.
      *
-     * @param passwordEncoder zentrale Encoder-Bean (Kostenfaktor 12)
-     * @param repo            Benutzer-Repository
-     * @param roleRegistry    Rollen-Registry; optional, darf {@code null} sein
-     * @param rememberMeRepo  Remember-Me-Repository
-     * @param plaintextSecurity Sicherheitskontext (Rollen, Mandat)
-     * @param userMandateRepo Repository der Zusatz-Mandate
-     * @param magicLinkService Versand der Magic-Links
-     * @param auditService    Audit-Log fuer Rollenaenderungen/Loeschungen; optional, darf {@code null} sein
+     * @param passwordEncoder central encoder bean (cost factor 12)
+     * @param repo            user repository
+     * @param roleRegistry    role registry; optional, may be {@code null}
+     * @param rememberMeRepo  remember-me repository
+     * @param plaintextSecurity security context (roles, tenant)
+     * @param userMandateRepo repository of the additional tenants
+     * @param magicLinkService sending of the magic links
+     * @param auditService    audit log for role changes/deletions; optional, may be {@code null}
      */
     @Autowired
     public MyUserBackingBean(PasswordEncoder passwordEncoder,
@@ -132,30 +132,30 @@ public class MyUserBackingBean implements Serializable {
         this.userPreferences = userPreferences;
     }
 
-    /** Zusätzliche Mandate des gewählten Benutzers (Mehrfach-Mandant), im Dialog editierbar. */
+    /** Additional tenants of the selected user (multi-tenant), editable in the dialog. */
     private List<String> selectedZusatzMandate = new ArrayList<>();
 
     private List<MyUserEntity> users = new ArrayList<>();
     private List<MyRememberMe> rememberMes = new ArrayList<>();
 
-    /** Von der Tabelle gefuellt (filteredValue) - ohne dieses Feld verliert PrimeFaces beim Sortieren den Filter. */
+    /** Filled by the table (filteredValue) - without this field PrimeFaces loses the filter while sorting. */
     private List<MyUserEntity> gefilterteUsers;
 
-    // ------------------------------------------------------------------ Spaltenauswahl
+    // ------------------------------------------------------------------ Column selection
 
     /**
-     * Kennung dieser Tabelle in {@code UserPreference.tabellenSpalten}. Die Karte ist bewusst
-     * je Tabelle geschluesselt, damit die naechste Tabelle ohne Aenderung an der
-     * Einstellungsklasse dazukommen kann.
+     * Identifier of this table in {@code UserPreference.tabellenSpalten}. The map is deliberately
+     * keyed per table, so that the next table can be added without a change to the
+     * settings class.
      */
     static final String TABELLE = "useradmin";
 
     /**
-     * Alle abschaltbaren Spalten in Anzeigereihenfolge, Schluessel und Beschriftung.
+     * All columns that can be switched off, in display order, key and label.
      *
-     * <p>Die Spalte „Bearbeiten" fehlt hier mit Absicht: sie ist die einzige Moeglichkeit, einen
-     * Benutzer zu oeffnen. Waere sie abwaehlbar, koennte man sich die Verwaltung unbrauchbar
-     * machen und haette danach keinen Weg mehr zurueck.
+     * <p>The column "Bearbeiten" is missing here on purpose: it is the only way to open a
+     * user. If it could be deselected, one could render the administration unusable
+     * and would then have no way back.
      */
     private static final List<String[]> SPALTEN = List.of(
             new String[]{"id", "ID"},
@@ -167,19 +167,19 @@ public class MyUserBackingBean implements Serializable {
             new String[]{"remember", "Remember-Me"},
             new String[]{"impersonate", "Impersonate"});
 
-    /** Voreinstellung, wenn dieser Benutzer noch nie etwas ausgewaehlt hat: der bisherige Bestand. */
+    /** Default when this user has never selected anything: the previous state. */
     private static final List<String> SPALTEN_VOREINSTELLUNG =
             List.of("id", "username", "vorname", "nachname", "mandat", "startpage", "remember", "impersonate");
 
     /**
-     * Optional verdrahtet: Kontexte ohne Benutzereinstellungen (schlanke Tests) sollen die Bean
-     * weiter bauen koennen. Fehlt sie, gilt dauerhaft die Voreinstellung.
+     * Wired optionally: contexts without user settings (lean tests) shall be able to keep
+     * building the bean. If it is missing, the default applies permanently.
      */
     private transient UserPreferencesBackingBean userPreferences;
 
     private List<String> sichtbareSpalten = new ArrayList<>(SPALTEN_VOREINSTELLUNG);
 
-    /** Die Auswahl fuer das Checkbox-Menue ueber der Tabelle. */
+    /** The selection for the checkbox menu above the table. */
     public List<SelectItem> getSpaltenAuswahl() {
         List<SelectItem> items = new ArrayList<>();
         for (String[] spalte : SPALTEN) {
@@ -188,18 +188,18 @@ public class MyUserBackingBean implements Serializable {
         return items;
     }
 
-    /** @return {@code true}, wenn die Spalte fuer diesen Benutzer eingeblendet ist */
+    /** @return {@code true} if the column is shown for this user */
     public boolean spalteSichtbar(String schluessel) {
         return sichtbareSpalten != null && sichtbareSpalten.contains(schluessel);
     }
 
     /**
-     * Uebernimmt die Spaltenauswahl <b>sofort</b> in die Benutzereinstellungen.
+     * Applies the column selection to the user settings <b>immediately</b>.
      *
-     * <p>Auftrag Daniel, 25.08.2026: „immer wenn man dort aufklappt und die Spaltenauswahl macht,
-     * soll gespeichert werden". Deshalb haengt das am {@code change}-Ereignis des Menues und
-     * nicht an einem Speichern-Knopf - ein Knopf, den man vergessen kann, ist hier genau das,
-     * was nicht gewollt war.
+     * <p>Request from Daniel, 25.08.2026: "whenever one opens it there and makes the column
+     * selection, it should be saved". That is why this hangs off the {@code change} event of the menu and
+     * not off a save button - a button that one can forget is exactly what
+     * was not wanted here.
      */
     public void spaltenGeaendert() {
         if (userPreferences == null) {
@@ -210,25 +210,25 @@ public class MyUserBackingBean implements Serializable {
         log.debug("Spaltenauswahl fuer {} gespeichert: {}", TABELLE, sichtbareSpalten);
     }
 
-    /** Holt die gespeicherte Auswahl; ohne gespeicherten Eintrag bleibt es bei der Voreinstellung. */
+    /** Fetches the stored selection; without a stored entry the default stays in effect. */
     private void ladeSpaltenauswahl() {
         if (userPreferences == null) {
             return;
         }
         List<String> gespeichert = userPreferences.tabellenSpalten(TABELLE);
-        // null heisst "nie gesetzt" -> Voreinstellung. Eine LEERE Liste ist dagegen eine bewusste
-        // Auswahl und bleibt leer.
+        // null means "never set" -> default. An EMPTY list, in contrast, is a deliberate
+        // selection and stays empty.
         if (gespeichert != null) {
             sichtbareSpalten = new ArrayList<>(gespeichert);
         }
     }
 
     /**
-     * Die Mandanten, die in der Tabelle wirklich vorkommen - fuer den Mehrfachauswahl-Filter.
+     * The tenants that really occur in the table - for the multi-selection filter.
      *
-     * <p>Absichtlich aus den geladenen Benutzern und nicht aus allen bekannten Mandanten: ein
-     * Filterwert, der zu null Zeilen fuehrt, ist fuer den Benutzer nur verwirrend. Ein Benutzer
-     * ohne Mandant erscheint als leerer Eintrag und bleibt damit auffindbar.
+     * <p>Deliberately taken from the loaded users and not from all known tenants: a
+     * filter value that leads to zero rows is only confusing for the user. A user
+     * without a tenant appears as an empty entry and thereby stays findable.
      */
     public List<SelectItem> getMandatFilterAuswahl() {
         return users.stream()
@@ -246,7 +246,7 @@ public class MyUserBackingBean implements Serializable {
 
         users.clear();
 
-        // Root sieht alle Benutzer, Admin nur die des eigenen Mandats
+        // Root sees all users, admin only those of their own tenant
         if (isRoot()) {
             users.addAll(repo.findAll());
             log.info("Loaded {} users (all - root access)", users.size());
@@ -266,22 +266,22 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Prüft ob der aktuelle Benutzer die Root-Rolle hat.
+     * Checks whether the current user has the root role.
      */
     public boolean isRoot() {
         return plaintextSecurity != null && plaintextSecurity.ifGranted("ROLE_root");
     }
 
     /**
-     * Prüft ob der aktuelle Benutzer die Admin-Rolle hat.
+     * Checks whether the current user has the admin role.
      */
     public boolean isAdmin() {
         return plaintextSecurity != null && plaintextSecurity.ifGranted("ROLE_admin");
     }
 
     /**
-     * Prüft ob der aktuelle Benutzer Zugriff auf die Benutzerverwaltung hat.
-     * Wird beim preRenderView aufgerufen.
+     * Checks whether the current user has access to the user administration.
+     * Is called on preRenderView.
      */
     public void checkAccess() {
         if (!isRoot() && !isAdmin()) {
@@ -300,14 +300,14 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Oeffnet den Dialog fuer einen neuen Benutzer.
+     * Opens the dialog for a new user.
      *
-     * <p>DATENQUALITAET (Forensik 23.08.2026): Die leere Entity wird <b>nicht mehr sofort persistiert</b>.
-     * Vorher legte jeder Klick auf „Neuer Benutzer" — auch ein abgebrochener — eine Waisenzeile
-     * mit leerem {@code username} an, die von der Benutzerverwaltung nie wieder eingesammelt wurde.
-     * Die Entity bleibt jetzt transient, bis {@link #save()} sie mit gueltigem Benutzernamen und
-     * Passwort tatsaechlich schreibt; {@code save()} kommt mit {@code id == null} zurecht
-     * (Insert statt Update). Auch das {@code init()} entfaellt: Es gibt nichts nachzuladen.</p>
+     * <p>DATA QUALITY (forensics 23.08.2026): the empty entity is <b>no longer persisted immediately</b>.
+     * Previously every click on "Neuer Benutzer" — an aborted one included — created an orphan row
+     * with an empty {@code username} that the user administration never collected again.
+     * The entity now stays transient until {@link #save()} actually writes it with a valid user name and
+     * password; {@code save()} copes with {@code id == null}
+     * (insert instead of update). The {@code init()} is dropped as well: there is nothing to reload.</p>
      */
     public void newUser() {
         selected = new MyUserEntity();
@@ -326,10 +326,10 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Oeffnet den Bearbeiten-Dialog fuer die uebergebene Zeile (Zeilen-Button in der
-     * Benutzer-Liste): setzt die Auswahl und laedt die Dialog-Daten wie {@link #select()}.
+     * Opens the edit dialog for the given row (row button in the
+     * user list): sets the selection and loads the dialog data like {@link #select()}.
      *
-     * @param user der Benutzer aus der angeklickten Tabellenzeile
+     * @param user the user from the clicked table row
      */
     public void edit(MyUserEntity user) {
         selected = user;
@@ -347,7 +347,7 @@ public class MyUserBackingBean implements Serializable {
             return;
         }
 
-        // Prüfe ob Username bereits existiert (nur bei neuen Benutzern oder bei Änderung)
+        // Check whether the user name already exists (only for new users or on a change)
         MyUserEntity existingUser = repo.findByUsername(selected.getUsername());
         if (existingUser != null && !existingUser.getId().equals(selected.getId())) {
             FacesContext.getCurrentInstance().addMessage("username",
@@ -359,7 +359,7 @@ public class MyUserBackingBean implements Serializable {
     public void save() {
         FacesContext context = FacesContext.getCurrentInstance();
 
-        // Validiere E-Mail-Format
+        // Validate the e-mail format
         if (selected.getUsername() == null || selected.getUsername().trim().isEmpty()) {
             context.addMessage(null,
                     new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzername darf nicht leer sein."));
@@ -374,7 +374,7 @@ public class MyUserBackingBean implements Serializable {
             return;
         }
 
-        // Prüfe ob Username bereits existiert (nur bei neuen Benutzern oder bei Änderung)
+        // Check whether the user name already exists (only for new users or on a change)
         MyUserEntity existingUser = repo.findByUsername(selected.getUsername());
         if (existingUser != null && !existingUser.getId().equals(selected.getId())) {
             context.addMessage(null,
@@ -383,9 +383,9 @@ public class MyUserBackingBean implements Serializable {
             return;
         }
 
-        // SECURITY (Karte 307, K1): Snapshot der PERSISTIERTEN Rollen (frisch per ID aus der DB, nicht das
-        // evtl. schon vom JSF-Model-Update ueberschriebene `selected`) — Basis fuer die Rollen-Allowlist,
-        // damit Bestand editierbar bleibt, ein Nicht-ROOT aber keine privilegierte Rolle NEU vergeben kann.
+        // SECURITY (card 307, K1): snapshot of the PERSISTED roles (freshly fetched by ID from the DB, not the
+        // `selected` that may already have been overwritten by the JSF model update) — the basis for the role allowlist,
+        // so that existing data stays editable while a non-ROOT cannot grant a privileged role ANEW.
         Set<String> persistedRoles = new HashSet<>();
         if (selected.getId() != null) {
             MyUserEntity persisted = repo.findById(selected.getId()).orElse(null);
@@ -394,7 +394,7 @@ public class MyUserBackingBean implements Serializable {
             }
         }
 
-        // Validiere Passwort bei neuen Benutzern oder wenn Passwort geändert wurde
+        // Validate the password for new users or when the password has been changed
         boolean isNewUser = myUserPw == null || myUserPw.isEmpty();
         boolean passwordChanged = !selected.getPassword().isEmpty() && !selected.getPassword().equals(myUserPw);
 
@@ -412,22 +412,22 @@ public class MyUserBackingBean implements Serializable {
         // Synchronize roles from chips component (List) back to entity (Set)
         syncRolesFromListToSet();
 
-        // SECURITY (Karte 307, K1): serverseitige Rollen-Allowlist. Ein Nicht-ROOT-Akteur darf ueber die
-        // (fuer ihn legitime) Benutzerverwaltung KEINE privilegierten Rollen NEU vergeben. Welche Rollen
-        // das sind, entscheidet zentral PrivilegedRoleRules: "root"/"admin" (Verwaltungsrechte, die sich
-        // sonst selbst weiterreichen liessen) und jede "PROPERTY_*"-Rolle (Mandat-Wechsel/Cross-Mandant).
-        // Modul-Rollen sind ausdruecklich NICHT privilegiert — sie zu vergeben ist admins Aufgabe.
-        // Bereits am persistierten Datensatz vorhandene Rollen bleiben erlaubt (Bestand editierbar). Der
-        // Serverseiten-Check ist der eigentliche Fix; die UI-Freitext-Chips sind nur Bequemlichkeit.
+        // SECURITY (card 307, K1): server-side role allowlist. A non-ROOT actor must not grant ANY
+        // privileged roles ANEW through the user administration (which is legitimate for them). Which roles
+        // those are is decided centrally by PrivilegedRoleRules: "root"/"admin" (administration rights that could
+        // otherwise pass themselves on) and every "PROPERTY_*" role (tenant switch/cross-tenant).
+        // Module roles are explicitly NOT privileged — granting them is the admin's job.
+        // Roles already present on the persisted record stay permitted (existing data editable). The
+        // server-side check is the actual fix; the free-text chips in the UI are only convenience.
         if (!isRoot() && !pruefeRollenAllowlist(context, persistedRoles)) {
             return;
         }
 
-        // SECURITY (Forensik 23.08.2026, K1): die ENTZUGSSEITE. pruefeRollenAllowlist() sieht nur, was
-        // uebermittelt wurde — was FEHLT, sah bisher niemand. Genau so verlor ein Administratorkonto
-        // still 'root' und 'admin', als ein root-Akteur vom Telefon aus mit leerer Rollenauswahl
-        // speicherte. Die Differenz `persistiert \ uebermittelt` ist der einzige Ort, an dem ein
-        // solcher Verlust ueberhaupt sichtbar wird.
+        // SECURITY (forensics 23.08.2026, K1): the REVOCATION side. pruefeRollenAllowlist() only sees what
+        // was submitted — what is MISSING nobody saw so far. That is exactly how an administrator account
+        // silently lost 'root' and 'admin' when a root actor saved from a phone with an empty role
+        // selection. The difference `persisted \ submitted` is the only place where such a
+        // loss becomes visible at all.
         Set<String> neueRollen = selected.getRoles() == null
                 ? new HashSet<>() : new HashSet<>(selected.getRoles());
         Set<String> entzogenePrivilegierte = entzogenePrivilegierteRollen(persistedRoles, neueRollen);
@@ -447,8 +447,8 @@ public class MyUserBackingBean implements Serializable {
             selected.setPassword(myUserPw);
         }
         repo.save(selected);
-        // NACHVOLLZIEHBARKEIT (Forensik 23.08.2026): erst nach dem erfolgreichen Schreiben protokollieren —
-        // sonst behauptet das Log eine Aenderung, die es womoeglich nie gab.
+        // TRACEABILITY (forensics 23.08.2026): log only after the write has succeeded —
+        // otherwise the log claims a change that may never have happened.
         protokolliereRollenaenderung(persistedRoles, selected.getRoles());
         saveZusatzMandate();
         selected = null;
@@ -459,12 +459,12 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Prueft die am Formular gewaehlten Rollen gegen {@link PrivilegedRoleRules}. Bereits
-     * persistierte Rollen sind immer erlaubt — nur die NEUE Vergabe ist eingeschraenkt.
+     * Checks the roles selected on the form against {@link PrivilegedRoleRules}. Already
+     * persisted roles are always permitted — only granting them ANEW is restricted.
      *
-     * @param context        FacesContext fuer die Fehlermeldung
-     * @param persistedRoles die Rollen des persistierten Datensatzes (Bestand)
-     * @return {@code true}, wenn gespeichert werden darf
+     * @param context        FacesContext for the error message
+     * @param persistedRoles the roles of the persisted record (existing data)
+     * @return {@code true} if saving is permitted
      */
     private boolean pruefeRollenAllowlist(FacesContext context, Set<String> persistedRoles) {
         for (String role : selected.getRoles()) {
@@ -482,16 +482,16 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Welche der persistierten Rollen dem Benutzer durch diese Speicherung ENTZOGEN wuerden und
-     * dabei privilegiert im Sinne von {@link PrivilegedRoleRules} sind.
+     * Which of the persisted roles would be REVOKED from the user by this save and are
+     * privileged in the sense of {@link PrivilegedRoleRules}.
      *
-     * <p>Mandat-Rollen ({@code PROPERTY_MANDAT_*}) bleiben aussen vor: Der Mandant ist ein eigenes,
-     * sichtbares Dialogfeld mit eigener Semantik — ein Mandatswechsel ist kein stiller
-     * Rechteverlust, und eine Rueckfrage bei jedem Mandatswechsel wuerde die Warnung entwerten.</p>
+     * <p>Tenant roles ({@code PROPERTY_MANDAT_*}) stay out of it: the tenant is a separate,
+     * visible dialog field with its own semantics — a tenant change is no silent
+     * loss of rights, and a confirmation prompt on every tenant change would devalue the warning.</p>
      *
-     * @param persistiert Rollen des persistierten Datensatzes
-     * @param neu         Rollen nach der Formularuebernahme
-     * @return die entzogenen privilegierten Rollen, sortiert; nie {@code null}
+     * @param persistiert roles of the persisted record
+     * @param neu         roles after the form has been applied
+     * @return the revoked privileged roles, sorted; never {@code null}
      */
     private static Set<String> entzogenePrivilegierteRollen(Set<String> persistiert, Set<String> neu) {
         Set<String> entzogen = new TreeSet<>();
@@ -507,14 +507,14 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Der Entzugs-Schutz. Ein Nicht-root-Akteur darf privilegierte Rollen ueberhaupt nicht
-     * entziehen; ein root-Akteur darf es, muss es aber ausdruecklich bestaetigen. Der Vorfall, der
-     * zu dieser Karte fuehrte, war genau ein root-Akteur — ein reiner Nicht-root-Schutz haette ihn
-     * nicht verhindert.
+     * The revocation protection. A non-root actor must not revoke privileged roles at all;
+     * a root actor may, but has to confirm it explicitly. The incident that
+     * led to this card was exactly a root actor — a protection against non-root actors alone would
+     * not have prevented it.
      *
-     * @param context  FacesContext fuer die Meldung
-     * @param entzogen die entzogenen privilegierten Rollen (nicht leer)
-     * @return {@code true}, wenn gespeichert werden darf
+     * @param context  FacesContext for the message
+     * @param entzogen the revoked privileged roles (not empty)
+     * @return {@code true} if saving is permitted
      */
     private boolean pruefeRollenEntzug(FacesContext context, Set<String> entzogen) {
         String rollen = String.join(", ", entzogen);
@@ -543,8 +543,8 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Der root-Akteur hat den Rollen-Entzug im Bestaetigungsdialog bejaht: gleicher
-     * {@link #save()}-Pfad, diesmal mit gesetztem Bestaetigungs-Flag.
+     * The root actor has affirmed the role revocation in the confirmation dialog: the same
+     * {@link #save()} path, this time with the confirmation flag set.
      */
     public void bestaetigeRollenEntzugUndSpeichere() {
         rollenEntzugBestaetigt = true;
@@ -552,7 +552,7 @@ public class MyUserBackingBean implements Serializable {
         save();
     }
 
-    /** Der root-Akteur hat den Rollen-Entzug abgelehnt: nichts speichern, Rueckfrage schliessen. */
+    /** The root actor has declined the role revocation: save nothing, close the prompt. */
     public void brichRollenEntzugAb() {
         log.warn("SECURITY (Rollen-Entzug): ROOT-Akteur '{}' hat den Rollen-Entzug abgebrochen — "
                 + "nichts gespeichert.", handelnderBenutzer());
@@ -561,7 +561,7 @@ public class MyUserBackingBean implements Serializable {
                 "Abgebrochen", "Der Rollen-Entzug wurde nicht gespeichert."));
     }
 
-    /** Ob gerade eine unbeantwortete Rueckfrage zum Rollen-Entzug offen ist (fuer die Oberflaeche). */
+    /** Whether an unanswered prompt about a role revocation is currently pending (for the UI). */
     public boolean isRollenEntzugAusstehend() {
         return rollenEntzugFrage != null;
     }
@@ -572,12 +572,12 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Protokolliert eine Rollenaenderung als {@code WARN} (vorher → nachher, handelnder Benutzer)
-     * und schreibt sie zusaetzlich ins {@code destructive_action_audit}. Ohne Aenderung passiert
-     * nichts — sonst ertraenkt jedes Speichern eines Startseiten-Felds das Log.
+     * Logs a role change as {@code WARN} (before → after, acting user)
+     * and additionally writes it into the {@code destructive_action_audit}. Without a change nothing
+     * happens — otherwise every save of a start page field would drown the log.
      *
-     * @param vorher  Rollen des persistierten Datensatzes vor der Speicherung
-     * @param nachher Rollen nach der Speicherung
+     * @param vorher  roles of the persisted record before the save
+     * @param nachher roles after the save
      */
     private void protokolliereRollenaenderung(Set<String> vorher, Set<String> nachher) {
         Set<String> alt = vorher == null ? new TreeSet<>() : new TreeSet<>(vorher);
@@ -605,12 +605,12 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Loescht den gewaehlten Benutzer.
+     * Deletes the selected user.
      *
-     * <p>NACHVOLLZIEHBARKEIT (Forensik 23.08.2026): Die Loeschung lief bisher komplett auf {@code log.debug} —
-     * in Produktion (Level INFO) war sie damit unsichtbar und im Audit gar nicht vorhanden.
-     * Jetzt: {@code WARN} mit Benutzer, ID, Mandat, Rollen und handelndem Benutzer, plus ein
-     * Eintrag im {@code destructive_action_audit}.</p>
+     * <p>TRACEABILITY (forensics 23.08.2026): the deletion used to run entirely on {@code log.debug} —
+     * in production (level INFO) it was therefore invisible and not present in the audit at all.
+     * Now: {@code WARN} with user, ID, tenant, roles and acting user, plus an
+     * entry in the {@code destructive_action_audit}.</p>
      */
     public void delete() {
         if (selected == null || selected.getId() == null) {
@@ -650,7 +650,7 @@ public class MyUserBackingBean implements Serializable {
         init();
     }
 
-    /** Der angemeldete (bzw. impersonierende) Benutzer, der die Aenderung ausloest. */
+    /** The logged-in (resp. impersonating) user who triggers the change. */
     private String handelnderBenutzer() {
         if (plaintextSecurity == null) {
             return "unbekannt";
@@ -659,7 +659,7 @@ public class MyUserBackingBean implements Serializable {
         return user == null || user.isBlank() ? "unbekannt" : user;
     }
 
-    /** Kuerzt einen Audit-Freitext auf die Spaltenbreite von {@code detail} (VARCHAR(2000)). */
+    /** Truncates an audit free text to the column width of {@code detail} (VARCHAR(2000)). */
     private static String kuerze(String text) {
         if (text == null || text.length() <= AUDIT_DETAIL_MAX) {
             return text;
@@ -667,7 +667,7 @@ public class MyUserBackingBean implements Serializable {
         return text.substring(0, AUDIT_DETAIL_MAX - 3) + "...";
     }
 
-    /** Ob die Rolle den Heimat-Mandanten kodiert ({@code PROPERTY_MANDAT_*}). */
+    /** Whether the role encodes the home tenant ({@code PROPERTY_MANDAT_*}). */
     private static boolean istMandatRolle(String role) {
         return role != null && role.toUpperCase(Locale.ROOT).startsWith("PROPERTY_MANDAT_");
     }
@@ -677,7 +677,7 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Generiert und versendet einen Magic-Link an die E-Mail-Adresse des gewählten Benutzers.
+     * Generates a magic link and sends it to the e-mail address of the selected user.
      */
     public void sendMagicLink() {
         FacesContext context = FacesContext.getCurrentInstance();
@@ -704,28 +704,28 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Alle in der Benutzerverwaltung anbietbaren Rollen (lowercase, ohne ROLE_ Präfix):
-     * die Union aus den von den Modulen DEKLARIERTEN Rollen ({@link PlaintextRoleRegistry},
-     * Rollen-Registry-Muster analog zum Menü-System) und den bereits in der Datenbank
-     * VERGEBENEN Rollen (Bestand — Rollen, die kein Modul mehr deklariert, bleiben so
-     * sichtbar und gehen nicht verloren).
-     * Properties (PROPERTY_*) und Mandat-Rollen werden herausgefiltert.
+     * All roles that can be offered in the user administration (lowercase, without the ROLE_ prefix):
+     * the union of the roles DECLARED by the modules ({@link PlaintextRoleRegistry},
+     * role registry pattern analogous to the menu system) and the roles already
+     * GRANTED in the database (existing data — roles that no module declares any more stay
+     * visible this way and are not lost).
+     * Properties (PROPERTY_*) and tenant roles are filtered out.
      *
-     * <p>Ersetzt den früheren Laufzeit-Scan der XHTML-Dateien nach ifGranted-Patterns, der
-     * nur im Dev-Checkout funktionierte (las {@code src/main/resources} vom Dateisystem).</p>
+     * <p>Replaces the earlier runtime scan of the XHTML files for ifGranted patterns, which
+     * only worked in a dev checkout (it read {@code src/main/resources} from the file system).</p>
      *
-     * @return Set von eindeutigen Rollennamen (lowercase, ohne ROLE_ Präfix)
+     * @return set of unique role names (lowercase, without the ROLE_ prefix)
      */
     public Set<String> getAvailableRoles() {
         Set<String> roles = new LinkedHashSet<>();
 
-        // 1. Von Modulen deklarierte Rollen (Registry)
+        // 1. roles declared by modules (registry)
         roles.addAll(extractRolesFromRegistry());
 
-        // 2. Rollen aus der Datenbank extrahieren (Bestand)
+        // 2. extract roles from the database (existing data)
         roles.addAll(extractRolesFromDatabase());
 
-        // 3. Filtere Properties und Mandat-Rollen heraus
+        // 3. filter out properties and tenant roles
         return roles.stream()
                 .filter(role -> !role.toLowerCase().startsWith("property_"))
                 .filter(role -> !role.toLowerCase().contains("mandat"))
@@ -733,7 +733,7 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Die von den Modulen deklarierten Rollen (normalisiert: lowercase, ohne ROLE_ Präfix).
+     * The roles declared by the modules (normalized: lowercase, without the ROLE_ prefix).
      */
     private Set<String> extractRolesFromRegistry() {
         if (roleRegistry == null) {
@@ -749,12 +749,12 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Die Auswahl-Einträge für das Rollen-SelectCheckboxMenu im Benutzer-Dialog:
-     * {@link #getAvailableRoles()} plus die aktuell am Benutzer gesetzten Rollen (damit eine
-     * vorselektierte, aber nirgends mehr deklarierte Rolle im Menü sichtbar bleibt).
-     * Deklarierte Rollen tragen ihre Beschreibung im Label.
+     * The selection entries for the role SelectCheckboxMenu in the user dialog:
+     * {@link #getAvailableRoles()} plus the roles currently set on the user (so that a
+     * preselected role that is no longer declared anywhere stays visible in the menu).
+     * Declared roles carry their description in the label.
      *
-     * @return sortierte Auswahl-Einträge
+     * @return sorted selection entries
      */
     public List<RoleOption> getSelectableRoles() {
         Set<String> names = new TreeSet<>(getAvailableRoles());
@@ -772,8 +772,8 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Ein Eintrag der Rollen-Auswahl im Benutzer-Dialog: technischer Wert plus Anzeige-Label
-     * (Name, bei deklarierten Rollen inkl. Beschreibung aus der {@link PlaintextRole}).
+     * One entry of the role selection in the user dialog: technical value plus display label
+     * (name, for declared roles incl. the description from the {@link PlaintextRole}).
      */
     @lombok.Value
     public static class RoleOption implements Serializable {
@@ -782,7 +782,7 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Extrahiert alle verwendeten Rollen aus der Datenbank
+     * Extracts all roles in use from the database
      */
     private Set<String> extractRolesFromDatabase() {
         Set<String> roles = new LinkedHashSet<>();
@@ -792,9 +792,9 @@ public class MyUserBackingBean implements Serializable {
             for (MyUserEntity user : allUsers) {
                 if (user.getRoles() != null) {
                     for (String role : user.getRoles()) {
-                        // Filtere "mandat" Rollen aus (siehe MyUserDetailsService)
+                        // Filter out "mandat" roles (see MyUserDetailsService)
                         if (!role.contains("mandat")) {
-                            // Entferne ROLE_ Präfix falls vorhanden und konvertiere zu lowercase
+                            // Remove the ROLE_ prefix if present and convert to lowercase
                             String normalizedRole = role.toUpperCase().startsWith("ROLE_")
                                 ? role.substring(5).toLowerCase()
                                 : role.toLowerCase();
@@ -811,8 +811,8 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Getter für die Rollen als Liste (für p:chips Komponente).
-     * Konvertiert das Set in eine Liste und filtert Properties und Mandat-Rollen heraus.
+     * Getter for the roles as a list (for the p:chips component).
+     * Converts the set into a list and filters out properties and tenant roles.
      */
     public List<String> getSelectedRolesList() {
         if (selected == null || selected.getRoles() == null) {
@@ -824,12 +824,12 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Ob die Rolle im Rollen-Menue des Dialogs bewusst ausgeblendet wird: Properties
-     * ({@code PROPERTY_*}) und Mandat-Rollen. Sie werden dort weder angezeigt noch uebermittelt —
-     * und duerfen deshalb beim Speichern auch nicht als „abgewaehlt" gelten.
+     * Whether the role is deliberately hidden in the role menu of the dialog: properties
+     * ({@code PROPERTY_*}) and tenant roles. They are neither displayed nor submitted there —
+     * and must therefore not count as "deselected" when saving.
      *
-     * @param role Rollenname, darf {@code null} sein
-     * @return {@code true}, wenn die Rolle im Dialog nicht sichtbar ist
+     * @param role role name, may be {@code null}
+     * @return {@code true} if the role is not visible in the dialog
      */
     private static boolean istImDialogAusgeblendet(String role) {
         if (role == null) {
@@ -840,26 +840,26 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Setter für die Rollen als Liste (Rollen-Menü im Dialog). Aktualisiert das Set im Entity.
+     * Setter for the roles as a list (role menu in the dialog). Updates the set in the entity.
      *
-     * <p>SECURITY (Forensik 23.08.2026, K2): Frueher ERSETZTE diese Methode das gesamte Rollen-Set durch die
-     * Formularliste. Da {@link #getSelectedRolesList()} die {@code PROPERTY_*}- und Mandat-Rollen
-     * ausblendet, kamen diese nie zurueck — jedes Speichern loeschte sie still mit. Und eine
-     * unvollstaendig uebermittelte Auswahl (bei fixen 450 px auf einem Telefon-Viewport: eine
-     * leere) bedeutete Totalverlust aller Rollen. Jetzt werden die im Dialog ausgeblendeten Rollen
-     * bewahrt und die Formularliste nur dazugemischt; ueber den Verlust der SICHTBAREN Rollen
-     * entscheidet {@link #pruefeRollenEntzug(FacesContext, Set)}.</p>
+     * <p>SECURITY (forensics 23.08.2026, K2): this method used to REPLACE the whole role set with the
+     * form list. Since {@link #getSelectedRolesList()} hides the {@code PROPERTY_*} and tenant roles,
+     * those never came back — every save silently deleted them along the way. And an
+     * incompletely submitted selection (with a fixed 450 px on a phone viewport: an
+     * empty one) meant the total loss of all roles. Now the roles hidden in the dialog are
+     * preserved and the form list is only merged in; the loss of the VISIBLE roles is
+     * decided by {@link #pruefeRollenEntzug(FacesContext, Set)}.</p>
      *
-     * @param rolesList die im Dialog gewaehlten (sichtbaren) Rollen, darf {@code null} sein
+     * @param rolesList the (visible) roles selected in the dialog, may be {@code null}
      */
     public void setSelectedRolesList(List<String> rolesList) {
         if (selected == null) {
             return;
         }
-        // Bewahre die Mandat-Rolle
+        // Preserve the tenant role
         String currentMandat = selected.getMandat();
 
-        // Im Dialog ausgeblendete Rollen bewahren, sichtbare aus der Formularliste uebernehmen.
+        // Preserve the roles hidden in the dialog, take the visible ones from the form list.
         Set<String> neueRollen = selected.getRoles() == null
                 ? new HashSet<>()
                 : selected.getRoles().stream()
@@ -873,21 +873,21 @@ public class MyUserBackingBean implements Serializable {
         }
         selected.setRoles(neueRollen);
 
-        // Füge die Mandat-Rolle wieder hinzu, falls vorhanden
+        // Add the tenant role back, if there is one
         if (currentMandat != null && !currentMandat.isEmpty()) {
             selected.setMandat(currentMandat);
         }
     }
 
     /**
-     * Synchronisiert die Rollen von der Liste (UI) zurück zum Set (Entity).
-     * Wird vor dem Speichern aufgerufen.
+     * Synchronizes the roles from the list (UI) back to the set (entity).
+     * Is called before saving.
      */
     private void syncRolesFromListToSet() {
         if (selected == null) {
             return;
         }
-        // Die setSelectedRolesList Methode macht bereits die Synchronisation
+        // The setSelectedRolesList method already performs the synchronization
         setSelectedRolesList(getSelectedRolesList());
     }
 
@@ -960,7 +960,7 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Lädt die zusätzlichen Mandate des aktuell gewählten Benutzers in die Dialog-Auswahl.
+     * Loads the additional tenants of the currently selected user into the dialog selection.
      */
     private void loadZusatzMandate() {
         selectedZusatzMandate = new ArrayList<>();
@@ -972,8 +972,8 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /**
-     * Persistiert die im Dialog gewählten zusätzlichen Mandate (nur ROOT). Der Heimat-Mandant
-     * des Benutzers wird nicht als Zusatz gespeichert (Duplikat).
+     * Persists the additional tenants selected in the dialog (ROOT only). The home tenant
+     * of the user is not stored as an additional one (duplicate).
      */
     @Transactional
     public void saveZusatzMandate() {
@@ -982,12 +982,12 @@ public class MyUserBackingBean implements Serializable {
         }
         String username = selected.getUsername();
         userMandateRepo.deleteByUsername(username);
-        // Löschungen SOFORT in die DB flushen, BEVOR unten neu eingefügt wird. deleteByUsername ist ein
-        // Spring-Data-Derived-Delete (SELECT + em.remove) → die Deletes sind nur vorgemerkt und würden
-        // sonst erst beim Commit ausgeführt. Hibernate flusht dabei INSERTs VOR DELETEs → ein re-inserter
-        // (username, mandat), der noch als alte Zeile existiert, verletzt den Unique-Index uq_user_mandate
-        // (DataIntegrityViolationException, z. B. simon+guild42). Der explizite flush erzwingt die richtige
-        // Reihenfolge (erst alle alten Zeilen weg, dann die deduplizierte Formular-Liste einfügen).
+        // Flush the deletions to the DB IMMEDIATELY, BEFORE the re-inserts below. deleteByUsername is a
+        // Spring Data derived delete (SELECT + em.remove) → the deletes are only pending and would
+        // otherwise be executed at commit time. Hibernate flushes INSERTs BEFORE DELETEs in that case → a re-inserted
+        // (username, mandat) whose old row still exists violates the unique index uq_user_mandate
+        // (DataIntegrityViolationException, e.g. simon+guild42). The explicit flush enforces the right
+        // order (first remove all old rows, then insert the deduplicated form list).
         userMandateRepo.flush();
         String home = selected.getMandat() != null ? selected.getMandat().toLowerCase() : null;
         Set<String> seen = new HashSet<>();

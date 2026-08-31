@@ -52,9 +52,9 @@ public class PasswordResetService {
     private final SelfServiceProperties properties;
     private final IMailTemplateProvider mailTemplateProvider;
     /**
-     * SECURITY (Karte 314, Punkt 9): Registry der aktiven HTTP-Sessions. Als
-     * {@link ObjectProvider}, weil das Modul plaintext-admin-sessions optional ist — fehlt es,
-     * bleibt der Reset funktionsfaehig und nur die Session-Invalidierung entfaellt.
+     * SECURITY (card 314, item 9): registry of the active HTTP sessions. As an
+     * {@link ObjectProvider}, because the module plaintext-admin-sessions is optional — if it is
+     * missing, the reset stays functional and only the session invalidation is dropped.
      */
     private final ObjectProvider<ch.plaintext.sessions.service.HttpSessionRegistry> sessionRegistryProvider;
 
@@ -73,7 +73,7 @@ public class PasswordResetService {
             return ResetOutcome.ACCEPTED;
         }
 
-        // SECURITY (Karte 307, K2.3): Klartext-Token nur im Link, in der DB nur der SHA-256-Hash.
+        // SECURITY (card 307, K2.3): the clear-text token only in the link, in the DB only the SHA-256 hash.
         String rawToken = generateToken();
         PasswordResetToken token = new PasswordResetToken();
         token.setTokenHash(SelfServiceTokenHash.sha256Hex(rawToken));
@@ -102,8 +102,8 @@ public class PasswordResetService {
         }
         PasswordResetToken token = tokenOpt.get();
         Instant now = Instant.now();
-        // SECURITY (Karte 307, K2.3): ATOMAR einloesen (bedingtes UPDATE) statt check-then-set — verhindert
-        // TOCTOU/Replay bei parallelen Aufrufen. n==1 => wir haben den Token exklusiv verbraucht.
+        // SECURITY (card 307, K2.3): redeem ATOMICALLY (conditional UPDATE) instead of check-then-set — prevents
+        // TOCTOU/replay on parallel calls. n==1 => we have consumed the token exclusively.
         if (tokenRepository.consumeToken(hash, now) != 1) {
             return ResetResult.invalid();
         }
@@ -114,17 +114,17 @@ public class PasswordResetService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        // SECURITY (Karte 307, K2.3): nach dem Passwort-Reset die persistenten Auto-Login-Tokens
-        // (Remember-Me / PERSISTENT_LOGINS) des Users invalidieren, damit ein zuvor gestohlenes
-        // Remember-Me-Cookie nicht ueber den Reset hinweg weiterlebt. (HTTP-Sessions sind kurzlebig
-        // und ohne Session-Registry nicht enumerierbar; der persistente Vektor ist Remember-Me.)
+        // SECURITY (card 307, K2.3): after the password reset, invalidate the persistent auto-login tokens
+        // (remember-me / PERSISTENT_LOGINS) of the user, so that a previously stolen
+        // remember-me cookie does not live on across the reset. (HTTP sessions are short-lived
+        // and not enumerable without a session registry; the persistent vector is remember-me.)
         rememberMeRepository.deleteAllByUsername(token.getUsername());
 
-        // SECURITY (Karte 314, Punkt 9): zusaetzlich die noch AKTIVEN HTTP-Sessions beenden.
-        // Bisher wurden nur die persistenten Remember-Me-Tokens geloescht — wer bereits eine
-        // offene Session auf dem Konto hatte (genau der Fall, in dem ein Betroffener sein
-        // Passwort zuruecksetzt), behielt seinen Zugriff bis zum Session-Timeout und der Reset
-        // war als Wiederherstellungsmassnahme wirkungslos.
+        // SECURITY (card 314, item 9): additionally terminate the still ACTIVE HTTP sessions.
+        // Until now only the persistent remember-me tokens were deleted — whoever already had an
+        // open session on the account (exactly the case in which an affected person resets their
+        // password) kept their access until the session timeout, and the reset
+        // was ineffective as a recovery measure.
         ch.plaintext.sessions.service.HttpSessionRegistry sessionRegistry =
                 sessionRegistryProvider.getIfAvailable();
         if (sessionRegistry != null) {

@@ -15,7 +15,7 @@
 
         <p:messages/>
 
-        <!-- Baut die Tabelle neu -->
+        <!-- Rebuilds the table -->
         #{performanceService.reload()}
 
         <h:panelGrid columns="1">
@@ -38,12 +38,12 @@
                          style="width:100%"
                          reflow="true">
 
-                <!-- Laufnummer -->
+                <!-- Sequence number -->
                 <p:column headerText="Nr" style="width:4%; text-align:center;" priority="6">
                     <h:outputText value="#{ri + 1}"/>
                 </p:column>
 
-                <!-- Methodensignatur -->
+                <!-- Method signature -->
                 <p:column headerText="#{i18n.t('Methode')}"
                           style="width:40%"
                           filterBy="#{row[1].replace(', ms.','').replace('ch.plaintext.','')}"
@@ -63,7 +63,7 @@
                     </h:outputText>
                 </p:column>
 
-                <!-- Durchschnitt (ms) -->
+                <!-- Average (ms) -->
                 <p:column headerText="#{i18n.t('Durchschnitt')} (ms)"
                           style="width:8%; text-align:right;"
                           sortBy="#{row[3]}"
@@ -93,7 +93,7 @@
                     </h:outputText>
                 </p:column>
 
-                <!-- Letzter Aufruf -->
+                <!-- Last call -->
                 <p:column headerText="#{i18n.t('Letzter Aufruf')}"
                           style="width:12%; text-align:right;"
                           sortBy="#{row[13]}"

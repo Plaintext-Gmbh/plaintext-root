@@ -15,20 +15,20 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 
 /**
- * Karte 664: stellt den Standard-{@link JtiRevocationChecker} bereit, der {@code revoke_api_token}
- * auch im JWT-Modus (app, guild, schuetu) wirksam macht.
+ * Card 664: provides the default {@link JtiRevocationChecker} that makes {@code revoke_api_token}
+ * effective in JWT mode as well (app, guild, schuetu).
  *
- * <p><b>Warum eine AutoConfiguration und kein {@code @Component}.</b> plaintext-schuetu bringt mit
- * {@code RevokedTokenService} bereits eine eigene Implementierung desselben Interface mit. Eine
- * zweite Bean hätte dort {@code ObjectProvider.getIfAvailable()} in
- * {@code McpBearerTokenFilterConfig} eine {@code NoUniqueBeanDefinitionException} werfen lassen —
- * ein Startfehler in schuetu, ausgelöst von einem Patch in root. {@code @ConditionalOnMissingBean}
- * löst genau das: Wo eine App eine eigene Blocklist betreibt, tritt diese hier zurück.</p>
+ * <p><b>Why an AutoConfiguration and not a {@code @Component}.</b> With
+ * {@code RevokedTokenService}, plaintext-schuetu already ships its own implementation of the same
+ * interface. A second bean would have made {@code ObjectProvider.getIfAvailable()} in
+ * {@code McpBearerTokenFilterConfig} throw a {@code NoUniqueBeanDefinitionException} there —
+ * a startup failure in schuetu, triggered by a patch in root. {@code @ConditionalOnMissingBean}
+ * solves exactly that: wherever an app runs its own blocklist, this one steps back.</p>
  *
- * <p>Die Reihenfolge stimmt dabei verlässlich, und das ist der Grund für die AutoConfiguration:
- * Sie wird garantiert <em>nach</em> dem Component-Scan der Anwendung ausgewertet, sieht die
- * App-eigene Bean also bereits. Ein {@code @ConditionalOnMissingBean} in einer gewöhnlichen
- * {@code @Configuration} wäre von der Scan-Reihenfolge abhängig und damit ein Zufallsergebnis.</p>
+ * <p>The ordering is reliable in this setup, and that is the reason for the AutoConfiguration:
+ * it is guaranteed to be evaluated <em>after</em> the application's component scan, so it already
+ * sees the app's own bean. A {@code @ConditionalOnMissingBean} in an ordinary
+ * {@code @Configuration} would depend on the scan order and thus be a matter of chance.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -37,10 +37,10 @@ import org.springframework.context.annotation.Bean;
 public class JtiRevocationAutoConfiguration {
 
     /**
-     * @param lookup der leak-freie JDBC-Zugriff auf {@code api_token} (Karte 659). Ohne ihn gibt es
-     *               keinen sinnvollen Standard-Checker — deshalb {@code @ConditionalOnBean}: Eine
-     *               App ohne dieses Modul im Betrieb bekommt gar keine Bean und verhält sich wie
-     *               vorher, statt beim Start an einer fehlenden Abhängigkeit zu scheitern.
+     * @param lookup the leak-free JDBC access to {@code api_token} (card 659). Without it there is
+     *               no meaningful default checker — hence {@code @ConditionalOnBean}: an app that
+     *               does not run this module gets no bean at all and behaves as before, instead of
+     *               failing at startup on a missing dependency.
      */
     @Bean
     @ConditionalOnBean(ApiTokenRevocationLookup.class)

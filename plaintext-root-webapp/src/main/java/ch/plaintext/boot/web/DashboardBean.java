@@ -17,8 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Backing-Bean der Startseite (Dashboard). Baut bei jedem Seitenaufruf die sichtbaren
- * Modul-Kacheln auf – analog zum {@link MenuBean}, der das Menü-Modell pro View neu aufbaut.
+ * Backing bean of the start page (dashboard). Builds the visible module tiles on every
+ * page call - analogous to the {@link MenuBean}, which rebuilds the menu model per view.
  *
  * @author plaintext.ch
  */
@@ -40,7 +40,7 @@ public class DashboardBean implements Serializable {
             tiles = dashboardTileModelBuilder.buildTiles();
             log.debug("Dashboard initialisiert mit {} Kacheln", tiles.size());
         } catch (Exception e) {
-            // Defensive: Eine fehlerhafte Kachel darf die Startseite nicht mit Render-500 abschiessen
+            // Defensive: a faulty tile must not shoot down the start page with a render 500
             log.error("Fehler beim Aufbau des Dashboards: {}", e.getMessage(), e);
             tiles = new ArrayList<>();
         }
