@@ -19,10 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Shared linter guard against three JSF view pitfalls in ALL {@code src/main/resources/**}
+ * Shared linter guard against four JSF view pitfalls in ALL {@code src/main/resources/**}
  * {@code .xhtml} of the respective reactor (status report 29.08.2026, package R2).
  *
- * <p><b>The three incidents that make this test necessary:</b>
+ * <p><b>The four incidents that make this test necessary:</b>
  * <ol>
  *   <li><b>{@code <f:metadata>} after the first {@code <ui:define>}</b> — 20 root pages had the block
  *       inside a {@code ui:define} (title/content/page). The template
@@ -35,6 +35,11 @@ import static org.junit.jupiter.api.Assertions.fail;
  *   <li><b>{@code onchange="submit()"} on a {@code p:} component</b> — on the type selector of the
  *       data administration ({@code rootentities.xhtml}) PrimeFaces 15 triggered no request through
  *       it; the selection had no effect, no table appeared. The correct form is {@code <p:ajax>}.</li>
+ *   <li><b>Ajax search expression through a non-NamingContainer id</b> — {@code update=":fm:dlg:qEvent"}
+ *       in guild's {@code listen.xhtml}, where {@code dlg} is a {@code <p:dialog>}. JSF throws
+ *       {@code IllegalArgumentException: dlg} while rendering; for the user the dialog opens as an
+ *       empty shell and the modal overlay never lets go of the page (Daniel, 31.08.2026). Correct is
+ *       {@code ":fm:qEvent"} — the dialog creates no namespace.</li>
  * </ol>
  *
  * <p><b>Exceptions:</b> {@code <!-- jsf-view-ok -->} on the same line exempts a single hit (like
@@ -85,6 +90,8 @@ class PlaintextJsfViewLinterTest {
             msg.append("\nf:metadata gehoert direkt unter <ui:composition ...>, vor das erste <ui:define> und\n")
                .append("ausserhalb jedes <h:form> (Vorlage menudiagnose.xhtml). onchange=\"submit()\" an p:-\n")
                .append("Komponenten loest in PrimeFaces 15 nichts aus -> <p:ajax listener/update>.\n")
+               .append("Ein Suchausdruck darf in der Mitte nur NamingContainer passieren: p:dialog ist keiner,\n")
+               .append("\":fm:dlg:feld\" wirft beim Rendern IllegalArgumentException -> \":fm:feld\".\n")
                .append("Begruendete Ausnahme: <!-- ").append(JsfViewLinter.EXEMPT_COMMENT).append(" --> in derselben\n")
                .append("Zeile oder Eintrag '").append(ALLOWLIST_REGEL).append(" <pfad>  # <Grund>' in ")
                .append(ArchAllowlist.DATEINAME).append(".\n");
@@ -173,6 +180,52 @@ class PlaintextJsfViewLinterTest {
                 "badSubmit: beide Schreibweisen muessen erkannt werden: " + violations);
         assertTrue(violations.stream().noneMatch(v -> v.file().getFileName().toString().startsWith("ok")),
                 "ok*-Dateien duerfen keinen Verstoss liefern: " + violations);
+    }
+
+    @Test
+    void linterErkenntSuchausdruckDurchNichtNamingContainer(@TempDir Path tmp) throws IOException {
+        Path res = Files.createDirectories(tmp.resolve("META-INF/resources"));
+
+        // Verstoss: der Ausdruck laeuft durch die ID eines p:dialog — genau der guild-Fall vom 31.08.2026.
+        Files.writeString(res.resolve("badDialog.xhtml"), """
+                <h:form id="fm">
+                    <p:dialog id="dlg" widgetVar="dlgListe">
+                        <p:toggleSwitch id="qEvents" value="#{bean.a}">
+                            <p:ajax update=":fm:dlg:qEvent" process="@this"/>
+                        </p:toggleSwitch>
+                        <p:selectOneMenu id="qEvent" value="#{bean.b}"/>
+                    </p:dialog>
+                </h:form>
+                """);
+        // KEIN Verstoss: derselbe Aufbau, aber ohne den Dialog im Pfad — so ist es richtig.
+        Files.writeString(res.resolve("okDialog.xhtml"), """
+                <h:form id="fm">
+                    <p:dialog id="dlg" widgetVar="dlgListe">
+                        <p:toggleSwitch id="qEvents" value="#{bean.a}">
+                            <p:ajax update=":fm:qEvent" process="@this"/>
+                        </p:toggleSwitch>
+                        <p:selectOneMenu id="qEvent" value="#{bean.b}"/>
+                    </p:dialog>
+                    <p:commandButton update=":fm:dlg" oncomplete="PF('dlgListe').show()"/>
+                </h:form>
+                """);
+        // KEIN Verstoss: ein dataTable IST ein NamingContainer und darf in der Mitte stehen.
+        Files.writeString(res.resolve("okTabelle.xhtml"), """
+                <h:form id="fm">
+                    <p:dataTable id="tbl" var="z" value="#{bean.zeilen}">
+                        <p:column><p:inputText id="feld" value="#{z.wert}"/></p:column>
+                    </p:dataTable>
+                    <p:commandButton update=":fm:tbl:feld"/>
+                </h:form>
+                """);
+
+        List<Violation> violations = JsfViewLinter.scan(res);
+
+        assertEquals(1, violations.size(), "Erwartet genau einen Verstoss, gefunden: " + violations);
+        assertTrue(hat(violations, "badDialog.xhtml", JsfViewLinter.RULE_SUCHAUSDRUCK_DURCH_NICHT_CONTAINER),
+                "badDialog muss gemeldet werden: " + violations);
+        assertTrue(violations.get(0).message().contains("dlg"),
+                "Die Meldung muss die schuldige ID nennen: " + violations.get(0).message());
     }
 
     @Test

@@ -61,6 +61,9 @@ public final class JsfViewLinter {
     /** Rule identifier: onchange="submit()" / "this.form.submit()" on a p: component. */
     public static final String RULE_ONCHANGE_SUBMIT = "onchange-submit-an-p-komponente";
 
+    /** Rule identifier: an Ajax search expression runs through the id of a non-NamingContainer. */
+    public static final String RULE_SUCHAUSDRUCK_DURCH_NICHT_CONTAINER = "suchausdruck-durch-nicht-namingcontainer";
+
     /** Opt-out marker as an inline comment on the same line as the reported tag. */
     public static final String EXEMPT_COMMENT = "jsf-view-ok";
 
@@ -79,6 +82,23 @@ public final class JsfViewLinter {
     private static final Pattern P_ONCHANGE_SUBMIT = Pattern.compile(
             "<p:[A-Za-z]+\\b[^>]*\\bonchange\\s*=\\s*\"\\s*(?:this\\.form\\.)?submit\\(\\)\\s*;?\\s*\"",
             Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Tags, die KEIN NamingContainer sind und deshalb in der Mitte eines Suchausdrucks nichts zu
+     * suchen haben. Bewusst als Positivliste der haeufigen Irrtuemer gefuehrt: {@code p:dialog} ist
+     * der Klassiker (es sieht aus wie ein Container, ist aber keiner).
+     */
+    private static final List<String> NICHT_NAMING_CONTAINER = List.of(
+            "dialog", "panel", "fieldset", "outputPanel", "panelGrid", "panelGroup", "accordionPanel",
+            "toolbar", "card", "divider", "fragment", "overlayPanel", "confirmDialog");
+
+    /** Oeffnendes Tag mit id-Attribut — beliebiges Praefix, damit p:, h: und ui: gleich behandelt werden. */
+    private static final Pattern TAG_MIT_ID = Pattern.compile(
+            "<(?:p|h|ui):(\\w+)\\b[^>]*?\\bid=\"([^\"]+)\"", Pattern.DOTALL);
+
+    /** {@code update="..."} / {@code process="..."} samt Inhalt. */
+    private static final Pattern AJAX_ZIEL = Pattern.compile(
+            "\\b(update|process)\\s*=\\s*\"([^\"]*)\"", Pattern.CASE_INSENSITIVE);
 
     private JsfViewLinter() {
     }
@@ -135,6 +155,7 @@ public final class JsfViewLinter {
 
         pruefeMetadata(file, original, content, violations);
         pruefeOnchangeSubmit(file, original, content, violations);
+        pruefeSuchausdruecke(file, original, content, violations);
     }
 
     /** Rules 1 and 2 — both hinge on the position of the first {@code <f:metadata}. */
@@ -181,6 +202,60 @@ public final class JsfViewLinter {
                             + "aus, die Auswahl bleibt wirkungslos (belegt in rootentities.xhtml). Fix: "
                             + "<p:ajax listener=\"#{bean.xyz}\" update=\"...\"/> verwenden, oder mit <!-- "
                             + EXEMPT_COMMENT + " --> in derselben Zeile begruendet ausnehmen."));
+        }
+    }
+
+    /**
+     * Rule 4 — an Ajax search expression runs through the id of a component that is not a NamingContainer.
+     *
+     * <p>Observed on 31.08.2026 in guild: {@code <p:ajax update=":fm:dlg:qEvent"/>} where {@code dlg}
+     * is a {@code <p:dialog>}. JSF throws {@code IllegalArgumentException: dlg} while <em>rendering</em>
+     * ({@code UIComponentBase.findComponent}) — only NamingContainers may appear in the middle of an
+     * expression. What the user sees: the dialog opens as an empty shell (header, no content) and the
+     * modal overlay stays put, leaving the page dead. That was exactly Daniel's report on
+     * {@code listen.xhtml}.
+     *
+     * <p>Only components declared in the same file are considered; an expression pointing at an id
+     * that does not occur here may come from elsewhere and is not judged.
+     */
+    private static void pruefeSuchausdruecke(Path file, String original, String content, List<Violation> violations) {
+        // Collect the ids of this file's non-NamingContainer components.
+        java.util.Map<String, String> nichtContainer = new java.util.HashMap<>();
+        Matcher tag = TAG_MIT_ID.matcher(content);
+        while (tag.find()) {
+            if (NICHT_NAMING_CONTAINER.contains(tag.group(1))) {
+                nichtContainer.put(tag.group(2), tag.group(1));
+            }
+        }
+        if (nichtContainer.isEmpty()) {
+            return;
+        }
+        Matcher ziel = AJAX_ZIEL.matcher(content);
+        while (ziel.find()) {
+            for (String einzel : ziel.group(2).trim().split("[\\s,]+")) {
+                if (!einzel.contains(":")) {
+                    continue;
+                }
+                String[] stuecke = einzel.split(":");
+                // Everything but the last segment must be a NamingContainer.
+                for (int i = 0; i < stuecke.length - 1; i++) {
+                    String tagName = nichtContainer.get(stuecke[i]);
+                    if (tagName == null) {
+                        continue;
+                    }
+                    int lineNo = lineNumberAt(original, ziel.start());
+                    if (lineContent(original, lineNo).contains(EXEMPT_COMMENT)) {
+                        continue;
+                    }
+                    violations.add(new Violation(file, lineNo, RULE_SUCHAUSDRUCK_DURCH_NICHT_CONTAINER,
+                            ziel.group(1) + "=\"" + einzel + "\" runs through '" + stuecke[i]
+                                    + "', which is a <" + tagName + "> — not a NamingContainer. JSF throws "
+                                    + "IllegalArgumentException: " + stuecke[i] + " while rendering; the dialog "
+                                    + "stays empty and the overlay blocks the page. Fix: drop the intermediate "
+                                    + "segment (\":fm:" + stuecke[stuecke.length - 1] + "\"), or exempt it with <!-- "
+                                    + EXEMPT_COMMENT + " --> on the same line."));
+                }
+            }
         }
     }
 
