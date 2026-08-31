@@ -1,0 +1,77 @@
+/*
+ * Copyright (C) plaintext.ch, 2026.
+ *
+ * Aussehen des Bedienbereichs einer Tabelle (META-INF/tags/tableSettings.xhtml).
+ *
+ * Warum eine eigene Datei und nicht theme.css: das Tag ist optional. Wer es nicht benutzt, laedt
+ * diese Datei auch nicht — h:outputStylesheet steht im Tag selbst und wird von Faces je Seite
+ * genau einmal ausgeliefert, egal wie oft das Tag vorkommt.
+ *
+ * Die Farben sind bewusst als CSS-Variablen mit Rueckfallwert geschrieben: eine App mit eigenem
+ * Theme setzt --pt-tablesettings-* um und muss keine Regel ueberschreiben.
+ */
+
+.pt-tablesettings-block {
+    margin-bottom: 12px;
+    padding: 8px;
+    background: var(--pt-tablesettings-bg, #f8fafc);
+    border: 1px solid var(--pt-tablesettings-border, #e2e8f0);
+    border-radius: 4px;
+}
+
+.pt-tablesettings-label {
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.pt-tablesettings-hint {
+    margin-left: 12px;
+    color: var(--pt-tablesettings-hint, #64748b);
+    font-size: 0.85em;
+}
+
+.pt-tablesettings-meldung {
+    display: block;
+    margin-top: 6px;
+    color: var(--pt-tablesettings-ok, #1a7f37);
+    font-weight: bold;
+}
+
+/* Setzen-Knopf im Spaltenkopf - schmal, damit er neben Titel, Sortierpfeil und Ziehgriff
+   ueberhaupt noch Platz hat. */
+.ui-datatable thead th .pt-tablesettings-setzen {
+    float: right;
+    width: 13px;
+    height: 20px;
+    margin: 0 1px 0 0;
+    cursor: pointer;
+    text-align: center;
+    font-size: 10px;
+    line-height: 20px;
+    color: var(--pt-tablesettings-hint, #94a3b8);
+    user-select: none;
+}
+
+.ui-datatable thead th .pt-tablesettings-setzen:hover {
+    color: var(--pt-tablesettings-akzent, #2563eb);
+    background: var(--pt-tablesettings-akzent-bg, #dbeafe);
+}
+
+/* Der Anfasser zum Spaltenziehen ist im Theme unsichtbar - man muss ihn erraten. Zwei Striche
+   genuegen, damit sichtbar wird, dass hier gezogen werden kann. */
+.ui-datatable thead th .ui-column-resizer {
+    width: 18px;
+    cursor: col-resize;
+    background:
+        linear-gradient(to right, transparent 4px, #94a3b8 4px, #94a3b8 5px,
+                        transparent 5px, transparent 8px, #94a3b8 8px,
+                        #94a3b8 9px, transparent 9px);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 18px 65%;
+}
+
+.ui-datatable thead th .ui-column-resizer:hover {
+    background-color: var(--pt-tablesettings-akzent-bg, #dbeafe);
+    outline: 1px solid var(--pt-tablesettings-akzent-hell, #60a5fa);
+}
