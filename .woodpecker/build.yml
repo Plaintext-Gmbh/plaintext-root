@@ -212,8 +212,10 @@ steps:
       # only in the script so that the address is visible at ONE place in this repo; the
       # script carries the same value merely as a fallback.
       REPORT_BASE_URL: "http://192.168.1.224:1155"
-      # Runs kept per repo (proposal from card 1018, open question 2). One root report weighs
-      # around 12 MB, so 30 runs are roughly 360 MB per repo.
+      # Runs kept per repo (proposal from card 1018, open question 2). Measured on
+      # pipeline 52: one root report is 24.9 MB, so 30 runs are about 750 MB. /volume1 had
+      # 4.9 TB free on 31.08.2026 — the limit exists so the directory does not grow without
+      # end, not because the space is tight.
       REPORT_KEEP: "30"
     commands:
       - . .woodpecker/waechter.sh
