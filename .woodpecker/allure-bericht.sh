@@ -79,13 +79,40 @@ while IFS= read -r x; do
 done < "$LISTE"
 rm -f "$LISTE"
 
-# NO EMPTY REPORT IS REPORTED GREEN. Same reasoning as the browser guard in
-# playwright.yml: an empty page looks like "all fine". The most common real reason for
-# zero files is a compile error BEFORE the first test — the build step is red already
-# then, and these lines say why no numbers follow.
+# ── 1b. Zero files: cache hit or genuine breakage? ──────────────────────────
+# NO EMPTY REPORT IS REPORTED GREEN — an empty page looks like "all fine" (same reasoning
+# as the browser guard in playwright.yml). But "no XML" has two very different causes, and
+# turning red for the harmless one would make this step noise within a week:
+#
+#   (a) THE BUILD CACHE RESTORED EVERYTHING. A pull request that touches no Java file
+#       rebuilds no module, so no test runs and no report can exist. Measured on
+#       31.08.2026 in pipeline 50 of this very branch: `mvn install` green in three
+#       minutes, `*/target/surefire-reports/` absent entirely.
+#       `.mvn/maven-build-cache-config.xml` now carries `attachedOutputs`, so a restored
+#       module brings its XML with it — but only for entries written AFTER that change.
+#       Until the cache has turned over, case (a) still happens, and it is not an error.
+#   (b) THE BUILD BROKE BEFORE THE FIRST TEST, or an `mvn clean` after the tests emptied
+#       target/. That IS an error, and it must not hide behind case (a).
+#
+# The two are told apart by the cache extension's own report: it lists every module with
+# <checksumMatched>. All matched = nothing was rebuilt.
 if [ "$ANZAHL" -eq 0 ]; then
+  BERICHT=$(find . -path "*/target/maven-incremental/cache-report*.xml" | head -1)
+  MODULE=0; GETROFFEN=0
+  if [ -n "$BERICHT" ]; then
+    MODULE=$(grep -c "<project>" "$BERICHT" || true)
+    GETROFFEN=$(grep -c "<checksumMatched>true</checksumMatched>" "$BERICHT" || true)
+  fi
+  if [ "$MODULE" -gt 0 ] && [ "$MODULE" -eq "$GETROFFEN" ]; then
+    echo "No test report for this run: all $MODULE modules came out of the build cache,"
+    echo "so no test was executed. That is not an error — see the last report at"
+    echo "$REPORT_BASE_URL/$REPO/latest/ ."
+    exit 0
+  fi
   echo "ERROR: not a single JUnit XML found." >&2
   echo "       Searched: */target/surefire-reports/*.xml and */target/failsafe-reports/*.xml" >&2
+  echo "       $GETROFFEN of $MODULE modules came from the build cache, so this is NOT the" >&2
+  echo "       harmless 'nothing was rebuilt' case." >&2
   echo "       Most common cause: the build broke before the first test (compile error)." >&2
   echo '       Second most common: an "mvn clean" AFTER the tests emptied target/.' >&2
   exit 1
@@ -138,9 +165,13 @@ fi
 ALLURE_BIN="/opt/allure/allure-$ALLURE_VERSION/bin/allure"
 if [ ! -x "$ALLURE_BIN" ]; then
   echo "Fetching allure-commandline $ALLURE_VERSION (from ~/.m2, otherwise Maven Central)…"
-  mvn -q -B org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
+  # `cd /tmp` is deliberate: run from the workspace, Maven would load the 24-module reactor
+  # plus .mvn/extensions.xml and .mvn/maven.config just to copy one zip — slower, and every
+  # way that reactor can fail would take the report down with it. Outside a project Maven
+  # resolves the artifact straight into ~/.m2 and stops.
+  ( cd /tmp && mvn -q -B org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
       -Dartifact="io.qameta.allure:allure-commandline:$ALLURE_VERSION:zip" \
-      -DoutputDirectory=/tmp/allure-dl
+      -DoutputDirectory=/tmp/allure-dl )
   mkdir -p /opt/allure
   # `jar xf` instead of `unzip`: the maven image is guaranteed to have a JDK, unzip not.
   (cd /opt/allure && jar xf "/tmp/allure-dl/allure-commandline-$ALLURE_VERSION.zip")
