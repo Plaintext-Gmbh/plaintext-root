@@ -93,7 +93,7 @@
                         <h:outputLabel value="Zur Bestätigung Modulnamen eingeben:"/>
                         <p:inputText id="bestaetigung" value="#{modulesBackingBean.clearBestaetigung}"
                                      placeholder="#{modulesBackingBean.clearModuleDisplayName}">
-                            <p:ajax event="keyup" update=":fm:dlgClear:btnClear" process="@this"/>
+                            <p:ajax event="keyup" update=":fm:btnClear" process="@this"/>
                         </p:inputText>
                     </h:panelGrid>
                 </p:outputPanel>
