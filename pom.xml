@@ -12,7 +12,7 @@
 
     <groupId>ch.plaintext</groupId>
     <artifactId>plaintext-root-parent</artifactId>
-    <version>1.652.0</version>
+    <version>1.657.0</version>
     <packaging>pom</packaging>
 
     <name>plaintext-root-parent</name>
@@ -57,6 +57,10 @@
         <!-- JSF & Primefaces -->
         <primefaces-spring-boot-starter.version>6.1.0</primefaces-spring-boot-starter.version>
         <primefaces.version>15.0.15</primefaces.version>
+        <!-- Mindestens 4.1.13: dort schliesst Mojarra CVE-2026-46581 (Pfad-Traversal/RCE ueber
+             ui:include, CVSS 7.5). Nicht zurueckdrehen. Die Kehrseite derselben Haertung —
+             Facelet-Verweise brauchen seither einen fuehrenden "/" — haelt der Test
+             FaceletPfadInvariantTest (plaintext-root-webapp) fest, dort steht die Begruendung. -->
         <jakarta.faces.version>4.1.15</jakarta.faces.version>
 
         <!-- Cron & Scheduling -->

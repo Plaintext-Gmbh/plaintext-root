@@ -37,6 +37,21 @@ class VaultwardenValueResolver {
     /** Value prefix that marks a vault reference. */
     static final String VAULT_PREFIX = "vault:";
 
+    /**
+     * Second value prefix: the same mechanism, but against OpenBao instead of Vaultwarden
+     * (card 995). Syntax: {@code bao:<path>} or {@code bao:<path>#<field>}; without a field
+     * {@code value} applies.
+     *
+     * <p><b>Additive, and deliberately so:</b> every existing {@code vault:} value stays
+     * untouched and keeps going through Vaultwarden. A property migrates one at a time by
+     * rewriting its value from {@code vault:} to {@code bao:} — no cut-off date, no big bang,
+     * and the way back is the same line in reverse.</p>
+     */
+    static final String BAO_PREFIX = "bao:";
+
+    /** Field a {@code bao:} reference reads when it carries no selector. */
+    static final String BAO_DEFAULT_FELD = "value";
+
     /** Selector separator between the item name and the field selector. */
     private static final char SELECTOR_SEP = '#';
 
@@ -69,23 +84,36 @@ class VaultwardenValueResolver {
     }
 
     private final Supplier<VaultwardenSecretService> serviceSupplier;
+    /** Supplies the OpenBao client — lazy like the Vaultwarden service, and for the same reason. */
+    private final Supplier<OpenBaoClient> baoSupplier;
     private final Schlaefer schlaefer;
     /** Values resolved per boot (key = the complete raw value including the {@code vault:} prefix). */
     private final Map<String, String> cache = new ConcurrentHashMap<>();
     private volatile VaultwardenSecretService service;
 
     VaultwardenValueResolver(Supplier<VaultwardenSecretService> serviceSupplier) {
-        this(serviceSupplier, Thread::sleep);
+        this(serviceSupplier, () -> null, Thread::sleep);
     }
 
     VaultwardenValueResolver(Supplier<VaultwardenSecretService> serviceSupplier, Schlaefer schlaefer) {
+        this(serviceSupplier, () -> null, schlaefer);
+    }
+
+    VaultwardenValueResolver(Supplier<VaultwardenSecretService> serviceSupplier,
+                             Supplier<OpenBaoClient> baoSupplier, Schlaefer schlaefer) {
         this.serviceSupplier = serviceSupplier;
+        this.baoSupplier = baoSupplier;
         this.schlaefer = schlaefer;
     }
 
-    /** {@code true} when the value is a {@code vault:} reference. */
+    /** {@code true} when the value is a vault reference — {@code vault:} OR {@code bao:}. */
     static boolean isVaultReference(Object value) {
-        return value instanceof String s && s.startsWith(VAULT_PREFIX);
+        return value instanceof String s && (s.startsWith(VAULT_PREFIX) || s.startsWith(BAO_PREFIX));
+    }
+
+    /** {@code true} for {@code bao:} only — separates the two sources inside {@link #resolve}. */
+    static boolean isBaoReference(Object value) {
+        return value instanceof String s && s.startsWith(BAO_PREFIX);
     }
 
     /**
@@ -100,6 +128,12 @@ class VaultwardenValueResolver {
         String cached = cache.get(rawValue);
         if (cached != null) {
             return cached;
+        }
+
+        if (isBaoReference(rawValue)) {
+            String result = resolveBao(propertyName, rawValue);
+            cache.put(rawValue, result);
+            return result;
         }
 
         String spec = rawValue.substring(VAULT_PREFIX.length()).trim();
@@ -129,6 +163,59 @@ class VaultwardenValueResolver {
                 propertyName, itemName, fehlertext(kind, svc)));
         cache.put(rawValue, result);
         return result;
+    }
+
+    /**
+     * Resolves a {@code bao:} reference against OpenBao.
+     *
+     * <p>Syntax: {@code bao:<path>} reads the field {@code value}, {@code bao:<path>#<field>}
+     * reads another one. Deliberately plainer than the Vaultwarden syntax: there we have password,
+     * username and custom fields because a Bitwarden item has that structure. A KV v2 entry is a
+     * flat map — a second selector dialect would have modelled nothing that exists.</p>
+     *
+     * <p>Fail-fast like the Vaultwarden branch: a missing entry ends the startup instead of
+     * letting the application run on with an empty secret. Transient disturbances (network,
+     * HTTP 5xx, sealed vault) are retried beforehand — a sealed OpenBao is the normal case on a
+     * cold start, not the exception.</p>
+     */
+    private String resolveBao(String propertyName, String rawValue) {
+        String spec = rawValue.substring(BAO_PREFIX.length()).trim();
+        int sep = spec.indexOf(SELECTOR_SEP);
+        String pfad = (sep >= 0 ? spec.substring(0, sep) : spec).trim();
+        String feld = sep >= 0 ? spec.substring(sep + 1).trim() : BAO_DEFAULT_FELD;
+
+        if (pfad.isEmpty()) {
+            throw new VaultwardenPropertyResolutionException(propertyName, pfad, "leerer OpenBao-Pfad");
+        }
+        if (feld.isEmpty()) {
+            feld = BAO_DEFAULT_FELD;
+        }
+
+        OpenBaoClient client = baoSupplier.get();
+        if (client == null) {
+            throw new VaultwardenPropertyResolutionException(propertyName, pfad,
+                    "OpenBao ist nicht konfiguriert (plaintext.bao.enabled=false oder token-file fehlt)");
+        }
+
+        Optional<String> wert = client.lies(pfad, feld);
+        int versuch = 1;
+        while (wert.isEmpty() && client.letzterFehlerWarTransient() && versuch < BOOT_MAX_VERSUCHE) {
+            long warteMs = BOOT_WARTE_START_MS << (versuch - 1);
+            log.warn("OpenBao-Eintrag '{}' (Property '{}') nicht lesbar ({}). Boot-Retry {}/{} in {}s.",
+                    pfad, propertyName, client.letzterFehler(), versuch, BOOT_MAX_VERSUCHE - 1,
+                    warteMs / 1000);
+            try {
+                schlaefer.schlafe(warteMs);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            wert = client.lies(pfad, feld);
+            versuch++;
+        }
+
+        return wert.orElseThrow(() -> new VaultwardenPropertyResolutionException(
+                propertyName, pfad, "OpenBao: " + client.letzterFehler()));
     }
 
     /** Human-readable designation of the selector; throws on an unknown selector (fail fast). */

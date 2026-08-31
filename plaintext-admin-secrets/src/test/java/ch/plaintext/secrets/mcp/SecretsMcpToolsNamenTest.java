@@ -28,9 +28,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SecretsMcpToolsNamenTest {
 
-    /** The shipped tool names, as of 2026-08-03 before the renaming (card 489). */
+    /**
+     * The shipped tool names. As of 2026-08-03 before the renaming (card 489), extended on
+     * 2026-08-30 by the two backend tools (card 999).
+     */
     private static final Set<String> ERWARTETE_TOOLS = Set.of(
-            "set_secret"
+            "set_secret",
+            "set_secret_backend",
+            "secret_backend_status"
     );
 
     /** Reproduces the provider's rule: a set {@code name} wins, otherwise the method name. */
@@ -70,7 +75,7 @@ class SecretsMcpToolsNamenTest {
     /** Cross-check: without it the test would also be green if the reflection saw nothing at all. */
     @Test
     void diePruefungSiehtUeberhauptTools() {
-        assertEquals(1, ausgelieferteTools().size(),
+        assertEquals(3, ausgelieferteTools().size(),
                 "Die Anzahl der @McpTool-Methoden hat sich geaendert.");
     }
 

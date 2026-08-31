@@ -1,0 +1,934 @@
+<!doctype html>
+<!--
+    richList.html — Display Specification for a rich, user-configurable list/table.
+
+    Purpose: a reference template. When you want to build a list with per-user column
+    choice, adjustable column widths and saved profiles in one of the apps, read this
+    first. It captures the behaviour, the data model, the visible parts and — most
+    usefully — the measured traps that the code alone does not reveal.
+
+    The concrete example throughout is the ARC Runway table
+    (coreit-arch-inventar-app); every rule generalises to any rich list. Where a
+    reusable building block already exists, it is named (pt:tableSettings,
+    pt:colText/colDate/colAmount, pt:deleteButton in plaintext-root).
+
+    Written to be readable by both people and machines: plain structure, one idea per
+    section, code and identifiers left in their original form.
+
+    Source: translated to English from the "ARC Runway Anzeige-Spec" design note,
+    31 Aug 2026. Self-contained (only Google Fonts are loaded externally).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rich List — Display Specification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   Palette taken from the subject itself: the grey tones are those of the drag handle
+   (#94a3b8), of the hint text (#64748b) and of the column rules (#cbd5e1) from
+   arcrunway.xhtml. Caution and good colours are taken from the same source.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+    --ink:        #16202b;
+    --ink-soft:   #48586a;
+    --ink-faint:  #7c8b9c;
+    --paper:      #f4f6f8;
+    --surface:    #ffffff;
+    --surface-2:  #eef1f5;
+    --rule:       #cbd5e1;
+    --rule-soft:  #dfe5ec;
+    --accent:     #0d5c63;
+    --accent-ink: #0a4a50;
+    --accent-bg:  #e2f0f0;
+    --caution:    #8a5a12;
+    --caution-bg: #fbf1de;
+    --good:       #1a7f37;
+    --handle:     #94a3b8;
+
+    --f-display: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+    --f-body:    "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --f-mono:    "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --ink:        #e4eaf0;
+        --ink-soft:   #a8b6c4;
+        --ink-faint:  #7b8b9b;
+        --paper:      #10161d;
+        --surface:    #18212b;
+        --surface-2:  #202b37;
+        --rule:       #33414f;
+        --rule-soft:  #29343f;
+        --accent:     #5fbdb4;
+        --accent-ink: #8ad4cb;
+        --accent-bg:  #17332f;
+        --caution:    #d7a75a;
+        --caution-bg: #33291a;
+        --good:       #64c98a;
+        --handle:     #64748b;
+    }
+}
+
+:root[data-theme="dark"] {
+    --ink:        #e4eaf0;
+    --ink-soft:   #a8b6c4;
+    --ink-faint:  #7b8b9b;
+    --paper:      #10161d;
+    --surface:    #18212b;
+    --surface-2:  #202b37;
+    --rule:       #33414f;
+    --rule-soft:  #29343f;
+    --accent:     #5fbdb4;
+    --accent-ink: #8ad4cb;
+    --accent-bg:  #17332f;
+    --caution:    #d7a75a;
+    --caution-bg: #33291a;
+    --good:       #64c98a;
+    --handle:     #64748b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* -- Header: a measuring scale as a hairline, because this is about widths -- */
+.kopf {
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+}
+.kopf-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 46px 28px 0;
+}
+.eyebrow {
+    font-family: var(--f-display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+}
+h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(2.1rem, 5vw, 3.1rem);
+    line-height: 1.06;
+    letter-spacing: -0.015em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+}
+.lede {
+    max-width: 62ch;
+    color: var(--ink-soft);
+    margin: 0 0 26px;
+}
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    padding-bottom: 22px;
+}
+.meta b { color: var(--ink-soft); font-weight: 500; }
+
+/* The scale: an 18px grid, matching the width of the drag handle. */
+.skala {
+    height: 9px;
+    background-image: repeating-linear-gradient(to right,
+        var(--rule) 0 1px, transparent 1px 18px);
+    opacity: 0.85;
+}
+
+/* -- Layout scaffold -- */
+.wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 44px 28px 96px;
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-top: 30px; }
+    nav.index { position: static; }
+}
+
+nav.index {
+    position: sticky;
+    top: 26px;
+    font-family: var(--f-display);
+    font-size: 13.5px;
+}
+nav.index h2 {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin: 0 0 12px;
+}
+nav.index ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+nav.index li.teil {
+    margin-top: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+}
+nav.index li.teil:first-child { margin-top: 0; }
+nav.index a {
+    display: flex;
+    gap: 9px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 2px 0;
+    border-radius: 3px;
+}
+nav.index a:hover { color: var(--accent); }
+nav.index a .code {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    min-width: 22px;
+    padding-top: 1px;
+}
+nav.index a:hover .code { color: var(--accent); }
+nav.index a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+main { min-width: 0; }
+
+/* -- Sections. The marker is the drag handle: two vertical strokes. -- */
+section { margin: 0 0 54px; scroll-margin-top: 22px; }
+
+.teil-titel {
+    font-family: var(--f-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 64px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent);
+}
+.teil-titel:first-child { margin-top: 0; }
+
+h2 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 1.62rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+    padding-left: 20px;
+    position: relative;
+    text-wrap: balance;
+}
+/* The handle marker: two 1px strokes 3px apart, as in the original. */
+h2::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.28em;
+    bottom: 0.22em;
+    width: 5px;
+    background-image: linear-gradient(to right,
+        var(--handle) 0 1px, transparent 1px 4px, var(--handle) 4px 5px);
+}
+h2 .code {
+    font-family: var(--f-mono);
+    font-size: 0.68em;
+    color: var(--ink-faint);
+    margin-right: 10px;
+    font-weight: 400;
+}
+h3 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 1.12rem;
+    letter-spacing: 0.005em;
+    margin: 30px 0 10px;
+}
+
+p { max-width: 68ch; margin: 0 0 15px; }
+main > section > p:last-child { margin-bottom: 0; }
+strong { font-weight: 600; }
+em { font-style: italic; }
+
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+ul, ol { max-width: 68ch; margin: 0 0 15px; padding-left: 1.3em; }
+li { margin-bottom: 7px; }
+ol.gemessen { counter-reset: falle; list-style: none; padding-left: 0; }
+ol.gemessen > li {
+    counter-increment: falle;
+    position: relative;
+    padding-left: 42px;
+    margin-bottom: 16px;
+}
+ol.gemessen > li::before {
+    content: counter(falle);
+    position: absolute;
+    left: 0;
+    top: 1px;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    font-family: var(--f-mono);
+    font-size: 12px;
+    color: var(--accent-ink);
+    background: var(--accent-bg);
+    border-radius: 50%;
+}
+
+code {
+    font-family: var(--f-mono);
+    font-size: 0.855em;
+    background: var(--surface-2);
+    padding: 0.1em 0.34em;
+    border-radius: 3px;
+    word-break: break-word;
+}
+pre {
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+    line-height: 1.55;
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--handle);
+    border-radius: 4px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 0 0 20px;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* -- The callout box carries the same double stroke as the headings -- */
+.merke {
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-radius: 4px;
+    padding: 14px 18px 14px 22px;
+    margin: 0 0 20px;
+    max-width: 70ch;
+    position: relative;
+    overflow: hidden;
+}
+.merke::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 5px;
+    background-image: linear-gradient(to right,
+        var(--caution) 0 1px, transparent 1px 4px, var(--caution) 4px 5px);
+}
+.merke p:last-child { margin-bottom: 0; }
+.merke .marke {
+    display: block;
+    font-family: var(--f-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--caution);
+    margin-bottom: 6px;
+}
+
+/* -- Tables: numbers in columns, hence tabular-nums -- */
+.tabelle { overflow-x: auto; margin: 0 0 22px; }
+table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 460px;
+    font-family: var(--f-display);
+    font-size: 14.5px;
+}
+caption {
+    text-align: left;
+    font-family: var(--f-display);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding-bottom: 8px;
+}
+th, td {
+    text-align: left;
+    padding: 8px 14px 8px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+}
+thead th {
+    font-weight: 600;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--rule);
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+td.zahl, th.zahl { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0; }
+td code { font-size: 0.9em; }
+.ja { color: var(--good); font-weight: 600; }
+.nein { color: var(--caution); font-weight: 600; }
+
+/* -- Checklist -- */
+.check { list-style: none; padding-left: 0; }
+.check li {
+    padding-left: 26px;
+    position: relative;
+    font-family: var(--f-display);
+    font-size: 15px;
+}
+.check li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0.42em;
+    width: 12px; height: 12px;
+    border: 1.5px solid var(--handle);
+    border-radius: 2px;
+}
+
+hr {
+    border: 0;
+    height: 1px;
+    background: var(--rule);
+    margin: 46px 0;
+}
+
+.fuss {
+    border-top: 1px solid var(--rule);
+    margin-top: 60px;
+    padding-top: 20px;
+    font-family: var(--f-mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    max-width: 68ch;
+}
+</style>
+</head>
+<body>
+<header class="kopf">
+    <div class="kopf-inner">
+        <p class="eyebrow">Specification &amp; Analysis</p>
+        <h1>Rich List — Display Specification</h1>
+        <p class="lede">Column choice, column widths and profiles — written down so the pattern can
+            be rebuilt in another project or adopted into the <code>pt:</code> taglib of
+            <code>plaintext-root</code>. Including the traps the code does not reveal on its own.
+            The concrete example throughout is the ARC Runway table
+            (<code>coreit-arch-inventar-app</code>); every rule generalises to any rich,
+            user-configurable list.</p>
+        <div class="meta">
+            <span><b>As of</b> 31 Aug 2026</span>
+            <span><b>Source</b> coreit-arch-inventar-app</span>
+            <span><b>Read</b> 3&nbsp;699 lines</span>
+        </div>
+    </div>
+    <div class="skala"></div>
+</header>
+
+<div class="wrap">
+
+<nav class="index">
+    <h2>Contents</h2>
+    <ol>
+        <li class="teil">Part A — Specification</li>
+        <li><a href="#a1"><span class="code">A1</span><span>The building blocks at a glance</span></a></li>
+        <li><a href="#a2"><span class="code">A2</span><span>Data model</span></a></li>
+        <li><a href="#a3"><span class="code">A3</span><span>Controls</span></a></li>
+        <li><a href="#a4"><span class="code">A4</span><span>Width mechanics</span></a></li>
+        <li><a href="#a5"><span class="code">A5</span><span>Handles and button</span></a></li>
+        <li><a href="#a6"><span class="code">A6</span><span>Reporting path to the server</span></a></li>
+        <li><a href="#a7"><span class="code">A7</span><span>Measured traps</span></a></li>
+        <li><a href="#a8"><span class="code">A8</span><span>Rebuild checklist</span></a></li>
+        <li><a href="#a9"><span class="code">A9</span><span>State of the taglib</span></a></li>
+        <li class="teil">Part B — Analysis</li>
+        <li><a href="#b1"><span class="code">B1</span><span>Measured inventory</span></a></li>
+        <li><a href="#b2"><span class="code">B2</span><span>What to improve</span></a></li>
+        <li><a href="#b3"><span class="code">B3</span><span>Duplicates</span></a></li>
+        <li><a href="#b4"><span class="code">B4</span><span>Suggested order</span></a></li>
+    </ol>
+</nav>
+
+<main>
+
+<p class="teil-titel">Part A — Specification</p>
+
+<section id="a1">
+    <h2><span class="code">A1</span>The building blocks at a glance</h2>
+<pre><code>┌─ p:fieldset id="cols" legend="Display"  (toggleable, state persisted) ──────────┐
+│  ┌─ Profile block ────────────────────────────────────────────────────────────┐ │
+│  │ Profile: [ Default          ▾ ]  [+ New]  [🗑 Delete]   hint text           │ │
+│  │                                                                            │ │
+│  │ Total width:   [ 1730 px ]  [Apply ⟳]    "Leave empty means: sum of…"      │ │
+│  │ Column width:  [   54 px ]               "The button in the column head …" │ │
+│  └────────────────────────────────────────────────────────────────────────────┘ │
+│  [All] [Default]  (+ page-specific quick toggles)                               │
+│                                                                                 │
+│  ☑ Summary  ☑ Key  ☑ Status  ☐ Future  ☑ Team  ☐ Type  ☑ Sprint  ☐ Repos        │
+│  ☑ PI 42    ☑ PI 43  ☐ PI 44 …                     (grid, 4 columns)            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+Table header, per column:
+   ┌───────────────────────────────┐
+   │ Summary        ▲   ↔  ┆┆      │   ↔  = Apply button (to the target width)
+   └───────────────────────────────┘   ┆┆ = drag handle (two vertical strokes)</code></pre>
+    <p>The drag handle is what people casually call "the dots": two fine vertical strokes at
+        65&nbsp;% of the header height, permanently visible. <strong>Permanently</strong> is a
+        decision, not carelessness — in the theme the handle is invisible, and anyone who does not
+        know a column can be dragged there will never discover it.</p>
+</section>
+
+<section id="a2">
+    <h2><span class="code">A2</span>Data model</h2>
+    <p>One state object per user and page, stored as JSON. The display-related fields:</p>
+    <div class="tabelle">
+    <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Meaning</th></tr></thead>
+        <tbody>
+            <tr><td><code>columnVisible</code></td><td><code>Map&lt;String,Boolean&gt;</code></td><td>visibility per column key; a missing entry means the page default</td></tr>
+            <tr><td><code>columnWidths</code></td><td><code>Map&lt;String,String&gt;</code></td><td>CSS width including unit, e.g. <code>owner → 180px</code></td></tr>
+            <tr><td><code>totalWidth</code></td><td><code>Integer</code></td><td>total width of the table; <code>null</code> means "compute from the columns"</td></tr>
+            <tr><td><code>targetColumnWidth</code></td><td><code>Integer</code></td><td>the value the Apply button sets a single column to</td></tr>
+            <tr><td><code>colsExpanded</code></td><td><code>boolean</code></td><td>whether the "Display" panel is open</td></tr>
+            <tr><td><code>profiles</code></td><td><code>Map&lt;String,Profile&gt;</code></td><td>named profiles</td></tr>
+            <tr><td><code>activeProfile</code></td><td><code>String</code></td><td>the profile applied most recently</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p>A <strong>profile</strong> is a snapshot of exactly four of these fields:
+        <code>columnWidths</code>, <code>columnVisible</code>, <code>totalWidth</code>,
+        <code>targetColumnWidth</code>. No more — filters, sorting and expanded rows belong to the
+        working state, not to the display.</p>
+    <p><strong>The column key is the contract</strong> between three places that know nothing about
+        each other: the page (which column is rendered), the stored state (which width belongs to
+        it) and the resize event. The last of these carries <em>no</em> column identifier, only the
+        header text — so every column carries its label, and the key is recovered from the header
+        text on resize.</p>
+    <div class="merke">
+        <span class="marke">A consequence you must know</span>
+        <p>Two columns of the same table must not share the same header text. Otherwise a dragged
+            width lands on the wrong column. For dynamic columns (<code>pi42</code>,
+            <code>pi43</code>, …) this is the only way at all — their component ID changes on every
+            render.</p>
+    </div>
+</section>
+
+<section id="a3">
+    <h2><span class="code">A3</span>The controls in detail</h2>
+
+    <h3>Profile selector</h3>
+    <p><code>p:selectOneMenu</code>, its values are the profile names. <strong>Selecting applies
+        immediately</strong> — a separate "Apply" button would be a needless second step. On first
+        use a <code>Default</code> profile is created automatically from the existing state, so that
+        "no profile" is never active.</p>
+
+    <h3>New / Delete</h3>
+    <p>"New" opens a dialog with a name field and creates a profile from the <em>current</em> state.
+        "Delete" removes only the profile; the working state stays exactly as it was. Afterwards a
+        profile is activated again.</p>
+
+    <h3>Automatic saving</h3>
+    <p>Every change to columns or widths is <strong>written to the active profile immediately</strong>.
+        Anyone working with a profile expects it to keep its state; a save button would be one extra
+        action for something no one deliberately wants to discard.</p>
+
+    <h3>Total width</h3>
+    <p>A number field with the unit <code> px</code>, lower bound 200. Empty means: the table
+        follows the sum of its columns and grows as you drag. A set value holds the table at that
+        width; dragging then only moves the boundary between two columns.</p>
+    <p>Beside it, <strong>one button with two jobs</strong>, whose label moves with the situation:</p>
+    <div class="tabelle">
+    <table>
+        <thead><tr><th>Situation</th><th>Label</th><th>Effect</th></tr></thead>
+        <tbody>
+            <tr><td>Entered width ≠ sum of columns</td><td><strong>Apply</strong></td><td>scales all visible columns proportionally to the value</td></tr>
+            <tr><td>Entered width = sum (or empty)</td><td><strong>Compute from columns</strong></td><td>clears <code>totalWidth</code>; the width follows the columns again</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p>When scaling proportionally, no column drops below <strong>44&nbsp;px</strong>. If the lower
+        bound breaks the arithmetic, <code>totalWidth</code> is discarded and the user is told the
+        smallest possible width ("At 800&nbsp;px, 6 columns would be too narrow — the smallest
+        possible width is 1042&nbsp;px"). This matters more than it looks: a field showing a number
+        that does not hold is worse than an empty one.</p>
+
+    <h3>Column width</h3>
+    <p>A second number field, lower bound 44. It is the value the Apply button in the column header
+        sets a <em>single</em> column to. The reason is mundane and yet the most used part of the
+        whole control: dragging by hand never hits the same pixel value twice. Anyone who wants
+        twelve PI columns to be equally wide will never get them equal by dragging.</p>
+
+    <h3>Values that are too small are discarded, not flagged</h3>
+    <p>A <code>&lt; 200</code> in the total width, or a <code>&lt; 44</code> in the column width,
+        sets the field to "empty" instead of raising a validation message. An error message on a
+        field that only configures the <em>display</em> would hold up the whole form — and the user
+        was not trying to submit anything here, only to nudge.</p>
+
+    <h3>Column choice</h3>
+    <p>A grid of checkboxes, four per row. Every change updates the table immediately and writes to
+        the active profile. Alongside, two quick toggles <strong>All</strong> and
+        <strong>Default</strong>; page-specific group toggles (the PI columns in ARC Runway,
+        "LeanIX" and "Attributes" in Applications) sit next to them.</p>
+    <div class="merke">
+        <span class="marke">PrimeFaces 15</span>
+        <p><code>layout="grid"</code> on <code>p:selectManyCheckbox</code> /
+            <code>p:selectOneRadio</code> has been removed and throws a
+            <code>FacesException</code> on render — the page stays blank, the build stays green. The
+            same grid is produced by <code>layout="responsive"</code> with <code>columns="4"</code>.
+            Found in production, 29 Aug 2026.</p>
+    </div>
+
+    <h3>Expand and collapse</h3>
+    <p>The state of the panel belongs in the <strong>persisted state</strong>, not in the bean: the
+        panel is re-rendered on every column change, and a value that only starts as "collapsed" in
+        the bean would collapse it every time — in the middle of setting things up.</p>
+</section>
+
+<section id="a4">
+    <h2><span class="code">A4</span>The width mechanics</h2>
+    <p>The table runs with <code>table-layout: fixed</code> and is allowed to run off to the right
+        and scroll, rather than redistributing its columns.</p>
+    <p><strong>Why the total width has to be set at all:</strong> with
+        <code>table-layout: fixed</code> the browser distributes the columns <em>proportionally</em>
+        across the table width. The set pixel values thereby become mere ratios. Measured: the sum
+        of the column requests was 1730&nbsp;px, column&nbsp;1 asked for 800&nbsp;px and rendered at
+        1029&nbsp;px. Only a table width equal to the sum makes the pixel values binding. The sum
+        comes from the bean, not from CSS — a <code>min-width: max-content</code> stood here first
+        and inflated the table regardless of the requests.</p>
+    <p><strong>No <code>white-space: nowrap</code> on the cells.</strong> PrimeFaces sets it
+        automatically with <code>resizableColumns</code>; long values then ran out beyond the set
+        width. A counter-rule is required.</p>
+</section>
+
+<section id="a5">
+    <h2><span class="code">A5</span>Handles and Apply button — the visible parts</h2>
+
+    <h3>Drag handle ("the dots")</h3>
+<pre><code>.ui-treetable thead th .ui-column-resizer {
+    width: 18px;
+    cursor: col-resize;
+    background: linear-gradient(to right,
+        transparent 4px, #94a3b8 4px, #94a3b8 5px,
+        transparent 5px, transparent 8px, #94a3b8 8px,
+        #94a3b8 9px, transparent 9px);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 18px 65%;
+}
+.ui-treetable thead th .ui-column-resizer:hover {
+    background-color: #dbeafe;
+    outline: 1px solid #60a5fa;
+}</code></pre>
+    <p>Two 1&nbsp;px strokes, 3&nbsp;px apart, centred, at 65&nbsp;% of the header height. On hover
+        the whole area colours in — so the click target is recognisable, not just the strokes.</p>
+    <div class="merke">
+        <span class="marke">Not position:relative on the th</span>
+        <p>PrimeFaces computes the drag position against the <code>offsetParent</code>; a relatively
+            positioned <code>th</code> becomes its own <code>offsetParent</code>, and the
+            coordinates then no longer match the table geometry — the handles are visible, but the
+            drag does not take hold.</p>
+    </div>
+
+    <h3>Apply button</h3>
+<pre><code>.ui-treetable thead th .arc-setzen {
+    float: right; width: 13px; height: 20px; margin: 0 1px 0 0;
+    cursor: pointer; text-align: center;
+    font-size: 10px; line-height: 20px;
+    color: #94a3b8; user-select: none;
+}</code></pre>
+    <p>The character <code>↔</code> (U+2194). 13&nbsp;px, because in the header of a 54&nbsp;px-wide
+        PI column the title, the sort arrow and the 18&nbsp;px drag handle are already sitting next
+        to it.</p>
+    <p>The button must intercept <code>mousedown</code> <strong>in the capture phase</strong>
+        (<code>addEventListener(…, true)</code>) and call <code>preventDefault</code> +
+        <code>stopPropagation</code> — otherwise a click also re-sorts the table.</p>
+
+    <h3>Column rules</h3>
+    <p><code>border-right: 1px solid #cbd5e1</code> on <em>all</em> header cells and body cells.
+        They also show where the grip sits. Previously they only surrounded one sub-range, with
+        gaps in between.</p>
+</section>
+
+<section id="a6">
+    <h2><span class="code">A6</span>The reporting path to the server</h2>
+    <p>Two <code>p:remoteCommand</code>, called from JavaScript:</p>
+    <div class="tabelle">
+    <table>
+        <thead><tr><th>Name</th><th>Parameters</th><th>Trigger</th></tr></thead>
+        <tbody>
+            <tr><td><code>reportColumnWidth</code></td><td><code>sp</code> = header text, <code>px</code> = width</td><td>Apply button, drag handle of the last column</td></tr>
+            <tr><td><code>reportTotalWidth</code></td><td><code>gb</code> = width</td><td>after every drag, once the sum has been recomputed</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p>On the server, <code>sp</code> is mapped back to the column key via <code>fromHeader()</code>;
+        an unknown header leads to a <strong>discard</strong>, not to storing under a made-up key.</p>
+    <div class="merke">
+        <span class="marke">Two mandatory settings, both dearly bought</span>
+        <p><code>partialSubmit="true"</code> — without it PrimeFaces submits the whole form, and on
+            large pages the profile name arrived empty, the column checkboxes counted as "off" one
+            after another, and the spinner ran forever.</p>
+        <p><code>process="@this"</code> — otherwise the whole form runs through validation.</p>
+    </div>
+</section>
+
+<section id="a7">
+    <h2><span class="code">A7</span>Measured traps</h2>
+    <p>This list is the real value of the document. Every point cost time once.</p>
+    <ol class="gemessen">
+        <li><strong><code>p:treeTable</code> has no <code>resizeMode</code>.</strong> The attribute
+            exists only on <code>p:dataTable</code>; <code>TreeTableBase</code> knows only
+            <code>resizableColumns</code> and <code>liveResize</code>. A
+            <code>resizeMode="expand"</code> on the TreeTable is silently ignored. The JavaScript,
+            however, reads <code>cfg.resizeMode</code> afresh on every drag — so the value has to be
+            patched onto the finished widget and <code>resize()</code> replaced. Root's
+            <code>resize()</code> always squeezes the neighbour, which is why a column could only be
+            dragged as far as the neighbour gave way.
+            <strong>With <code>p:dataTable</code> this drops away entirely</strong> —
+            <code>resizeMode="expand"</code> works natively. That is why the rebuild for
+            <code>p:dataTable</code> is much smaller than the original.</li>
+        <li><strong>The last column gets no handle.</strong> PrimeFaces creates it and hides it in
+            "fit" mode — it has to be shown again and given its own handlers. If a new
+            <code>span</code> is created without checking for the existing one, two end up side by
+            side.</li>
+        <li><strong><code>height: 100%</code> on a floated child without a parent height yields
+            0.</strong> The self-attached handle then hangs in the header but has no click area. Use
+            a fixed <code>height: 20px</code> as PrimeFaces does.</li>
+        <li><strong><code>p:inputNumber</code> puts its ID on a <code>span</code>.</strong> The
+            actual fields are called <code>&lt;id&gt;_input</code> (visible, formatted, with unit)
+            and <code>&lt;id&gt;_hinput</code> (raw). Reading the <code>span</code> yields
+            <code>undefined</code> — the button thought it was unconfigured and did nothing. The
+            value must come from the <em>DOM</em>, not from the bean: it may just have been typed and
+            not yet submitted.</li>
+        <li><strong>After every partial Ajax update the table header is a new DOM node.</strong>
+            Handles and buttons are then gone. A <code>MutationObserver</code> on
+            <code>document.body</code> re-installs them — it must be guarded against itself (only
+            insert where none exists yet) and <em>must never throw</em>, or the exception tears apart
+            a running partial update.</li>
+        <li><strong>On load alone the observer is not enough.</strong> PrimeFaces builds its widgets
+            in jQuery's ready phase, i.e. after <code>DOMContentLoaded</code>; the DOM does not
+            change after that, so the observer never fires. The original's remedy: five
+            <code>setTimeout</code> calls (400–2000&nbsp;ms) plus a <code>mousedown</code> listener
+            that re-installs reliably the first time a handle is touched.</li>
+        <li><strong><code>UIData.var</code> must be a literal.</strong> A forwarded
+            <code>var="#{var}"</code> throws <code>IllegalArgumentException</code> in
+            <code>UIData.setValueExpression</code> → HTTP 500. A tag file that spans a table has to
+            wire the row variable in directly.</li>
+        <li><strong>A tag file inherits the attributes of the surrounding tag file.</strong>
+            Optional attributes of inner tags must therefore not share names with attributes of the
+            outer one (<code>rendered</code>, <code>styleClass</code>, <code>rows</code>,
+            <code>emptyMessage</code>, …) — they need a prefix. Mandatory attributes are safe,
+            because they are always set.</li>
+        <li><strong>An unset attribute is not the same as a missing one.</strong> If a tag file
+            contains <code>sortBy="#{sortBy}"</code> and someone calls the tag without
+            <code>sortBy</code>, Facelets still creates an (empty) <code>ValueExpression</code> —
+            PrimeFaces sees a set <code>sortBy</code> and makes the column sortable <em>and</em>
+            filterable, complete with an input field in the header.</li>
+        <li><strong>No NamingContainer.</strong> A Facelet tag file is expanded inline while the tree
+            is built; a composite component, by contrast, wraps its content in a NamingContainer.
+            <code>p:column</code> must be a direct child of the table — which is why one way works
+            and the other does not.</li>
+    </ol>
+</section>
+
+<section id="a8">
+    <h2><span class="code">A8</span>Checklist for a rebuild</h2>
+    <h3>Server side</h3>
+    <ul class="check">
+        <li>state object with the seven fields from A2, storable as JSON, without framework ties</li>
+        <li>column description: key, header text, default width, default visibility</li>
+        <li>map header text → key, discard unknown headers</li>
+        <li>storage as an interface (<code>load(page)</code> / <code>save(page, state)</code>), not as an entity</li>
+        <li>lower bounds 44&nbsp;px / 200&nbsp;px, discard values that are too small rather than flagging them</li>
+        <li>proportional scaling with a lower bound and honest feedback</li>
+        <li>"one button, two jobs" with a moving label</li>
+        <li>limit the profile snapshot to exactly four fields</li>
+        <li>write to the active profile after every change</li>
+    </ul>
+    <h3>View side</h3>
+    <ul class="check">
+        <li><code>resizableColumns="true"</code> + <code>resizeMode="expand"</code> (with <code>p:dataTable</code> that is enough)</li>
+        <li><code>tableStyle</code> = total width from the bean</li>
+        <li><code>p:ajax event="colResize"</code> to the bean</li>
+        <li>make the drag handle visible (CSS from A5)</li>
+        <li>Apply button per header, intercept <code>mousedown</code> in the capture phase</li>
+        <li><code>p:remoteCommand</code> with <code>partialSubmit="true"</code> and <code>process="@this"</code></li>
+        <li><code>MutationObserver</code> + a guard against exceptions</li>
+        <li>checkboxes with <code>layout="responsive"</code>, not <code>grid</code></li>
+    </ul>
+</section>
+
+<section id="a9">
+    <h2><span class="code">A9</span>State of the <code>pt:</code> taglib</h2>
+    <p><code>plaintext-root</code> has had a proposal for this since 31 Aug 2026 —
+        <a href="https://github.com/Plaintext-Gmbh/plaintext-root/pull/161">PR #161</a>, not yet
+        merged:</p>
+    <div class="tabelle">
+    <table>
+        <thead><tr><th>Component</th><th>in <code>pt:tableSettings</code></th><th>Note</th></tr></thead>
+        <tbody>
+            <tr><td>Create / choose / delete profiles</td><td class="ja">yes</td><td></td></tr>
+            <tr><td>Column choice with All/Default</td><td class="ja">yes</td><td><code>layout="responsive"</code></td></tr>
+            <tr><td>Total width + "one button, two jobs"</td><td class="ja">yes</td><td></td></tr>
+            <tr><td>Target width + Apply button in the header</td><td class="ja">yes</td><td>JS in <code>plaintext-layout/js/table-settings.js</code></td></tr>
+            <tr><td>Drag handle visible</td><td class="ja">yes</td><td><code>plaintext-layout/css/table-settings.css</code></td></tr>
+            <tr><td>State + profiles server side</td><td class="ja">yes</td><td><code>ch.plaintext.boot.web.table.*</code></td></tr>
+            <tr><td>Storage</td><td class="ja">interface</td><td><code>TableStateStore</code> — the app decides</td></tr>
+            <tr><td>TreeTable special cases (A7.1–A7.3)</td><td class="nein">no</td><td>deliberately not — applies only to <code>p:treeTable</code></td></tr>
+            <tr><td>Dynamic columns (PI columns)</td><td class="nein">no</td><td><code>setColumns()</code> exists but is untested</td></tr>
+            <tr><td>Render test</td><td class="nein">no</td><td>the tag has never yet been rendered</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p>For a rebuild on <code>p:dataTable</code> the tag is the shorter path; for a
+        <code>p:treeTable</code>, A7.1–A7.3 remain hand work in every case.</p>
+</section>
+
+<hr>
+
+<p class="teil-titel">Part B — Analysis: improvements and duplicates</p>
+
+<section id="b1">
+    <h2><span class="code">B1</span>Measured inventory</h2>
+    <div class="tabelle">
+    <table>
+        <caption>58 views, 31 Aug 2026</caption>
+        <thead><tr><th>Finding</th><th class="zahl">Count</th></tr></thead>
+        <tbody>
+            <tr><td><code>p:dataTable</code> (opening tags)</td><td class="zahl"><strong>53</strong></td></tr>
+            <tr><td><code>p:treeTable</code></td><td class="zahl">1</td></tr>
+            <tr><td><code>p:fieldset</code></td><td class="zahl">82</td></tr>
+            <tr><td>inline <code>style="…"</code> attributes</td><td class="zahl"><strong>1106</strong></td></tr>
+            <tr><td>views with their own <code>&lt;style&gt;</code> block</td><td class="zahl">13</td></tr>
+            <tr><td>hand-written <code>margin-right:20px</code></td><td class="zahl">83</td></tr>
+            <tr><td><code>p:growl</code> per page</td><td class="zahl">9</td></tr>
+            <tr><td><code>p:confirmDialog global="true"</code> per page</td><td class="zahl"><strong>15</strong></td></tr>
+            <tr><td><code>filterMatchMode="contains"</code></td><td class="zahl">217</td></tr>
+            <tr><td>delete buttons, of which 26 with <code>p:confirm</code></td><td class="zahl">28</td></tr>
+            <tr><td>views with a shared display panel</td><td class="zahl">3</td></tr>
+            <tr><td><code>p:contextMenu</code></td><td class="zahl">1</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <div class="merke">
+        <span class="marke">Correction to an earlier figure</span>
+        <p>The commit message for the <code>inv:</code> taglib says "110 <code>p:dataTable</code>".
+            That was a line count and included closing tags. The correct figure is
+            <strong>53</strong> tables. The other numbers there (19&nbsp;×
+            <code>emptyMessage="-"</code>, 36 number columns in six widths, 106
+            <code>&lt;br/&gt;&lt;br/&gt;</code>) are element counts and are right.</p>
+    </div>
+</section>
+
+<section id="b2">
+    <h2><span class="code">B2</span>What should be improved in the UI</h2>
+    <h3>1. Percentage widths on columns (≈ 300 places)</h3>
+    <p><code>width:10%</code> (67 ×), <code>width:5%</code> (51 ×), <code>width:8%</code> (49 ×) …
+        Percent is the wrong unit for most of these columns: the width needed depends on the
+        content, not on the window width. On a table with eight columns, 5&nbsp;% is too little for
+        four-digit numbers; on one with three columns it is empty space.
+        → Pixels for columns with known content, auto for free text.</p>
+
+    <h3>2. 1106 inline <code>style</code> attributes</h3>
+    <p>Every change to the appearance is thereby a search across 58 files. The commonest patterns
+        (<code>margin-right</code>, <code>color:#64748b</code>, <code>font-size:0.85em</code>) have
+        long earned classes; some of them are already replaced by the <code>inv:</code> taglib.</p>
+
+    <h3>3. Fifteen own global <code>p:confirmDialog</code></h3>
+    <p><code>root</code> has provided one in the template since 1.651.0. As long as the per-page
+        copies remain, it cannot be adopted — two global dialogs on one page are a regression. The
+        replacement is mechanical but has to happen in one go.</p>
+
+    <h3>4. Nine own <code>p:growl</code></h3>
+    <p>Same picture, same replacement.</p>
+
+    <h3>5. The access guard is inline in the template</h3>
+    <p>Instead of an <code>access-denied</code> page, a 30-line block sits in the forked template.
+        <code>root</code> has the redirect; as long as the page is missing, the fork remains.</p>
+
+    <h3>6. Only one page has a context menu</h3>
+    <p>— and there the most-used action was missing until today. A right-click is a natural
+        expectation on tables; where there is a row action, it belongs in the context menu too, not
+        only in a column you first have to scroll to horizontally.</p>
+
+    <h3>7. Two implementations of the same display control</h3>
+    <p>ARC Runway (TreeTable, PI columns) and the <code>tablestate</code> module (DataTable) do the
+        same thing with separate code. That happened deliberately — no one wanted to pull the
+        TreeTable special cases into the generic path — but it remains a doubled place to maintain.
+        With <code>pt:tableSettings</code> in root it becomes, for a while, <strong>three</strong>.</p>
+</section>
+
+<section id="b3">
+    <h2><span class="code">B3</span>Duplicates and what they cost</h2>
+    <div class="tabelle">
+    <table>
+        <thead><tr><th>Duplicate</th><th>Scope</th><th>Replacement</th></tr></thead>
+        <tbody>
+            <tr><td>Display panel ARC Runway ↔ <code>tablestate</code></td><td>~2 × 300 lines of markup + ~2 × 550 lines of Java</td><td><code>pt:tableSettings</code>, ARC Runway last</td></tr>
+            <tr><td>Global ConfirmDialog per page</td><td>15 × 5 lines</td><td>root's <code>globalMessagesForm</code></td></tr>
+            <tr><td>Growl per page</td><td>9 × 1 line</td><td>ditto</td></tr>
+            <tr><td>Delete button + confirmation</td><td>26 × 6–8 lines</td><td><code>pt:deleteButton</code> (present in root, unused here)</td></tr>
+            <tr><td>Column "header text + one value"</td><td>roughly 400 columns</td><td><code>pt:colText</code> / <code>colDate</code> / <code>colAmount</code></td></tr>
+            <tr><td>Table-header defaults</td><td>53 tables</td><td><code>inv:liste</code> or <code>pt:table</code></td></tr>
+            <tr><td>Number column</td><td>36 (30 replaced)</td><td><code>inv:spalteNr</code> <span class="ja">✓</span></td></tr>
+            <tr><td>Doc link row</td><td>3 (replaced)</td><td><code>inv:seitenkopf</code> <span class="ja">✓</span></td></tr>
+            <tr><td>"Reset" / "reloadFromDB" / "Reload"</td><td>5+ (replaced)</td><td><code>inv:aktualisieren</code> <span class="ja">✓</span></td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p><strong>The single largest item</strong> is not the markup but the doubled Java logic behind
+        the display control: around 1100 lines that compute the same thing. Unifying them is the
+        work that pays off more than once — every correction to the width arithmetic has to be made
+        twice today, and that is exactly what was forgotten once last time.</p>
+</section>
+
+<section id="b4">
+    <h2><span class="code">B4</span>Suggested order</h2>
+    <ol>
+        <li><strong>Merge and release root PR #161</strong> — everything else is blocked until then.</li>
+        <li><strong>Lift the app onto <code>pt:tableSettings</code></strong>:
+            <code>includes/anzeige-einstellungen.xhtml</code> goes away, the three pages (code,
+            applications, projects) use the tag. In doing so the render test the tag lacks today
+            comes into being.</li>
+        <li><strong>Consolidate global messages</strong>: 15 ConfirmDialogs and 9 Growls out,
+            root's <code>globalMessagesForm</code> into the template. One go, one page of checking.</li>
+        <li><strong>Introduce <code>pt:deleteButton</code></strong> — 26 places, mechanical, and the
+            global dialog from step 3 is the precondition for it.</li>
+        <li><strong>Column tags</strong> onto the simple columns, page by page rather than in one go.</li>
+        <li><strong>ARC Runway last</strong> onto the shared path, with the TreeTable special cases
+            as a deliberately documented exception — or not at all, if the special cases eat the
+            gain.</li>
+        <li><strong>Percentage widths</strong> into pixel/auto, page by page, each checked visibly on
+            one page.</li>
+    </ol>
+    <p>Steps 3–5 are each small on their own and individually checkable. Steps 1 and 2 are the only
+        ones with a real dependency.</p>
+</section>
+
+<p class="fuss">Sources: arcrunway.xhtml (1006 lines), ArcRunwayBackingBean (1502),
+    ArcRunwayUserState (184), ArcRunwayColumns (89), ArcRunwayUserStateService (316).
+    Figures in Part B measured across all 58 views, 31 Aug 2026.</p>
+
+</main>
+</div>
+</body>
+</html>

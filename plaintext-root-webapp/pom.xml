@@ -6,7 +6,7 @@
     <parent>
         <groupId>ch.plaintext</groupId>
         <artifactId>plaintext-root-parent</artifactId>
-        <version>1.652.0</version>
+        <version>1.657.0</version>
     </parent>
 
     <artifactId>plaintext-root-webapp</artifactId>
@@ -202,10 +202,22 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- KEINE eigene <version> hier. Bis zum 30.08.2026 stand an dieser Stelle ein fest
+             verdrahtetes 4.1.9, waehrend das Eltern-POM ueber <jakarta.faces.version> laengst
+             4.1.14 verwaltete. Die beiden Stellen sind auseinandergelaufen, und weil die
+             Modul-Version die verwaltete schlaegt, lief die Anwendung auf 4.1.9 — fuenf
+             Versionen hinter dem, was das Eltern-POM zu setzen glaubte.
+
+             Was das angerichtet hat: Renovate sah ZWEI Stellen und machte ZWEI Pull Requests
+             (#153 auf diese Datei, #154 auf das Eltern-POM). #154 war gruen, weil die Zeile
+             hier den Effekt abfing; #153 war rot. Vor allem aber verdeckte das Auseinanderlaufen
+             CVE-2026-46581 (Mojarra, CVSS 7.5): der Fix steckt seit 4.1.13 im Code, das
+             Eltern-POM war mit 4.1.14 versorgt — die ausgelieferte Anwendung nicht.
+
+             Ohne <version> gilt die Verwaltung aus dem Eltern-POM. Eine Stelle, ein Renovate-PR. -->
         <dependency>
             <groupId>org.glassfish</groupId>
             <artifactId>jakarta.faces</artifactId>
-            <version>4.1.9</version>
         </dependency>
 
         <!-- === Database === -->
