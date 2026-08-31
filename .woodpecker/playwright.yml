@@ -226,6 +226,16 @@ steps:
     # no artifact storage — the reports therefore go into the step log instead of
     # a download. That is the honest substitute, not an equivalent feature
     # (see docs/CI.md, "When something is red").
+    #
+    # SINCE CARD 1018 THIS IS NO LONGER THE ONLY VIEW, but it is still the only one
+    # for THIS workflow: `build.yml` has a `testbericht` step that turns its JUnit XML
+    # into a clickable Allure report (docs/CI.md, "Test reports"). build.yml and
+    # playwright.yml do not share a workspace, so that report does not contain the
+    # browser tests. Two warnings if anyone wants to change that:
+    #   * the .txt files below LIE about @Nested classes ("Tests run: 0"); the numbers
+    #     live in the XML of the same directory. Anything new reads the XML.
+    #   * this step is `status: [failure]`; the Allure step is [success, failure],
+    #     because a report that only appears when things break has no trend to compare.
     when:
       - status: [failure]
     commands:
