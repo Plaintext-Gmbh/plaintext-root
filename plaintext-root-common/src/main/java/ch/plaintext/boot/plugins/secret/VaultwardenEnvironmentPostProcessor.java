@@ -86,8 +86,15 @@ public class VaultwardenEnvironmentPostProcessor implements EnvironmentPostProce
         // And NOW resolve all vault: references once and replace them in their source.
         // The lazy source alone is not enough: Spring Boot later hangs a source of its own in front
         // of it and passes the raw value through (see VaultwardenEagerResolution).
+        //
+        // Karte 995: der OpenBao-Client MUSS hier mitgegeben werden. Die Ein-Argument-Fassung des
+        // Konstruktors setzt den bao-Supplier auf () -> null — und weil GENAU DIESER Resolver die
+        // Referenzen im Betrieb aufloest (die traege PropertySource wird umgangen, siehe Kommentar
+        // oben), scheiterte jede bao:-Referenz mit "OpenBao ist nicht konfiguriert", egal wie sie
+        // konfiguriert war. Gemessen am 01.09.2026 an guild-INT.
         VaultwardenEagerResolution.resolveAll(environment,
-                new VaultwardenValueResolver(() -> VaultwardenPropertySource.buildService(environment)));
+                new VaultwardenValueResolver(() -> VaultwardenPropertySource.buildService(environment),
+                        () -> VaultwardenPropertySource.buildBaoClient(environment), Thread::sleep));
     }
 
     /**
