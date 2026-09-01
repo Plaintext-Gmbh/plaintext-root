@@ -31,6 +31,24 @@ public final class SettingsKeys {
      */
     public static final String I18N_ENABLED_LEGACY = "i18n.enabled";
 
+    /**
+     * Basis-URL der Paperless-ngx-Instanz, ohne abschliessenden Schraegstrich, z.B.
+     * {@code https://paperless.plaintext.ch}. Gepflegt wird sie im Settings-Modul, je Mandant
+     * oder global.
+     *
+     * <p><b>Warum der Schluessel hier wohnt.</b> Die Adresse stand in plaintext-app dreimal fest
+     * verdrahtet — in {@code PaperlessProperties}, im Fallback von {@code PaperlessClient} und in
+     * {@code OcrSettings}. Drei Kopien derselben Adresse sind genau die Konstellation, in der eine
+     * davon stehen bleibt: am 01.09.2026 zeigten die Beleg- und Quittungs-Verlinkungen noch auf
+     * {@code paper.plaintext.ch}, obwohl die Instanz unter {@code paperless.plaintext.ch}
+     * erreichbar ist (Meldung Daniel). Der Schluessel gehoert deshalb dorthin, wo ihn jede
+     * Anwendung liest, die root einbindet — einmal.</p>
+     */
+    public static final String PAPERLESS_URL = "paperless.url";
+
+    /** Vorgabe fuer {@link #PAPERLESS_URL}, wenn im Settings-Modul nichts gepflegt ist. */
+    public static final String PAPERLESS_URL_DEFAULT = "https://paperless.plaintext.ch";
+
     private SettingsKeys() {
     }
 }
