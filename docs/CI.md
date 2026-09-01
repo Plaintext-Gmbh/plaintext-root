@@ -39,6 +39,7 @@ the safe outcome; both deploying the same commit is not.
    execution, `kontext-ohne-abwaehlbare-module`, boots a second Spring context
    against the same database to prove the admin modules really are optional).
 2. **coverage-uebersicht** — a JaCoCo summary, also on failure.
+3. **testbericht** — an Allure report, also on failure. See "Test reports" below.
 
 `.woodpecker/playwright.yml` runs the browser smoke tests on pull requests.
 `.woodpecker/sonar.yml` runs on the `wochenanalyse` cron and manually.
@@ -115,6 +116,75 @@ The consequence for CI: `EmbeddedPg` starts its own server **only when
 points at the service container, so every test class gets its own database on
 that server. Locally, `docker compose up -d` gives you PostgreSQL on port
 **5434** — or you set nothing and let the embedded server start.
+
+## Test reports
+
+Woodpecker has no artifact store and no report tab. Until 31 August 2026 the only
+view on the tests was the Maven output, plus a step in `playwright.yml` that dumped
+the `.txt` files from `surefire-reports`/`failsafe-reports` into the log **on
+failure**. No history, nothing to click — and the `.txt` files are wrong for
+`@Nested` classes: they report `Tests run: 0` while the XML next to them says
+`tests="31"`.
+
+Since card 1018 the `testbericht` step builds an **Allure** report from that XML —
+no adapter in the test code, no change to any POM, because Allure reads the common
+junit.xml dialects directly. The report is written into the volume
+`woodpecker-reports` and served by the nginx of
+`plaintext-dockercompose/tri/plaintext-reports`:
+
+| | |
+|---|---|
+| This run | `http://192.168.1.224:1155/plaintext-root/<pipeline number>/` |
+| Latest run | `http://192.168.1.224:1155/plaintext-root/latest/` |
+| All repos | `http://192.168.1.224:1155/` |
+
+The URL is printed at the end of the step log. Reachable **from the LAN and through
+Twingate only** — there is no `VIRTUAL_HOST` and no entry in the Cloudflare tunnel,
+because a test report shows stack traces, class names and test data (card 1018,
+open question 1).
+
+Three properties worth knowing:
+
+- **Trend.** Each run copies the `history/` of the previous report into its results
+  before generating, so the report shows how the numbers moved. The points of the
+  trend chart link back to their Woodpecker run.
+- **Housekeeping is part of the step**, not follow-up work: the 30 newest runs per
+  repo are kept (`REPORT_KEEP` in `build.yml`), older ones are deleted while writing.
+- **An empty report is an error, not an empty page** — with one exception. If the
+  step finds no XML at all it fails, the usual cause being a compile error before
+  the first test. The exception is a full build-cache hit, see below.
+
+### The build cache used to hide the test output
+
+A pull request that touches no Java file rebuilds no module: the Maven build cache
+restores all 24 of them, `mvn install` goes green in three minutes, and
+`*/target/surefire-reports/` does not exist at all. Measured on 31 August 2026 in
+pipeline 50. The same hole had been swallowing the `coverage-uebersicht` table for
+as long as it existed — an empty table reads like a formatting problem, so nobody
+looked.
+
+`.mvn/maven-build-cache-config.xml` therefore lists the report directories under
+`attachedOutputs`: they are now saved and restored together with the jar, so a
+restored module brings its JUnit XML with it and the report covers all modules
+rather than the two that happened to be rebuilt. Without that, the trend chart
+would compare 24 modules against 2.
+
+The change invalidates nothing — the checksum stays the same, so existing entries
+are neither rebuilt nor discarded, and they gain the reports only at the module's
+next real build. To fill them in one go:
+
+```
+mvn clean install -DskipITs -Dmaven.build.cache.skipCache=true
+```
+
+Until the cache has turned over, a run may still find nothing. The step tells the
+two cases apart by the extension's own `target/maven-incremental/cache-report*.xml`:
+every module `checksumMatched` means nothing was rebuilt, and the step says so and
+goes green. Anything else is an error.
+
+`build.yml` and `playwright.yml` do **not** share a workspace, so the report covers
+the unit tests of `build.yml`. A report spanning both needs either two writes into
+the same directory or a collecting workflow.
 
 ## What no longer runs
 

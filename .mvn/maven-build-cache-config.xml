@@ -9,6 +9,38 @@
             <maxBuildsCached>3</maxBuildsCached>
         </local>
         <projectVersioning adjustMetaInf="true"/>
+
+        <!--
+          WITHOUT THIS BLOCK A CACHED MODULE HAS NO TEST REPORT. Measured on 31.08.2026
+          (card 1018, Woodpecker pipeline 50): the pull request touched no Java file, the
+          cache therefore restored all 24 modules, `mvn install` went green in three
+          minutes — and `*/target/surefire-reports/` did not exist at all. Both steps that
+          read those directories then have nothing to work with: `coverage-uebersicht` had
+          been printing an empty table (unnoticed, because an empty table looks like a
+          formatting problem), and the new `testbericht` step aborts.
+
+          Attached outputs are saved and restored together with the jar. A restored module
+          thus brings its JUnit XML along, and the report covers ALL modules instead of
+          only the ones that happened to be rebuilt — without that, the trend chart would
+          compare 24 modules against 3 and be worthless.
+
+          THE CHANGE DOES NOT INVALIDATE ANYTHING. Verified on a probe project: the
+          checksum stays the same, so existing entries are neither rebuilt nor discarded —
+          but they also do not gain the reports. An entry carries them only from the next
+          real build of that module on. To fill them all at once:
+              mvn clean install -DskipITs -Dmaven.build.cache.skipCache=true
+          (forces the rebuild, still saves the entry).
+
+          site/jacoco is deliberately NOT listed here: `coverage-uebersicht` regenerates it
+          with `mvn jacoco:report`, and that needs target/jacoco.exec — a FILE, and dirNames
+          takes directories only. Repairing the coverage table is its own piece of work.
+        -->
+        <attachedOutputs>
+            <dirNames>
+                <dirName>surefire-reports</dirName>
+                <dirName>failsafe-reports</dirName>
+            </dirNames>
+        </attachedOutputs>
     </configuration>
 
     <input>

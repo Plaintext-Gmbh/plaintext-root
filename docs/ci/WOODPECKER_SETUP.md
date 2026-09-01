@@ -104,6 +104,27 @@ reports `No tests matching pattern ... were executed`) and files unpacked during
 `target/` after `mvn install` — Playwright integration tests, for instance —
 needs `-Dmaven.build.cache.enabled=false` on both Maven invocations.
 
+**The build cache also swallows the test *reports*.** Same mechanism, different
+victim: a restored module has no `target/surefire-reports` either, so anything
+reading them sees nothing. On a pull request that touches no Java file, that is
+*every* module — `coverage-uebersicht` printed an empty table for months without
+anyone noticing, and pipeline 50 (card 1018) showed it plainly. The fix is
+`attachedOutputs` in `.mvn/maven-build-cache-config.xml`, which saves and
+restores those directories with the jar; existing cache entries pick it up only
+at their next real build (`-Dmaven.build.cache.skipCache=true` fills them all in
+one run). See docs/CI.md, "Test reports".
+
+**A manual run starts EVERY workflow of the repository, not the one you meant.**
+`when: - event: manual` is present in all four files of plaintext-root, so
+`POST /api/repos/6/pipelines` (or the "Run pipeline" button) also fires
+`deploy.yml` and `sonar.yml`. Paid for on 31 August 2026: a manual run intended
+for `build.yml` also pushed a full SonarQube analysis of a feature branch onto
+the `ch.plaintext:plaintext-root` project — the step passes no `sonar.branch.name`,
+so it overwrites the main analysis until the next weekly run. Nothing was
+released: `deploy.yml` forces `DEPLOY_TARGET=ci-only` for manual events and exits
+before publishing. That guard is the only reason a manual run is safe — do not
+remove it, and expect the Sonar side effect.
+
 **`[skip-ci]` with a hyphen means nothing to Woodpecker.** It honours the
 GitHub spellings `[skip ci]` and `[ci skip]`. A release commit tagged
 `[skip-ci]` still triggers a run — harmless here, but do not rely on it to
