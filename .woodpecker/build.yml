@@ -211,7 +211,10 @@ steps:
       # Must match the ports: entry of the plaintext-reports stack. It lives here and not
       # only in the script so that the address is visible at ONE place in this repo; the
       # script carries the same value merely as a fallback.
-      REPORT_BASE_URL: "http://192.168.1.224:1155"
+      # Karte 1043: Der Link zeigt auf die oeffentliche Adresse, nicht mehr auf die interne
+      # 192.168.1.224:1155 — seit Karte 1037 gibt es reports.plaintext.ch hinter dem
+      # Keycloak-Gate, und ein Link, der nur im LAN traegt, ist in einer PR-Checkliste wertlos.
+      REPORT_BASE_URL: "https://reports.plaintext.ch"
       # Runs kept per repo (proposal from card 1018, open question 2). Measured on
       # pipeline 52: one root report is 24.9 MB, so 30 runs are about 750 MB. /volume1 had
       # 4.9 TB free on 31.08.2026 — the limit exists so the directory does not grow without
