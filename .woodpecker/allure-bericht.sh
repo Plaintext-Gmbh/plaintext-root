@@ -203,9 +203,72 @@ done
 GESAMT=$(grep -o '"total"[^,}]*' "$ZIEL/widgets/summary.json" | head -1 | tr -dc '0-9')
 DURCH=$(grep -o '"passed"[^,}]*' "$ZIEL/widgets/summary.json" | head -1 | tr -dc '0-9')
 ROT=$(grep -o '"failed"[^,}]*' "$ZIEL/widgets/summary.json" | head -1 | tr -dc '0-9')
+BERICHT_URL="$REPORT_BASE_URL/$REPO/$LAUF/"
 echo "════════════════════════════════════════════════════════════════"
-echo " Test report: $REPORT_BASE_URL/$REPO/$LAUF/"
+echo " Test report: $BERICHT_URL"
 echo " Always the latest: $REPORT_BASE_URL/$REPO/latest/"
 echo " ${GESAMT:-?} test cases, ${DURCH:-?} green, ${ROT:-?} red."
-echo " (reachable from the LAN / via Twingate only — card 1018, open question 1)"
 echo "════════════════════════════════════════════════════════════════"
+
+# ── 8. Put the link where people actually look: the PR check list ───────────
+#  Card 1043 (Daniel, 02.09.2026: "is there a way to hand out the allure links in woodpecker
+#  where there are any, and link them automatically?").
+#
+#  Woodpecker has no artefact tab. The usual route is a GitHub commit status of our own: the
+#  report then sits as a line next to ci/woodpecker/pr/build, and its "Details" leads straight
+#  to the report.
+#
+#  WITHOUT A TOKEN THIS STEP SAYS SO AND MOVES ON. A missing status must never turn a green
+#  build red — the report is already written at this point, and losing it over a link would be
+#  the wrong trade. The secret is `github_status_token` (Vault item github.claude-review-pat,
+#  scope `repo`, which includes `repo:status`).
+if [ -z "${GITHUB_STATUS_TOKEN:-}" ]; then
+  echo "No GITHUB_STATUS_TOKEN — skipping the PR link. Set the woodpecker secret"
+  echo "github_status_token on this repo to get the report as a check line."
+  exit 0
+fi
+
+#  THE TRAP: on `pull_request` Woodpecker builds the MERGE commit (refs/pull/<n>/merge). A
+#  status on that SHA does NOT show up in the PR check list — GitHub lists the statuses of the
+#  HEAD commit. Without this distinction you get a green run and no link, and then you go
+#  looking for the fault in the token.
+#  On extracting the SHA without `jq`: the maven image has no jq and no gh, so it is grep and
+#  sed. Two details are measured against a real API answer (PR 779, 02.09.2026), not guessed:
+#    * `sed 's/.*"head":{//'` first cuts everything before the head object, so the `base` SHA
+#      further down cannot win. It works for pretty-printed AND for compact JSON.
+#    * The value is picked with a second `grep -o '[0-9a-f]\{40\}'` and NOT with
+#      `tr -dc '0-9a-f'`. `tr` would keep the `a` from the word "sha" and yield a 41-character
+#      string — GitHub answers 422 to that, and the fault looks like a token problem.
+if [ -n "${CI_COMMIT_PULL_REQUEST:-}" ]; then
+  SHA=$(curl -sS -H "Authorization: Bearer $GITHUB_STATUS_TOKEN" \
+        -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/repos/$CI_REPO/pulls/$CI_COMMIT_PULL_REQUEST" \
+        | sed 's/.*"head":{//' \
+        | grep -o '"sha": *"[0-9a-f]\{40\}"' | head -1 | grep -o '[0-9a-f]\{40\}')
+else
+  SHA="${CI_COMMIT_SHA:-}"
+fi
+
+if [ -z "$SHA" ]; then
+  echo "Could not determine the commit SHA — no status posted."
+  exit 0
+fi
+
+#  `success` even for a red test run: the status describes whether a REPORT exists, not whether
+#  the tests passed. That is what ci/woodpecker/pr/build is for. After a red run the link
+#  matters most, and a `failure` here would be a second red line saying nothing new.
+BESCHREIBUNG="${GESAMT:-?} tests, ${ROT:-0} red"
+ANTWORT=$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  -H "Authorization: Bearer $GITHUB_STATUS_TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  -H "Content-Type: application/json" \
+  "https://api.github.com/repos/$CI_REPO/statuses/$SHA" \
+  -d "{\"state\":\"success\",\"context\":\"Testbericht (Allure)\",\"target_url\":\"$BERICHT_URL\",\"description\":\"$BESCHREIBUNG\"}" || echo "000")
+
+if [ "$ANTWORT" = "201" ]; then
+  echo "PR check line posted on $SHA -> $BERICHT_URL"
+else
+  #  Deliberately not an error: see above. The HTTP code is enough to tell a wrong token (401)
+  #  from a missing scope (403) from a wrong SHA (422).
+  echo "Status not posted (HTTP $ANTWORT) — the report itself is written and reachable."
+fi
