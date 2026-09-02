@@ -49,6 +49,26 @@ public final class SettingsKeys {
     /** Vorgabe fuer {@link #PAPERLESS_URL}, wenn im Settings-Modul nichts gepflegt ist. */
     public static final String PAPERLESS_URL_DEFAULT = "https://paperless.plaintext.ch";
 
+    /**
+     * Die eigene oeffentliche Adresse dieser Installation, ohne abschliessenden Schraegstrich,
+     * z.B. {@code https://app.plaintext.ch} oder {@code https://guild.plaintext.ch}. Gepflegt im
+     * Settings-Modul, je Mandant oder global.
+     *
+     * <p><b>Wofuer.</b> Jeder Link, den eine Anwendung nach draussen gibt — in Mails, in oeffentlichen
+     * JSON-Antworten, in Kalender-Abonnements, in QR-Codes — braucht seine eigene Adresse. Am
+     * 02.09.2026 stand sie in den Repos <b>29-mal fest verdrahtet</b> (app 21, guild 7, root 1), und
+     * jedes Modul loeste es anders: mal eine eigene Property ({@code bieler.public-base-url},
+     * {@code plaintext.events.base-url}, {@code plaintext.lists.base-url}), mal ein Modul-Setting,
+     * mal eine Konstante, mal ein Rueckfallwert mitten in einer Backing Bean. Auftrag Daniel:
+     * „bei allen guild links und auch alle anderen links in den apps settings app.ownhost verwendet".
+     *
+     * <p><b>Keine gemeinsame Vorgabe.</b> Anders als {@link #PAPERLESS_URL} gibt es hier bewusst
+     * kein {@code _DEFAULT}: app und guild laufen unter verschiedenen Adressen, eine gemeinsame
+     * Vorgabe waere fuer die eine oder andere Seite immer falsch. Die Vorgabe bleibt beim Aufrufer,
+     * siehe {@code EigeneAdresse}.
+     */
+    public static final String APP_OWNHOST = "app.ownhost";
+
     private SettingsKeys() {
     }
 }
