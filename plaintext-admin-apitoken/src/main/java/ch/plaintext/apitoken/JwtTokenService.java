@@ -28,6 +28,8 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
@@ -130,6 +132,24 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
      */
     @Value("${plaintext.jwt.private-key-vault-item:}")
     private String privateKeyVaultItem;
+
+    /**
+     * Path to an externally mounted PEM file with the instance's OWN public key (X.509/SPKI) —
+     * the counterpart to {@link #privateKeyFile}.
+     *
+     * <p><b>Why this exists (card 1025).</b> Until now PROD could obtain the PRIVATE key from a
+     * file, but the PUBLIC one only from the vault item: {@link #loadPublicKeys()} threw as soon as
+     * {@code private-key-vault-item} was empty. That made Vaultwarden mandatory for every instance
+     * with the {@code prod} profile — and therefore made it impossible to take the vault master
+     * password (the key to ALL secrets of ALL applications) out of any container, no matter where
+     * its other values came from. A public key is not a secret; it does not need a vault.
+     *
+     * <p>Fail-closed from card 347 is unchanged: outside the vault item this file is the only
+     * permitted PROD source, there is still no classpath fallback, and a file that does not match
+     * {@link #privateKey} is rejected instead of silently producing 401s.
+     */
+    @Value("${plaintext.jwt.public-key-file:}")
+    private String publicKeyFile;
 
     /**
      * {@code iss} of the machine credentials issued by {@link #signServiceToken} — usually
@@ -694,13 +714,32 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
             } else {
                 log.error("JWT public key: Vault-Item '{}' gesetzt, aber Vault nicht verfuegbar/aktiv.", privateKeyVaultItem);
             }
+            // Same order as loadPrivateKey(): vault item first, mounted file as the alternative.
+            PublicKey ausDatei = ladePublicKeyAusDatei();
+            if (ausDatei != null) {
+                log.warn("JWT public key: Vault-Item '{}' nicht ladbar — genommen wird die Datei aus "
+                        + "plaintext.jwt.public-key-file", privateKeyVaultItem);
+                return List.of(ausDatei);
+            }
             if (prod) {
                 throw new IllegalStateException("PROD: eigener JWT-Public-Key aus Vault-Item '" + privateKeyVaultItem
-                        + "' (Feld " + VAULT_FIELD_PUBLIC_KEY + ") nicht ladbar — fail-closed (Karte 347).");
+                        + "' (Feld " + VAULT_FIELD_PUBLIC_KEY + ") nicht ladbar und keine "
+                        + "plaintext.jwt.public-key-file gesetzt — fail-closed (Karte 347).");
             }
-        } else if (prod) {
-            throw new IllegalStateException("PROD: plaintext.jwt.private-key-vault-item muss gesetzt sein "
-                    + "(instanz-eigener Key aus Vault) — kein Classpath-Fallback in PROD (Karte 347).");
+        } else {
+            // Card 1025: without a vault item the mounted file is the PROD source. This is the only
+            // way an instance can run WITHOUT the vault master password — which is the general key
+            // to the secrets of all applications, not just this one.
+            PublicKey ausDatei = ladePublicKeyAusDatei();
+            if (ausDatei != null) {
+                log.info("JWT public key aus Datei geladen (plaintext.jwt.public-key-file) — kein Vault noetig");
+                return List.of(ausDatei);
+            }
+            if (prod) {
+                throw new IllegalStateException("PROD: plaintext.jwt.private-key-vault-item ODER "
+                        + "plaintext.jwt.public-key-file muss gesetzt sein (instanz-eigener Key) — "
+                        + "kein Classpath-Fallback in PROD (Karte 347).");
+            }
         }
 
         // If the private key was generated ephemerally (no key on the classpath, see loadPrivateKey),
@@ -740,7 +779,32 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
         return gen.generateKeyPair();
     }
 
-    /** Parses an X.509/SPKI PEM public key (from a vault item or the classpath). */
+    /**
+     * Reads the instance's own public key from {@link #publicKeyFile}; {@code null} when the
+     * property is not set.
+     *
+     * <p>A configured but unreadable or unparseable file is NOT swallowed — the exception
+     * propagates and the startup fails (fail-closed, card 347). And a file that does not belong to
+     * {@link #privateKey} is rejected right here: exactly that mismatch was bug 347 (guild signed
+     * with one key and validated with another, its own tokens got 401). The check is cheap and it
+     * turns a silent runtime failure into a startup failure.
+     */
+    private PublicKey ladePublicKeyAusDatei() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException {
+        if (publicKeyFile == null || publicKeyFile.isBlank()) {
+            return null;
+        }
+        String pem = Files.readString(Path.of(publicKeyFile.trim()), StandardCharsets.UTF_8);
+        PublicKey pub = parsePublicKeyPem(pem);
+        if (privateKey instanceof RSAPrivateKey priv && pub instanceof RSAPublicKey rsaPub
+                && !priv.getModulus().equals(rsaPub.getModulus())) {
+            throw new IllegalStateException("JWT: plaintext.jwt.public-key-file passt nicht zum privaten "
+                    + "Schluessel (verschiedene RSA-Moduli) — jedes selbst signierte Token wuerde mit 401 "
+                    + "abgelehnt (Karte 347).");
+        }
+        return pub;
+    }
+
+    /** Parses an X.509/SPKI PEM public key (from a vault item, a mounted file or the classpath). */
     private static PublicKey parsePublicKeyPem(String pem)
             throws NoSuchAlgorithmException, InvalidKeySpecException {
         String base64 = pem
