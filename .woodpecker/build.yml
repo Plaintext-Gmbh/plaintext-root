@@ -220,6 +220,24 @@ steps:
       # 4.9 TB free on 31.08.2026 — the limit exists so the directory does not grow without
       # end, not because the space is tight.
       REPORT_KEEP: "30"
+      # Karte 1043: Damit allure-bericht.sh die Zeile "Testbericht (Allure)" samt Link in die
+      # Check-Liste des Pull Requests schreiben kann. Ohne diesen Wert schweigt das Skript und
+      # sagt das im Log — der Bericht selbst entsteht trotzdem.
+      #
+      # DAS SECRET MUSS AM REPO EXISTIEREN, BEVOR DIESE ZEILEN HIER STEHEN. Verweist ein
+      # `from_secret` auf ein fehlendes Secret, startet Woodpecker die Pipeline GAR NICHT und
+      # meldet das auch nicht an GitHub: kein Lauf, keine Zeile, keine Fehlermeldung — der PR
+      # sieht aus, als waere die CI nie angestossen worden (gemessen am 02.09.2026, drei PRs
+      # ueber 20 Minuten stumm). Deshalb kamen diese vier Zeilen erst jetzt nach.
+      #
+      # Der Token ist ein eigener PAT des Kontos Plaintext-User mit AUSSCHLIESSLICH `repo:status`
+      # (Vault-Item github.woodpecker-status) — bewusst nicht der github.claude-review-pat mit
+      # vollem repo-Scope. Sein Secret traegt zusaetzlich das Ereignis `pull_request`, anders als
+      # die uebrigen Secrets dieses Repos: ohne das fehlte es in genau dem Lauf, fuer den es da
+      # ist. Der Preis ist benannt und tragbar — wer eine .woodpecker-Datei in einem PR aendern
+      # darf, koennte den Wert ausgeben lassen, und er kann nichts ausser Commit-Status schreiben.
+      GITHUB_STATUS_TOKEN:
+        from_secret: github_status_token
     commands:
       - . .woodpecker/waechter.sh
       - sh .woodpecker/allure-bericht.sh
