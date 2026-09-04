@@ -228,31 +228,39 @@ if [ -z "${GITHUB_STATUS_TOKEN:-}" ]; then
   exit 0
 fi
 
-#  THE TRAP: on `pull_request` Woodpecker builds the MERGE commit (refs/pull/<n>/merge). A
-#  status on that SHA does NOT show up in the PR check list — GitHub lists the statuses of the
-#  HEAD commit. Without this distinction you get a green run and no link, and then you go
-#  looking for the fault in the token.
-#  On extracting the SHA without `jq`: the maven image has no jq and no gh, so it is grep and
-#  sed. Two details are measured against a real API answer (PR 779, 02.09.2026), not guessed:
-#    * `sed 's/.*"head":{//'` first cuts everything before the head object, so the `base` SHA
-#      further down cannot win. It works for pretty-printed AND for compact JSON.
-#    * The value is picked with a second `grep -o '[0-9a-f]\{40\}'` and NOT with
-#      `tr -dc '0-9a-f'`. `tr` would keep the `a` from the word "sha" and yield a 41-character
-#      string — GitHub answers 422 to that, and the fault looks like a token problem.
-if [ -n "${CI_COMMIT_PULL_REQUEST:-}" ]; then
-  SHA=$(curl -sS -H "Authorization: Bearer $GITHUB_STATUS_TOKEN" \
-        -H "Accept: application/vnd.github+json" \
-        "https://api.github.com/repos/$CI_REPO/pulls/$CI_COMMIT_PULL_REQUEST" \
-        | sed 's/.*"head":{//' \
-        | grep -o '"sha": *"[0-9a-f]\{40\}"' | head -1 | grep -o '[0-9a-f]\{40\}')
-else
-  SHA="${CI_COMMIT_SHA:-}"
-fi
+#  DER PR-HEAD STEHT SCHON IN CI_COMMIT_SHA (Karte 1058, 05.09.2026 — gemessen, nicht geglaubt).
+#
+#  Hier stand die Annahme: "bei pull_request baut Woodpecker den MERGE-Commit, ein Status darauf
+#  erscheint in der PR-Liste nicht" — deshalb der Umweg ueber GET /pulls/<nr>. Fuer diese
+#  Woodpecker-Fassung stimmt das nicht. Aus der API des Laufs 140 von plaintext-guild:
+#
+#      commit: 79f3644da45be69ab484e9ddbd8591bcff10ec31
+#      ref:    refs/pull/285/merge
+#
+#  Derselbe Wert ist bei GitHub der headRefOid des PR. Der ref ist der Merge-Ref, der
+#  aufgezeichnete Commit aber der HEAD.
+#
+#  WARUM DAS HIER GEAENDERT WIRD, OBWOHL ES IN root FUNKTIONIERT HAT: root ist oeffentlich, und
+#  auf einen oeffentlichen PR antwortet GitHub auch ohne Recht. Bei den PRIVATEN Repos guild und
+#  app antwortet dieselbe Anfrage mit 404 (am 05.09.2026 mit dem hinterlegten Token gemessen:
+#  root 200, guild 404, app 404) — und weil `set -e` bei einer fehlgeschlagenen Zuweisung sofort
+#  abbricht, starb der ganze Schritt STUMM mit exit 1, obwohl der Bericht laengst geschrieben war.
+#  Die Pruefung `if [ -z "$SHA" ]` darunter war unerreichbar. Der Umweg war also nicht nur
+#  unnoetig, er hat einen gruenen Bau rot gemacht.
+SHA="${CI_COMMIT_SHA:-}"
+#  Nur eine 40-stellige Hex-Zahl geht weiter. Alles andere waere ein 422, dessen Ursache
+#  hinterher wie ein Tokenproblem aussieht.
+case "$SHA" in
+  *[!0-9a-f]* | "") SHA="" ;;
+esac
+[ "${#SHA}" -eq 40 ] || SHA=""
 
 if [ -z "$SHA" ]; then
-  echo "Could not determine the commit SHA — no status posted."
+  echo "Commit-SHA nicht brauchbar — keine PR-Zeile gesetzt."
+  echo "Der Bericht selbst ist geschrieben und erreichbar."
   exit 0
 fi
+echo "PR head commit: $SHA"
 
 #  `success` even for a red test run: the status describes whether a REPORT exists, not whether
 #  the tests passed. That is what ci/woodpecker/pr/build is for. After a red run the link
