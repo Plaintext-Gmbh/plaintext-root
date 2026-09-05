@@ -4,6 +4,7 @@
 package ch.plaintext.settings.web;
 
 import ch.plaintext.PlaintextSecurity;
+import ch.plaintext.settings.SettingsKeys;
 import ch.plaintext.settings.entity.Setting;
 import ch.plaintext.settings.service.SettingsServiceImpl;
 import jakarta.faces.application.FacesMessage;
@@ -63,7 +64,13 @@ public class SettingsBackingBean implements Serializable {
     private void loadData() {
         try {
             if (root) {
-                settings = service.getAllSettings(security.getMandat());
+                // Karte 1063: die globalen Eintraege gehoeren mit in die Liste. Sie wirken fuer
+                // diesen Mandanten (der Lesepfad faellt auf sie zurueck) — eine Einstellung, die
+                // wirkt, aber nicht auffindbar ist, waere schlimmer als gar keine.
+                settings = new ArrayList<>(service.getAllSettings(security.getMandat()));
+                if (!SettingsKeys.MANDAT_GLOBAL.equals(security.getMandat())) {
+                    settings.addAll(service.getAllSettings(SettingsKeys.MANDAT_GLOBAL));
+                }
             } else {
                 settings = new ArrayList<>();
             }
@@ -182,8 +189,32 @@ public class SettingsBackingBean implements Serializable {
         FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(severity, summary, detail));
     }
 
+    /**
+     * Die waehlbaren Mandanten — plus {@link SettingsKeys#MANDAT_GLOBAL} (Karte 1063, Auftrag
+     * Daniel 05.09.2026: „gleich wie bei Cron, welcher fuer alle mandate gelten kann").
+     *
+     * <p>Genau so macht es {@code CronController.createCronsMap()}: die Mandantenliste, ergaenzt um
+     * den reservierten Wert. Er steht bewusst <b>vorn</b> — wer eine Einstellung fuer alle anlegen
+     * will, sucht sie nicht am Ende einer Mandantenliste.
+     */
     public List<String> getAllMandate() {
-        return new ArrayList<>(security.getAllMandate());
+        List<String> mandate = new ArrayList<>();
+        mandate.add(SettingsKeys.MANDAT_GLOBAL);
+        security.getAllMandate().stream()
+                .filter(m -> !SettingsKeys.MANDAT_GLOBAL.equals(m))
+                .sorted()
+                .forEach(mandate::add);
+        return mandate;
+    }
+
+    /**
+     * Ob diese Zeile ein globaler Eintrag ist — fuer die Kennzeichnung in der Liste.
+     *
+     * @param setting die Zeile
+     * @return {@code true} bei einem Eintrag, der fuer alle Mandanten gilt
+     */
+    public boolean istGlobal(Setting setting) {
+        return setting != null && SettingsKeys.MANDAT_GLOBAL.equals(setting.getMandat());
     }
 
     public List<String> getValueTypes() {

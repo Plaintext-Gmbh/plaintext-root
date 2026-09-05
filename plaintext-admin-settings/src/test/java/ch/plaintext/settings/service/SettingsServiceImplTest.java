@@ -63,7 +63,10 @@ class SettingsServiceImplTest {
 
     @Test
     void getStringThrowsForInvalidMandat() {
-        when(security.getMandat()).thenReturn("NO_AUTH");
+        // Karte 1063: "ERROR" heisst, die Mandantenermittlung ist schiefgegangen — das bleibt ein
+        // Fehler. "NO_AUTH"/"NO_USER" heissen dagegen nur, dass niemand angemeldet ist; dort wird
+        // seit dem Geltungsbereich "global" global gelesen (siehe SettingsGlobalScopeTest).
+        when(security.getMandat()).thenReturn("ERROR");
 
         assertThatThrownBy(() -> service.getString("key"))
                 .isInstanceOf(IllegalStateException.class)

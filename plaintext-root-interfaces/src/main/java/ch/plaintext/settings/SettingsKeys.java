@@ -69,6 +69,24 @@ public final class SettingsKeys {
      */
     public static final String APP_OWNHOST = "app.ownhost";
 
+    /**
+     * Reservierter Mandant-Wert fuer eine Einstellung, die <b>fuer alle Mandanten</b> gilt
+     * (Karte 1063, Auftrag Daniel 05.09.2026: „fuer Settings braucht es somit noch einen neuen
+     * scope global, gleich wie bei Cron, welcher fuer alle mandate gelten kann").
+     *
+     * <p><b>Warum ein Mandant-Wert und kein eigenes Feld.</b> Genau so loest es der Cron seit
+     * jeher: {@code CronController} ergaenzt die Mandantenliste um {@code "global"}, und die Zeile
+     * in {@code cron_config} traegt diesen Wert in derselben Spalte wie jeder andere Mandant. In
+     * app PROD stehen dort am 05.09.2026 sechs solche Zeilen — das Muster ist im Einsatz, nicht
+     * bloss gedacht. Ein zweites Konzept fuer dieselbe Frage waere teurer als der reservierte Wert.
+     *
+     * <p><b>Wirkung:</b> Beim <b>Lesen</b> einer Einstellung wird der Schluessel zuerst beim
+     * Mandanten gesucht und, wenn es dort nichts gibt, unter diesem Wert. Beim <b>Schreiben,
+     * Loeschen und Pruefen</b> gilt er nicht — sonst loeschte das Entfernen einer
+     * mandantenspezifischen Einstellung den gemeinsamen Eintrag mit.
+     */
+    public static final String MANDAT_GLOBAL = "global";
+
     private SettingsKeys() {
     }
 }

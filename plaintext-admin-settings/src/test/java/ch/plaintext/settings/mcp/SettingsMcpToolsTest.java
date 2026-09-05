@@ -83,10 +83,53 @@ class SettingsMcpToolsTest {
     @DisplayName("Ein vorhandener Wert wird als Aenderung gemeldet, nicht als Neuanlage")
     void aenderungWirdBenannt() {
         alsAdmin();
-        when(settingsService.getString("app.ownhost", "plaintext")).thenReturn("https://alt.example.ch");
+        // Karte 1063: gemessen wird am EIGENEN Eintrag (exists), nicht am gelesenen Wert —
+        // getString faellt seit dem Geltungsbereich "global" auf den gemeinsamen Eintrag zurueck.
+        when(settingsService.exists("app.ownhost", "plaintext")).thenReturn(true);
 
         assertThat(tools.setSetting("app.ownhost", "https://app.plaintext.ch", null, null))
                 .contains("geaendert");
+    }
+
+    @Test
+    @DisplayName("Ein bloss GLOBAL gesetzter Schluessel ist fuer diesen Mandanten eine Neuanlage")
+    void globalerEintragIstKeineAenderung() {
+        alsAdmin();
+        // Der Rueckfall liefert einen Wert, aber der Mandant hat noch keinen eigenen. Mit
+        // getString haette hier "geaendert" gestanden, obwohl gerade der erste eigene entsteht.
+        when(settingsService.getString("app.ownhost", "plaintext")).thenReturn("https://global.example");
+        when(settingsService.exists("app.ownhost", "plaintext")).thenReturn(false);
+
+        assertThat(tools.setSetting("app.ownhost", "https://eigen.example", null, null))
+                .contains("angelegt");
+    }
+
+    @Test
+    @DisplayName("Loeschen fasst einen bloss globalen Eintrag nicht an — und meldet es")
+    void loeschenTastetGlobalenEintragNichtAn() {
+        alsAdmin();
+        // Der Kollateralschaden, den der Rueckfall sonst erzeugt haette: getString liefert den
+        // globalen Wert, deleteSetting(key, mandat) findet nichts, und der Aufrufer bekaeme ein
+        // "OK: geloescht" fuer einen Eintrag, der unveraendert weitergilt.
+        when(settingsService.getString("app.ownhost", "plaintext")).thenReturn("https://global.example");
+        when(settingsService.exists("app.ownhost", "plaintext")).thenReturn(false);
+
+        assertThat(tools.deleteSetting("app.ownhost"))
+                .contains("nichts geloescht")
+                .contains("global");
+        verify(settingsService, never()).deleteSetting("app.ownhost", "plaintext");
+    }
+
+    @Test
+    @DisplayName("Ein globaler Wert wird beim Lesen als solcher ausgewiesen")
+    void globalerWertWirdBenannt() {
+        alsAdmin();
+        when(settingsService.getString("app.ownhost", "plaintext")).thenReturn("https://global.example");
+        when(settingsService.exists("app.ownhost", "plaintext")).thenReturn(false);
+
+        assertThat(tools.getSetting("app.ownhost"))
+                .contains("https://global.example")
+                .contains("gilt fuer alle Mandanten");
     }
 
     @Test
