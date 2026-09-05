@@ -12,6 +12,20 @@ exhaustive.
 
 ## [Unreleased]
 
+### Security
+- **Reset and verification links no longer take their host from the request** (Karte 1068,
+  5 September 2026). `SelfServiceController` used `request.getServerName()` as the fallback
+  for `plaintext.selfservice.public-base-url`; behind the `ForwardedHeaderFilter` that is the
+  value of `X-Forwarded-Host`, which the reverse proxy did not overwrite until Karte 1054 —
+  a forged header made a genuine password-reset mail carry a genuine token that pointed to a
+  foreign host. The base URL now comes from `EigeneAdresse` (setting `app.ownhost`, then
+  `plaintext.app.ownhost`, then `plaintext.baseurl`) and is empty rather than request-derived
+  when nothing is configured. `PlaintextAuthenticationSuccessHandler` no longer reads
+  `X-Forwarded-Proto/-Host/-Port` for the login event either. New ArchUnit rule
+  `PlaintextHostAbleitungTest` (runs in every consumer) forbids `getServerName()` and
+  `ServletUriComponentsBuilder` outside a frozen list of legacy classes (Karte 1069 A-01).
+  Consumers: set `plaintext.baseurl` (already the case in PROD) or `app.ownhost`.
+
 ### Changed
 - **Documentation overhauled and switched to English** (30 August 2026). All code
   comments and Javadoc across the 24 modules, the Woodpecker pipeline comments and

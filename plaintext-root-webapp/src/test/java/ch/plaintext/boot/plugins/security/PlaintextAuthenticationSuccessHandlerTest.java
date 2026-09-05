@@ -183,9 +183,12 @@ class PlaintextAuthenticationSuccessHandlerTest {
 
     @Test
     void onAuthenticationSuccess_shouldExtractBaseUrl_withDefaultPort() throws Exception {
+        // Karte 1068: der Request liefert hier dieselbe Adresse wie die Konfiguration — der Test
+        // belegt damit nur noch, dass die konfigurierte Adresse unveraendert ankommt.
         when(request.getScheme()).thenReturn("https");
         when(request.getServerName()).thenReturn("app.example.com");
         when(request.getServerPort()).thenReturn(443);
+        org.springframework.test.util.ReflectionTestUtils.setField(handler, "plaintextBaseurl", "https://app.example.com");
 
         Authentication auth = new UsernamePasswordAuthenticationToken("user@test.com", "pass",
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
@@ -200,10 +203,14 @@ class PlaintextAuthenticationSuccessHandlerTest {
     }
 
     @Test
-    void onAuthenticationSuccess_shouldExtractBaseUrl_withCustomPort() throws Exception {
+    void onAuthenticationSuccess_basisUrlKommtAusDerKonfiguration_nichtAusDemRequest() throws Exception {
+        // Karte 1068: bis 05.09.2026 stand hier http://localhost:8080 aus Schema, Servername und
+        // Port des Requests. Jetzt zaehlt nur die Konfiguration, der Request wird nicht befragt.
         when(request.getScheme()).thenReturn("http");
         when(request.getServerName()).thenReturn("localhost");
         when(request.getServerPort()).thenReturn(8080);
+        org.springframework.test.util.ReflectionTestUtils.setField(handler, "plaintextBaseurl",
+                "http://konfiguriert.example:8080/");
 
         Authentication auth = new UsernamePasswordAuthenticationToken("user@test.com", "pass",
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
@@ -214,15 +221,64 @@ class PlaintextAuthenticationSuccessHandlerTest {
         verify(eventPublisher).publishEvent(captor.capture());
 
         PlaintextLoginEvent event = captor.getValue();
-        assertEquals("http://localhost:8080", event.getRequestBaseUrl());
+        assertEquals("http://konfiguriert.example:8080", event.getRequestBaseUrl(),
+                "konfigurierte Adresse ohne Endslash, nicht localhost:8080 aus dem Request");
+        verify(request, never()).getServerName();
     }
 
     @Test
-    void onAuthenticationSuccess_shouldUseForwardedHeaders() throws Exception {
+    void onAuthenticationSuccess_ignoriertForwardedHeaders_Karte1068() throws Exception {
+        // Diese drei Koepfe bestimmten bis 05.09.2026 die Basis-URL des Login-Events — eine
+        // Adresse, die der Client waehlen konnte. Sie duerfen keine Wirkung mehr haben.
+        when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
+        when(request.getHeader("X-Forwarded-Host")).thenReturn("pruefung.invalid");
+        when(request.getHeader("X-Forwarded-Port")).thenReturn("443");
+        when(request.getServerName()).thenReturn("pruefung.invalid");
+        when(request.getServerPort()).thenReturn(8080);
+        org.springframework.test.util.ReflectionTestUtils.setField(handler, "plaintextBaseurl",
+                "https://app.plaintext.ch");
+
+        Authentication auth = new UsernamePasswordAuthenticationToken("user@test.com", "pass",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+
+        handler.onAuthenticationSuccess(request, response, auth);
+
+        ArgumentCaptor<PlaintextLoginEvent> captor = ArgumentCaptor.forClass(PlaintextLoginEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+
+        PlaintextLoginEvent ereignis = captor.getValue();
+        assertEquals("https://app.plaintext.ch", ereignis.getRequestBaseUrl());
+        assertFalse(ereignis.getRequestBaseUrl().contains("pruefung.invalid"),
+                "der gefaelschte Host darf nirgends in der Basis-URL auftauchen");
+        verify(request, never()).getHeader("X-Forwarded-Host");
+        verify(request, never()).getHeader("X-Forwarded-Proto");
+    }
+
+    @Test
+    void onAuthenticationSuccess_ohneKonfigurationBleibtDieBasisUrlLeer() throws Exception {
+        when(request.getServerName()).thenReturn("pruefung.invalid");
+        org.springframework.test.util.ReflectionTestUtils.setField(handler, "plaintextBaseurl", "");
+
+        Authentication auth = new UsernamePasswordAuthenticationToken("user@test.com", "pass",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+
+        handler.onAuthenticationSuccess(request, response, auth);
+
+        ArgumentCaptor<PlaintextLoginEvent> captor = ArgumentCaptor.forClass(PlaintextLoginEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertEquals("", captor.getValue().getRequestBaseUrl(),
+                "lieber leer als eine Adresse, die der Aufrufer bestimmt hat");
+    }
+
+    @Test
+    void onAuthenticationSuccess_altText_shouldUseForwardedHeaders_ersetztDurchKarte1068() throws Exception {
+        // Der fruehere Test verlangte hier "https://proxy.example.com" aus X-Forwarded-Host.
+        // Genau dieses Verhalten ist die Schwachstelle aus Karte 1068; die Erwartung ist umgekehrt.
         when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
         when(request.getHeader("X-Forwarded-Host")).thenReturn("proxy.example.com");
         when(request.getHeader("X-Forwarded-Port")).thenReturn("443");
-        when(request.getServerPort()).thenReturn(8080); // Overridden by forwarded port
+        when(request.getServerPort()).thenReturn(8080);
+        org.springframework.test.util.ReflectionTestUtils.setField(handler, "plaintextBaseurl", "https://konfiguriert.example");
 
         Authentication auth = new UsernamePasswordAuthenticationToken("user@test.com", "pass",
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
@@ -233,7 +289,8 @@ class PlaintextAuthenticationSuccessHandlerTest {
         verify(eventPublisher).publishEvent(captor.capture());
 
         PlaintextLoginEvent event = captor.getValue();
-        assertEquals("https://proxy.example.com", event.getRequestBaseUrl());
+        assertEquals("https://konfiguriert.example", event.getRequestBaseUrl(),
+                "proxy.example.com aus X-Forwarded-Host darf nicht mehr gewinnen");
     }
 
     @Test
