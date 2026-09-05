@@ -8,6 +8,7 @@ import ch.plaintext.boot.deeplink.DeepLinkPendingStore;
 import ch.plaintext.boot.plugins.security.service.MyUserDetailsService;
 import ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService;
 import ch.plaintext.boot.plugins.security.totp.TotpPendingAuthentication;
+import ch.plaintext.framework.EigeneAdresse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -152,7 +153,7 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
         }
 
         try {
-            String baseUrl = extractBaseUrl(request);
+            String baseUrl = basisUrl();
             eventPublisher.publishEvent(new PlaintextLoginEvent(this, userEmail, userId, userEmail, mandat, baseUrl));
             log.debug("Published PlaintextLoginEvent for user: {} baseUrl: {}", userEmail, baseUrl);
         } catch (Exception e) {
@@ -191,7 +192,7 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
             String userEmail = authentication.getName();
             Long userId = extractUserId(authentication);
             String mandat = extractMandat(authentication);
-            String baseUrl = extractBaseUrl(request);
+            String baseUrl = basisUrl();
             eventPublisher.publishEvent(new PlaintextLoginEvent(this, userEmail, userId, userEmail, mandat, baseUrl));
             log.debug("Published PlaintextLoginEvent (post-TOTP) for user: {}", userEmail);
         } catch (Exception e) {
@@ -228,18 +229,34 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
         return -1L;
     }
 
-    private String extractBaseUrl(HttpServletRequest request) {
-        String scheme = request.getHeader("X-Forwarded-Proto");
-        if (scheme == null) scheme = request.getScheme();
-        String host = request.getHeader("X-Forwarded-Host");
-        if (host == null) host = request.getServerName();
-        int port = request.getServerPort();
-        String forwardedPort = request.getHeader("X-Forwarded-Port");
-        if (forwardedPort != null) {
-            try { port = Integer.parseInt(forwardedPort); } catch (NumberFormatException e) { /* ignore */ }
+    /**
+     * Optional on purpose: the handler is constructed by hand in tests and in
+     * {@code LoginTestSupport}; there is no {@link EigeneAdresse} bean there, and the base URL
+     * is then simply empty. In the running application Spring injects it.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private EigeneAdresse eigeneAdresse;
+
+    @org.springframework.beans.factory.annotation.Value("${plaintext.baseurl:}")
+    private String plaintextBaseurl = "";
+
+    /**
+     * Base URL handed to {@link PlaintextLoginEvent} — from configuration only (Karte 1068).
+     *
+     * <p>Until 05.09.2026 this read {@code X-Forwarded-Proto/-Host/-Port} straight from the
+     * request, so every consumer of the login event inherited an address the client could choose
+     * (there was no consumer yet, but the next one — a login notification with a link — would
+     * have been a phishing vector). Same source as every other outgoing link: {@link EigeneAdresse}
+     * (setting {@code app.ownhost}, then {@code plaintext.app.ownhost}, then
+     * {@code plaintext.baseurl}). The request is not consulted at all.
+     */
+    private String basisUrl() {
+        String vorgabe = plaintextBaseurl == null ? "" : plaintextBaseurl;
+        if (eigeneAdresse == null) {
+            return EigeneAdresse.ohneEndSlash(vorgabe);
         }
-        boolean defaultPort = ("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443);
-        return scheme + "://" + host + (defaultPort ? "" : ":" + port);
+        String basis = eigeneAdresse.basis(vorgabe);
+        return basis == null ? "" : basis;
     }
 
     private String extractMandat(Authentication auth) {

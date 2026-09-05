@@ -3,8 +3,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.selfservice;
 
+import ch.plaintext.framework.EigeneAdresse;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -25,9 +27,20 @@ import org.springframework.web.bind.annotation.RequestParam;
  *
  * <p>All user input is HTML-escaped before rendering so a stale token in the
  * URL or a typoed e-mail cannot reflect script back into the page.
+ *
+ * <p><b>The base URL of the links is never taken from the request (Karte 1068).</b> Until
+ * 05.09.2026 the fallback for {@code plaintext.selfservice.public-base-url} was
+ * {@code request.getServerName()}. Behind the {@code ForwardedHeaderFilter} that value comes from
+ * {@code X-Forwarded-Host}, which the reverse proxy did not overwrite (Karte 1054) — so whoever
+ * requested a password reset for a foreign address with a forged header made the victim receive
+ * a genuine mail with a genuine token pointing to a foreign host. The proxy line has since been
+ * added, but a link that leaves the house must not depend on a proxy line: the base comes from
+ * {@link EigeneAdresse} (setting {@code app.ownhost}, then {@code plaintext.app.ownhost}, then
+ * {@code plaintext.baseurl}), the same source every other outgoing link uses (Karte 1046).
+ * {@code MagicLinkService} documents the same decision.
  */
 @Controller
-@RequiredArgsConstructor
+@Slf4j
 public class SelfServiceController {
 
     private static final String DEFAULT_MANDAT = "default";
@@ -35,6 +48,20 @@ public class SelfServiceController {
     private final RegistrationService registrationService;
     private final PasswordResetService passwordResetService;
     private final SelfServiceProperties properties;
+    private final EigeneAdresse eigeneAdresse;
+    private final String plaintextBaseurl;
+
+    public SelfServiceController(RegistrationService registrationService,
+                                 PasswordResetService passwordResetService,
+                                 SelfServiceProperties properties,
+                                 EigeneAdresse eigeneAdresse,
+                                 @Value("${plaintext.baseurl:}") String plaintextBaseurl) {
+        this.registrationService = registrationService;
+        this.passwordResetService = passwordResetService;
+        this.properties = properties;
+        this.eigeneAdresse = eigeneAdresse;
+        this.plaintextBaseurl = plaintextBaseurl == null ? "" : plaintextBaseurl;
+    }
 
     // ---------- Registration ----------
 
@@ -56,7 +83,7 @@ public class SelfServiceController {
     @PostMapping(value = "/register", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> registerSubmit(@RequestParam("email") String email,
                                                  HttpServletRequest request) {
-        registrationService.startRegistration(email, mandat(), baseUrl(request));
+        registrationService.startRegistration(email, mandat(), basisUrl());
         return html(page("Registrieren", """
                 <div class="card">
                   <h1>Prüfen Sie Ihren Posteingang</h1>
@@ -127,7 +154,7 @@ public class SelfServiceController {
     @PostMapping(value = "/password-reset", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> resetSubmit(@RequestParam("username") String username,
                                               HttpServletRequest request) {
-        passwordResetService.startReset(username, mandat(), baseUrl(request));
+        passwordResetService.startReset(username, mandat(), basisUrl());
         return html(page("Passwort zurücksetzen", """
                 <div class="card">
                   <h1>Prüfen Sie Ihren Posteingang</h1>
@@ -198,16 +225,23 @@ public class SelfServiceController {
         return properties.getDefaultMandat();
     }
 
-    private static String baseUrl(HttpServletRequest request) {
-        StringBuilder sb = new StringBuilder()
-                .append(request.getScheme()).append("://")
-                .append(request.getServerName());
-        int port = request.getServerPort();
-        if (("http".equals(request.getScheme()) && port != 80)
-                || ("https".equals(request.getScheme()) && port != 443)) {
-            sb.append(":").append(port);
+    /**
+     * Base URL for the links in verification and reset mails — from configuration only, never
+     * from the request (see the class comment, Karte 1068). The services still prefer
+     * {@code plaintext.selfservice.public-base-url} when it is set; this value is their fallback.
+     *
+     * <p>If nothing is configured at all the result is empty and the mail carries a relative
+     * link. That is a broken link, not a phishing link — and the warning below says what to set.
+     */
+    String basisUrl() {
+        String basis = eigeneAdresse.basis(plaintextBaseurl);
+        if (basis == null || basis.isBlank()) {
+            log.warn("Self-Service: keine eigene Adresse konfiguriert (app.ownhost, plaintext.app.ownhost "
+                    + "oder plaintext.baseurl) — der Link in der Mail wird relativ und damit unbrauchbar. "
+                    + "Aus dem Request wird die Adresse bewusst NICHT abgeleitet (Karte 1068).");
+            return "";
         }
-        return sb.toString();
+        return basis;
     }
 
     private static ResponseEntity<String> html(String body) {
