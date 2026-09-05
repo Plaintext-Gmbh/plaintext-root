@@ -78,9 +78,16 @@ class EigeneAdresseTest {
     @Test
     @DisplayName("Ohne mandantenspezifischen Wert gilt die globale Einstellung")
     void globalVorKonfiguration() {
+        // Karte 1063: Der Rueckfall auf "global" liegt seit dem gleichnamigen Geltungsbereich im
+        // Settings-Modul — getString(key, mandat) sucht dort selbst zuerst beim Mandanten und dann
+        // unter "global" (geprueft in SettingsGlobalScopeTest). Vorher stand er hier, und zwar nur
+        // scheinbar: der zweite Aufruf getString(key) las ueber getCurrentMandat() denselben
+        // Mandanten noch einmal und warf ohne Kontext.
+        //
+        // Dieser Test prueft deshalb jetzt die Zusage aus SICHT dieser Klasse: was der Dienst zum
+        // Mandanten liefert, gilt — woher er es hat, ist seine Sache.
         mandat("plaintext");
-        when(settings.getString(SettingsKeys.APP_OWNHOST, "plaintext")).thenReturn(null);
-        when(settings.getString(SettingsKeys.APP_OWNHOST)).thenReturn("https://global.example");
+        when(settings.getString(SettingsKeys.APP_OWNHOST, "plaintext")).thenReturn("https://global.example");
 
         assertThat(bohne(settings, "https://konfig.example").basis(VORGABE))
                 .isEqualTo("https://global.example");
@@ -91,7 +98,6 @@ class EigeneAdresseTest {
     void konfigurationDannVorgabe() {
         mandat("plaintext");
         when(settings.getString(SettingsKeys.APP_OWNHOST, "plaintext")).thenReturn(null);
-        when(settings.getString(SettingsKeys.APP_OWNHOST)).thenReturn(null);
 
         assertThat(bohne(settings, "https://konfig.example").basis(VORGABE))
                 .isEqualTo("https://konfig.example");

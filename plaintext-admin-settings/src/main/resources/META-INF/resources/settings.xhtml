@@ -71,6 +71,13 @@
 
                     <p:column headerText="Mandat" sortBy="#{obj.mandat}">
                         <h:outputText value="#{obj.mandat}"/>
+                        <!-- Karte 1063: globale Eintraege stehen mit in der Liste, weil sie fuer
+                             diesen Mandanten wirken (der Lesepfad faellt auf sie zurueck). Ohne
+                             Kennzeichnung sieht ein Eintrag, der fuer ALLE gilt, aus wie ein
+                             eigener. -->
+                        <h:outputText value=" (gilt für alle Mandanten)"
+                                      rendered="#{settingsBackingBean.istGlobal(obj)}"
+                                      style="color:#2e7d32; font-size:0.83em;"/>
                     </p:column>
 
                     <p:column headerText="#{i18n.t('Ebene')}" style="width: 80px;">

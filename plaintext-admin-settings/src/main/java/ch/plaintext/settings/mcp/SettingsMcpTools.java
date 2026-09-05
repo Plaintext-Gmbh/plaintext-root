@@ -89,8 +89,17 @@ public class SettingsMcpTools {
             return "FEHLER: Bitte einen Schluessel angeben.";
         }
         String wert = settingsService.getString(key.trim(), a.mandat());
-        log.info("MCP: get_setting '{}' (mandat={}, gefunden={})", key, a.mandat(), wert != null);
-        return wert != null ? wert : "Kein Wert fuer '" + key.trim() + "' im Mandanten " + a.mandat() + ".";
+        // Karte 1063: getString faellt auf den globalen Eintrag zurueck. Der Wert GILT damit fuer
+        // diesen Mandanten — aber er gehoert ihm nicht. Wer ihn aendern will, legt einen eigenen
+        // an; wer ihn fuer alle aendern will, muss den globalen anfassen. Deshalb wird die
+        // Herkunft mitgesagt statt verschwiegen.
+        boolean eigener = settingsService.exists(key.trim(), a.mandat());
+        log.info("MCP: get_setting '{}' (mandat={}, gefunden={}, eigener={})",
+                key, a.mandat(), wert != null, eigener);
+        if (wert == null) {
+            return "Kein Wert fuer '" + key.trim() + "' im Mandanten " + a.mandat() + ".";
+        }
+        return eigener ? wert : wert + "  (globale Einstellung, gilt fuer alle Mandanten)";
     }
 
     /**
@@ -122,13 +131,17 @@ public class SettingsMcpTools {
         if (!ERLAUBTE_TYPEN.contains(typ)) {
             return "FEHLER: Unbekannter Typ '" + valueType + "'. Erlaubt: " + String.join(", ", ERLAUBTE_TYPEN) + ".";
         }
-        String vorher = settingsService.getString(key.trim(), a.mandat());
+        // exists() statt getString(): geschrieben wird IMMER beim eigenen Mandanten, also muss
+        // auch "neu oder geaendert" dort gemessen werden. Mit getString haette ein bloss global
+        // gesetzter Schluessel als "geaendert" gemeldet, obwohl gerade der erste eigene Eintrag
+        // entstanden ist (Karte 1063).
+        boolean hatteEigenen = settingsService.exists(key.trim(), a.mandat());
         settingsService.setSetting(key.trim(), a.mandat(), value, typ, description);
         log.info("MCP: set_setting '{}' (mandat={}, user={}, {} -> gesetzt)",
-                key, a.mandat(), a.name(), vorher == null ? "neu" : "geaendert");
-        return vorher == null
-                ? "OK: '" + key.trim() + "' angelegt."
-                : "OK: '" + key.trim() + "' geaendert (vorher war ein Wert gesetzt).";
+                key, a.mandat(), a.name(), hatteEigenen ? "geaendert" : "neu");
+        return hatteEigenen
+                ? "OK: '" + key.trim() + "' geaendert (vorher war ein Wert gesetzt)."
+                : "OK: '" + key.trim() + "' angelegt.";
     }
 
     @McpTool(name = "delete_setting",
@@ -144,8 +157,13 @@ public class SettingsMcpTools {
         if (leer(key)) {
             return "FEHLER: Bitte einen Schluessel angeben.";
         }
-        if (settingsService.getString(key.trim(), a.mandat()) == null) {
-            return "Kein Wert fuer '" + key.trim() + "' im Mandanten " + a.mandat() + " — nichts geloescht.";
+        // exists() statt getString(): Der globale Rueckfall aus Karte 1063 haette hier gemeldet,
+        // es gebe etwas zu loeschen, waehrend deleteSetting(key, mandat) anschliessend nichts
+        // findet — Ergebnis waere ein "OK: geloescht" fuer einen Eintrag, der unveraendert
+        // weitergilt. exists() fragt bewusst NUR den eigenen Mandanten.
+        if (!settingsService.exists(key.trim(), a.mandat())) {
+            return "Kein eigener Wert fuer '" + key.trim() + "' im Mandanten " + a.mandat()
+                    + " — nichts geloescht. (Ein globaler Eintrag wird hier nicht angetastet.)";
         }
         settingsService.deleteSetting(key.trim(), a.mandat());
         log.info("MCP: delete_setting '{}' (mandat={}, user={})", key, a.mandat(), a.name());

@@ -364,7 +364,9 @@ class SettingsBackingBeanTest {
         when(security.getAllMandate()).thenReturn(Set.of("mandatA", "mandatB"));
 
         List<String> result = bean.getAllMandate();
-        assertThat(result).containsExactlyInAnyOrder("mandatA", "mandatB");
+        // Karte 1063: dazu kommt "global" — der Geltungsbereich fuer alle Mandanten, genau wie
+        // CronController ihn seiner Mandantenliste hinzufuegt. Er steht vorn (SettingsGlobalUiTest).
+        assertThat(result).containsExactlyInAnyOrder("global", "mandatA", "mandatB");
     }
 
     // --- getValueTypes ---

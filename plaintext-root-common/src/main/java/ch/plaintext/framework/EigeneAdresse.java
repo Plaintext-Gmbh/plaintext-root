@@ -103,11 +103,17 @@ public class EigeneAdresse {
             log.debug("Kein Mandant im Kontext, nehme die globale Einstellung", e);
         }
         try {
-            String wert = mandat == null ? null : service.getString(SettingsKeys.APP_OWNHOST, mandat);
-            if (istLeer(wert)) {
-                wert = service.getString(SettingsKeys.APP_OWNHOST);
-            }
-            return wert;
+            // Karte 1063: Der Rueckfall auf den globalen Eintrag steckt seit dem Geltungsbereich
+            // "global" im Settings-Modul selbst — getString(key, mandat) sucht den Schluessel
+            // zuerst beim Mandanten und dann unter "global", und getString(key) liest ohne
+            // angemeldeten Benutzer direkt global. Vorher standen hier zwei Aufrufe, die BEIDE
+            // denselben Mandanten lasen: der zweite loeste "global" nicht auf, sondern ging ueber
+            // getCurrentMandat() und warf ohne Kontext eine IllegalStateException, die unten
+            // stillschweigend geschluckt wurde. Der Javadoc oben versprach den globalen Rueckfall
+            // also, bevor es ihn gab.
+            return mandat == null
+                    ? service.getString(SettingsKeys.APP_OWNHOST)
+                    : service.getString(SettingsKeys.APP_OWNHOST, mandat);
         } catch (RuntimeException e) {
             log.debug("Settings-Schluessel {} nicht lesbar, nehme die Konfiguration",
                     SettingsKeys.APP_OWNHOST, e);
