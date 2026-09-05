@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
 import ch.plaintext.boot.plugins.objstore.SimpleStorable;
+import ch.plaintext.boot.table.TableState;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,8 +16,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Everything a user has set up for themselves: theme, menu, language — and, per table, which
+ * columns they want to see and how wide.
+ *
+ * <p><b>{@code ignoreUnknown} is the rollback insurance (Karte 1077).</b> The record is stored as
+ * JSON by {@code SimpleStorableConverter}, whose mapper fails on unknown properties and then
+ * returns {@code null} for the whole record. Every field added here is unknown to the previous
+ * root version; without this annotation a rollback would hand every user who had already saved
+ * the new field a blank preference set — and the next save would overwrite the old record for
+ * good. The annotation only protects from this version onwards; the versions before it cannot
+ * be helped retroactively.
+ */
 @Slf4j
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UserPreference implements SimpleStorable<UserPreference>, Serializable {
 
     private String menuMode = "layout-sidebar";
@@ -66,6 +81,34 @@ public class UserPreference implements SimpleStorable<UserPreference>, Serializa
             tabellenSpalten = new HashMap<>();
         }
         return tabellenSpalten;
+    }
+
+    /**
+     * Karte 1077: per table, the full display state of this user — visibility, widths, named
+     * profiles ({@link TableState}). This is the storage behind {@code pt:tableSettings}, written
+     * and read by {@code UserPreferenceTableStateStore}.
+     *
+     * <p>The key is <b>{@code mandat + "/" + page}</b>, e.g. {@code "guild42/guild-member"}: the
+     * same user works in several tenants, and a column choice made for one of them must not show
+     * up in the other (decision 3 of Karte 1077). {@link #tabellenSpalten} has no tenant in its
+     * key; it stays as it is, and the store reads it as a fallback when no entry exists here yet.
+     *
+     * <p>Like {@link #tabellenSpalten} a map and not a field per table: the next table costs no
+     * change to this class. A missing entry means "never set up" — the table starts with its
+     * own defaults.
+     */
+    private Map<String, TableState> tabellenStaende = new HashMap<>();
+
+    /**
+     * Null-safe getter for the same reason as {@link #getTabellenSpalten()}: records stored
+     * before this field existed come back with {@code null}, the field initializer never runs
+     * on deserialization.
+     */
+    public Map<String, TableState> getTabellenStaende() {
+        if (tabellenStaende == null) {
+            tabellenStaende = new HashMap<>();
+        }
+        return tabellenStaende;
     }
 
     /**

@@ -17,10 +17,17 @@
       mit layout="grid" am selectManyCheckbox (das in PrimeFaces 15 eine FacesException wirft und
       die Seite weiss laesst — auf Produktion aufgefallen, nicht im Build).
 
-      DER GEGENPART IN JAVA: ch.plaintext.boot.web.table.TableSettings aus plaintext-root-web.
-      Das Tag rendert nur; alles, was es abfragt, steht dort. Wer das Tag benutzt, braucht also
-      BEIDE Module — plaintext-root-template fuer die Taglib und plaintext-root-web fuer die
-      Klasse. Die Ablage des Benutzerstands stellt die App selbst ueber TableStateStore.
+      DER GEGENPART IN JAVA: ch.plaintext.boot.table.TableSettings aus plaintext-root-common
+      (bis 1.668.0 in plaintext-root-web; seit Karte 1077 dort, wo auch die Ablage wohnt).
+      Das Tag rendert nur; alles, was es abfragt, steht dort. Die Ablage des Benutzerstands
+      bringt root mit: UserPreferenceTableStateStore (je Benutzer und Mandant, JSON in
+      UserPreference) — die Backing-Bean laesst sich einen TableStateStore injizieren, mehr nicht.
+
+      MOBIL (Entscheid 2 der Karte 1077): unter 768px — derselbe Umbruch wie in
+      mobile-responsive.css — gelten gespeicherte Spaltenbreiten NICHT. table-settings.css setzt
+      Tabellen- und Spaltenbreiten auf auto zurueck und blendet die Breitenfelder und den
+      Setzen-Knopf aus; die Sichtbarkeit der Spalten und die Profile gelten weiter. Das Skript
+      markiert die Tabelle dafuer mit der Klasse pt-tablesettings-breiten.
 
       PFLICHT:
         anzeige   das TableSettings-Objekt der Seite, z.B. #{projektBackingBean.anzeige}
@@ -111,7 +118,7 @@
             <!-- Die Gesamtbreite ist das, worauf sich die Spalten verteilen; leer heisst: Summe
                  der Spalten, die Tabelle waechst beim Ziehen mit. Nur auf Seiten mit festen
                  Spaltenbreiten. -->
-            <h:panelGroup layout="block" style="margin-top:10px;"
+            <h:panelGroup layout="block" style="margin-top:10px;" styleClass="pt-tablesettings-breitenblock"
                           rendered="#{anzeige.mitBreiten}">
                 <h:outputText value="Gesamtbreite:" styleClass="pt-tablesettings-label"/>
                 <p:inputNumber id="#{ptSettingsId}-totalWidth" value="#{anzeige.gesamtBreite}"
@@ -147,7 +154,7 @@
             <!-- Zweite Breite: auf diesen Wert setzt der kleine Knopf im Spaltenkopf eine einzelne
                  Spalte. Von Hand ziehen trifft nie zweimal denselben Pixelwert — untereinander
                  stehende Tabellen sahen deshalb nie gleich aus. -->
-            <h:panelGroup layout="block" style="margin-top:8px;"
+            <h:panelGroup layout="block" style="margin-top:8px;" styleClass="pt-tablesettings-breitenblock"
                           rendered="#{anzeige.mitBreiten}">
                 <h:outputText value="Spaltenbreite:" styleClass="pt-tablesettings-label"/>
                 <p:inputNumber id="#{ptSettingsId}-targetWidth" value="#{anzeige.zielSpaltenBreite}"

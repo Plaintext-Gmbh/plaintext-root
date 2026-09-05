@@ -36,6 +36,9 @@ Shared utilities used across modules.
 | `PlaintextRoleProvider` | Module contribution interface for declaring roles (see [Role Registry](ROLE_REGISTRY.md)) |
 | `PlaintextRole` | Declared role: technical name plus human-readable description |
 | `PlaintextRoleRegistry` | Collects all declared roles (union, deduplicated) for selection UIs |
+| `TableSettings` / `TableColumn` (`ch.plaintext.boot.table`) | Java side of `pt:tableSettings`: column visibility, widths and named profiles of one table (Karte 1077; until 1.668.0 in `plaintext-root-web`) |
+| `TableState` / `TableColumnProfile` | What a user set up on a table — plain data, stored as JSON |
+| `TableStateStore` / `UserPreferenceTableStateStore` | Storage seam and the shipped implementation: per user and tenant in `UserPreference.tabellenStaende` |
 
 ### plaintext-root-jpa
 

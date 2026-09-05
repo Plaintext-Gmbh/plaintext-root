@@ -7,7 +7,9 @@ import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.audit.DestructiveActionAuditService;
 import ch.plaintext.boot.plugins.security.magiclink.MagicLinkService;
 import ch.plaintext.boot.plugins.security.model.MyRememberMe;
-import ch.plaintext.boot.plugins.jsf.userprofile.UserPreferencesBackingBean;
+import ch.plaintext.boot.table.TableColumn;
+import ch.plaintext.boot.table.TableSettings;
+import ch.plaintext.boot.table.TableStateStore;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.model.UserMandate;
 import ch.plaintext.boot.plugins.security.persistence.MyRememberMeRepository;
@@ -110,6 +112,7 @@ public class MyUserBackingBean implements Serializable {
      * @param userMandateRepo repository of the additional tenants
      * @param magicLinkService sending of the magic links
      * @param auditService    audit log for role changes/deletions; optional, may be {@code null}
+     * @param tableStateStore storage of the column selection (Karte 1077); optional, may be {@code null}
      */
     @Autowired
     public MyUserBackingBean(PasswordEncoder passwordEncoder,
@@ -120,7 +123,7 @@ public class MyUserBackingBean implements Serializable {
                              UserMandateRepository userMandateRepo,
                              MagicLinkService magicLinkService,
                              @Nullable DestructiveActionAuditService auditService,
-                             @Nullable UserPreferencesBackingBean userPreferences) {
+                             @Nullable TableStateStore tableStateStore) {
         this.passwordEncoder = passwordEncoder;
         this.repo = repo;
         this.roleRegistry = roleRegistry;
@@ -129,7 +132,7 @@ public class MyUserBackingBean implements Serializable {
         this.userMandateRepo = userMandateRepo;
         this.magicLinkService = magicLinkService;
         this.auditService = auditService;
-        this.userPreferences = userPreferences;
+        this.tableStateStore = tableStateStore;
     }
 
     /** Additional tenants of the selected user (multi-tenant), editable in the dialog. */
@@ -144,53 +147,67 @@ public class MyUserBackingBean implements Serializable {
     // ------------------------------------------------------------------ Column selection
 
     /**
-     * Identifier of this table in {@code UserPreference.tabellenSpalten}. The map is deliberately
-     * keyed per table, so that the next table can be added without a change to the
-     * settings class.
+     * Page key of this table in the user's stored table states ({@code UserPreference}). It is
+     * part of stored records and must never change. The same key was used by the previous
+     * storage ({@code UserPreference.tabellenSpalten}); the store reads that as a fallback, so
+     * a selection saved before Karte 1077 comes back unchanged.
      */
     static final String TABELLE = "useradmin";
 
     /**
-     * All columns that can be switched off, in display order, key and label.
+     * All columns that can be switched off, in display order: key, header text, and no fixed
+     * width (the table runs with {@code reflow} and auto layout, hence {@code mitBreiten=false}).
      *
      * <p>The column "Bearbeiten" is missing here on purpose: it is the only way to open a
      * user. If it could be deselected, one could render the administration unusable
      * and would then have no way back.
      */
-    private static final List<String[]> SPALTEN = List.of(
-            new String[]{"id", "ID"},
-            new String[]{"username", "Benutzername"},
-            new String[]{"vorname", "Vorname"},
-            new String[]{"nachname", "Nachname"},
-            new String[]{"mandat", "Mandat"},
-            new String[]{"startpage", "Startseite"},
-            new String[]{"remember", "Remember-Me"},
-            new String[]{"impersonate", "Impersonate"});
+    private static final List<TableColumn> SPALTEN = List.of(
+            new TableColumn("id", "ID", 0),
+            new TableColumn("username", "Benutzername", 0),
+            new TableColumn("vorname", "Vorname", 0),
+            new TableColumn("nachname", "Nachname", 0),
+            new TableColumn("mandat", "Mandat", 0),
+            new TableColumn("startpage", "Startseite", 0),
+            new TableColumn("remember", "Remember-Me", 0),
+            new TableColumn("impersonate", "Impersonate", 0));
 
-    /** Default when this user has never selected anything: the previous state. */
-    private static final List<String> SPALTEN_VOREINSTELLUNG =
-            List.of("id", "username", "vorname", "nachname", "mandat", "startpage", "remember", "impersonate");
+    /**
+     * Karte 1077: the display state of the table — the same building block as
+     * {@code pt:tableSettings}, here only for the visibility, driven by the checkbox menu that
+     * Daniel asked for on 25.08.2026. Loading and saving run through {@link #tableStateStore};
+     * the state is keyed per user and tenant.
+     */
+    private final TableSettings anzeige = new TableSettings(TABELLE, false);
 
     /**
      * Wired optionally: contexts without user settings (lean tests) shall be able to keep
-     * building the bean. If it is missing, the default applies permanently.
+     * building the bean. If it is missing, the default applies permanently and nothing is saved.
      */
-    private transient UserPreferencesBackingBean userPreferences;
-
-    private List<String> sichtbareSpalten = new ArrayList<>(SPALTEN_VOREINSTELLUNG);
+    private transient TableStateStore tableStateStore;
 
     /** The selection for the checkbox menu above the table. */
     public List<SelectItem> getSpaltenAuswahl() {
-        List<SelectItem> items = new ArrayList<>();
-        for (String[] spalte : SPALTEN) {
-            items.add(new SelectItem(spalte[0], spalte[1]));
-        }
-        return items;
+        return anzeige.getColumnItems();
+    }
+
+    /** The visible column keys — value of the checkbox menu. */
+    public List<String> getSichtbareSpalten() {
+        return anzeige.getVisibleColumns();
+    }
+
+    /**
+     * An <b>empty</b> selection is a valid statement ("I want none of these columns") and is
+     * kept as such — {@link TableSettings#setVisibleColumns(List)} marks every column that is
+     * not in the list as hidden.
+     */
+    public void setSichtbareSpalten(List<String> spalten) {
+        anzeige.setVisibleColumns(spalten);
     }
 
     /** @return {@code true} if the column is shown for this user */
     public boolean spalteSichtbar(String schluessel) {
-        return sichtbareSpalten != null && sichtbareSpalten.contains(schluessel);
+        return anzeige.isVisible(schluessel);
     }
 
     /**
@@ -202,25 +219,20 @@ public class MyUserBackingBean implements Serializable {
      * was not wanted here.
      */
     public void spaltenGeaendert() {
-        if (userPreferences == null) {
-            log.debug("Spaltenauswahl nicht gespeichert - keine Benutzereinstellungen verfuegbar");
+        if (tableStateStore == null) {
+            log.debug("Spaltenauswahl nicht gespeichert - keine Ablage verfuegbar");
             return;
         }
-        userPreferences.merkeTabellenSpalten(TABELLE, sichtbareSpalten);
-        log.debug("Spaltenauswahl fuer {} gespeichert: {}", TABELLE, sichtbareSpalten);
+        anzeige.persist();
+        log.debug("Spaltenauswahl fuer {} gespeichert: {}", TABELLE, anzeige.getVisibleColumns());
     }
 
-    /** Fetches the stored selection; without a stored entry the default stays in effect. */
+    /**
+     * Fetches the stored state; without a stored entry the default (all columns) stays in
+     * effect. A {@code null} store is allowed and leaves the bean usable without saving.
+     */
     private void ladeSpaltenauswahl() {
-        if (userPreferences == null) {
-            return;
-        }
-        List<String> gespeichert = userPreferences.tabellenSpalten(TABELLE);
-        // null means "never set" -> default. An EMPTY list, in contrast, is a deliberate
-        // selection and stays empty.
-        if (gespeichert != null) {
-            sichtbareSpalten = new ArrayList<>(gespeichert);
-        }
+        anzeige.init(tableStateStore, SPALTEN);
     }
 
     /**

@@ -1,7 +1,7 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-package ch.plaintext.boot.web.table;
+package ch.plaintext.boot.table;
 
 import jakarta.faces.context.FacesContext;
 import jakarta.faces.model.SelectItem;
@@ -29,6 +29,11 @@ import java.util.Map;
  * muesste den Stand nach Seiten schluesseln und waere doch nur ein Umweg zum selben Ergebnis —
  * mit dem Zusatzrisiko, dass zwei Seiten sich gegenseitig die Spalten verstellen.</p>
  *
+ * <p><b>Die Ablage kommt mit.</b> {@link UserPreferenceTableStateStore} ist ein Spring-Bean aus
+ * diesem Modul und speichert je Benutzer und Mandant in {@code UserPreference}; die Backing-Bean
+ * laesst sich einen {@link TableStateStore} injizieren ({@code transient}, wie ihre Services)
+ * und reicht ihn an {@link #init} weiter. Mehr braucht eine Seite nicht.</p>
+ *
  * <pre>{@code
  * private static final List<TableColumn> COLUMNS = List.of(
  *         new TableColumn("key",   "Schluessel", 160),
@@ -36,6 +41,9 @@ import java.util.Map;
  *
  * @Getter
  * private final TableSettings anzeige = new TableSettings("projects", true);
+ *
+ * @Autowired
+ * private transient TableStateStore tableStateStore;
  *
  * @PostConstruct
  * void init() {
@@ -131,7 +139,14 @@ public class TableSettings implements Serializable {
     public void init(TableStateStore store, List<TableColumn> columns) {
         this.store = store;
         this.columns = new ArrayList<>(columns);
-        this.state = store == null ? new TableState() : store.load(page);
+        this.state = store == null
+                ? new TableState()
+                : store.load(page, this.columns.stream().map(TableColumn::getKey).toList());
+        if (this.state == null) {
+            // Der Vertrag sagt "nie null"; eine fremde Umsetzung, die ihn bricht, soll die Seite
+            // trotzdem nicht in eine NPE laufen lassen.
+            this.state = new TableState();
+        }
         ensureProfile();
     }
 

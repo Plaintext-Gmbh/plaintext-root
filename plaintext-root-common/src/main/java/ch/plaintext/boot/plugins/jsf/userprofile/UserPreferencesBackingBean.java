@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
+import ch.plaintext.boot.table.TableState;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.context.ExternalContext;
 import jakarta.faces.context.FacesContext;
@@ -196,6 +197,52 @@ public class UserPreferencesBackingBean implements Serializable {
             return null;
         }
         return prefs.getTabellenSpalten().get(tabelle);
+    }
+
+    /**
+     * Karte 1077: the full display state of a table ({@link TableState}) — the storage behind
+     * {@code pt:tableSettings}. Counterpart to {@link #tabellenStand(String)}; built like
+     * {@link #merkeTabellenSpalten(String, List)} and for the same reason: setting and saving
+     * belong together.
+     *
+     * <p>The caller ({@code UserPreferenceTableStateStore}) hands in the <b>complete</b> key,
+     * tenant included; this class does not know which tenant is active.
+     *
+     * @param schluessel key of the table state, e.g. {@code "guild42/guild-member"}
+     * @param stand      the state to remember; {@code null} removes the entry
+     */
+    public void merkeTabellenStand(String schluessel, TableState stand) {
+        if (prefs == null || schluessel == null || schluessel.isBlank()) {
+            log.debug("Tabellenstand nicht gespeichert (Schluessel '{}', Einstellungen geladen: {})",
+                    schluessel, prefs != null);
+            return;
+        }
+        if (stand == null) {
+            prefs.getTabellenStaende().remove(schluessel);
+        } else {
+            prefs.getTabellenStaende().put(schluessel, stand);
+        }
+        save();
+    }
+
+    /**
+     * The remembered display state of a table, or {@code null} for "never set up" — the caller
+     * then starts with the table's defaults (and, in the store, with the fallback to
+     * {@link #tabellenSpalten(String)}).
+     *
+     * <p>Returns the stored instance itself, not a copy: {@code TableSettings} keeps working on
+     * it and hands it back to {@link #merkeTabellenStand(String, TableState)} after every change.
+     * A copy would only add a place where two states could drift apart.
+     *
+     * @param schluessel key of the table state, tenant included
+     * @return the stored state or {@code null}
+     */
+    public TableState tabellenStand(String schluessel) {
+        if (prefs == null || schluessel == null) {
+            // After a session has been restored, the transient field is empty.
+            return null;
+        }
+        return prefs.getTabellenStaende().get(schluessel);
     }
 
     public void merkeTrennerBreite(String bereich, int breite) {
