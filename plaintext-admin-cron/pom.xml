@@ -26,27 +26,38 @@
             <artifactId>plaintext-root-interfaces</artifactId>
         </dependency>
 
-        <!-- Spring Boot Starters -->
+        <!-- Spring Boot Starters. dependency:analyze meldet alle vier als "unused declared":
+             das sind Aggregat-POMs ohne eigene Klassen, das Werkzeug kann ihre Nutzung
+             strukturell nicht sehen (Karte 1027, 06.09.2026). -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- data-jpa: CronConfigRepository/CronConfigEntity nutzen JpaRepository/@Entity. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!-- mail: kein Java-Treffer im Modul (kein MailSender/jakarta.mail-Import, Stand
+             06.09.2026); nicht Teil der zwoelf aus Karte 391 benannten Abhaengigkeiten,
+             deshalb hier bewusst NICHT entfernt: Entfernung wuerde eine eigene
+             Konsumenten-Pruefung brauchen, die diese Karte nicht abdeckt. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+        <!-- security: SuperCron.java nutzt org.springframework.security direkt. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- web: kein @Controller/@RequestMapping im Modul (JSF-Backing-Beans statt Spring
+             MVC, Stand 06.09.2026); wie starter-mail bewusst nicht entfernt, gleiche
+             Begruendung. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -72,15 +83,12 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
+        <!-- commons-io: kein Java-Treffer im Modul (Stand 06.09.2026); nicht Teil der
+             zwoelf aus Karte 391 benannten Abhaengigkeiten, deshalb bewusst nicht entfernt
+             (gleiche Begruendung wie bei starter-mail/starter-web oben). -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-        </dependency>
-
-        <!-- XStream for JPA Converters -->
-        <dependency>
-            <groupId>com.thoughtworks.xstream</groupId>
-            <artifactId>xstream</artifactId>
         </dependency>
 
         <!-- JSF/PrimeFaces -->
@@ -89,19 +97,24 @@
             <artifactId>jakarta.faces</artifactId>
         </dependency>
 
+        <!-- primefaces: nicht aus Java-Code referenziert, sondern aus cron.xhtml
+             (xmlns:p="http://primefaces.org/ui"): JSF-Facelets-Nutzung ist fuer
+             dependency:analyze unsichtbar. -->
         <dependency>
             <groupId>org.primefaces</groupId>
             <artifactId>primefaces</artifactId>
             <classifier>jakarta</classifier>
         </dependency>
 
-        <!-- Servlet API -->
+        <!-- Servlet API: kein Java-Treffer im Modul (Stand 06.09.2026); nicht Teil der
+             zwoelf aus Karte 391 benannten Abhaengigkeiten, bewusst nicht entfernt. -->
         <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
         </dependency>
 
-        <!-- Validation API -->
+        <!-- Validation API: kein Java-Treffer im Modul (Stand 06.09.2026); nicht Teil der
+             zwoelf aus Karte 391 benannten Abhaengigkeiten, bewusst nicht entfernt. -->
         <dependency>
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
@@ -113,65 +126,16 @@
             <artifactId>jakarta.inject-api</artifactId>
         </dependency>
 
-        <!-- Jakarta Mail -->
-        <dependency>
-            <groupId>com.sun.mail</groupId>
-            <artifactId>jakarta.mail</artifactId>
-        </dependency>
-
-        <!-- Joda Time -->
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-        </dependency>
-
         <!-- Cron4j for scheduled tasks -->
         <dependency>
             <groupId>it.sauronsoftware.cron4j</groupId>
             <artifactId>cron4j</artifactId>
         </dependency>
 
-        <!-- Apache POI for Excel -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-        </dependency>
-
-        <!-- JSoup for HTML parsing -->
-        <dependency>
-            <groupId>org.jsoup</groupId>
-            <artifactId>jsoup</artifactId>
-        </dependency>
-
         <!-- Prettytime -->
         <dependency>
             <groupId>org.ocpsoft.prettytime</groupId>
             <artifactId>prettytime</artifactId>
-        </dependency>
-
-        <!-- Guava -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-        </dependency>
-
-        <!-- HTTP Client -->
-        <dependency>
-            <groupId>org.apache.httpcomponents.client5</groupId>
-            <artifactId>httpclient5</artifactId>
-        </dependency>
-
-
-
-        <!-- Universal Character Detector -->
-        <dependency>
-            <groupId>com.googlecode.juniversalchardet</groupId>
-            <artifactId>juniversalchardet</artifactId>
         </dependency>
 
         <!-- AssertJ (for utilities, optional) -->
@@ -188,13 +152,6 @@
             <artifactId>spring-web</artifactId>
             <optional>true</optional>
         </dependency>
-
-        <!-- Gson -->
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-        </dependency>
-
 
 
         <!-- Rewrite Servlet (optional) -->
@@ -257,24 +214,9 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Java Object Diff -->
-        <dependency>
-            <groupId>de.danielbechler</groupId>
-            <artifactId>java-object-diff</artifactId>
-        </dependency>
-
-        <!-- Commons BeanUtils -->
-        <dependency>
-            <groupId>commons-beanutils</groupId>
-            <artifactId>commons-beanutils</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
+        <!-- plaintext-root-menu: wird ueber @MenuAnnotation (ch.plaintext.boot.menu) in
+             CronMenu.java genutzt; dependency:analyze sieht es wegen der Annotation nicht
+             als Treffer. -->
         <dependency>
             <groupId>ch.plaintext</groupId>
             <artifactId>plaintext-root-menu</artifactId>
