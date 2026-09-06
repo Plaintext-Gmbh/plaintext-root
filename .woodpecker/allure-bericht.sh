@@ -181,6 +181,23 @@ if [ ! -x "$ALLURE_BIN" ]; then
 fi
 "$ALLURE_BIN" --version
 
+# ── 4b. No phone-home to Google ─────────────────────────────────────────────
+# Card 1042 (05.09.2026): every generated report ships a gtag script that reports to
+# Google Analytics (G-FVWC4GKEYS) on every page view, WITH REFERRER — the referrer is the
+# report URL under reports.plaintext.ch, which carries the repo name and the run number.
+# `allure generate` itself ALSO calls google-analytics.com/mp/collect once, from the CI
+# agent, during generation. One switch closes both, measured locally against
+# allure-commandline 2.46.0 (465 XML in, one gtag hit without the switch):
+#   - `allure.properties` with `allure.analytics.enabled=false` does NOT exist in 2.x — that
+#     key belongs to the Allure 1.x legacy-XML reader (grepped allure-generator-2.46.0.jar:
+#     the string appears only in Allure1Plugin.class). Left in place, it does nothing.
+#   - `ALLURE_NO_ANALYTICS=1` does NOT work either: ReportWebGenerator reads the env var and
+#     converts it with `Boolean.valueOf(...)`, which is only true for the literal string
+#     "true" — "1" parses to false and the script stays in the report.
+#   - `ALLURE_NO_ANALYTICS=true` works: 0 `googletagmanager` hits in the generated
+#     index.html, and widgets/summary.json (the numbers) is unaffected.
+export ALLURE_NO_ANALYTICS=true
+
 # ── 5. Build the report and file it ─────────────────────────────────────────
 mkdir -p "$REPORT_ROOT/$REPO"
 rm -rf "$ZIEL"
