@@ -320,7 +320,19 @@ steps:
       # Woodpecker's default workspace ends in .../Plaintext-Gmbh/plaintext-root, so it fits —
       # but only as long as nobody changes `workspace:`. That is why it is checked below.
       - mkdir -p "$HOME/codeplain"
-      - git clone --depth 1 https://github.com/Plaintext-Gmbh/plaintext-scripts.git "$HOME/codeplain/plaintext-scripts"
+      # Karte 1093 (Woodpecker counterpart to the GitHub pipeline pin, Karte 313):
+      # plaintext-scripts is public and was cloned UNPINNED at runtime -- a commit on its
+      # master took effect on every PROD deploy immediately, without review by this repo.
+      # SHA-pinned like the GitHub Actions callers. This SHA is plaintext-scripts@master as
+      # of 2026-09-06 -- deliberately NOT the same as the (older) GH-Actions pin e243befd,
+      # which would silently drop the deploy-lock fix from Karte 1055 in tui-build-logic.sh.
+      # Both pins should be advanced together at some point.
+      - >-
+        mkdir -p "$HOME/codeplain/plaintext-scripts" &&
+        git -C "$HOME/codeplain/plaintext-scripts" init -q &&
+        git -C "$HOME/codeplain/plaintext-scripts" remote add origin https://github.com/Plaintext-Gmbh/plaintext-scripts.git &&
+        git -C "$HOME/codeplain/plaintext-scripts" fetch --depth 1 origin 199e5cf367d4c8e9cb7665e81cc7fb3a894fc90a &&
+        git -C "$HOME/codeplain/plaintext-scripts" checkout FETCH_HEAD
       - git clone --depth 1 https://github.com/Plaintext-Gmbh/plaintext-config.git  "$HOME/codeplain/plaintext-config"
       - chmod +x "$HOME/codeplain/plaintext-scripts"/*.sh
       - >-
