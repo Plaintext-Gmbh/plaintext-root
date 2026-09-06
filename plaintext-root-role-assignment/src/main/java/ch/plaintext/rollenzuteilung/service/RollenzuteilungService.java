@@ -4,6 +4,7 @@
 package ch.plaintext.rollenzuteilung.service;
 
 import ch.plaintext.PlaintextSecurity;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.rollenzuteilung.entity.Rollenzuteilung;
 import ch.plaintext.rollenzuteilung.repository.RollenzuteilungRepository;
 import jakarta.inject.Named;
@@ -67,7 +68,7 @@ public class RollenzuteilungService {
     @Transactional
     public void deleteByUsernameAndMandatAndRole(String username, String mandat, String roleName) {
         repository.deleteByUsernameAndMandatAndRoleName(username, mandat, roleName);
-        log.info("Deleted rollenzuteilung: username={}, mandat={}, role={}", username, mandat, roleName);
+        log.info("Deleted rollenzuteilung: username={}, mandat={}, role={}", Log.mail(username), mandat, roleName);
     }
 
     public Optional<Rollenzuteilung> findByUsernameAndMandatAndRole(String username, String mandat, String roleName) {

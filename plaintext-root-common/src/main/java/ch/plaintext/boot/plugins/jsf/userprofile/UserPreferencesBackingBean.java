@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.table.TableState;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.context.ExternalContext;
@@ -72,7 +73,7 @@ public class UserPreferencesBackingBean implements Serializable {
 
         if (prefs != null) {
             log.info("PREFS-INIT user={} componentTheme={} darkMode={} customColor={} cookieColor={} cookieCustomColor={}",
-                    username, prefs.getComponentTheme(), prefs.getDarkMode(), prefs.getCustomColor(), cookieColor, cookieCustomColor);
+                    Log.mail(username), prefs.getComponentTheme(), prefs.getDarkMode(), prefs.getCustomColor(), cookieColor, cookieCustomColor);
 
             // If cookie theme differs from DB, update DB to match cookie
             if (cookieTheme != null && !cookieTheme.equals(prefs.getDarkMode())) {

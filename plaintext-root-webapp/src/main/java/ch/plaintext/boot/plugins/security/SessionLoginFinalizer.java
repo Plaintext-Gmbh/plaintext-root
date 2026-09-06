@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security;
 
+import ch.plaintext.boot.plugins.log.Log;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -106,7 +107,7 @@ public class SessionLoginFinalizer {
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, request, response);
 
-        log.info("{}: Session aufgebaut fuer {} (Session-Id erneuert)", quelle, userDetails.getUsername());
+        log.info("{}: Session aufgebaut fuer {} (Session-Id erneuert)", quelle, Log.mail(userDetails.getUsername()));
 
         // (3) 2FA gate / password change / start page / login event — identical to the form login.
         successHandler.onAuthenticationSuccess(request, response, authToken);

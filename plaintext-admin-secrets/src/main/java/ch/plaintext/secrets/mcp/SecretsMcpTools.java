@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.secrets.mcp;
 
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.secrets.SecretBackendType;
 import ch.plaintext.secrets.SecretHealth;
 import ch.plaintext.secrets.SecretService;
@@ -168,11 +169,11 @@ public class SecretsMcpTools {
                 .collect(Collectors.toUnmodifiableSet());
 
         if (!authorities.contains(SCOPE_ADMIN)) {
-            log.warn("MCP: {} abgewiesen — scope=ADMIN fehlt (Aufrufer {})", werkzeug, auth.getName());
+            log.warn("MCP: {} abgewiesen — scope=ADMIN fehlt (Aufrufer {})", werkzeug, Log.mail(auth.getName()));
             return "FEHLER: " + werkzeug + " erfordert einen Aufrufer-Token mit scope=ADMIN.";
         }
         if (SCHREIB_ROLLEN.stream().noneMatch(authorities::contains)) {
-            log.warn("MCP: {} abgewiesen — Rolle ADMIN/ROOT fehlt (Aufrufer {})", werkzeug, auth.getName());
+            log.warn("MCP: {} abgewiesen — Rolle ADMIN/ROOT fehlt (Aufrufer {})", werkzeug, Log.mail(auth.getName()));
             return "FEHLER: " + werkzeug + " erfordert die Rolle ADMIN oder ROOT.";
         }
         return null;

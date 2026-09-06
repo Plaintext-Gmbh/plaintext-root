@@ -4,6 +4,7 @@
 package ch.plaintext.rollenzuteilung.web;
 
 import ch.plaintext.boot.plugins.jsf.FacesMessages;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.framework.PlaintextRoleRegistry;
 import ch.plaintext.framework.PrivilegedRoleRules;
@@ -178,7 +179,7 @@ public class RollenzuteilungBackingBean implements Serializable {
             return true;
         }
         log.warn("SECURITY: Nicht-ROOT-Akteur versuchte, privilegierte Rolle '{}' an '{}' (Mandant {}) "
-                + "zu vergeben — abgelehnt.", roleName, selected.getUsername(), selected.getMandat());
+                + "zu vergeben — abgelehnt.", roleName, Log.mail(selected.getUsername()), selected.getMandat());
         addMessage(FacesMessage.SEVERITY_ERROR, "Fehler", PrivilegedRoleRules.rejectionMessage(roleName));
         return false;
     }

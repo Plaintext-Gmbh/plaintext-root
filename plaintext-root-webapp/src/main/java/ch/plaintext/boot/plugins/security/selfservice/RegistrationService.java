@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security.selfservice;
 
 import ch.plaintext.SystemMailSender;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.mailtemplate.IMailTemplateProvider;
@@ -125,7 +126,7 @@ public class RegistrationService {
         user.addRole("PROPERTY_MANDAT_" + token.getMandat().toLowerCase());
         userRepository.save(user);
 
-        log.info("Self-registration completed for {} on mandat={}", token.getEmail(), token.getMandat());
+        log.info("Self-registration completed for {} on mandat={}", Log.mail(token.getEmail()), token.getMandat());
         return RegistrationResult.success(token.getEmail());
     }
 

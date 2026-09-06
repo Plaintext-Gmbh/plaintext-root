@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security.magiclink;
 
 import ch.plaintext.SystemMailSender;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.mailtemplate.IMailTemplateProvider;
@@ -72,14 +73,14 @@ public class MagicLinkService {
                 Map.of("minuten", String.valueOf(properties.getTokenTtl().toMinutes()), "link", link));
         try {
             if (sender.sendSystemMail(accountId, to, mail.betreff(), mail.body(), false)) {
-                log.info("MagicLink: Mail versendet fuer '{}' (Mandat: {})", to, mandat);
+                log.info("MagicLink: Mail versendet fuer '{}' (Mandat: {})", Log.mail(to), mandat);
                 return true;
             } else {
-                log.warn("MagicLink: Mail konnte nicht versendet werden fuer '{}'", to);
+                log.warn("MagicLink: Mail konnte nicht versendet werden fuer '{}'", Log.mail(to));
                 return false;
             }
         } catch (Exception e) {
-            log.warn("MagicLink: Mail-Versand fehlgeschlagen fuer '{}': {}", to, e.getMessage());
+            log.warn("MagicLink: Mail-Versand fehlgeschlagen fuer '{}': {}", Log.mail(to), e.getMessage());
             return false;
         }
     }
@@ -99,7 +100,7 @@ public class MagicLinkService {
     public boolean generateAndSend(String username, HttpServletRequest request) {
         MyUserEntity user = userRepository.findByUsername(username);
         if (user == null || user.getMandat() == null || !setupConfigService.isMagicLinkEnabled(user.getMandat())) {
-            log.debug("MagicLink: generateAndSend abgelehnt fuer '{}' (unbekannter User / kein Mandat / Feature deaktiviert)", username);
+            log.debug("MagicLink: generateAndSend abgelehnt fuer '{}' (unbekannter User / kein Mandat / Feature deaktiviert)", Log.mail(username));
             return false;
         }
         OneTimeToken ott = oneTimeTokenService.generate(new GenerateOneTimeTokenRequest(username));

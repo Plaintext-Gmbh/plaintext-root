@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.lockout;
 
+import ch.plaintext.boot.plugins.log.Log;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -72,7 +73,7 @@ public class AccountLockoutService {
         if (log.isDebugEnabled()) {
             attemptInfo(username).ifPresent(info ->
                     log.debug("recordFailure(username='{}') counter={} firstFailure={}",
-                            username, info.counter(), info.firstFailure()));
+                            Log.mail(username), info.counter(), info.firstFailure()));
         }
     }
 

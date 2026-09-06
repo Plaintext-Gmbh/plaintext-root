@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.magiclink;
 
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.settings.ISetupConfigService;
@@ -42,7 +43,7 @@ public class MagicLinkGenerationSuccessHandler implements OneTimeTokenGeneration
         } else if (user != null) {
             log.debug("MagicLink: fuer Mandat '{}' deaktiviert, Mail nicht gesendet", user.getMandat());
         } else {
-            log.debug("MagicLink: kein User fuer '{}' gefunden, Mail nicht gesendet", username);
+            log.debug("MagicLink: kein User fuer '{}' gefunden, Mail nicht gesendet", Log.mail(username));
         }
 
         // Always the same neutral response

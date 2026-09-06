@@ -6,6 +6,7 @@
  */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.secret.VaultwardenSecretService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -513,7 +514,7 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
                         userId, mandat, timeUntilExpiry.toDays());
             }
 
-            log.debug("JWT token validated successfully for userId={}, mandat={}, email={}", userId, mandat, email);
+            log.debug("JWT token validated successfully for userId={}, mandat={}, email={}", userId, mandat, Log.mail(email));
             return Optional.of(new JwtValidationResult(userId, mandat, email, tokenName, expiry, scope, jti));
 
         } catch (ExpiredJwtException e) {

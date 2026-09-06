@@ -4,6 +4,7 @@
 package ch.plaintext.boot.web;
 
 import ch.plaintext.boot.plugins.jsf.userprofile.UserPreferencesBackingBean;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.jsf.userprofile.UserPreference;
 import ch.plaintext.boot.plugins.jsf.userprofile.UserPrefsSimpleStorage;
 import io.swagger.v3.oas.annotations.Operation;
@@ -121,7 +122,7 @@ public class UserPreferencesRestController {
             storage.save(prefs);
 
             log.debug("✅ Saved preferences to DB for user {}: componentTheme={}, darkMode={}, menuMode={}, topbarTheme={}, menuTheme={}, inputStyle={}",
-                username, prefs.getComponentTheme(), prefs.getDarkMode(), prefs.getMenuMode(),
+                Log.mail(username), prefs.getComponentTheme(), prefs.getDarkMode(), prefs.getMenuMode(),
                 prefs.getTopbarTheme(), prefs.getMenuTheme(), prefs.getInputStyle());
 
             // CRITICAL: Save theme to cookie for consistent login experience
@@ -215,7 +216,7 @@ public class UserPreferencesRestController {
                 log.debug("Session bean update skipped: {}", e.getMessage());
             }
 
-            log.debug("Added custom color '{}' ({}) for user {}", name, hex, username);
+            log.debug("Added custom color '{}' ({}) for user {}", name, hex, Log.mail(username));
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
             log.error("Error adding custom color", e);
@@ -268,7 +269,7 @@ public class UserPreferencesRestController {
                 log.debug("Session bean update skipped: {}", e.getMessage());
             }
 
-            log.debug("Deleted/hidden color '{}' for user {}", colorKey, username);
+            log.debug("Deleted/hidden color '{}' for user {}", colorKey, Log.mail(username));
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
             log.error("Error deleting color", e);
@@ -309,7 +310,7 @@ public class UserPreferencesRestController {
                 log.debug("Session bean update skipped: {}", e.getMessage());
             }
 
-            log.debug("Restored all hidden colors for user {}", username);
+            log.debug("Restored all hidden colors for user {}", Log.mail(username));
             return ResponseEntity.ok("OK");
         } catch (Exception e) {
             log.error("Error restoring colors", e);

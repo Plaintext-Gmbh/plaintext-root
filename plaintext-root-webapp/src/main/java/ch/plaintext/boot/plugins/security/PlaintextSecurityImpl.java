@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security;
 
 import ch.plaintext.PlaintextSecurity;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.impersonation.ImpersonationAudit;
 import ch.plaintext.boot.plugins.security.impersonation.ImpersonationAuditRepository;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
@@ -376,7 +377,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         um.setMandat(m);
         um.setActive(true);
         userMandateRepository.save(um);
-        log.info("Voriges Mandant '{}' als wechselbares UserMandate fuer '{}' gesichert", m, username);
+        log.info("Voriges Mandant '{}' als wechselbares UserMandate fuer '{}' gesichert", m, Log.mail(username));
     }
 
     /** EL getter for the tenant selection (current tenant). */
@@ -519,7 +520,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
                 String userMandat = user.getMandat();
                 if (userMandat != null && userMandat.equalsIgnoreCase(mandat)) {
                     users.add(user.getUsername());
-                    log.debug("Found user {} for mandat {}", user.getUsername(), mandat);
+                    log.debug("Found user {} for mandat {}", Log.mail(user.getUsername()), mandat);
                 }
             }
             log.info("Found {} users for mandat {}", users.size(), mandat);
@@ -675,7 +676,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
                     session.getId());
 
             log.info("Started impersonation: original user {} is now impersonating user {} ({})",
-                    currentUserId, userId, targetUser.getUsername());
+                    currentUserId, userId, Log.mail(targetUser.getUsername()));
 
         } catch (Exception e) {
             log.error("Error starting impersonation for user {}", userId, e);

@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.oidc;
 
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.oidc.entity.OidcConfig;
@@ -53,7 +54,7 @@ public class PlaintextOidcUserService implements OAuth2UserService<OidcUserReque
         log.warn("OIDC-Verlinkung abgelehnt: email_verified={} fuer bestehenden Benutzer '{}' "
                         + "(Attribut '{}'). Ein bestehendes Konto wird nur mit verifizierter Adresse "
                         + "an einen IdP-Subject gebunden.",
-                claim, username, usernameAttr);
+                claim, Log.mail(username), usernameAttr);
         throw new OAuth2AuthenticationException(
                 new OAuth2Error("email_not_verified"),
                 "Die E-Mail-Adresse ist beim Identity-Provider nicht als verifiziert markiert. "
@@ -80,7 +81,7 @@ public class PlaintextOidcUserService implements OAuth2UserService<OidcUserReque
                     "OIDC-Attribut '" + usernameAttr + "' fehlt");
         }
 
-        log.info("OIDC login attempt: subject={}, username={}", oidcSubject, username);
+        log.info("OIDC login attempt: subject={}, username={}", oidcSubject, Log.mail(username));
 
         // 1. Try to find user by OIDC subject (already linked)
         MyUserEntity localUser = userRepository.findByOidcSubject(oidcSubject);
@@ -103,21 +104,21 @@ public class PlaintextOidcUserService implements OAuth2UserService<OidcUserReque
                 localUser.setOidcSubject(oidcSubject);
                 userRepository.save(localUser);
                 log.info("Linked existing user '{}' (id={}) with OIDC subject {}",
-                        username, localUser.getId(), oidcSubject);
+                        Log.mail(username), localUser.getId(), oidcSubject);
             }
         }
 
         // 3. Auto-create if configured
         if (localUser == null) {
             if (!config.isAutoCreateUsers()) {
-                log.warn("OIDC login rejected: user '{}' not found and auto-create disabled", username);
+                log.warn("OIDC login rejected: user '{}' not found and auto-create disabled", Log.mail(username));
                 throw new OAuth2AuthenticationException(
                         new OAuth2Error("user_not_found"),
                         "Benutzer '" + username + "' ist nicht registriert");
             }
 
             localUser = createNewUser(username, oidcSubject, config);
-            log.info("Auto-created new user '{}' (id={}) from OIDC login", username, localUser.getId());
+            log.info("Auto-created new user '{}' (id={}) from OIDC login", Log.mail(username), localUser.getId());
         }
 
         // Build authorities matching local login format
