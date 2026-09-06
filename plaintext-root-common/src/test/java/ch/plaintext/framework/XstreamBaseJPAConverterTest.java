@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.framework;
 
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.security.ForbiddenClassException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -85,26 +87,70 @@ class XstreamBaseJPAConverterTest {
     }
 
     @Test
-    void convertToEntityAttribute_invalidXml_fallsBackToCommaSplit() {
-        // When XStream fails, the converter falls back to splitting by comma
+    void convertToEntityAttribute_invalidXml_returnsNullInsteadOfCommaSplit() {
+        // Karte 1069 (S-04): der fruehere stille Rueckfall auf text.split(",") ist entfernt.
+        // Ein Lesefehler liefert jetzt null (und loggt laut), wie die beiden anderen frueheren
+        // Kopien dieser Klasse es schon taten -- statt eine manipulierte oder kaputte Spalte
+        // klaglos in eine plausibel aussehende Liste zu verwandeln.
         @SuppressWarnings("unchecked")
         List<String> result = converter.convertToEntityAttribute("a,b,c");
 
-        assertNotNull(result);
-        assertEquals(3, result.size());
-        assertTrue(result.contains("a"));
-        assertTrue(result.contains("b"));
-        assertTrue(result.contains("c"));
+        assertNull(result);
     }
 
     @Test
-    void convertToEntityAttribute_singleValueFallback() {
+    void convertToEntityAttribute_singleValue_returnsNull() {
         @SuppressWarnings("unchecked")
         List<String> result = converter.convertToEntityAttribute("singlevalue");
 
-        assertNotNull(result);
-        // Falls back to comma split; single value = list of 1
-        assertEquals(1, result.size());
-        assertEquals("singlevalue", result.get(0));
+        assertNull(result);
+    }
+
+    // -------------------------------------------------------------------------
+    // Allowlist (Karte 1069, S-04): ch.** -> ch.plaintext.**
+    // -------------------------------------------------------------------------
+
+    @Test
+    void allowlist_forbiddenClass_isRejected() {
+        // Positivkontrolle fuer die Suchmethode selbst: vor S-04 liess die Allowlist "ch.**" jede
+        // Klasse im Paket ch.qos.logback zu (Logback ist eine Laufzeitabhaengigkeit von Spring
+        // Boot und liegt auf dem Klassenpfad jeder Anwendung).
+        //
+        // Der Bericht zu Karte 1069 nannte als Beispiel ch.qos.logback.core.db.JNDIConnectionSource
+        // -- diese Klasse existiert in der hier eingesetzten Logback-Version 1.5.34 NICHT MEHR
+        // (das Paket ch.qos.logback.core.db gibt es gar nicht, geprueft per `unzip -l` gegen das
+        // Jar im lokalen Repository, Karte 1069, 06.09.2026). Ob dieselbe Klasse in einer
+        // frueheren, noch unterstuetzten Logback-Version existierte, wurde nicht geprueft. Als
+        // Ersatz hier eine tatsaechlich vorhandene ch.qos.logback-Klasse: sie zeigt genau dieselbe
+        // Eigenschaft (frueher durch "ch.**" erlaubt, jetzt durch "ch.plaintext.**" abgewiesen),
+        // ohne von einer konkreten, moeglicherweise nicht mehr vorhandenen Gadget-Klasse abzuhaengen.
+        XStream xstream = XstreamBaseJPAConverter.createXStream();
+        String bosartig = "<ch.qos.logback.core.util.JNDIUtil/>";
+
+        assertThrows(ForbiddenClassException.class, () -> xstream.fromXML(bosartig));
+    }
+
+    @Test
+    void allowlist_plaintextClass_staysReadable() {
+        // Negativprobe zur vorigen Positivkontrolle: eine eigene ch.plaintext-Klasse bleibt
+        // lesbar, die Verengung trifft nur ch.* ausserhalb von ch.plaintext.
+        XStream xstream = XstreamBaseJPAConverter.createXStream();
+        String eigen = xstream.toXML(new java.util.ArrayList<>(List.of("a", "b")));
+
+        Object restored = xstream.fromXML(eigen);
+
+        assertEquals(List.of("a", "b"), restored);
+    }
+
+    @Test
+    void convertToEntityAttribute_forbiddenClassColumn_returnsNullNotThrows() {
+        // Die aussen sichtbare Wirkung derselben Abwehr: convertToEntityAttribute faengt die
+        // ForbiddenClassException wie jeden anderen Lesefehler ab und liefert null, statt den
+        // Entity-Ladevorgang der ganzen Seite hart abzubrechen.
+        @SuppressWarnings("unchecked")
+        List<String> result = converter.convertToEntityAttribute(
+                "<ch.qos.logback.core.util.JNDIUtil/>");
+
+        assertNull(result);
     }
 }
