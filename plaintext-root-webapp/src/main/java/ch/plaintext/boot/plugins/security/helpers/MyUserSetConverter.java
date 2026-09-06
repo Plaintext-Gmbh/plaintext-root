@@ -3,11 +3,14 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.helpers;
 
+import ch.plaintext.framework.XstreamBaseJPAConverter;
 import jakarta.persistence.Converter;
 
 import java.util.Set;
 
+// Basisklasse seit Karte 1069 (A-02) in root-common -- vorher eine eigene Kopie
+// (MyUserXstreamBaseJPAConverter) hier im Modul.
 @Converter(autoApply = true)
-public class MyUserSetConverter extends MyUserXstreamBaseJPAConverter<Set<String>> {
+public class MyUserSetConverter extends XstreamBaseJPAConverter<Set<String>> {
 
 }
