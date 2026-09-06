@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security.magiclink;
 
 import ch.plaintext.arch.AllowRawScheduled;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.settings.ISetupConfigService;
@@ -55,7 +56,7 @@ public class HashedOneTimeTokenService implements OneTimeTokenService {
 
         MyUserEntity user = userRepository.findByUsername(username);
         if (user == null) {
-            log.debug("MagicLink: unbekannter Username '{}', gebe Dummy-Token zurueck", username);
+            log.debug("MagicLink: unbekannter Username '{}', gebe Dummy-Token zurueck", Log.mail(username));
             return new DefaultOneTimeToken(rawToken, username, expiresAt);
         }
 
@@ -74,7 +75,7 @@ public class HashedOneTimeTokenService implements OneTimeTokenService {
         token.setExpiresAt(expiresAt);
         tokenRepository.save(token);
 
-        log.info("MagicLink: Token generiert fuer '{}' (Mandat: {}, ablaufend: {})", username, mandat, expiresAt);
+        log.info("MagicLink: Token generiert fuer '{}' (Mandat: {}, ablaufend: {})", Log.mail(username), mandat, expiresAt);
         return new DefaultOneTimeToken(rawToken, username, expiresAt);
     }
 
@@ -96,7 +97,7 @@ public class HashedOneTimeTokenService implements OneTimeTokenService {
         MagicLinkToken token = tokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new InvalidOneTimeTokenException("Magic-Link-Token nach Einloesung nicht auffindbar"));
 
-        log.info("MagicLink: Token erfolgreich eingeloest fuer '{}'", token.getUsername());
+        log.info("MagicLink: Token erfolgreich eingeloest fuer '{}'", Log.mail(token.getUsername()));
         return new DefaultOneTimeToken(rawToken, token.getUsername(), token.getExpiresAt());
     }
 

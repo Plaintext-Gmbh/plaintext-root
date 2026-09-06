@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sessions.service;
 
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.sessions.ISessionAuditService;
 import ch.plaintext.sessions.entity.UserSession;
 import ch.plaintext.sessions.repository.UserSessionRepository;
@@ -111,7 +112,7 @@ public class SessionAuditServiceImpl implements ISessionAuditService {
                 for (UserSession userSession : sessions) {
                     userSession.setActive(false);
                     repository.save(userSession);
-                    log.info("Forced logout for sessionId={}, username={}", sessionId, userSession.getUsername());
+                    log.info("Forced logout for sessionId={}, username={}", sessionId, Log.mail(userSession.getUsername()));
                 }
                 if (sessions.size() > 1) {
                     log.warn("⚠️ Found and logged out {} duplicate sessions for sessionId={}", sessions.size(), sessionId);

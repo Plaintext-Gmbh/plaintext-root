@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security.web;
 
 import ch.plaintext.boot.plugins.jsf.FacesMessages;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.model.UserMandate;
@@ -154,7 +155,7 @@ public class MandateBackingBean implements Serializable {
 
             FacesMessages.info("Gespeichert", "Mandat für Benutzer " + user.getUsername() + " aktualisiert.");
 
-            log.debug("Updated mandat for user {} to {}", user.getUsername(), user.getMandat());
+            log.debug("Updated mandat for user {} to {}", Log.mail(user.getUsername()), user.getMandat());
         } catch (Exception e) {
             log.error("Error saving user mandat", e);
             FacesMessages.error("Fehler", "Fehler beim Speichern: " + e.getMessage());

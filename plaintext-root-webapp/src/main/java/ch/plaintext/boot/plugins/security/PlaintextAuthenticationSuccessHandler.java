@@ -5,6 +5,7 @@ package ch.plaintext.boot.plugins.security;
 
 import ch.plaintext.boot.StartpageResolver;
 import ch.plaintext.boot.deeplink.DeepLinkPendingStore;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.service.MyUserDetailsService;
 import ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService;
 import ch.plaintext.boot.plugins.security.totp.TotpPendingAuthentication;
@@ -147,7 +148,7 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
             securityContextRepository.saveContext(empty, request, response);
 
             request.getSession(true).setAttribute(TotpPendingAuthentication.SESSION_ATTRIBUTE, pending);
-            log.debug("TOTP required for user {} – deferring full authentication, redirect to {}", userEmail, TOTP_STEP_PATH);
+            log.debug("TOTP required for user {} – deferring full authentication, redirect to {}", Log.mail(userEmail), TOTP_STEP_PATH);
             response.sendRedirect(contextPath + TOTP_STEP_PATH);
             return;
         }
@@ -155,7 +156,7 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
         try {
             String baseUrl = basisUrl();
             eventPublisher.publishEvent(new PlaintextLoginEvent(this, userEmail, userId, userEmail, mandat, baseUrl));
-            log.debug("Published PlaintextLoginEvent for user: {} baseUrl: {}", userEmail, baseUrl);
+            log.debug("Published PlaintextLoginEvent for user: {} baseUrl: {}", Log.mail(userEmail), baseUrl);
         } catch (Exception e) {
             log.warn("Failed to publish login event: {}", e.getMessage());
         }
@@ -170,15 +171,15 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
         if (securityProperties.isRememberMeOnOauth() && authentication instanceof OAuth2AuthenticationToken) {
             try {
                 rememberMeServices.loginSuccess(request, response, authentication);
-                log.debug("Issued remember-me cookie for OAuth login: {}", userEmail);
+                log.debug("Issued remember-me cookie for OAuth login: {}", Log.mail(userEmail));
             } catch (Exception e) {
-                log.warn("Failed to issue remember-me cookie for OAuth login {}: {}", userEmail, e.getMessage());
+                log.warn("Failed to issue remember-me cookie for OAuth login {}: {}", Log.mail(userEmail), e.getMessage());
             }
         }
 
         // Absolute path (a relative one would be resolved against /login/oauth2/code/).
         String redirectUrl = contextPath + "/" + page;
-        log.debug("Redirecting user {} to {}", userEmail, redirectUrl);
+        log.debug("Redirecting user {} to {}", Log.mail(userEmail), redirectUrl);
         response.sendRedirect(redirectUrl);
     }
 
@@ -194,7 +195,7 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
             String mandat = extractMandat(authentication);
             String baseUrl = basisUrl();
             eventPublisher.publishEvent(new PlaintextLoginEvent(this, userEmail, userId, userEmail, mandat, baseUrl));
-            log.debug("Published PlaintextLoginEvent (post-TOTP) for user: {}", userEmail);
+            log.debug("Published PlaintextLoginEvent (post-TOTP) for user: {}", Log.mail(userEmail));
         } catch (Exception e) {
             log.warn("Failed to publish post-TOTP login event: {}", e.getMessage());
         }

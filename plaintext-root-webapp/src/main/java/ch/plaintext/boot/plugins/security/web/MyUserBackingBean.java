@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security.web;
 
 import ch.plaintext.boot.plugins.jsf.FacesMessages;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.audit.DestructiveActionAuditService;
 import ch.plaintext.boot.plugins.security.magiclink.MagicLinkService;
@@ -330,7 +331,7 @@ public class MyUserBackingBean implements Serializable {
     }
 
     public void select() {
-        log.debug("SELECT called - selected: {}", selected != null ? selected.getId() + "/" + selected.getUsername() : "null");
+        log.debug("SELECT called - selected: {}", selected != null ? selected.getId() + "/" + Log.mail(selected.getUsername()) : "null");
         resetRollenEntzug();
         if (selected != null) {
             myUserPw = selected.getPassword();
@@ -446,7 +447,7 @@ public class MyUserBackingBean implements Serializable {
         // Set default mandate if none is specified
         if (selected.getMandat() == null || selected.getMandat().trim().isEmpty()) {
             selected.setMandat("default");
-            log.debug("No mandate specified for user {}, setting to 'default'", selected.getUsername());
+            log.debug("No mandate specified for user {}, setting to 'default'", Log.mail(selected.getUsername()));
         }
 
         if (!selected.getPassword().isEmpty() && !selected.getPassword().startsWith("$2a$10")) {
@@ -479,7 +480,7 @@ public class MyUserBackingBean implements Serializable {
                 continue;
             }
             log.warn("SECURITY (Karte 307, K1): Nicht-ROOT-Akteur versuchte, privilegierte Rolle '{}' "
-                    + "an Benutzer '{}' zu vergeben — abgelehnt.", role, selected.getUsername());
+                    + "an Benutzer '{}' zu vergeben — abgelehnt.", role, Log.mail(selected.getUsername()));
             FacesMessages.error("Fehler", PrivilegedRoleRules.rejectionMessage(role));
             context.validationFailed();
             return false;
@@ -528,7 +529,7 @@ public class MyUserBackingBean implements Serializable {
         if (!isRoot()) {
             log.warn("SECURITY (Rollen-Entzug): Nicht-ROOT-Akteur '{}' versuchte, dem Benutzer '{}' die "
                     + "privilegierte(n) Rolle(n) {} zu ENTZIEHEN — abgelehnt, nichts gespeichert.",
-                    handelnderBenutzer(), benutzer, rollen);
+                    Log.mail(handelnderBenutzer()), Log.mail(benutzer), rollen);
             FacesMessages.error("Fehler", "Nur ROOT darf die Rolle(n) " + rollen + " entziehen. Die Änderung wurde NICHT "
                             + "gespeichert.");
             context.validationFailed();
@@ -540,7 +541,7 @@ public class MyUserBackingBean implements Serializable {
                     + " entzogen — fortfahren?";
             log.warn("SECURITY (Rollen-Entzug): ROOT-Akteur '{}' entzieht dem Benutzer '{}' die "
                     + "privilegierte(n) Rolle(n) {} — Bestaetigung angefordert, noch NICHT gespeichert.",
-                    handelnderBenutzer(), benutzer, rollen);
+                    Log.mail(handelnderBenutzer()), Log.mail(benutzer), rollen);
             context.validationFailed();
             return false;
         }
@@ -560,7 +561,7 @@ public class MyUserBackingBean implements Serializable {
     /** The root actor has declined the role revocation: save nothing, close the prompt. */
     public void brichRollenEntzugAb() {
         log.warn("SECURITY (Rollen-Entzug): ROOT-Akteur '{}' hat den Rollen-Entzug abgebrochen — "
-                + "nichts gespeichert.", handelnderBenutzer());
+                + "nichts gespeichert.", Log.mail(handelnderBenutzer()));
         resetRollenEntzug();
         FacesMessages.info("Abgebrochen", "Der Rollen-Entzug wurde nicht gespeichert.");
     }
@@ -596,8 +597,8 @@ public class MyUserBackingBean implements Serializable {
 
         log.warn("AUDIT Rollenaenderung: Benutzer '{}' (id={}) — vorher {} → nachher {} "
                         + "[vergeben: {}, entzogen: {}]; handelnder Benutzer: '{}'",
-                selected.getUsername(), selected.getId(), alt, neu, hinzugefuegt, entzogen,
-                handelnderBenutzer());
+                Log.mail(selected.getUsername()), selected.getId(), alt, neu, hinzugefuegt, entzogen,
+                Log.mail(handelnderBenutzer()));
 
         if (auditService != null) {
             auditService.logDestructiveAction("UI", "USER_ROLES_CHANGED", "MyUserEntity",
@@ -619,7 +620,7 @@ public class MyUserBackingBean implements Serializable {
     public void delete() {
         if (selected == null || selected.getId() == null) {
             log.warn("AUDIT Benutzerloeschung: durch '{}' angefordert, aber kein gespeicherter "
-                    + "Benutzer ausgewaehlt — nichts geloescht.", handelnderBenutzer());
+                    + "Benutzer ausgewaehlt — nichts geloescht.", Log.mail(handelnderBenutzer()));
             selected = null;
             resetRollenEntzug();
             init();
@@ -633,7 +634,7 @@ public class MyUserBackingBean implements Serializable {
         try {
             repo.delete(selected);
             log.warn("AUDIT Benutzerloeschung: '{}' (id={}, Mandat={}, Rollen {}) geloescht durch '{}'.",
-                    username, id, mandat, rollen, handelnderBenutzer());
+                    Log.mail(username), id, mandat, rollen, Log.mail(handelnderBenutzer()));
             if (auditService != null) {
                 auditService.logDestructiveAction("UI", "USER_DELETE", "MyUserEntity",
                         String.valueOf(id),
@@ -643,7 +644,7 @@ public class MyUserBackingBean implements Serializable {
             FacesMessages.info("Erfolg", "Benutzer erfolgreich gelöscht.");
         } catch (Exception e) {
             log.error("AUDIT Benutzerloeschung FEHLGESCHLAGEN: '{}' (id={}) durch '{}'",
-                    username, id, handelnderBenutzer(), e);
+                    Log.mail(username), id, Log.mail(handelnderBenutzer()), e);
             FacesMessages.error("Fehler", "Fehler beim Löschen des Benutzers: " + e.getMessage());
         }
 
@@ -940,7 +941,7 @@ public class MyUserBackingBean implements Serializable {
 
         try {
             plaintextSecurity.startImpersonation(user.getId());
-            log.info("Root user started impersonation of user {} ({})", user.getId(), user.getUsername());
+            log.info("Root user started impersonation of user {} ({})", user.getId(), Log.mail(user.getUsername()));
 
             FacesMessages.info("Erfolg", "Sie agieren jetzt als Benutzer: " + user.getUsername());
 
@@ -1000,7 +1001,7 @@ public class MyUserBackingBean implements Serializable {
                 userMandateRepo.save(um);
             }
         }
-        log.info("Zusatz-Mandate für {} gespeichert: {}", username, seen);
+        log.info("Zusatz-Mandate für {} gespeichert: {}", Log.mail(username), seen);
     }
 
     /**

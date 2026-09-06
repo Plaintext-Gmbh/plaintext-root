@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.totp;
 
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.PlaintextAuthenticationSuccessHandler;
 import ch.plaintext.boot.plugins.security.lockout.AccountLockoutService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -88,7 +89,7 @@ public class TotpVerificationController {
         // Brute-force protection on the second factor (separate from the password factor).
         if (lockoutService.isLocked(totpLockKey)) {
             invalidatePending(session);
-            log.warn("TOTP: user '{}' locked out during second factor", username);
+            log.warn("TOTP: user '{}' locked out during second factor", Log.mail(username));
             response.sendRedirect(request.getContextPath() + "/login.html?error=totp_locked");
             return;
         }
@@ -96,7 +97,7 @@ public class TotpVerificationController {
         boolean ok = totpAuthenticationService.verifySecondFactor(username, code);
         if (!ok) {
             lockoutService.recordFailure(totpLockKey);
-            log.info("TOTP: invalid second factor for user '{}'", username);
+            log.info("TOTP: invalid second factor for user '{}'", Log.mail(username));
             response.sendRedirect(request.getContextPath() + STEP_PATH + "?error=totp_invalid");
             return;
         }
@@ -115,7 +116,7 @@ public class TotpVerificationController {
         // Only publish the login event now - the login is complete at this point.
         successHandler.publishLoginEvent(request, authentication);
 
-        log.debug("TOTP: second factor OK for user '{}', redirect to {}", username, targetUrl);
+        log.debug("TOTP: second factor OK for user '{}', redirect to {}", Log.mail(username), targetUrl);
         response.sendRedirect(targetUrl != null ? targetUrl : request.getContextPath() + "/index.html");
     }
 

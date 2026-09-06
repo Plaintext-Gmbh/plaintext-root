@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.lockout;
 
+import ch.plaintext.boot.plugins.log.Log;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -33,7 +34,7 @@ public class AccountLockoutEventListener {
         if (username != null) {
             lockoutService.recordFailure(username);
             if (log.isDebugEnabled()) {
-                log.debug("Recorded bad-credentials failure for username '{}'", username);
+                log.debug("Recorded bad-credentials failure for username '{}'", Log.mail(username));
             }
         }
     }

@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sessions.service;
 
+import ch.plaintext.boot.plugins.log.Log;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -122,7 +123,7 @@ public class HttpSessionRegistry {
             }
         }
         if (invalidated > 0) {
-            log.info("{} aktive Session(s) von '{}' nach Passwortwechsel invalidiert", invalidated, username);
+            log.info("{} aktive Session(s) von '{}' nach Passwortwechsel invalidiert", invalidated, Log.mail(username));
         }
         return invalidated;
     }

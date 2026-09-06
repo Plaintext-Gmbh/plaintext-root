@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.totp;
 
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityProperties;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
@@ -107,7 +108,7 @@ public class TotpAuthenticationService {
             user.setRecoveryCodes(stored);
             userRepository.save(user);
             log.info("TOTP: Recovery-Code fuer '{}' eingeloest; {} verbleibend",
-                    user.getUsername(), stored.size());
+                    Log.mail(user.getUsername()), stored.size());
             return true;
         }
         return false;
@@ -138,7 +139,7 @@ public class TotpAuthenticationService {
         user.setRecoveryCodes(totpService.hashRecoveryCodes(plaintextCodes));
         userRepository.save(user);
         log.info("TOTP: 2FA fuer '{}' aktiviert ({} Recovery-Codes erzeugt)",
-                username, plaintextCodes.size());
+                Log.mail(username), plaintextCodes.size());
         return plaintextCodes;
     }
 
@@ -159,7 +160,7 @@ public class TotpAuthenticationService {
         user.setTotpSecret(null);
         user.setRecoveryCodes(new java.util.HashSet<>());
         userRepository.save(user);
-        log.info("TOTP: 2FA fuer '{}' deaktiviert", username);
+        log.info("TOTP: 2FA fuer '{}' deaktiviert", Log.mail(username));
     }
 
     /** Whether the user currently has 2FA activated. */

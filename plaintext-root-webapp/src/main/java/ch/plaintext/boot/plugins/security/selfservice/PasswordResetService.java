@@ -4,6 +4,7 @@
 package ch.plaintext.boot.plugins.security.selfservice;
 
 import ch.plaintext.SystemMailSender;
+import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyRememberMeRepository;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
@@ -131,10 +132,10 @@ public class PasswordResetService {
             sessionRegistry.invalidateSessionsOfUser(token.getUsername());
         } else {
             log.warn("Session-Registry nicht verfuegbar — aktive Sessions von '{}' konnten nach dem "
-                    + "Passwort-Reset nicht invalidiert werden.", token.getUsername());
+                    + "Passwort-Reset nicht invalidiert werden.", Log.mail(token.getUsername()));
         }
 
-        log.info("Password reset completed for {} on mandat={}", token.getUsername(), token.getMandat());
+        log.info("Password reset completed for {} on mandat={}", Log.mail(token.getUsername()), token.getMandat());
         return ResetResult.success(token.getUsername());
     }
 
