@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.oidc.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.oidc.entity.OidcConfig;
 import ch.plaintext.oidc.service.OidcConfigService;
@@ -101,8 +102,7 @@ public class OidcConfigBackingBean implements Serializable {
             return true;
         }
         FacesContext context = FacesContext.getCurrentInstance();
-        context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_WARN,
-                "Sitzung abgelaufen", "Sitzung abgelaufen — bitte Eintrag erneut auswählen."));
+        FacesMessages.warn("Sitzung abgelaufen", "Sitzung abgelaufen — bitte Eintrag erneut auswählen.");
         context.validationFailed();
         return false;
     }
@@ -115,23 +115,20 @@ public class OidcConfigBackingBean implements Serializable {
         FacesContext context = FacesContext.getCurrentInstance();
 
         if (selected.getIssuerUrl() == null || selected.getIssuerUrl().isBlank()) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Issuer-URL darf nicht leer sein."));
+            FacesMessages.error("Fehler", "Issuer-URL darf nicht leer sein.");
             context.validationFailed();
             return;
         }
 
         if (selected.getClientId() == null || selected.getClientId().isBlank()) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Client-ID darf nicht leer sein."));
+            FacesMessages.error("Fehler", "Client-ID darf nicht leer sein.");
             context.validationFailed();
             return;
         }
 
         selected = oidcConfigService.save(selected);
         loadData();
-        context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "OIDC-Konfiguration gespeichert."));
+        FacesMessages.info("Erfolg", "OIDC-Konfiguration gespeichert.");
     }
 
     public void delete() {
@@ -141,8 +138,7 @@ public class OidcConfigBackingBean implements Serializable {
         oidcConfigService.delete(selected);
         selected = null;
         loadData();
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "OIDC-Konfiguration gelöscht."));
+        FacesMessages.info("Erfolg", "OIDC-Konfiguration gelöscht.");
     }
 
     public void testConnection() {
@@ -156,8 +152,7 @@ public class OidcConfigBackingBean implements Serializable {
                 ? FacesMessage.SEVERITY_INFO
                 : FacesMessage.SEVERITY_ERROR;
         String summary = "OK".equals(testResult) ? "Verbindung erfolgreich" : "Verbindung fehlgeschlagen";
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(severity, summary, testResult));
+        FacesMessages.meldung(severity, summary, testResult);
     }
 
     public void downloadJson() {
@@ -194,8 +189,7 @@ public class OidcConfigBackingBean implements Serializable {
             fc.responseComplete();
         } catch (Exception e) {
             log.error("Error downloading OIDC config as JSON", e);
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Download fehlgeschlagen: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Download fehlgeschlagen: " + e.getMessage());
         }
     }
 
@@ -203,8 +197,7 @@ public class OidcConfigBackingBean implements Serializable {
     public void uploadJson(FileUploadEvent event) {
         uploadedFile = event.getFile();
         if (uploadedFile == null || uploadedFile.getSize() == 0) {
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN, "Hinweis", "Keine Datei ausgewählt."));
+            FacesMessages.warn("Hinweis", "Keine Datei ausgewählt.");
             return;
         }
         try (InputStream is = uploadedFile.getInputStream()) {
@@ -228,12 +221,10 @@ public class OidcConfigBackingBean implements Serializable {
             if (json.containsKey("defaultRoles")) selected.setDefaultRoles((String) json.get("defaultRoles"));
             if (json.containsKey("defaultMandat")) selected.setDefaultMandat((String) json.get("defaultMandat"));
 
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "JSON importiert - bitte prüfen und speichern."));
+            FacesMessages.info("Erfolg", "JSON importiert - bitte prüfen und speichern.");
         } catch (Exception e) {
             log.error("Error uploading OIDC config JSON", e);
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Import fehlgeschlagen: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Import fehlgeschlagen: " + e.getMessage());
         }
     }
 

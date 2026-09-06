@@ -58,7 +58,6 @@ libraries resolved from Maven Central and are only linked against, never
 copied into or derived from this source tree:
 
   * it.sauronsoftware.cron4j:cron4j        LGPL-2.1
-  * org.jodreports:jodreports             LGPL-2.1
 
 A machine-readable overview can be produced with:
 

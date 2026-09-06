@@ -3,11 +3,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.deeplink.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.boot.deeplink.DeepLinkService;
 import ch.plaintext.boot.deeplink.DeepLinkTarget;
 import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
 import jakarta.inject.Named;
 import lombok.Getter;
 import lombok.Setter;
@@ -101,9 +101,6 @@ public class DeepLinkBackingBean implements Serializable {
     }
 
     private void meldung(FacesMessage.Severity severity, String titel, String detail) {
-        FacesContext context = FacesContext.getCurrentInstance();
-        if (context != null) {
-            context.addMessage(null, new FacesMessage(severity, titel, detail));
-        }
+        FacesMessages.meldung(severity, titel, detail);
     }
 }

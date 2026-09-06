@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.model.UserMandate;
@@ -11,8 +12,6 @@ import ch.plaintext.boot.plugins.security.persistence.UserMandateRepository;
 import ch.plaintext.menuesteuerung.model.MandateMenuConfig;
 import ch.plaintext.menuesteuerung.persistence.MandateMenuConfigRepository;
 import jakarta.annotation.PostConstruct;
-import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
 import jakarta.inject.Named;
 import jakarta.transaction.Transactional;
 import lombok.Data;
@@ -103,27 +102,22 @@ public class MandateBackingBean implements Serializable {
     }
 
     public void createMandat() {
-        FacesContext context = FacesContext.getCurrentInstance();
-
         if (newMandatName == null || newMandatName.trim().isEmpty()) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Mandatname darf nicht leer sein."));
+            FacesMessages.error("Fehler", "Mandatname darf nicht leer sein.");
             return;
         }
 
         String mandatKey = newMandatName.trim().toLowerCase();
 
         if (mandate.contains(mandatKey)) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Mandat existiert bereits."));
+            FacesMessages.error("Fehler", "Mandat existiert bereits.");
             return;
         }
 
         try {
             // Check whether the tenant already exists in the database
             if (mandateMenuConfigRepository.existsByMandateName(mandatKey)) {
-                context.addMessage(null,
-                        new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Mandat existiert bereits in der Datenbank."));
+                FacesMessages.error("Fehler", "Mandat existiert bereits in der Datenbank.");
                 return;
             }
 
@@ -138,16 +132,13 @@ public class MandateBackingBean implements Serializable {
             // Reload the tenants to make sure that all sources are taken into account
             loadMandate();
 
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Mandat '" + mandatKey + "' erstellt."));
+            FacesMessages.info("Erfolg", "Mandat '" + mandatKey + "' erstellt.");
 
             log.debug("Created new mandat: {}", mandatKey);
 
         } catch (Exception e) {
             log.error("Error creating mandat", e);
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                            "Fehler beim Erstellen des Mandats: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Fehler beim Erstellen des Mandats: " + e.getMessage());
         }
     }
 
@@ -161,16 +152,12 @@ public class MandateBackingBean implements Serializable {
                 loadMandate();
             }
 
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Gespeichert",
-                            "Mandat für Benutzer " + user.getUsername() + " aktualisiert."));
+            FacesMessages.info("Gespeichert", "Mandat für Benutzer " + user.getUsername() + " aktualisiert.");
 
             log.debug("Updated mandat for user {} to {}", user.getUsername(), user.getMandat());
         } catch (Exception e) {
             log.error("Error saving user mandat", e);
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                            "Fehler beim Speichern: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Fehler beim Speichern: " + e.getMessage());
         }
     }
 
@@ -196,27 +183,20 @@ public class MandateBackingBean implements Serializable {
      */
     @Transactional
     public void deleteMandat() {
-        FacesContext context = FacesContext.getCurrentInstance();
-
         if (selectedMandat == null) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Kein Mandat ausgewählt."));
+            FacesMessages.error("Fehler", "Kein Mandat ausgewählt.");
             return;
         }
 
         if ("default".equalsIgnoreCase(selectedMandat)) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                            "Das Default-Mandat kann nicht entfernt werden."));
+            FacesMessages.error("Fehler", "Das Default-Mandat kann nicht entfernt werden.");
             return;
         }
 
         int zugeordnet = zugeordneteBenutzer(selectedMandat);
         if (zugeordnet > 0) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                            "Mandat kann nicht entfernt werden: " + zugeordnet + " Benutzer sind ihm noch "
-                                    + "zugeordnet (Heimat-Mandant oder Zusatz-Mandant)."));
+            FacesMessages.error("Fehler", "Mandat kann nicht entfernt werden: " + zugeordnet + " Benutzer sind ihm noch "
+                                    + "zugeordnet (Heimat-Mandant oder Zusatz-Mandant).");
             return;
         }
 
@@ -225,20 +205,16 @@ public class MandateBackingBean implements Serializable {
             entferneMenuekonfiguration(entfernt);
         } catch (Exception e) {
             log.error("Menuekonfiguration des Mandats '{}' konnte nicht entfernt werden", entfernt, e);
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                            "Fehler beim Entfernen: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Fehler beim Entfernen: " + e.getMessage());
             return;
         }
 
         mandate.remove(entfernt);
         selectedMandat = mandate.isEmpty() ? null : mandate.get(0);
 
-        context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Entfernt",
-                        "Mandat '" + entfernt + "' aus der Verwaltung entfernt: Menükonfiguration gelöscht, "
+        FacesMessages.info("Entfernt", "Mandat '" + entfernt + "' aus der Verwaltung entfernt: Menükonfiguration gelöscht, "
                                 + "Mandat aus der Auswahlliste genommen. Fachdaten der Anwendung bleiben "
-                                + "bestehen und müssen separat bereinigt werden."));
+                                + "bestehen und müssen separat bereinigt werden.");
 
         log.info("Mandat '{}' aus der Verwaltung entfernt (Menuekonfiguration geloescht, Fachdaten unberuehrt)",
                 entfernt);

@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.cron;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.boot.utils.TimeUtil;
 import it.sauronsoftware.cron4j.Predictor;
@@ -84,39 +85,24 @@ public class CronBackingBean implements Serializable {
         FacesContext fc = FacesContext.getCurrentInstance();
 
         if (crone == null || crone.isEmpty()) {
-            fc.addMessage(null, new FacesMessage(
-                    FacesMessage.SEVERITY_ERROR,
-                    "Wert ist nicht gesetzt",
-                    ""));
+            FacesMessages.error("Wert ist nicht gesetzt", "");
             return;
         }
 
         if (SchedulingPattern.validate(crone)) {
             Predictor pr = new Predictor(crone);
-            fc.addMessage(null, new FacesMessage(
-                    FacesMessage.SEVERITY_INFO,
-                    "Naechste Ausfuehrungen:",
-                    ""));
+            FacesMessages.info("Naechste Ausfuehrungen:", "");
             for (int i = 0; i < 5; i++) {
-                fc.addMessage(null, new FacesMessage(
-                        FacesMessage.SEVERITY_INFO,
-                        TimeUtil.getDateTimeAsStringWochentag(pr.nextMatchingDate()),
-                        ""));
+                FacesMessages.info(TimeUtil.getDateTimeAsStringWochentag(pr.nextMatchingDate()), "");
             }
         } else {
-            fc.addMessage(null, new FacesMessage(
-                    FacesMessage.SEVERITY_ERROR,
-                    "Wert ist nicht gueltig",
-                    ""));
+            FacesMessages.error("Wert ist nicht gueltig", "");
         }
     }
 
     public void save() {
         if (selected == null) {
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN,
-                            "Kein Cron selektiert",
-                            ""));
+            FacesMessages.warn("Kein Cron selektiert", "");
             return;
         }
 
@@ -129,10 +115,7 @@ public class CronBackingBean implements Serializable {
             cronController.schedule(selected);
         }
 
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO,
-                        "Cron wurde gespeichert und neu geplant",
-                        ""));
+        FacesMessages.info("Cron wurde gespeichert und neu geplant", "");
 
         refreshCrons();
     }
@@ -164,16 +147,10 @@ public class CronBackingBean implements Serializable {
         CronConfigEntity cfg = findCron(name, mandat);
         if (cfg != null) {
             cronController.trigger(cfg.getCronName(), cfg.getMandat());
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO,
-                            "Cron Job wird ausgeführt",
-                            "Der Cron Job '" + cfg.getDisplayName() + "' wurde manuell gestartet"));
+            FacesMessages.info("Cron Job wird ausgeführt", "Der Cron Job '" + cfg.getDisplayName() + "' wurde manuell gestartet");
             refreshCrons();
         } else {
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN,
-                            "Cron Job nicht gefunden",
-                            "Der Cron Job '" + name + "' (Mandat: " + mandat + ") konnte nicht gefunden werden"));
+            FacesMessages.warn("Cron Job nicht gefunden", "Der Cron Job '" + name + "' (Mandat: " + mandat + ") konnte nicht gefunden werden");
         }
     }
 

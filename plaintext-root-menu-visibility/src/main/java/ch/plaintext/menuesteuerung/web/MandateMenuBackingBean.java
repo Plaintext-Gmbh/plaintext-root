@@ -3,13 +3,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.menuesteuerung.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.boot.menu.MenuAnnotation;
 import ch.plaintext.boot.menu.ModuleRoleService;
 import ch.plaintext.menuesteuerung.model.MandateMenuConfig;
 import ch.plaintext.menuesteuerung.service.MandateMenuVisibilityService;
 import jakarta.annotation.PostConstruct;
-import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -321,17 +321,13 @@ public class MandateMenuBackingBean implements Serializable {
      * Save the selected mandate configuration.
      */
     public void save() {
-        FacesContext context = FacesContext.getCurrentInstance();
-
         if (selected == null) {
-            context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Keine Konfiguration ausgewählt."));
+            FacesMessages.error("Fehler", "Keine Konfiguration ausgewählt.");
             return;
         }
 
         if (selected.getMandateName() == null || selected.getMandateName().trim().isEmpty()) {
-            context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Mandatsname darf nicht leer sein."));
+            FacesMessages.error("Fehler", "Mandatsname darf nicht leer sein.");
             return;
         }
 
@@ -340,15 +336,13 @@ public class MandateMenuBackingBean implements Serializable {
         try {
             // Save with transactional service method that handles the collection properly
             service.saveConfig(selected.getMandateName(), selected.getHiddenMenus(), Boolean.TRUE.equals(selected.getWhitelistMode()));
-            context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Menükonfiguration gespeichert."));
+            FacesMessages.info("Erfolg", "Menükonfiguration gespeichert.");
 
             // Redirect back to overview
             FacesContext.getCurrentInstance().getExternalContext().redirect("mandatemenu.xhtml");
         } catch (Exception e) {
             log.error("Error saving mandate menu configuration", e);
-            context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Fehler beim Speichern: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Fehler beim Speichern: " + e.getMessage());
         }
     }
 
@@ -356,18 +350,14 @@ public class MandateMenuBackingBean implements Serializable {
      * Delete the selected mandate configuration.
      */
     public void delete() {
-        FacesContext context = FacesContext.getCurrentInstance();
-
         if (selected == null) {
-            context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Keine Konfiguration ausgewählt."));
+            FacesMessages.error("Fehler", "Keine Konfiguration ausgewählt.");
             return;
         }
 
         try {
             service.deleteConfig(selected);
-            context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Menükonfiguration gelöscht."));
+            FacesMessages.info("Erfolg", "Menükonfiguration gelöscht.");
 
             selected = null;
             loadMandates();
@@ -376,8 +366,7 @@ public class MandateMenuBackingBean implements Serializable {
             FacesContext.getCurrentInstance().getExternalContext().redirect("mandatemenu.xhtml");
         } catch (Exception e) {
             log.error("Error deleting mandate menu configuration", e);
-            context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Fehler beim Löschen: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Fehler beim Löschen: " + e.getMessage());
         }
     }
 
@@ -473,9 +462,7 @@ public class MandateMenuBackingBean implements Serializable {
 
         } catch (Exception e) {
             log.error("Error toggling mode", e);
-            FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                    "Fehler beim Umschalten des Modus: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Fehler beim Umschalten des Modus: " + e.getMessage());
         }
     }
 }

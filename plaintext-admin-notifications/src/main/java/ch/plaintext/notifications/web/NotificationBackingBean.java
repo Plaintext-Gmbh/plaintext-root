@@ -3,12 +3,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.notifications.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import ch.plaintext.notifications.entity.Notification;
 import ch.plaintext.notifications.service.NotificationServiceImpl;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +61,6 @@ public class NotificationBackingBean implements Serializable {
     }
 
     private void info(String summary, String detail) {
-        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(FacesMessage.SEVERITY_INFO, summary, detail));
+        FacesMessages.info(summary, detail);
     }
 }

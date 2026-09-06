@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityProperties;
 import ch.plaintext.boot.plugins.security.magiclink.MagicLinkService;
@@ -208,13 +209,9 @@ public class MyUserInfoBackingBean implements Serializable {
         HttpServletRequest request = (HttpServletRequest) context.getExternalContext().getRequest();
         boolean sent = magicLinkService.generateAndSend(username, request);
         if (sent) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg",
-                            "Anmelde-Link (Magic-Link) an deine E-Mail-Adresse gesendet."));
+            FacesMessages.info("Erfolg", "Anmelde-Link (Magic-Link) an deine E-Mail-Adresse gesendet.");
         } else {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN, "Warnung",
-                            "Magic-Link konnte nicht gesendet werden (Feature deaktiviert oder kein System-Mailkonto konfiguriert)."));
+            FacesMessages.warn("Warnung", "Magic-Link konnte nicht gesendet werden (Feature deaktiviert oder kein System-Mailkonto konfiguriert).");
         }
     }
 
@@ -248,48 +245,41 @@ public class MyUserInfoBackingBean implements Serializable {
 
         // Validate input
         if (currentPassword == null || currentPassword.trim().isEmpty()) {
-            context.addMessage("passwordMessages",
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte geben Sie Ihr aktuelles Passwort ein."));
+            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte geben Sie Ihr aktuelles Passwort ein.");
             return;
         }
 
         if (newPassword == null || newPassword.trim().isEmpty()) {
-            context.addMessage("passwordMessages",
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte geben Sie ein neues Passwort ein."));
+            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte geben Sie ein neues Passwort ein.");
             return;
         }
 
         if (confirmPassword == null || confirmPassword.trim().isEmpty()) {
-            context.addMessage("passwordMessages",
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte bestätigen Sie das neue Passwort."));
+            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte bestätigen Sie das neue Passwort.");
             return;
         }
 
         if (!newPassword.equals(confirmPassword)) {
-            context.addMessage("passwordMessages",
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Die neuen Passwörter stimmen nicht überein."));
+            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Die neuen Passwörter stimmen nicht überein.");
             return;
         }
 
         // Get current user
         String username = getUsername();
         if (username == null || "N/A".equals(username)) {
-            context.addMessage("passwordMessages",
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzer konnte nicht ermittelt werden."));
+            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzer konnte nicht ermittelt werden.");
             return;
         }
 
         MyUserEntity user = userRepository.findByUsername(username);
         if (user == null) {
-            context.addMessage("passwordMessages",
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzer nicht gefunden."));
+            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzer nicht gefunden.");
             return;
         }
 
         // Verify current password
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            context.addMessage("passwordMessages",
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Das aktuelle Passwort ist nicht korrekt."));
+            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Das aktuelle Passwort ist nicht korrekt.");
             return;
         }
 
@@ -304,8 +294,7 @@ public class MyUserInfoBackingBean implements Serializable {
         newPassword = null;
         confirmPassword = null;
 
-        context.addMessage("passwordMessages",
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Passwort wurde erfolgreich geändert."));
+        FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_INFO, "Erfolg", "Passwort wurde erfolgreich geändert.");
     }
 
     // ===================================================================================
@@ -412,7 +401,7 @@ public class MyUserInfoBackingBean implements Serializable {
 
     private void addTotpMessage(FacesContext context, FacesMessage.Severity severity, String detail) {
         if (context != null) {
-            context.addMessage("totpMessages", new FacesMessage(severity, "2FA", detail));
+            FacesMessages.feld("totpMessages", severity, "2FA", detail);
         }
     }
 }

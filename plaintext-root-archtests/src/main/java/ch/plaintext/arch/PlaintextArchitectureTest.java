@@ -4,6 +4,7 @@
 package ch.plaintext.arch;
 
 import ch.plaintext.PlaintextCron;
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -89,6 +90,25 @@ public class PlaintextArchitectureTest {
             .should().beAnnotatedWith("jakarta.faces.view.ViewScoped")
             .because("Backing-Beans laufen session-scoped (@Scope(\"session\")) mit preRenderView-onLoad(); "
                     + "die ViewScoped-Annotation ist im plaintext-root-Framework abgeloest");
+
+    /**
+     * A-05 (Analyse 05.09.2026, Karte 1104): Benutzer-Meldungen gehen über {@link FacesMessages}
+     * (info/warn/error/meldung/feld) statt über den rohen {@code FacesContext.addMessage}-Aufruf.
+     * War bislang nur app-lokal als {@code meldungenNurUeberFacesMessages} in
+     * {@code plaintext-app-webapp}s eigenem {@code ArchitectureTest} durchgesetzt (dort mit einem
+     * {@code NurAppCode}-Importfilter, der die root-Framework-JARs — und damit auch
+     * {@link FacesMessages} selbst — von der Analyse ausschliesst); hier als geteilte Regel
+     * übernommen, mit derselben Ausnahme direkt über {@code areNotAssignableTo(FacesMessages.class)},
+     * weil {@link FacesMessages} den Aufruf naturgemäss selbst kapselt.
+     */
+    @ArchTest
+    static final ArchRule meldungenNurUeberFacesMessages = noClasses()
+            .that().areNotAssignableTo(FacesMessages.class)
+            .should().callMethod(jakarta.faces.context.FacesContext.class, "addMessage",
+                    String.class, jakarta.faces.application.FacesMessage.class)
+            .because("FacesMessages.info/warn/error/meldung/feld statt FacesContext.addMessage "
+                    + "(root-common) — zentrale Stelle für Null-Sicherheit ausserhalb eines "
+                    + "JSF-Requests statt N leicht unterschiedlicher Kopien");
 
     // ── Conditions ─────────────────────────────────────────────────────────
 

@@ -165,13 +165,6 @@
         </dependency>
         -->
 
-        <!-- JodReports (optional) -->
-        <dependency>
-            <groupId>org.jodreports</groupId>
-            <artifactId>jodreports-library</artifactId>
-            <optional>true</optional>
-        </dependency>
-
         <!-- J2Html (optional for test reports) -->
         <dependency>
             <groupId>com.j2html</groupId>
@@ -190,13 +183,6 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- HTML Compressor (optional) -->
-        <dependency>
-            <groupId>com.googlecode.htmlcompressor</groupId>
-            <artifactId>htmlcompressor</artifactId>
             <optional>true</optional>
         </dependency>
 

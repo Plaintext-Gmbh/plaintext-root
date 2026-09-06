@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sessions.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.sessions.entity.UserSession;
 import ch.plaintext.sessions.service.SessionAuditServiceImpl;
@@ -106,6 +107,6 @@ public class SessionsBackingBean implements Serializable {
     }
 
     private void addMessage(FacesMessage.Severity severity, String summary, String detail) {
-        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(severity, summary, detail));
+        FacesMessages.meldung(severity, summary, detail);
     }
 }

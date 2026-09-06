@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.i18n.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.MenuRegistry;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.i18n.entity.I18nTranslation;
@@ -266,6 +267,6 @@ public class I18nBackingBean implements Serializable {
     }
 
     private void addMessage(FacesMessage.Severity severity, String summary, String detail) {
-        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(severity, summary, detail));
+        FacesMessages.meldung(severity, summary, detail);
     }
 }
