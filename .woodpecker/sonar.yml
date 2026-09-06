@@ -91,7 +91,7 @@ steps:
       SPRING_DATASOURCE_PASSWORD: plaintext
       MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
       JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
-      SONAR_HOST_URL: https://sonar.plaintext.ch
+      SONAR_HOST_URL: https://sonarqube.plaintext.ch
       SONAR_TOKEN:
         from_secret: sonar_token
     commands:
