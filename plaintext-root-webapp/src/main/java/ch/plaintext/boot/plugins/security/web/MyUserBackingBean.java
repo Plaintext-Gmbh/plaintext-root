@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.audit.DestructiveActionAuditService;
 import ch.plaintext.boot.plugins.security.magiclink.MagicLinkService;
@@ -362,8 +363,7 @@ public class MyUserBackingBean implements Serializable {
         // Check whether the user name already exists (only for new users or on a change)
         MyUserEntity existingUser = repo.findByUsername(selected.getUsername());
         if (existingUser != null && !existingUser.getId().equals(selected.getId())) {
-            FacesContext.getCurrentInstance().addMessage("username",
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits."));
+            FacesMessages.feld("username", FacesMessage.SEVERITY_ERROR, "Fehler", "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.");
         }
     }
 
@@ -373,15 +373,13 @@ public class MyUserBackingBean implements Serializable {
 
         // Validate the e-mail format
         if (selected.getUsername() == null || selected.getUsername().trim().isEmpty()) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzername darf nicht leer sein."));
+            FacesMessages.error("Fehler", "Benutzername darf nicht leer sein.");
             context.validationFailed();
             return;
         }
 
         if (!EMAIL_PATTERN.matcher(selected.getUsername()).matches()) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzername muss eine gültige E-Mail-Adresse sein."));
+            FacesMessages.error("Fehler", "Benutzername muss eine gültige E-Mail-Adresse sein.");
             context.validationFailed();
             return;
         }
@@ -389,8 +387,7 @@ public class MyUserBackingBean implements Serializable {
         // Check whether the user name already exists (only for new users or on a change)
         MyUserEntity existingUser = repo.findByUsername(selected.getUsername());
         if (existingUser != null && !existingUser.getId().equals(selected.getId())) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits."));
+            FacesMessages.error("Fehler", "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.");
             context.validationFailed();
             return;
         }
@@ -411,8 +408,7 @@ public class MyUserBackingBean implements Serializable {
         boolean passwordChanged = !selected.getPassword().isEmpty() && !selected.getPassword().equals(myUserPw);
 
         if (!selected.isPasswordless() && isNewUser && selected.getPassword().isEmpty()) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Passwort darf bei einem neuen Benutzer nicht leer sein."));
+            FacesMessages.error("Fehler", "Passwort darf bei einem neuen Benutzer nicht leer sein.");
             context.validationFailed();
             return;
         }
@@ -466,8 +462,7 @@ public class MyUserBackingBean implements Serializable {
         selected = null;
         resetRollenEntzug();
         init();
-        context.addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Benutzer erfolgreich gespeichert."));
+        FacesMessages.info("Erfolg", "Benutzer erfolgreich gespeichert.");
     }
 
     /**
@@ -485,8 +480,7 @@ public class MyUserBackingBean implements Serializable {
             }
             log.warn("SECURITY (Karte 307, K1): Nicht-ROOT-Akteur versuchte, privilegierte Rolle '{}' "
                     + "an Benutzer '{}' zu vergeben — abgelehnt.", role, selected.getUsername());
-            context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                    PrivilegedRoleRules.rejectionMessage(role)));
+            FacesMessages.error("Fehler", PrivilegedRoleRules.rejectionMessage(role));
             context.validationFailed();
             return false;
         }
@@ -535,9 +529,8 @@ public class MyUserBackingBean implements Serializable {
             log.warn("SECURITY (Rollen-Entzug): Nicht-ROOT-Akteur '{}' versuchte, dem Benutzer '{}' die "
                     + "privilegierte(n) Rolle(n) {} zu ENTZIEHEN — abgelehnt, nichts gespeichert.",
                     handelnderBenutzer(), benutzer, rollen);
-            context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                    "Nur ROOT darf die Rolle(n) " + rollen + " entziehen. Die Änderung wurde NICHT "
-                            + "gespeichert."));
+            FacesMessages.error("Fehler", "Nur ROOT darf die Rolle(n) " + rollen + " entziehen. Die Änderung wurde NICHT "
+                            + "gespeichert.");
             context.validationFailed();
             resetRollenEntzug();
             return false;
@@ -569,8 +562,7 @@ public class MyUserBackingBean implements Serializable {
         log.warn("SECURITY (Rollen-Entzug): ROOT-Akteur '{}' hat den Rollen-Entzug abgebrochen — "
                 + "nichts gespeichert.", handelnderBenutzer());
         resetRollenEntzug();
-        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(FacesMessage.SEVERITY_INFO,
-                "Abgebrochen", "Der Rollen-Entzug wurde nicht gespeichert."));
+        FacesMessages.info("Abgebrochen", "Der Rollen-Entzug wurde nicht gespeichert.");
     }
 
     /** Whether an unanswered prompt about a role revocation is currently pending (for the UI). */
@@ -648,13 +640,11 @@ public class MyUserBackingBean implements Serializable {
                         kuerze("Benutzer '" + username + "' (Mandat " + mandat + ") geloescht; Rollen "
                                 + rollen + "; durch: " + handelnderBenutzer()));
             }
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Benutzer erfolgreich gelöscht."));
+            FacesMessages.info("Erfolg", "Benutzer erfolgreich gelöscht.");
         } catch (Exception e) {
             log.error("AUDIT Benutzerloeschung FEHLGESCHLAGEN: '{}' (id={}) durch '{}'",
                     username, id, handelnderBenutzer(), e);
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Fehler beim Löschen des Benutzers: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Fehler beim Löschen des Benutzers: " + e.getMessage());
         }
 
         selected = null;
@@ -697,11 +687,9 @@ public class MyUserBackingBean implements Serializable {
         HttpServletRequest request = (HttpServletRequest) context.getExternalContext().getRequest();
         boolean sent = magicLinkService.generateAndSend(username, request);
         if (sent) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", "Magic-Link an " + username + " gesendet."));
+            FacesMessages.info("Erfolg", "Magic-Link an " + username + " gesendet.");
         } else {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN, "Warnung", "Magic-Link konnte nicht gesendet werden."));
+            FacesMessages.warn("Warnung", "Magic-Link konnte nicht gesendet werden.");
         }
     }
 
@@ -932,15 +920,13 @@ public class MyUserBackingBean implements Serializable {
     public void impersonateUser(MyUserEntity user) {
         if (!isRoot()) {
             log.warn("SECURITY: Non-root user attempted to impersonate user {}", user != null ? user.getId() : "null");
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Keine Berechtigung für diese Aktion."));
+            FacesMessages.error("Fehler", "Keine Berechtigung für diese Aktion.");
             return;
         }
 
         if (user == null || user.getId() == null) {
             log.warn("Cannot impersonate - user is null or has no ID");
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Ungültiger Benutzer."));
+            FacesMessages.error("Fehler", "Ungültiger Benutzer.");
             return;
         }
 
@@ -948,8 +934,7 @@ public class MyUserBackingBean implements Serializable {
         Long currentUserId = plaintextSecurity.getId();
         if (user.getId().equals(currentUserId)) {
             log.warn("User {} attempted to impersonate themselves", currentUserId);
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN, "Warnung", "Sie können sich nicht selbst impersonieren."));
+            FacesMessages.warn("Warnung", "Sie können sich nicht selbst impersonieren.");
             return;
         }
 
@@ -957,17 +942,13 @@ public class MyUserBackingBean implements Serializable {
             plaintextSecurity.startImpersonation(user.getId());
             log.info("Root user started impersonation of user {} ({})", user.getId(), user.getUsername());
 
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg",
-                            "Sie agieren jetzt als Benutzer: " + user.getUsername()));
+            FacesMessages.info("Erfolg", "Sie agieren jetzt als Benutzer: " + user.getUsername());
 
             // Reload page to reflect new security context
             FacesContext.getCurrentInstance().getExternalContext().redirect("index.xhtml");
         } catch (Exception e) {
             log.error("Error starting impersonation for user {}", user.getId(), e);
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                            "Impersonation konnte nicht gestartet werden: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Impersonation konnte nicht gestartet werden: " + e.getMessage());
         }
     }
 
@@ -1030,17 +1011,13 @@ public class MyUserBackingBean implements Serializable {
             plaintextSecurity.stopImpersonation();
             log.info("Stopped impersonation");
 
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg",
-                            "Impersonation beendet - Sie sind wieder als Ihr ursprünglicher Benutzer angemeldet."));
+            FacesMessages.info("Erfolg", "Impersonation beendet - Sie sind wieder als Ihr ursprünglicher Benutzer angemeldet.");
 
             // Reload page to reflect restored security context
             FacesContext.getCurrentInstance().getExternalContext().redirect("index.xhtml");
         } catch (Exception e) {
             log.error("Error stopping impersonation", e);
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler",
-                            "Impersonation konnte nicht beendet werden: " + e.getMessage()));
+            FacesMessages.error("Fehler", "Impersonation konnte nicht beendet werden: " + e.getMessage());
         }
     }
 

@@ -125,7 +125,7 @@ class PlaintextJsfViewLinterTest {
                 """);
         // Violation 3: onchange="submit()" resp. this.form.submit() on p: components (also multi-line).
         Files.writeString(res.resolve("badSubmit.xhtml"), """
-                <h:form>
+                <h:form id="fm">
                     <p:selectOneMenu value="#{bean.typ}" onchange="submit()"/>
                     <p:selectOneRadio value="#{bean.x}"
                                       onchange="this.form.submit()"/>
@@ -151,7 +151,7 @@ class PlaintextJsfViewLinterTest {
                 <h:body>
                     <f:metadata><f:viewParam name="id" value="#{bean.id}"/></f:metadata>
                     <!-- frueher: <p:selectOneMenu onchange="submit()"/> -->
-                    <h:form><h:selectOneMenu value="#{bean.typ}" onchange="submit()"/></h:form>
+                    <h:form id="fm"><h:selectOneMenu value="#{bean.typ}" onchange="submit()"/></h:form>
                 </h:body>
                 """);
         // NO violation: justified opt-out on the same line.
@@ -226,6 +226,62 @@ class PlaintextJsfViewLinterTest {
                 "badDialog muss gemeldet werden: " + violations);
         assertTrue(violations.get(0).message().contains("dlg"),
                 "Die Meldung muss die schuldige ID nennen: " + violations.get(0).message());
+    }
+
+    @Test
+    void linterErkenntFormOhneId(@TempDir Path tmp) throws IOException {
+        Path res = Files.createDirectories(tmp.resolve("META-INF/resources"));
+
+        // Verstoss: kein id-Attribut ueberhaupt — genau die beiden root-Faelle vom 05.09.2026
+        // (entityverwaltung.xhtml, debug.xhtml).
+        Files.writeString(res.resolve("badOhneId.xhtml"), """
+                <ui:composition template="/includes/template.xhtml">
+                    <ui:define name="content">
+                        <h:form>
+                            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                        </h:form>
+                    </ui:define>
+                </ui:composition>
+                """);
+        // KEIN Verstoss: einzelnes Formular auf der Seite, id="fm".
+        Files.writeString(res.resolve("okEinfach.xhtml"), """
+                <ui:composition template="/includes/template.xhtml">
+                    <ui:define name="content">
+                        <h:form id="fm">
+                            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                        </h:form>
+                    </ui:define>
+                </ui:composition>
+                """);
+        // KEIN Verstoss: mehrere Formulare, je ein sprechender Name (nicht zwingend "fm"-Praefix,
+        // die Regel prueft nur, DASS ueberhaupt eine Id gesetzt ist).
+        Files.writeString(res.resolve("okMehrere.xhtml"), """
+                <ui:composition template="/includes/template.xhtml">
+                    <ui:define name="content">
+                        <h:form id="selectorForm">
+                            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                        </h:form>
+                        <h:form id="listForm">
+                            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                        </h:form>
+                    </ui:define>
+                </ui:composition>
+                """);
+        // KEIN Verstoss: begruendete Ausnahme in derselben Zeile.
+        Files.writeString(res.resolve("okOptOut.xhtml"), """
+                <ui:composition template="/includes/template.xhtml">
+                    <ui:define name="content">
+                        <h:form> <!-- jsf-view-ok: Platzhalter, wird in Karte 1234 entfernt -->
+                            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                        </h:form>
+                    </ui:define>
+                </ui:composition>
+                """);
+
+        List<Violation> violations = JsfViewLinter.scan(res);
+
+        assertEquals(1, violations.size(), "Erwartet genau einen Verstoss, gefunden: " + violations);
+        assertTrue(hat(violations, "badOhneId.xhtml", JsfViewLinter.RULE_FORM_OHNE_ID), "badOhneId: " + violations);
     }
 
     @Test

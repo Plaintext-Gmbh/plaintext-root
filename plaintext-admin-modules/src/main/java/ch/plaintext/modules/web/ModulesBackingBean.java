@@ -3,12 +3,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.modules.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.modules.ModuleDangerZoneService;
 import ch.plaintext.modules.ModuleDataService;
 import ch.plaintext.modules.ModuleService;
 import ch.plaintext.modules.ModuleView;
 import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.primefaces.event.FileUploadEvent;
@@ -176,9 +176,6 @@ public class ModulesBackingBean implements Serializable {
     }
 
     private void addMessage(FacesMessage.Severity severity, String text) {
-        FacesContext ctx = FacesContext.getCurrentInstance();
-        if (ctx != null) {
-            ctx.addMessage(null, new FacesMessage(severity, text, null));
-        }
+        FacesMessages.meldung(severity, text, null);
     }
 }

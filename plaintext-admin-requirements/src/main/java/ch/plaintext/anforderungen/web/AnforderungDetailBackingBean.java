@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.anforderungen.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.anforderungen.entity.Anforderung;
 import ch.plaintext.anforderungen.entity.ClaudePrompt;
@@ -383,7 +384,7 @@ public class AnforderungDetailBackingBean implements Serializable {
     }
 
     private void addMessage(String message, FacesMessage.Severity severity) {
-        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(severity, message, null));
+        FacesMessages.meldung(severity, message, null);
     }
 
     /**

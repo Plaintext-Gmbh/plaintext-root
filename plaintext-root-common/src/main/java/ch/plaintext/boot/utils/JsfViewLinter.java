@@ -64,6 +64,14 @@ public final class JsfViewLinter {
     /** Rule identifier: an Ajax search expression runs through the id of a non-NamingContainer. */
     public static final String RULE_SUCHAUSDRUCK_DURCH_NICHT_CONTAINER = "suchausdruck-durch-nicht-namingcontainer";
 
+    /**
+     * Rule identifier: {@code <h:form>} without an {@code id} attribute (A-06, security/architecture
+     * analysis 05.09.2026, card 1104). Two root pages had this — {@code entityverwaltung.xhtml} and
+     * {@code debug.xhtml} — relying on JSF's auto-generated, layout-dependent id (e.g. {@code j_idt42}),
+     * which no Ajax search expression or CSS selector can reference reliably.
+     */
+    public static final String RULE_FORM_OHNE_ID = "h-form-ohne-id";
+
     /** Opt-out marker as an inline comment on the same line as the reported tag. */
     public static final String EXEMPT_COMMENT = "jsf-view-ok";
 
@@ -74,6 +82,10 @@ public final class JsfViewLinter {
     private static final Pattern DEFINE_OPEN = Pattern.compile("<ui:define\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern FORM_OPEN = Pattern.compile("<h:form\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern FORM_CLOSE = Pattern.compile("</h:form\\s*>", Pattern.CASE_INSENSITIVE);
+
+    /** Full opening {@code <h:form ...>} tag (also multi-line, self-closing or not), attributes captured. */
+    private static final Pattern FORM_TAG = Pattern.compile("<h:form\\b([^>]*)>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+    private static final Pattern HAT_ID_ATTRIBUT = Pattern.compile("\\bid\\s*=\\s*\"", Pattern.CASE_INSENSITIVE);
 
     /**
      * Opening {@code <p:xxx ...>} tag (also multi-line) that carries an {@code onchange} attribute
@@ -156,6 +168,7 @@ public final class JsfViewLinter {
         pruefeMetadata(file, original, content, violations);
         pruefeOnchangeSubmit(file, original, content, violations);
         pruefeSuchausdruecke(file, original, content, violations);
+        pruefeFormOhneId(file, original, content, violations);
     }
 
     /** Rules 1 and 2 — both hinge on the position of the first {@code <f:metadata}. */
@@ -256,6 +269,31 @@ public final class JsfViewLinter {
                                     + EXEMPT_COMMENT + " --> on the same line."));
                 }
             }
+        }
+    }
+
+    /**
+     * Rule 5 — {@code <h:form>} without an {@code id} attribute (A-06). Only the presence of an id is
+     * checked, not its value: which naming convention applies (plain {@code "fm"} on a page with a
+     * single form, an {@code "fm"}-prefixed name per form on a page with several) is a house-style
+     * question decided per page, not something the linter can verify structurally from a single file.
+     */
+    private static void pruefeFormOhneId(Path file, String original, String content, List<Violation> violations) {
+        Matcher tag = FORM_TAG.matcher(content);
+        while (tag.find()) {
+            if (HAT_ID_ATTRIBUT.matcher(tag.group(1)).find()) {
+                continue;
+            }
+            int lineNo = lineNumberAt(original, tag.start());
+            if (lineContent(original, lineNo).contains(EXEMPT_COMMENT)) {
+                continue;
+            }
+            violations.add(new Violation(file, lineNo, RULE_FORM_OHNE_ID,
+                    "<h:form> ohne id-Attribut: JSF vergibt sonst eine instabile, layoutabhaengige Id "
+                            + "(z. B. j_idt42), die kein Ajax-Suchausdruck und kein CSS-Selektor verlaesslich "
+                            + "referenzieren kann. Fix: id setzen (id=\"fm\", wenn die Seite genau ein Formular "
+                            + "hat; sonst je Formular ein sprechender, mit 'fm' beginnender Name), oder mit <!-- "
+                            + EXEMPT_COMMENT + " --> in derselben Zeile begruendet ausnehmen."));
         }
     }
 

@@ -6,6 +6,7 @@
  */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
@@ -114,13 +115,11 @@ public class RootApiTokenBackingBean implements Serializable {
     }
 
     private void addInfo(String message) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", message));
+        FacesMessages.info("Erfolg", message);
     }
 
     private void addError(String message) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", message));
+        FacesMessages.error("Fehler", message);
     }
 
     @Getter

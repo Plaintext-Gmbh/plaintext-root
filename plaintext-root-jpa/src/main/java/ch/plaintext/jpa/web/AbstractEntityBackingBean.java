@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.jpa.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.jpa.model.EntityDescriptor;
 import ch.plaintext.jpa.model.FieldMetadata;
@@ -10,7 +11,6 @@ import ch.plaintext.jpa.service.EntityRegistryService;
 import ch.plaintext.jpa.service.JpaEntityService;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -279,12 +279,10 @@ public abstract class AbstractEntityBackingBean implements Serializable {
     }
 
     protected void addInfoMessage(String summary, String detail) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, summary, detail));
+        FacesMessages.info(summary, detail);
     }
 
     protected void addErrorMessage(String summary, String detail) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, summary, detail));
+        FacesMessages.error(summary, detail);
     }
 }

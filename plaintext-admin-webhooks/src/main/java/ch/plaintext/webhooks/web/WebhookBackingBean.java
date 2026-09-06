@@ -3,13 +3,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.webhooks.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import ch.plaintext.webhooks.entity.WebhookDelivery;
 import ch.plaintext.webhooks.entity.WebhookEndpoint;
 import ch.plaintext.webhooks.service.WebhookEndpointService;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -191,9 +191,6 @@ public class WebhookBackingBean implements Serializable {
     }
 
     private void msg(FacesMessage.Severity s, String t, String m) {
-        FacesContext ctx = FacesContext.getCurrentInstance();
-        if (ctx != null) {
-            ctx.addMessage(null, new FacesMessage(s, t, m));
-        }
+        FacesMessages.meldung(s, t, m);
     }
 }

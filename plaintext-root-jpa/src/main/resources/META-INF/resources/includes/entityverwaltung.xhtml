@@ -77,7 +77,7 @@
     <p:growl id="messages" showDetail="true" life="3000"/>
 
     <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
-        <h:form>
+        <h:form id="confirmForm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
             <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes"/>
             <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no"/>

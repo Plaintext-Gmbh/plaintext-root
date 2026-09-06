@@ -185,12 +185,6 @@
 
 
 
-        <!-- Universal Character Detector -->
-        <dependency>
-            <groupId>com.googlecode.juniversalchardet</groupId>
-            <artifactId>juniversalchardet</artifactId>
-        </dependency>
-
         <!-- AssertJ (for utilities, optional) -->
         <dependency>
             <groupId>org.assertj</groupId>
@@ -224,13 +218,6 @@
         </dependency>
         -->
 
-        <!-- JodReports (optional) -->
-        <dependency>
-            <groupId>org.jodreports</groupId>
-            <artifactId>jodreports-library</artifactId>
-            <optional>true</optional>
-        </dependency>
-
         <!-- J2Html (optional for test reports) -->
         <dependency>
             <groupId>com.j2html</groupId>
@@ -252,13 +239,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- HTML Compressor (optional) -->
-        <dependency>
-            <groupId>com.googlecode.htmlcompressor</groupId>
-            <artifactId>htmlcompressor</artifactId>
-            <optional>true</optional>
-        </dependency>
-
         <!-- Selenium for testing (optional) -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
@@ -271,12 +251,6 @@
             <groupId>com.blueconic</groupId>
             <artifactId>browscap-java</artifactId>
             <optional>true</optional>
-        </dependency>
-
-        <!-- Java Object Diff -->
-        <dependency>
-            <groupId>de.danielbechler</groupId>
-            <artifactId>java-object-diff</artifactId>
         </dependency>
 
         <!-- Commons BeanUtils -->

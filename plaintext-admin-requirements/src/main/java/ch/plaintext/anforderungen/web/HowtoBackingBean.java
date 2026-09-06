@@ -3,12 +3,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.anforderungen.web;
 
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.anforderungen.entity.Howto;
 import ch.plaintext.anforderungen.repository.HowtoRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -142,12 +142,10 @@ public class HowtoBackingBean implements Serializable {
     }
 
     private void addSuccessMessage(String message) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, "Erfolg", message));
+        FacesMessages.info("Erfolg", message);
     }
 
     private void addErrorMessage(String message) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, "Fehler", message));
+        FacesMessages.error("Fehler", message);
     }
 }

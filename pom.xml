@@ -85,7 +85,6 @@
         <prettytime.version>5.0.9.Final</prettytime.version>
         <j2html.version>1.6.0</j2html.version>
         <browscap-java.version>1.5.1</browscap-java.version>
-        <java-object-diff.version>0.95</java-object-diff.version>
 
         <!-- Security -->
         <jakarta.enterprise.cdi-api.version>4.1.0</jakarta.enterprise.cdi-api.version>
@@ -94,15 +93,12 @@
         <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
 
         <!-- Reporting -->
-        <jodreports.version>3.0.0</jodreports.version>
 
         <!-- Apache POI -->
         <poi.version>5.5.1</poi.version>
 
         <!-- Misc -->
-        <juniversalchardet.version>1.0.3</juniversalchardet.version>
         <commons-compress.version>1.28.0</commons-compress.version>
-        <htmlcompressor.version>1.5.2</htmlcompressor.version>
 
         <!--
           Security-Pins, die (auch) via Parent-Vererbung an die Consumer-Apps durchschlagen sollen.
@@ -433,13 +429,6 @@
                 <version>${jakarta.mail.version}</version>
             </dependency>
 
-            <!-- Reporting -->
-            <dependency>
-                <groupId>org.jodreports</groupId>
-                <artifactId>jodreports-library</artifactId>
-                <version>${jodreports.version}</version>
-            </dependency>
-
             <!-- Web -->
             <dependency>
                 <groupId>org.jsoup</groupId>
@@ -501,13 +490,6 @@
                 <version>${browscap-java.version}</version>
             </dependency>
 
-            <!-- Object Diff -->
-            <dependency>
-                <groupId>de.danielbechler</groupId>
-                <artifactId>java-object-diff</artifactId>
-                <version>${java-object-diff.version}</version>
-            </dependency>
-
             <!-- SpringDoc -->
             <dependency>
                 <groupId>org.springdoc</groupId>
@@ -540,19 +522,9 @@
 
             <!-- Misc -->
             <dependency>
-                <groupId>com.googlecode.juniversalchardet</groupId>
-                <artifactId>juniversalchardet</artifactId>
-                <version>${juniversalchardet.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
                 <version>${commons-compress.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.googlecode.htmlcompressor</groupId>
-                <artifactId>htmlcompressor</artifactId>
-                <version>${htmlcompressor.version}</version>
             </dependency>
 
             <!-- Lombok -->
