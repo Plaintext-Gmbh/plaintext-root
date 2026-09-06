@@ -1,8 +1,9 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-package ch.plaintext.boot.web.table;
+package ch.plaintext.boot.table;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -21,10 +22,17 @@ import java.util.Map;
  * Default. Ein Feld <i>umbenennen</i> ist dagegen ein Bruch — der alte Stand faellt dann still
  * auf die Vorgabe zurueck, und der Benutzer findet seine Spalten neu sortiert vor.</p>
  *
+ * <p><b>Die Gegenrichtung ist mit abgesichert.</b> Der Mapper der Ablage
+ * ({@code SimpleStorableConverter}) bricht bei <i>unbekannten</i> Feldern ab — und gibt dann
+ * fuer den ganzen Datensatz {@code null} zurueck. Ohne {@code ignoreUnknown} liesse ein Rollback
+ * auf eine aeltere root-Version jeden Benutzer, der schon ein neues Feld gespeichert hat, mit
+ * leeren Einstellungen zurueck.</p>
+ *
  * @author info@plaintext.ch
  * @since 2026
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TableState implements Serializable {
 
     private static final long serialVersionUID = 1L;

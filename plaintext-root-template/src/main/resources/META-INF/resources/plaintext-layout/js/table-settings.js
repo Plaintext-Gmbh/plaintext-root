@@ -100,6 +100,11 @@
             if (!tabelle) {
                 continue;   // Tabelle (noch) nicht im DOM, z.B. ein Reiter, der zu ist.
             }
+            // Markierung fuer table-settings.css: unter dem Mobil-Umbruch setzt es die
+            // gespeicherten Breiten dieser Tabelle ausser Kraft (Entscheid 2, Karte 1077).
+            // Idempotent - nach jedem Teilupdate ist der Tabellenknoten neu, der Beobachter
+            // setzt die Klasse dann wieder.
+            tabelle.classList.add('pt-tablesettings-breiten');
             var koepfe = tabelle.querySelectorAll('thead th');
             for (var k = 0; k < koepfe.length; k++) {
                 knopfAnhaengen(koepfe[k], r, remoteName);

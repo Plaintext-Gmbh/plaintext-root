@@ -779,9 +779,9 @@ Table header, per column:
 
 <section id="a9">
     <h2><span class="code">A9</span>State of the <code>pt:</code> taglib</h2>
-    <p><code>plaintext-root</code> has had a proposal for this since 31 Aug 2026 —
-        <a href="https://github.com/Plaintext-Gmbh/plaintext-root/pull/161">PR #161</a>, not yet
-        merged:</p>
+    <p><code>plaintext-root</code> ships this since 1.657.0 —
+        <a href="https://github.com/Plaintext-Gmbh/plaintext-root/pull/161">PR #161</a>, merged
+        31 Aug 2026; storage and the first consumer followed with Karte 1077 (6 Sep 2026):</p>
     <div class="tabelle">
     <table>
         <thead><tr><th>Component</th><th>in <code>pt:tableSettings</code></th><th>Note</th></tr></thead>
@@ -791,11 +791,13 @@ Table header, per column:
             <tr><td>Total width + "one button, two jobs"</td><td class="ja">yes</td><td></td></tr>
             <tr><td>Target width + Apply button in the header</td><td class="ja">yes</td><td>JS in <code>plaintext-layout/js/table-settings.js</code></td></tr>
             <tr><td>Drag handle visible</td><td class="ja">yes</td><td><code>plaintext-layout/css/table-settings.css</code></td></tr>
-            <tr><td>State + profiles server side</td><td class="ja">yes</td><td><code>ch.plaintext.boot.web.table.*</code></td></tr>
-            <tr><td>Storage</td><td class="ja">interface</td><td><code>TableStateStore</code> — the app decides</td></tr>
+            <tr><td>State + profiles server side</td><td class="ja">yes</td><td><code>ch.plaintext.boot.table.*</code> in <code>plaintext-root-common</code> (until 1.668.0: <code>ch.plaintext.boot.web.table</code> in <code>plaintext-root-web</code>)</td></tr>
+            <tr><td>Storage</td><td class="ja">yes</td><td><code>UserPreferenceTableStateStore</code>: per user <em>and tenant</em>, JSON in <code>UserPreference.tabellenStaende</code>; <code>TableStateStore</code> stays the seam for an app with its own backup (Confluence)</td></tr>
+            <tr><td>Widths on phones</td><td class="ja">off</td><td>below 768px stored widths are ignored (<code>table-settings.css</code>); visibility and profiles still apply</td></tr>
+            <tr><td>Drift guard for the copy in <code>plaintext-oblique-theme</code></td><td class="ja">yes</td><td><code>PlaintextTableSettingsDriftTest</code> (archtests, runs in every consumer)</td></tr>
             <tr><td>TreeTable special cases (A7.1–A7.3)</td><td class="nein">no</td><td>deliberately not — applies only to <code>p:treeTable</code></td></tr>
             <tr><td>Dynamic columns (PI columns)</td><td class="nein">no</td><td><code>setColumns()</code> exists but is untested</td></tr>
-            <tr><td>Render test</td><td class="nein">no</td><td>the tag has never yet been rendered</td></tr>
+            <tr><td>Render test</td><td class="nein">no</td><td>the tag has never yet been rendered; the first consumer is <code>member.xhtml</code> in guild (Karte 1077, E2)</td></tr>
         </tbody>
     </table>
     </div>
@@ -899,6 +901,10 @@ Table header, per column:
         the display control: around 1100 lines that compute the same thing. Unifying them is the
         work that pays off more than once — every correction to the width arithmetic has to be made
         twice today, and that is exactly what was forgotten once last time.</p>
+    <p><strong>Correction, 6 Sep 2026 (Karte 1077):</strong> the <code>tablestate</code> module and
+        <code>includes/anzeige-einstellungen.xhtml</code> named in the first row no longer exist in
+        the mirror of the inventory app; as of today it has <em>one</em> built-out variant (ARC
+        Runway), not two. The row stands as measured on 31 Aug 2026.</p>
 </section>
 
 <section id="b4">

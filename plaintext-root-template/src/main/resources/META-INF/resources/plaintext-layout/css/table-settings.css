@@ -75,3 +75,27 @@
     background-color: var(--pt-tablesettings-akzent-bg, #dbeafe);
     outline: 1px solid var(--pt-tablesettings-akzent-hell, #60a5fa);
 }
+
+/* Unter dem Umbruch (derselbe Wert wie in mobile-responsive.css) gelten gespeicherte
+   Spaltenbreiten NICHT (Entscheid 2, Karte 1077): auf dem Handy sind Pixelbreiten aus dem
+   Buero sinnlos oder schaedlich - die Tabelle liefe aus dem Bild. Die Sichtbarkeit der Spalten
+   und die Profile gelten weiter. !important, weil die Breiten als Inline-Stil an th/td und am
+   table-Element stehen (tableStyle, style="width:..."). Die Klasse setzt table-settings.js an
+   die Tabelle, die der Bedienbereich steuert. */
+@media (max-width: 768px) {
+    .pt-tablesettings-breiten table {
+        width: 100% !important;
+        table-layout: auto !important;
+    }
+
+    .pt-tablesettings-breiten thead th,
+    .pt-tablesettings-breiten tbody td {
+        width: auto !important;
+    }
+
+    .pt-tablesettings-breiten thead th .ui-column-resizer,
+    .pt-tablesettings-breiten thead th .pt-tablesettings-setzen,
+    .pt-tablesettings-breitenblock {
+        display: none !important;
+    }
+}

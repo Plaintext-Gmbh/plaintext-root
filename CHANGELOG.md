@@ -12,6 +12,28 @@ exhaustive.
 
 ## [Unreleased]
 
+### Added
+- **`pt:tableSettings` has its storage and is ready for consumers** (Karte 1077, 6 September
+  2026). The building block from 1.657.0 shipped `TableStateStore` as an interface only — every
+  app would have had to write its own storage, and none did. root now ships
+  `UserPreferenceTableStateStore` (`plaintext-root-common`): the table state is stored per
+  **user and tenant** (key `mandat + "/" + page`) as JSON in `UserPreference.tabellenStaende`,
+  through the session bean that already owns the record — no entity, no repository, no Flyway.
+  A page needs one injected `TableStateStore`, one `TableSettings` field and a `@PostConstruct`.
+  The previous storage `UserPreference.tabellenSpalten` (column visibility only, no tenant) is
+  read as a fallback and taken over on first save, so the `useradmin` selection of 25.08.2026
+  survives; `MyUserBackingBean` now runs on the shared building block. New drift guard
+  `PlaintextTableSettingsDriftTest` (runs in every consumer): every copy of
+  `tableSettings.xhtml`, `table-settings.js` and `table-settings.css` — root's own or the one in
+  `plaintext-oblique-theme` — must hash to the released root version. Below 768px the tag no
+  longer applies stored column widths (visibility and profiles still apply).
+  **Consumers:** the classes moved from `ch.plaintext.boot.web.table` (`plaintext-root-web`)
+  to `ch.plaintext.boot.table` (`plaintext-root-common`) — no consumer imported them yet, and
+  `plaintext-root-common` is on every module's class path already, so `pt:tableSettings` needs
+  no new POM entry. `UserPreference`, `TableState` and `TableColumnProfile` carry
+  `@JsonIgnoreProperties(ignoreUnknown = true)`: from this version on, a rollback no longer
+  discards a user's whole preference record because of a field the older version does not know.
+
 ### Security
 - **Reset and verification links no longer take their host from the request** (Karte 1068,
   5 September 2026). `SelfServiceController` used `request.getServerName()` as the fallback
