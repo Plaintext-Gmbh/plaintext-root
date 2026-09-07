@@ -61,7 +61,7 @@
              ui:include, CVSS 7.5). Nicht zurueckdrehen. Die Kehrseite derselben Haertung —
              Facelet-Verweise brauchen seither einen fuehrenden "/" — haelt der Test
              FaceletPfadInvariantTest (plaintext-root-webapp) fest, dort steht die Begruendung. -->
-        <jakarta.faces.version>4.1.15</jakarta.faces.version>
+        <jakarta.faces.version>4.1.16</jakarta.faces.version>
 
         <!-- Cron & Scheduling -->
         <cron4j.version>2.2.5</cron4j.version>
