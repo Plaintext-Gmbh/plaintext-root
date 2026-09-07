@@ -21,7 +21,9 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -95,6 +97,34 @@ class PlaintextRootTemplateDriftTest {
      * after a change with {@code tr -d '\r' < <datei> | sha256sum} — or take the value from the
      * failing assertion.
      */
+    /**
+     * Erweiterungspunkte: Dateien, die eine App <b>absichtlich</b> mit einer eigenen Fassung
+     * ueberschattet. Sie duerfen NICHT in {@link #GETEILTE_DATEIEN} stehen.
+     *
+     * <p><b>Warum es diese Liste gibt (Karte 1088, Nachtrag 07.09.2026).</b>
+     * {@code includes/app-template-extra.xhtml} war zunaechst mitgeprueft. root liefert dort eine
+     * leere Vorgabe, und der Kommentar in der Datei sagt woertlich, was gemeint ist: <i>„An app
+     * that wants to show something here (e.g. schuetu's language switcher) puts a file of the same
+     * name on its own classpath."</i> Genau das tut schuetu — mit dem Sprachumschalter, gemessen
+     * am 07.09.2026:
+     *
+     * <pre>
+     *   root    …/includes/app-template-extra.xhtml   sha256 d16547aa…  (leere Vorgabe, 4 Zeilen)
+     *   schuetu …/includes/app-template-extra.xhtml   sha256 5a2643db…  (85 Zeilen, Umschalter)
+     * </pre>
+     *
+     * Da {@link #fundstellen(String)} <i>jede</i> Kopie im Klassenpfad prueft, waere schuetus Build
+     * rot geworden, sobald schuetu auf 1.675.0 oder neuer bumpt — fuer ein Verhalten, das root
+     * selbst vorsieht. Ein Waechter, der die vorgesehene Benutzung als Fehler meldet, wird
+     * abgeschaltet statt befolgt; deshalb steht der Hook hier und nicht dort.
+     *
+     * <p>Geprueft wurde das nicht geraten: alle 35 Pfade der Prueflliste wurden in app, guild,
+     * schuetu und iot gesucht (Positivkontrolle: in root selbst 35 von 35 gefunden, die Suche
+     * greift also). Genau eine eigene Kopie existiert — schuetus app-template-extra.xhtml.
+     */
+    static final Set<String> UEBERSCHATTBARE_HOOKS =
+            Set.of("META-INF/resources/includes/app-template-extra.xhtml");
+
     private static final Map<String, String> GETEILTE_DATEIEN = new LinkedHashMap<>();
 
     static {
@@ -104,8 +134,6 @@ class PlaintextRootTemplateDriftTest {
                 "a62c5a8edba4a4a9919b0fae39630a23a5cfa2abb8fe2ec191b0e5b035af479b");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/table-settings.css",
                 "cea9597337f3a24d3363336c6d26b19b50184b4ba003a865b5cf1011c0428d19");
-        GETEILTE_DATEIEN.put("META-INF/resources/includes/app-template-extra.xhtml",
-                "d16547aa69ae5e0aa45a6339ee93fa08a317e2b256b39890bd0e9cc165e8dfb0");
         GETEILTE_DATEIEN.put("META-INF/resources/includes/config.xhtml",
                 "dfbe7b9f4243abfb4dda511748f51a7abfc909c2cf3491148c4d2f0e9ab972e3");
         GETEILTE_DATEIEN.put("META-INF/resources/includes/footer.xhtml",
@@ -175,7 +203,7 @@ class PlaintextRootTemplateDriftTest {
     }
 
     @Test
-    @DisplayName("Jede Kopie der 35 unveraendert geteilten plaintext-root-template-Dateien entspricht dem Stand von root")
+    @DisplayName("Jede Kopie der 34 unveraendert geteilten plaintext-root-template-Dateien entspricht dem Stand von root")
     void kopienEntsprechenRoot() {
         List<String> fehler = new ArrayList<>();
         int geprueft = 0;
@@ -208,6 +236,44 @@ class PlaintextRootTemplateDriftTest {
                 + "In einer App mit eigener Kopie (plaintext-oblique-theme): die Kopie ist gegenueber der "
                 + "eingebundenen root-Version abgedriftet — aus plaintext-root-template neu uebernehmen, "
                 + "sonst fehlen ihr die Korrekturen von root.");
+    }
+
+    /**
+     * Haelt die Entscheidung aus Karte 1088 fest: ein Erweiterungspunkt darf nicht in die
+     * Prueflliste zurueckwandern. Ohne diesen Test waere die Korrektur eine Fussnote, die beim
+     * naechsten Nachtragen von Hashes wieder verschwindet — und schuetus Build faellt dann nicht
+     * hier, sondern erst beim naechsten root-Bump auf, weit weg von der Ursache.
+     */
+    @Test
+    @DisplayName("Ein ueberschattbarer App-Hook steht nicht in der Prueflliste")
+    void hooksStehenNichtInDerPruefliste() {
+        List<String> falschEingetragen = UEBERSCHATTBARE_HOOKS.stream()
+                .filter(GETEILTE_DATEIEN::containsKey)
+                .sorted()
+                .toList();
+        assertTrue(falschEingetragen.isEmpty(),
+                "Diese Dateien sind Erweiterungspunkte — eine App ueberschattet sie absichtlich mit "
+                        + "einer eigenen Fassung (heute: schuetus Sprachumschalter in "
+                        + "app-template-extra.xhtml). Stehen sie in GETEILTE_DATEIEN, faerbt dieser "
+                        + "Waechter den Build jeder solchen App rot, sobald sie root bumpt — fuer "
+                        + "genau das Verhalten, das root selbst vorsieht:\n  "
+                        + String.join("\n  ", falschEingetragen));
+    }
+
+    /**
+     * Positivkontrolle zur Liste selbst: sie darf nicht leer sein und muss auf Dateien zeigen, die
+     * es in root wirklich gibt. Eine Hook-Liste mit einem Tippfehler im Pfad wuerde sonst als
+     * „alles gut" durchgehen und die eigentliche Absicherung stillschweigend abschalten.
+     */
+    @Test
+    @DisplayName("Die Hook-Liste zeigt auf Dateien, die es gibt")
+    void hookListeIstBelastbar() {
+        assertFalse(UEBERSCHATTBARE_HOOKS.isEmpty(), "Die Hook-Liste ist leer — dann prueft der Test darueber nichts.");
+        for (String hook : UEBERSCHATTBARE_HOOKS) {
+            assertFalse(fundstellen(hook).isEmpty(),
+                    "Kein Fund fuer den Hook " + hook + " — der Pfad stimmt nicht (mehr), und die "
+                            + "Ausnahme greift ins Leere.");
+        }
     }
 
     /** All copies of one shared file: reactor sources first, then everything the class path offers. */
