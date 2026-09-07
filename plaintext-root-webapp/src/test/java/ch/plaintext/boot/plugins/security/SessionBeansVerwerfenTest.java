@@ -15,6 +15,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -108,7 +109,9 @@ class SessionBeansVerwerfenTest {
     void ohneRequestKontextKeinFehler() {
         RequestContextHolder.resetRequestAttributes();
 
-        security.verwerfeSessionBeans();
+        // Karte 1113 (Sonar java:S2699): der Testzweck IST die Abwesenheit einer Exception -
+        // das jetzt auch als Zusicherung, nicht nur als impliziten Nicht-Absturz.
+        assertThatCode(() -> security.verwerfeSessionBeans()).doesNotThrowAnyException();
     }
 
     @Test
