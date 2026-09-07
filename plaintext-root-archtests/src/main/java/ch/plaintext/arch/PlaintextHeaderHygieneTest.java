@@ -58,17 +58,34 @@ class PlaintextHeaderHygieneTest {
 
     private static final List<String> JAVA_SUFFIXES = List.of("src/main/java", "src/test/java");
 
-    /** {@code Copyright (C) eMad, 2026.} in every spelling (also {@code ©}, without {@code (C)}). */
+    /**
+     * {@code Copyright (C) eMad, 2026.} in every spelling (also {@code ©}, without {@code (C)}).
+     *
+     * <p>Karte 1113 (Sonar {@code java:S5852}): the two {@code \s*} around the optional
+     * {@code (C)}/{@code ©} group overlap on the same whitespace, which the backtracking engine
+     * tries to split every possible way once the tail doesn't match — measured quadratic, e.g.
+     * {@code "Copyright" + " ".repeat(80_000)} took ~20s. Possessive quantifiers ({@code *+}, {@code ?+})
+     * commit to a match and never give characters back, so there is nothing left to split;
+     * matching stays linear (same input: ~20ms). Verified same match outcome on every fixture of
+     * {@link #scannerErkenntEmadUndPlatzhalterUndLaesstErlaubteFormenDurch(Path)} below plus a
+     * dozen additional cases, since the group here has no legitimate need to backtrack — the
+     * whitespace only has to be consumed somewhere, not split at a specific point.
+     */
     private static final Pattern EMAD_HEADER = Pattern.compile(
-            "Copyright\\s*(?:\\(C\\)|©)?\\s*eMad\\b", Pattern.CASE_INSENSITIVE);
+            "Copyright\\s*+(?:\\(C\\)|©)?+\\s*+eMad\\b", Pattern.CASE_INSENSITIVE);
 
     /**
      * {@code @author} followed by a placeholder or by nothing at all — up to the end of the line resp.
      * up to the closing {@code *&#47;} of a single-line Javadoc. {@code info} on its own is the
      * truncated form of {@code info@plaintext.ch}.
+     *
+     * <p>Karte 1113 (Sonar {@code java:S5852}): same overlapping-{@code \s*} shape as
+     * {@link #EMAD_HEADER}, worse in practice ({@code "@author" + " ".repeat(1_000)} plus a
+     * non-matching tail already took ~1.7s). Possessive quantifiers throughout for the same
+     * reason and with the same verification.
      */
     private static final Pattern PLATZHALTER_AUTHOR = Pattern.compile(
-            "@author\\s*(?::\\s*)?(Author|worker\\d+|Generated|info|TODO|unknown)?\\s*(?:\\*/)?\\s*$",
+            "@author\\s*+(?::\\s*+)?+(Author|worker\\d++|Generated|info|TODO|unknown)?+\\s*+(?:\\*/)?+\\s*+$",
             Pattern.CASE_INSENSITIVE);
 
     @Test

@@ -116,7 +116,7 @@ class PlaintextInlineJsVertragTest {
            .append("Zeile oder Eintrag '").append(ALLOWLIST_REGEL).append(" <pfad>  # <Grund>' in ")
            .append(ArchAllowlist.DATEINAME).append(".\n");
 
-        if (scharf()) {
+        if (istScharf()) {
             fail(msg.toString());
         }
         // Reporting: print and let it pass. Switch to enforcing with
@@ -125,7 +125,8 @@ class PlaintextInlineJsVertragTest {
                 + "in <systemPropertyVariables> des webapp-Moduls " + SCHALTER + "=" + SCHARF + " setzen.\n");
     }
 
-    static boolean scharf() {
+    /** Renamed from {@code scharf()} (Karte 1113, Sonar java:S1845): clashed with field {@code SCHARF}. */
+    static boolean istScharf() {
         return SCHARF.equalsIgnoreCase(System.getProperty(SCHALTER, "report"));
     }
 

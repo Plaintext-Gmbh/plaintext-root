@@ -97,8 +97,10 @@ class SessionsBackingBeanTest {
 
     @Test
     void selectDoesNothing() {
-        // Just verify it doesn't throw
-        bean.select();
+        // Karte 1113 (Sonar java:S2699): select() ist im Backing Bean ein bewusstes No-Op
+        // (Auswahl laeuft ueber JSF-Value-Binding); die Zusicherung macht das jetzt explizit,
+        // statt sich auf den impliziten Nicht-Absturz zu verlassen.
+        assertDoesNotThrow(() -> bean.select());
     }
 
     @Test
