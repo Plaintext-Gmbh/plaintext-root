@@ -17,7 +17,15 @@
         <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
         <meta name="mobile-web-app-capable" content="yes"/>
-        <link rel="icon" href="#{request.contextPath}/resources/plaintext-layout/images/favicon.ico" type="image/x-icon"></link>
+        <!-- Karte 1109: Der Pfad lief ueber request.contextPath + /resources/plaintext-layout/.
+             Den gibt es nicht: JSF liefert Library-Ressourcen unter /jakarta.faces.resource/ aus,
+             und /resources/** steht in keiner permit-all-Liste. Anonym an allen vier
+             PROD-Anwendungen gemessen: 302 auf /login.html — der Browser bekam die Anmeldeseite
+             als Icon geliefert. Der resource-Ausdruck unten bildet den richtigen Pfad, samt
+             Library-Version und Cache-Marke.
+             KEIN EL in diesem Kommentar: Facelets wertet #-Ausdruecke auch im HTML-Kommentar
+             aus, ein Beispielpfad hier wuerde also mitlaufen statt zu erklaeren. -->
+        <link rel="icon" href="#{resource['plaintext-layout:images/favicon.ico']}" type="image/x-icon"></link>
         <!-- Single dynamic theme - uses CSS variables set below -->
         <h:outputStylesheet library="primefaces-plaintext" name="theme.css"/>
         <style>
