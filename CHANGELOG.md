@@ -13,6 +13,21 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **Drift guard widened from 3 to 35 files** (Karte 1088, 7 September 2026).
+  `PlaintextTableSettingsDriftTest` is renamed to `PlaintextRootTemplateDriftTest` and now pins
+  the SHA-256 of 35 of the 42 `plaintext-root-template` resource files that
+  `plaintext-oblique-theme` carries as its own copy — not just the three `pt:tableSettings`
+  files. A full comparison against `coreit-arch-inventar-design` (7 September 2026) found 17 of
+  42 files had drifted since Karte 1077, all but the three known ones unnoticed; 14 were pure
+  translation drift (fixed by taking root's file verbatim), one was a stale Java-class reference
+  in a comment (fixed), and two were the already-known mobile-width rule missing from
+  `table-settings.css`/`.js` (pulled back in). The other 7 shared paths carry a documented,
+  permanent Oblique-specific addition on top of root's content and are deliberately NOT in this
+  guard's list — see the class Javadoc. **Known limitation:** `coreit-arch-inventar-design` does
+  not include `plaintext-root-archtests` (needs BIT-Nexus access for `ch.plaintext` coordinates,
+  Karte 1089), so this guard does not run there automatically; the assertion message names the
+  known consumer explicitly as a manual follow-up reminder, and that repo carries its own
+  self-contained `ObliqueTemplateDriftTest` instead.
 - **`pt:tableSettings` has its storage and is ready for consumers** (Karte 1077, 6 September
   2026). The building block from 1.657.0 shipped `TableStateStore` as an interface only — every
   app would have had to write its own storage, and none did. root now ships
