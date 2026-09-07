@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * root fuehrt selbst keine solche Datei (siehe deren Klassenkommentar — "das Framework muss die
  * eigenen Regeln ohne Ausnahme bestehen"), diese Regel braucht die Ausnahme aber genau dort fuer
  * die 29 root-eigenen Altdateien. Eine gemeinsame, im Jar mitgelieferte Liste (nach dem Vorbild
- * von {@link PlaintextTableSettingsDriftTest}, das Hashes statt eine Datei mitfuehrt) loest beides:
+ * von {@link PlaintextRootTemplateDriftTest}, das Hashes statt eine Datei mitfuehrt) loest beides:
  * root, app und guild pruefen dieselbe Liste, jede findet nur ihre eigenen Migrationsdateien (per
  * {@link ReactorLayout#sourceRoots}, das ausschliesslich im aktuellen Reactor sucht).
  *
