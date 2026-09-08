@@ -70,6 +70,64 @@ services:
       POSTGRES_PASSWORD: plaintext
 
 steps:
+  # ── Flyway-Dubletten (Karte 1120/1121, 08.09.2026) ───────────────────────────────────────
+  # ZUERST, weil es Sekunden kostet und der Rest dieses Workflows Minuten.
+  #
+  # WAS ES ABFAENGT: zwei Migrationen mit derselben Versionsnummer. Flyway scannt
+  # `classpath:db/migration` ueber den GESAMTEN Klassenpfad und legt damit alle 16 Module von
+  # plaintext-root in EINEN Versionsraum. Zwei gleiche Nummern -> der Kontext startet nicht:
+  #     Error creating bean with name 'flywayInitializer' …
+  #     Found more than one migration with version 1788709017
+  # In plaintext-guild ist das am 08.09.2026 passiert und erschien als roter PLAYWRIGHT-Lauf,
+  # also an einer Stelle ohne jeden Bezug zur Ursache. Wer nur "Playwright rot" liest, sucht
+  # zuerst in der Oberflaeche.
+  #
+  # WARUM ES HIER STEHT UND NICHT IN DER GETEILTEN PIPELINE: app/guild/schuetu/iot erben die
+  # Pruefung aus dem Job `namespace-lint` (Anzeigename "Repo-Lint") von
+  # plaintext-scripts/.github/workflows/ci-cd-pipeline.yaml. plaintext-root hat als einziges
+  # dieser Repos ueberhaupt KEINE .github/workflows mehr — dort gibt es nichts zu erben.
+  #
+  # WARUM `--basis origin/master`: CI_COMMIT_SHA ist bei Woodpecker der PR-HEAD, nicht der
+  # Merge-Commit. Der haeufigste Fall — zwei Zweige, jeder fuer sich sauber, erst zusammen
+  # kollidierend — waere ohne die Merge-Vorschau unsichtbar. GitHub Actions braucht die Option
+  # nicht, weil actions/checkout dort bei `pull_request` refs/pull/N/merge auscheckt.
+  #
+  # DAS SKRIPT PRUEFT SICH SELBST: es legt in jedem Lauf ein kuenstliches Duplikat an und bricht
+  # ab, wenn es das NICHT rot meldet — und danach umgekehrt, dass ein sauberer Baum gruen
+  # bleibt. Ein gruener Schritt belegt damit beides. Eine Lint-Regel, deren gruener Lauf nie
+  # gegen einen echten Fehlerfall gehalten wurde, belegt gar nichts.
+  flyway-dubletten:
+    # Dasselbe Bild wie build-und-test: es liegt auf dem Agenten ohnehin im Cache und bringt
+    # bash und git mit. Ein eigenes, kleineres Bild waere ein zusaetzlicher Pull fuer 3 Sekunden
+    # Arbeit.
+    image: maven:3.9-eclipse-temurin-25
+    commands:
+      - . .woodpecker/waechter.sh
+
+      # SHA-GEPINNT wie in deploy.yml (Karte 1093): plaintext-scripts ist oeffentlich; ein
+      # unpinned `git clone` liesse jeden Commit dort sofort in diesem Lauf Code ausfuehren.
+      # Dieser SHA ist plaintext-scripts@master vom 08.09.2026 (Karte 1121). Er ist bewusst
+      # NICHT derselbe wie der deploy.yml-Pin — beide gehoeren irgendwann zusammengefuehrt.
+      - >-
+        mkdir -p /tmp/werkzeuge &&
+        git -C /tmp/werkzeuge init -q &&
+        git -C /tmp/werkzeuge remote add origin https://github.com/Plaintext-Gmbh/plaintext-scripts.git &&
+        git -C /tmp/werkzeuge fetch -q --depth 1 origin 978714ee05b2527256588962981a889b9e157b00 &&
+        git -C /tmp/werkzeuge checkout -q FETCH_HEAD
+
+      # Vorsorge, keine Reparatur: laeuft der Klon-Schritt jemals unter einer anderen uid als
+      # dieser Step, verweigert git das Verzeichnis ("dubious ownership"). Das Skript faende
+      # dann origin/master nicht und der Schritt waere rot — aus einem Grund, der mit Flyway
+      # nichts zu tun hat.
+      - git config --global --add safe.directory "$(pwd)"
+
+      # Der Woodpecker-Klon kennt refs/remotes/origin/master nicht von sich aus. Ohne diese
+      # Zeile bricht das Skript ab (es meldet den fehlenden Ref HART, statt die Merge-Vorschau
+      # lautlos zu ueberspringen) — genau deshalb faellt ein vergessener fetch hier auf.
+      - git fetch -q origin +refs/heads/master:refs/remotes/origin/master
+
+      - bash /tmp/werkzeuge/quality/flyway-dubletten-lint.sh . --basis origin/master
+
   build-und-test:
     image: maven:3.9-eclipse-temurin-25
     # NO Docker socket. plaintext-app needs one because it has Testcontainers tests in
