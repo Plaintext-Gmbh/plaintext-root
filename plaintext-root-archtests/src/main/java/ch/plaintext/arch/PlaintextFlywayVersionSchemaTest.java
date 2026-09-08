@@ -30,8 +30,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Zahl vor ihnen in der Flyway-Reihenfolge. Das erzwingt {@code out-of-order: true} in allen drei
  * {@code application.yml}, was Flyways Reihenfolge-Garantie insgesamt aufweicht (A-04 im Bericht).
  *
+ * <p><b>Nachtrag 08.09.2026 (Karte 1133): der Scan war unvollstaendig.</b> Die Erhebung oben
+ * deckte root, app und guild ab — {@code plaintext-schuetu} zieht dieselben Arch-Tests aus diesem
+ * Jar, war aber nicht darunter. Deshalb fiel die Regel dort erst auf, als der Autobump wieder
+ * ehrlich meldete (Karte 1127): drei Dateien, zwei alte und eine Baseline. Die Lehre ist nicht
+ * „drei Ausnahmen mehr", sondern: eine feste Liste, die aus einem Scan entsteht, ist nur so
+ * vollstaendig wie der Scan — und der kannte die konsumierenden Repos nicht alle.
+ *
  * <p><b>Was diese Regel tut.</b> Jede Migrationsdatei im Reactor, die NICHT auf der festen Liste
- * der 56 bekannten Altdateien steht, muss dem Muster {@code V17\d{8}__...} folgen (10-stellige
+ * der bekannten Altdateien und nicht unter den Baseline-Ausnahmen steht, muss dem Muster
+ * {@code V17\d{8}__...} folgen (10-stellige
  * Unix-Epoch-Sekunden, Stand 2026 beginnt das mit "17"). Die Liste ist in dieser Klasse fest
  * einprogrammiert statt ueber {@link ArchAllowlist} (Datei {@code plaintext-arch-allowlist.txt}):
  * root fuehrt selbst keine solche Datei (siehe deren Klassenkommentar — "das Framework muss die
@@ -60,10 +68,21 @@ class PlaintextFlywayVersionSchemaTest {
     private static final Pattern NEUES_SCHEMA = Pattern.compile("V17\\d{8}__.*\\.sql");
 
     /**
-     * Feste Liste der 56 bereits vorhandenen Altdateien (Stand 06.09.2026, Karte 1069) —
-     * Pfade relativ zur Reactor-Wurzel, wie {@link ReactorLayout#relativ(Path)} sie liefert.
+     * Feste Liste der 58 bereits vorhandenen Altdateien (Stand 06.09.2026, Karte 1069; die beiden
+     * schuetu-Eintraege am 08.09.2026 nachgetragen, Karte 1133) — Pfade relativ zur Reactor-Wurzel,
+     * wie {@link ReactorLayout#relativ(Path)} sie liefert.
      * Neue Eintraege kommen hier NICHT mehr hinzu: eine neue Migration muss das neue Schema
      * tragen, das ist der Zweck der Regel.
+     *
+     * <p><b>Warum am 08.09.2026 doch zwei dazukamen (Karte 1133).</b> Die Erhebung vom 06.09.
+     * hat root, app und guild abgesucht — {@code plaintext-schuetu} war nicht darunter, obwohl es
+     * dieselben Arch-Tests aus diesem Jar zieht. Die beiden Dateien sind damit keine neuen
+     * Migrationen, sondern vom Scan nie erfasste alte: beide sind in schuetu-INT <i>und</i>
+     * schuetu-PROD seit April 2026 angewendet (gemessen am 08.09.2026 in
+     * {@code flyway_schema_history}: {@code 828995873 … 2026-04-08 23:43:47},
+     * {@code 829770587 … 2026-04-17 21:57:46}, beide {@code success=t}). Sie umzubenennen wuerde
+     * sie fuer Flyway zu neuen Migrationen machen, die auf beiden bestehenden Datenbanken erneut
+     * liefen — deshalb die Ausnahme und nicht die Umbenennung.</p>
      */
     private static final Set<String> ALTDATEIEN_ALLOWLIST = Set.of(
             "plaintext-admin-cron/src/main/resources/db/migration/V820503545__create_cron_tables.sql",
@@ -96,6 +115,8 @@ class PlaintextFlywayVersionSchemaTest {
             "plaintext-root-role-assignment/src/main/resources/db/migration/V820503550__create_rollenzuteilung.sql",
             "plaintext-root-webapp/src/main/resources/db/migration/V820503559__create_webapp_tables.sql",
             "plaintext-root-webapp/src/main/resources/db/migration/V827340596__add_version_to_simple_storable_entity.sql",
+            "plaintext-schuetu-webapp/src/main/resources/db/migration/V828995873__add_schiri_login_fields.sql",
+            "plaintext-schuetu-webapp/src/main/resources/db/migration/V829770587__add_mqtt_fields_and_consumed_messages.sql",
             "plaintext-z-bielerlauftage/src/main/resources/db/migration/V833356941__create_bieler_tables.sql",
             "plaintext-z-bielerlauftage/src/main/resources/db/migration/V833396356__bieler_tracking_toggle.sql",
             "plaintext-z-bielerlauftage/src/main/resources/db/migration/V833399566__bieler_rennen_bibliothek.sql",
@@ -124,8 +145,33 @@ class PlaintextFlywayVersionSchemaTest {
             "plaintext-z-zeiterfassung/src/main/resources/db/migration/V839357632__schliesse_offene_alt_zaehlungen.sql"
     );
 
+    /**
+     * Baseline-Migrationen, die ihre Nummer NICHT frei waehlen koennen (Karte 1133, 08.09.2026).
+     *
+     * <p>Diese Dateien sind nicht alt — sie tragen mit Absicht die kleinstmoegliche Version. Eine
+     * Baseline muss auf einer BESTEHENDEN Datenbank unter dem aktuellen Stand liegen, damit
+     * Flyway sie ueberspringt (die Tabellen gibt es dort ja schon), und auf einer FRISCHEN als
+     * erste laufen, damit die spaeteren ALTER-Migrationen ein Fundament haben. Eine
+     * Epoch-Nummer waere groesser als alle bisherigen Migrationen und wuerde genau das umkehren:
+     * die Baseline liefe zuletzt und die ALTER-Migrationen davor ins Leere.
+     *
+     * <p>Beleg dafuer, dass es sich hier wirklich um eine Baseline und nicht um eine vergessene
+     * Migration handelt: {@code V1__baseline_schuetu_schema.sql} ist in schuetu-INT und
+     * schuetu-PROD in {@code flyway_schema_history} <i>nicht</i> eingetragen (gemessen am
+     * 08.09.2026) — sie wurde dort also nie angewendet, genau wie vorgesehen. Auf einer frischen
+     * Datenbank legt sie die 13 Tabellen an, die bis dahin nur durch
+     * {@code ddl-auto: update} entstanden (Karte 461).
+     *
+     * <p>Ein Eintrag hier ist teurer als einer in {@link #ALTDATEIEN_ALLOWLIST}: Er sagt nicht
+     * „das ist historisch gewachsen", sondern „diese Nummer ist fachlich richtig". Wer hier etwas
+     * eintraegt, muss zeigen koennen, dass die Datei nirgends angewendet ist.
+     */
+    private static final Set<String> BASELINE_AUSNAHMEN = Set.of(
+            "plaintext-z-schuetu/src/main/resources/db/migration/V1__baseline_schuetu_schema.sql"
+    );
+
     @Test
-    @DisplayName("Neue Flyway-Migrationen tragen Unix-Epoch-Nummern (V17..........__...), keine der 56 bekannten Altdateien ausgenommen")
+    @DisplayName("Neue Flyway-Migrationen tragen Unix-Epoch-Nummern (V17..........__...), nur bekannte Altdateien und Baselines ausgenommen")
     void neueMigrationenFolgenDemEpochSchema() {
         List<String> fehler = new ArrayList<>();
         int geprueft = 0;
@@ -135,7 +181,7 @@ class PlaintextFlywayVersionSchemaTest {
                 String relativ = ReactorLayout.relativ(datei);
                 String dateiname = datei.getFileName().toString();
                 geprueft++;
-                if (ALTDATEIEN_ALLOWLIST.contains(relativ)) {
+                if (ALTDATEIEN_ALLOWLIST.contains(relativ) || BASELINE_AUSNAHMEN.contains(relativ)) {
                     continue;
                 }
                 if (!NEUES_SCHEMA.matcher(dateiname).matches()) {
@@ -153,7 +199,11 @@ class PlaintextFlywayVersionSchemaTest {
                 + "2000\"):\n  " + String.join("\n  ", fehler)
                 + "\n\nNeue Migration: mit `./getflywaynr` im Projekt-Root eine gueltige Nummer ziehen. "
                 + "Falls diese Datei tatsaechlich alt ist und nur vom Scan noch nicht erfasst wurde: "
-                + "in ALTDATEIEN_ALLOWLIST aufnehmen und begruenden, statt sie unsichtbar zu lassen.");
+                + "in ALTDATEIEN_ALLOWLIST aufnehmen und begruenden, statt sie unsichtbar zu lassen. "
+                + "Pruefe das VOR dem Umbenennen an der Datenbank (flyway_schema_history in INT und "
+                + "PROD): eine bereits angewendete Migration darf nicht umbenannt werden, sie liefe "
+                + "sonst als neue erneut. Baseline-Migrationen, die ihre kleine Nummer brauchen, "
+                + "gehoeren stattdessen in BASELINE_AUSNAHMEN.");
     }
 
     private static List<Path> sqlDateien(Path wurzel) {
