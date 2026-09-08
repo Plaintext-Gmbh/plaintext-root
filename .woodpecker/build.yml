@@ -96,6 +96,25 @@ steps:
   # ab, wenn es das NICHT rot meldet — und danach umgekehrt, dass ein sauberer Baum gruen
   # bleibt. Ein gruener Schritt belegt damit beides. Eine Lint-Regel, deren gruener Lauf nie
   # gegen einen echten Fehlerfall gehalten wurde, belegt gar nichts.
+  #
+  # ── WAS HIER BEWUSST NICHT STEHT (Karte 1128) ───────────────────────────────────────────
+  # Die REPO-UEBERGREIFENDE Pruefung — dieselbe Nummer in root UND in app/guild/schuetu/iot,
+  # die den Kontextstart der Anwendung genauso abbricht — liegt NICHT in dieser Datei, sondern
+  # in .github/workflows/repo-lint.yaml. Sie braucht ein GitHub-Leserecht auf die vier PRIVATEN
+  # Repos, also einen Token mit `repo`-Scope. plaintext-root ist oeffentlich, und die Pipeline
+  # eines Pull Requests laeuft aus DESSEN Fassung dieser Datei — wer einen PR aufmachen darf,
+  # koennte ein `from_secret` also ausgeben lassen. Genau diese Ueberlegung steht weiter unten
+  # schon einmal, als Begruendung dafuer, dass GITHUB_STATUS_TOKEN ausschliesslich
+  # `repo:status` traegt. Ein Leserecht auf alle privaten Repos der Org waere eine andere
+  # Groesse. GitHub Actions gibt einem Fork-PR keine Secrets heraus und hat damit die Grenze,
+  # die Woodpecker an dieser Stelle fehlt.
+  #
+  # Und noch etwas, das dort und nicht hier steht: DIE NACHTSCHICHT. Diese Datei laeuft auf
+  # `pull_request`, `manual` und `cron: nightly` — der Cron ist aber nicht scharf (unter den
+  # letzten 100 Pipelines dieses Repos, zurueck bis 01.09.2026: 32 pull_request, 17 push,
+  # 1 manual, NULL cron). Ein Merge mit `[skip ci]` kaeme hier also an jeder Pruefung vorbei,
+  # ohne dass ihn spaeter etwas einholt. Der `schedule`-Eintrag in repo-lint.yaml ist das Netz
+  # darunter; `schedule` ist vom Skip-Marker nicht betroffen.
   flyway-dubletten:
     # Dasselbe Bild wie build-und-test: es liegt auf dem Agenten ohnehin im Cache und bringt
     # bash und git mit. Ein eigenes, kleineres Bild waere ein zusaetzlicher Pull fuer 3 Sekunden
