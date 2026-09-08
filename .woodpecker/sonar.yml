@@ -1,46 +1,48 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-#  Woodpecker workflow 3 of 3: SONARQUBE ANALYSIS
+#  Woodpecker workflow 3 of 3: WEEKLY FULL ANALYSIS
 #
-#  Corresponds to the job `sonar` from the shared GitHub pipeline — BUT ONLY IN PART.
+#  Corresponds to the job `sonar` from the shared GitHub pipeline — now IN FULL,
+#  including `quality-analysis`:
 #
-#  ┌───────────────────────────────────────────────────────────────────────────┐
-#  │ NOT PORTED: the weekly FULL analysis (`quality-analysis`), that is        │
-#  │ OWASP CVE, SpotBugs, the quality gate evaluation and the write-back of    │
-#  │ quality/quality-gate.properties.                                          │
-#  └───────────────────────────────────────────────────────────────────────────┘
+#      SonarQube  ->  OWASP dependency check (CVE)  ->  SpotBugs  ->  Quality gate
 #
-#  That is a deliberate omission, not forgetfulness. The CVE scan needs a
-#  PERSISTENT NVD data set. On the GitHub runners it lives in a named
-#  volume (odc-cache, since card 914) under $HOME/.cache/owasp-dc-data. The Woodpecker
-#  agent mounts ONLY `woodpecker-m2:/root/.m2` into step containers; everything else is
-#  gone with the container, and an untrusted repo may not mount a volume for itself.
+#  ── The gap this file used to describe, and why it is closed (card 1140) ──────
+#  Until 08.09.2026 this file carried a block saying the full analysis was NOT ported:
+#  the CVE scan needs a PERSISTENT NVD data set, the agent mounted only
+#  `woodpecker-m2:/root/.m2`, and an untrusted repo may not mount a volume for itself.
+#  Without that data set dependency-check downloads the whole NVD on every run (~96 min
+#  without an API key), runs into the timeout and writes NO report — and quality-gate.py
+#  counts a missing report as "no breach". A green gate that measured nothing is worse
+#  than no gate; the GitHub side learned that expensively (cards 365, 420, 896, 925).
 #
-#  Without that data set, dependency-check downloads the complete NVD on EVERY run.
-#  Measured (card 896/897, without NVD_API_KEY): around 96 minutes, which regularly run
-#  into the timeout — and then NO report is produced, and quality-gate.py explicitly
-#  counts a missing report as "no breach". The result would be a green gate because
-#  NOTHING WAS MEASURED. The GitHub pipeline learned exactly this state expensively over
-#  months (cards 365, 420, 896, 925) — plaintext-root was one of the repos whose gate
-#  therefore wrongly stood at OK for weeks. Rebuilding it here would be worse than the gap.
+#  All three prerequisites the old block listed are met today — checked, not assumed:
+#    1. The NVD data set lives in the named volume `github-runners_odc-cache`
+#       (card 914). This repo stands at `trusted.volumes = true` in Woodpecker
+#       ({"network":false,"volumes":true,"security":false}), so the owasp-cve step may
+#       mount it — and it is the ONLY step here that mounts anything.
+#    2. python3 is installed in the gate step (6 seconds, 28 MB; the durable answer is an
+#       own step image, docs/CI-UMSCHALTEN pattern in app/guild/iot).
+#    3. The secret `nvd_api_key` exists on this repo. With it the scan updates
+#       INCREMENTALLY (~25 seconds measured on 30.08.2026) instead of downloading the NVD.
+#  plaintext-app, plaintext-guild and plaintext-iot have run exactly this workflow as
+#  `.woodpecker/analyse.yml` since 30.08.2026; this file is the same one, adapted.
 #
-#  On top of that comes the capacity price: the agent runs WOODPECKER_MAX_WORKFLOWS=2. A
-#  two-hour OWASP step occupies HALF of the entire CI capacity of the NAS.
+#  ── Why the gap could not simply stay open ────────────────────────────────────
+#  root is the parent POM of app, guild, iot and schuetu, and most CVEs of the family
+#  arrive through its <dependencyManagement>. As long as nothing measured here,
+#  quality/quality-gate.properties in root kept a value from 25.08.2026 — a `status`
+#  that says nothing about today. Card 1140 makes the age of that value part of the
+#  gate, and a value that no run can ever refresh would then be a permanent red without
+#  a lever.
 #
-#  THIS WEIGHS ESPECIALLY HEAVILY IN ROOT: root is the parent POM of app, guild, iot and
-#  schuetu, and most CVEs of the family arrive via its <dependencyManagement>. A CVE scan
-#  that fails here fails for all four consumers. As long as `.ci-engine` says
-#  `woodpecker`, the dependency check of this family must therefore be covered some other
-#  way (Renovate keeps running; it reports new versions, not CVEs).
+#  ── Capacity ─────────────────────────────────────────────────────────────────
+#  The agent runs WOODPECKER_MAX_WORKFLOWS=2, so this workflow occupies ONE OF TWO slots
+#  for about an hour. That is why a manual run has to say it means it:
+#  .woodpecker/analyse-freigabe.sh demands the variable `analyse = voll`. A cron run
+#  passes without it. Same safety catch as `deploy_target` in deploy.yml.
 #
-#  PREREQUISITES for closing the gap (repeated in docs/ci/WOODPECKER_SETUP.md):
-#    1. A second global volume on the agent:
-#         WOODPECKER_BACKEND_DOCKER_VOLUMES=woodpecker-m2:/root/.m2,woodpecker-odc:/root/.cache/owasp-dc-data
-#    2. python3 and jq in the step image (for quality/quality-gate.py).
-#    3. Ideally NVD_API_KEY as a secret — then the scan time drops from ~96 minutes to a
-#       few, and the capacity objection disappears with it.
-#
-#  The ci-motor guard locks the full analysis out on the GitHub side as well — deliberately,
-#  because an exception from that would mean two systems committing
+#  The ci-motor guard locks the full analysis out on the GitHub side as well —
+#  deliberately, because an exception from that would mean two systems committing
 #  quality/quality-gate.properties back at the same time.
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -78,6 +80,7 @@ services:
       POSTGRES_PASSWORD: plaintext
 
 steps:
+  # ── 1. SonarQube ───────────────────────────────────────────────────────────────
   sonarqube:
     image: maven:3.9-eclipse-temurin-25
     # A run without build cache takes around 25 minutes (measured on all four projects);
@@ -96,6 +99,7 @@ steps:
         from_secret: sonar_token
     commands:
       - . .woodpecker/waechter.sh
+      - . .woodpecker/analyse-freigabe.sh
       - >-
         bash -c 'for i in $(seq 1 60); do
           (echo > /dev/tcp/postgres/5432) 2>/dev/null && { echo "postgres bereit nach $i Versuchen"; exit 0; };
@@ -132,6 +136,292 @@ steps:
         -Dsonar.scm.provider=git;
         echo "Dashboard: $SONAR_HOST_URL/dashboard?id=$PROJECT_KEY"
 
+  # ── 2. OWASP-Dependency-Check (CVE) ────────────────────────────────────────────
+  owasp-cve:
+    image: maven:3.9-eclipse-temurin-25
+    # DER GRUND, WARUM DIESES REPO IN WOODPECKER `trusted.volumes = true` BRAUCHT.
+    # Nur dieser eine Step haengt das Volume ein — Sonar, SpotBugs und das Gate kommen ohne
+    # aus, und ein Mount, den niemand braucht, ist ein Mount, den irgendwann jemand
+    # missbraucht.
+    #
+    # Der Name traegt seine Geschichte: das Volume gehoert dem Compose-Stack
+    # `tri/github-runners` (Karte 914) und heisst deshalb `github-runners_odc-cache`. Der
+    # INHALT ist der Wert, nicht der Name — hier steht der einzige gepflegte NVD-Bestand
+    # der Familie (vier Verzeichnisse zu je rund 199 MB, taeglich fortgeschrieben).
+    # Umbenennen hiesse: neues Volume anlegen, 199 MB kopieren, beide Compose-Staende
+    # nachziehen — Kosmetik gegen ein echtes Risiko.
+    #
+    # ACHTUNG BEIM ABSCHALTEN DER GITHUB-RUNNER: dieses Volume NICHT mit wegwerfen.
+    # `docker compose down` laesst benannte Volumes stehen, `docker compose down -v` NICHT.
+    # Ein `-v` an dieser Stelle kostet jeden folgenden CVE-Lauf ein NVD-Vollupdate von rund
+    # 96 Minuten (ohne API-Key), das in das Repo-Timeout laeuft und keinen Report schreibt —
+    # also genau Fall (c) oben, in allen vier Repos gleichzeitig.
+    volumes:
+      - github-runners_odc-cache:/root/.cache/owasp-dc-data
+    environment:
+      MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
+      NVD_API_KEY:
+        from_secret: nvd_api_key
+    commands:
+      - . .woodpecker/waechter.sh
+      - . .woodpecker/analyse-freigabe.sh
+
+      # Die Quality-Skripte liegen in plaintext-scripts — OEFFENTLICHES Repo, deshalb ohne
+      # Token (nachgesehen am 30.08.2026). Der Klon liegt in `.plaintext-scripts` und damit
+      # im Workspace-Volume: die Folge-Steps sehen ihn dort wieder, ein zweiter Klon je Step
+      # waere Verschwendung. Der Pfad ist derselbe wie auf der GitHub-Seite, damit die
+      # Aufrufzeilen unten zeichengleich bleiben.
+      # Er landet in keinem Commit: der Gate-Step unten committet ausschliesslich den Pfad
+      # quality/quality-gate.properties, es gibt hier kein `git add -A` wie in do_release.
+      - rm -rf .plaintext-scripts
+      # Karte 1093: SHA-Pin statt beweglichem master, Begruendung wie in .woodpecker/deploy.yml
+      # (derselbe SHA, damit hoechstens EIN vertrauter Stand von plaintext-scripts im Umlauf ist).
+      - >-
+        mkdir -p .plaintext-scripts &&
+        git -C .plaintext-scripts init -q &&
+        git -C .plaintext-scripts remote add origin https://github.com/Plaintext-Gmbh/plaintext-scripts.git &&
+        git -C .plaintext-scripts fetch --depth 1 origin 199e5cf367d4c8e9cb7665e81cc7fb3a894fc90a &&
+        git -C .plaintext-scripts checkout FETCH_HEAD
+
+      # STALE-SCHUTZ, wortgleich aus der GitHub-Pipeline: alte Reports weg, BEVOR gemessen
+      # wird. Sonst bewertet das Gate nach einem Abbruch einen veralteten Report (etwa von
+      # VOR einer Suppression-Aenderung) statt gar keinen.
+      - find . -path "*/target/dependency-check-report.*" -delete 2>/dev/null || true
+
+      # ── Der NVD-Bestand ───────────────────────────────────────────────────────
+      # Reihenfolge bewusst: erst pruefen, ob der Mount da ist, dann saeen, dann urteilen.
+      # KEIN stiller Rueckfall — ohne Bestand ist der Scan nicht bloss langsam, er ist
+      # wertlos, weil er nie fertig wird.
+      - >-
+        bash -c 'BESTAND=/root/.cache/owasp-dc-data;
+        EIGEN="$BESTAND/wp-plaintext-root";
+        if mountpoint -q "$BESTAND"; then
+          echo "NVD-Bestand persistent: $BESTAND ist ein Volume-Mount.";
+        else
+          echo "WARNUNG: $BESTAND ist KEIN Mount. Der Bestand laege in der" >&2;
+          echo "  Schreibschicht dieses Containers und waere mit dem Step weg." >&2;
+          echo "  In Woodpecker die Repo-Einstellung trusted.volumes pruefen." >&2;
+        fi;
+        mkdir -p "$EIGEN";
+        if [ ! -f "$EIGEN/odc.mv.db" ]; then
+          QUELLE="";
+          for PFAD in "$BESTAND"/*/; do
+            NAME=$(basename "$PFAD");
+            KAND="$BESTAND/$NAME";
+            if [ "$KAND" = "$EIGEN" ]; then continue; fi;
+            if [ ! -f "$KAND/odc.mv.db" ]; then continue; fi;
+            if [ -e "$KAND/odc.update.lock" ]; then
+              echo "Uebersprungen: $NAME traegt ein Update-Lock.";
+              continue;
+            fi;
+            if [ -z "$QUELLE" ] || [ "$KAND/odc.mv.db" -nt "$QUELLE/odc.mv.db" ]; then
+              QUELLE="$KAND";
+            fi;
+          done;
+          if [ -n "$QUELLE" ]; then
+            echo "Erster Lauf fuer dieses Repo: Saatgut aus $QUELLE";
+            echo "  (frischester Bestand im Volume ohne Update-Lock).";
+            cp -a "$QUELLE/." "$EIGEN/";
+          else
+            echo "Kein Saatgut im Volume gefunden.";
+          fi;
+        fi;
+        if [ -f "$EIGEN/odc.mv.db" ]; then
+          echo "NVD-Datenbank vorhanden:";
+          stat -c "  %n  %s Bytes  zuletzt geschrieben %y" "$EIGEN/odc.mv.db";
+          echo "Dieser Lauf aktualisiert INKREMENTELL. Er laedt die NVD NICHT neu;";
+          echo "gemessen am 30.08.2026 dauert das Update rund 25 Sekunden.";
+          exit 0;
+        fi;
+        if [ -n "$NVD_API_KEY" ]; then
+          echo "KEIN Bestand vorhanden — dieser Lauf laedt die komplette NVD.";
+          echo "Mit API-Key ist das vertretbar, dauert aber deutlich laenger als sonst.";
+          exit 0;
+        fi;
+        echo "ABBRUCH: kein NVD-Bestand UND kein NVD_API_KEY." >&2;
+        echo "  Ein Vollupdate ohne Key dauert rund 96 Minuten, laeuft in das" >&2;
+        echo "  Repo-Timeout und schreibt KEINEN Report. Ein Gate, das danach" >&2;
+        echo "  gruen meldet, hat nichts gemessen (Karten 896/925) — deshalb" >&2;
+        echo "  bricht dieser Step lieber jetzt und sichtbar ab." >&2;
+        echo "  Abhilfe: Secret nvd_api_key setzen, oder nachsehen, ob das Volume" >&2;
+        echo "  github-runners_odc-cache noch da ist (docs/CI-UMSCHALTEN.md, 5.5)." >&2;
+        exit 1'
+
+      # Suppression-Dateien (Karte 420): ZENTRAL aus plaintext-scripts fuer Befunde, die
+      # alle Repos gleichzeitig treffen — PLUS die projekt-lokale fuer Sonderfaelle. Am
+      # 08.08.2026 standen alle sechs Repos wegen DESSELBEN CVE auf BREACHED; sechs
+      # Eintraege sind sechs Gelegenheiten, einen zu vergessen, und ein vergessener sieht
+      # aus wie ein echter Fund.
+      - >-
+        OWASP_SUPPRESSIONS="";
+        if [ -f ".plaintext-scripts/quality/owasp-suppressions-zentral.xml" ]; then
+          OWASP_SUPPRESSIONS=".plaintext-scripts/quality/owasp-suppressions-zentral.xml";
+          echo "OWASP-Suppression (zentral): $OWASP_SUPPRESSIONS";
+        fi;
+        if [ -f "$PWD/quality/owasp-suppressions.xml" ]; then
+          if [ -n "$OWASP_SUPPRESSIONS" ]; then OWASP_SUPPRESSIONS="$OWASP_SUPPRESSIONS,"; fi;
+          OWASP_SUPPRESSIONS="$OWASP_SUPPRESSIONS$PWD/quality/owasp-suppressions.xml";
+          echo "OWASP-Suppression (projekt-lokal): $PWD/quality/owasp-suppressions.xml";
+        fi;
+        export OWASP_SUPPRESSION="$OWASP_SUPPRESSIONS";
+        export OWASP_DATA_DIR="/root/.cache/owasp-dc-data/wp-plaintext-root";
+        bash .plaintext-scripts/quality/owasp-dependency-check.sh "$PWD" 0
+        || echo "dependency-check endete mit Fehlercode. Ob das ein Befund oder ein Ausfall war, entscheidet der naechste Befehl am REPORT.";
+        true
+
+      # DIE DREI FAELLE (Karte 925). Der Exit-Code von dependency-check ist ZWEIDEUTIG: das
+      # Werkzeug macht den Build absichtlich rot, wenn Funde ueber der Schwelle liegen
+      # (failBuildOnCVSS=0 = jeder Fund faerbt rot). Am 18.08.2026 las der GitHub-Melder
+      # diesen roten Exit als "kein Report" und meldete "Scan NICHT gelaufen", zwei Sekunden
+      # nachdem der Report geschrieben worden war — acht CVEs, darunter einer mit CVSS 9.1,
+      # gingen so als "nicht gemessen" durch. Der Melder tarnte genau die Funde, deren
+      # Uebersehen er verhindern soll. Unterscheidungsmerkmal ist deshalb der REPORT.
+      - >-
+        bash -c 'REPORT=$(find . -path "*/target/dependency-check-report.json" | head -1);
+        if [ -n "$REPORT" ]; then
+          echo "CVE-Report vorhanden: $REPORT";
+          echo "Ein roter Exit von dependency-check bedeutet hier FUNDE, nicht Ausfall.";
+          echo "Bewertet wird gleich von quality-gate.py.";
+          exit 0;
+        fi;
+        echo "FEHLER: OWASP-Dependency-Check hat KEINEN Report erzeugt." >&2;
+        echo "  Damit ist die CVE-Pruefung dieser Woche NICHT gelaufen." >&2;
+        echo "  Anders als auf der GitHub-Seite laeuft das Quality-Gate deshalb" >&2;
+        echo "  GAR NICHT: ein gruenes Gate ohne Messung ist schlimmer als keins" >&2;
+        echo "  (Karten 365/420/896/925). quality/quality-gate.properties behaelt" >&2;
+        echo "  seinen alten Stand, die Pushover-Meldung geht raus." >&2;
+        exit 1'
+
+  # ── 3. SpotBugs ────────────────────────────────────────────────────────────────
+  # Best effort, wie auf der GitHub-Seite (`continue-on-error: true`): SpotBugs speist das
+  # Quality-Gate NICHT — bewertet werden nur Sonar und CVE. Ein Ausfall hier darf die
+  # Bewertung also nicht verhindern, deshalb faengt der Aufruf seinen eigenen Fehler ab.
+  # Das ist der Unterschied zum OWASP-Step: dort ist der Ausfall selbst der Befund.
+  spotbugs:
+    image: maven:3.9-eclipse-temurin-25
+    environment:
+      MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
+    commands:
+      - . .woodpecker/waechter.sh
+      - . .woodpecker/analyse-freigabe.sh
+      - >-
+        bash .plaintext-scripts/quality/spotbugs.sh "$PWD" Medium
+        || echo "FEHLER: SpotBugs NICHT gelaufen — in diesem Lauf gibt es keine Bytecode-/FindSecBugs-Analyse."
+
+  # ── 4. Quality-Gate bewerten und zurueckcommitten ──────────────────────────────
+  quality-gate:
+    image: maven:3.9-eclipse-temurin-25
+    environment:
+      SONAR_HOST_URL: https://sonarqube.plaintext.ch
+      SONAR_TOKEN:
+        from_secret: sonar_token
+      # Push-Recht fuer den Rueckcommit von quality/quality-gate.properties. Es ist
+      # dasselbe Token, mit dem deploy.yml den Release-Commit pusht.
+      MVN_DEPLOY_TOKEN:
+        from_secret: mvn_deploy_token
+      # Ohne das wartet git bei fehlenden Zugangsdaten auf eine Eingabe, die nie kommt —
+      # aus einem klaren Fehlschlag wuerde ein Lauf, der bis zum Repo-Timeout haengt.
+      GIT_TERMINAL_PROMPT: "0"
+      MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
+    commands:
+      - . .woodpecker/waechter.sh
+      - . .woodpecker/analyse-freigabe.sh
+
+      # quality-gate.py ist reines Python 3 mit Standardbibliothek (argparse, base64,
+      # datetime, json, os, sys, time, urllib) — kein jq, kein pip, kein requests. Auch
+      # owasp-dependency-check.sh und spotbugs.sh kommen ohne jq aus (nachgesehen: jq
+      # taucht in plaintext-scripts nur in tui-build-logic.sh auf, und das laeuft hier
+      # nicht). Es fehlt also genau EIN Werkzeug, nicht zwei.
+      #
+      # NACHGEMESSEN am 30.08.2026: maven:3.9-eclipse-temurin-25 (Ubuntu 24.04) bringt
+      # weder python3 noch jq mit; `apt-get install python3` kostet rund 6 Sekunden und
+      # 28 MB, und `import ssl` funktioniert danach — noetig fuer die HTTPS-Aufrufe an
+      # SonarQube. python3-minimal waere kleiner, bringt ssl aber nicht verlaesslich mit.
+      #
+      # Das ist die schlanke, aber netzabhaengige Loesung. Die dauerhafte steht in
+      # docs/CI-UMSCHALTEN.md, Abschnitt 5.6: ein eigenes Step-Image mit python3 (und
+      # docker-cli fuer deploy.yml); dann faellt dieser Befehl ersatzlos weg und es aendert
+      # sich nur die `image:`-Zeile.
+      - >-
+        export DEBIAN_FRONTEND=noninteractive;
+        apt-get update -qq && apt-get install -y -qq --no-install-recommends python3;
+        python3 -c "import ssl, urllib.request; print('python3 bereit:', ssl.OPENSSL_VERSION)"
+
+      # Git-Identitaet und Push-Zugang, Muster aus deploy.yml: das Token kommt ueber einen
+      # credential-Helper aus /tmp und NICHT als https://token@github.com/... in die
+      # remote-URL — im Repo-Verzeichnis liegt kein Geheimnis. Woodpeckers Klon-Plugin
+      # laesst KEINE nachnutzbaren Zugangsdaten zurueck (CI_NETRC_* bekommen nur
+      # vertrauenswuerdige Plugins) und stellt den Arbeitsbaum auf einen losgeloesten HEAD;
+      # beides wird hier ausdruecklich hergestellt.
+      - mkdir -p /tmp/ci && chmod 700 /tmp/ci
+      - >-
+        umask 077;
+        printf 'https://x-access-token:%s@github.com\n' "$MVN_DEPLOY_TOKEN" > /tmp/ci/.git-credentials
+      - git config --global credential.helper "store --file=/tmp/ci/.git-credentials"
+      - git config --global user.email "woodpecker@plaintext.ch"
+      - git config --global user.name "WoodpeckerCI"
+      - git remote set-url origin "https://github.com/$CI_REPO.git"
+      - git checkout -B "$CI_COMMIT_BRANCH" "$CI_COMMIT_SHA"
+
+      # Bewertung. Exit 10 = BREACHED, 0 = OK, 2 = Aufruffehler. Bis auf die Pfade
+      # zeichengleich mit dem Schritt "Quality-Gate bewerten" der GitHub-Pipeline.
+      #
+      # OHNE Pipe zu `tee`: die Step-Shell ist /bin/sh (dash) und kennt PIPESTATUS nicht.
+      # Die GitHub-Fassung darf `| tee` schreiben, weil dort bash laeuft; hier wuerde der
+      # Exit-Code des Skripts still durch den von tee ersetzt — und tee gibt immer 0
+      # zurueck. Das Gate stuende dann auf OK, egal was quality-gate.py befunden hat.
+      #
+      # Ein fehlender OWASP-Report kann an dieser Stelle nicht mehr vorkommen: der Step
+      # davor bricht dann ab und dieser laeuft gar nicht erst.
+      - >-
+        GROUP_ID=$(mvn help:evaluate -Dexpression=project.groupId -q -DforceStdout);
+        ARTIFACT_ID=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout);
+        PROJECT_KEY="$GROUP_ID:$ARTIFACT_ID";
+        REPORT_TASK=$(find . -path "*/target/sonar/report-task.txt" | head -1);
+        OWASP_JSON=$(find . -path "*/target/dependency-check-report.json" | head -1);
+        echo "report-task.txt: $REPORT_TASK";
+        echo "dependency-check-report.json: $OWASP_JSON";
+        set +e;
+        python3 .plaintext-scripts/quality/quality-gate.py
+        --repo "$PWD"
+        --project-key "$PROJECT_KEY"
+        --sonar-url "$SONAR_HOST_URL"
+        --sonar-token "$SONAR_TOKEN"
+        --report-task "$REPORT_TASK"
+        --owasp-json "$OWASP_JSON"
+        --dashboard-url "https://plaintext-gmbh.github.io/plaintext-scripts/" > /tmp/ci/gate.out 2>&1;
+        GATE_EXIT=$?;
+        set -e;
+        cat /tmp/ci/gate.out;
+        echo "$GATE_EXIT" > /tmp/ci/gate.exit;
+        echo "── Quality-Gate plaintext-root ──";
+        if [ "$GATE_EXIT" = "10" ]; then echo "BREACHED"; else echo "OK"; fi;
+        grep '^  ! ' /tmp/ci/gate.out | sed 's/^  ! //' || true
+
+      # Rueckcommit. `git add` NUR mit Pfad — kein `git add -A`: im Workspace liegen der
+      # Klon .plaintext-scripts und der Bauschutt der drei Steps davor.
+      # Der Commit traegt den nativen Skip-Marker in der Betreffzeile; sowohl Woodpecker
+      # als auch GitHub legen fuer einen so betitelten Push gar keinen Lauf an. Ohne ihn
+      # loeste jede Analyse einen Deploy aus.
+      - >-
+        if git status --porcelain quality/quality-gate.properties | grep -q .; then
+          GATE_EXIT=$(cat /tmp/ci/gate.exit);
+          if [ "$GATE_EXIT" = "10" ]; then STAND=BREACHED; else STAND=OK; fi;
+          git add quality/quality-gate.properties;
+          git commit -m "chore(quality): Quality-Gate-Status $STAND [skip ci]";
+          git push origin "HEAD:$CI_COMMIT_BRANCH" || {
+            echo "push abgelehnt — rebase und zweiter Versuch";
+            git pull --rebase --autostash origin "$CI_COMMIT_BRANCH";
+            git push origin "HEAD:$CI_COMMIT_BRANCH";
+          };
+        else
+          echo "Quality-Gate-Status unveraendert — kein Commit.";
+        fi
+
+  # ── 5. Meldung, wenn die Analyse NICHT durchgelaufen ist ───────────────────────
   meldung-bei-analyse-ausfall:
     image: maven:3.9-eclipse-temurin-25
     when:
@@ -147,6 +437,10 @@ steps:
       # its last state, and an old "OK" cannot be told apart from a current
       # one. That is exactly how the gates of root/schuetu/iot stood at OK for weeks
       # although no analysis had run through since 20.07.2026 (card 365).
+      #
+      # NO analyse-freigabe.sh here: a manual run without the go-ahead leaves the steps
+      # above with SUCCESS, so this step does not run at all. And if it ever did run, a
+      # notification about a real failure would be correct.
       - >-
         if [ -z "$PUSHOVER_APP_TOKEN" ] || [ -z "$PUSHOVER_USER_KEY" ]; then
           echo "Keine Pushover-Zugangsdaten — Meldung nur hier im Log.";
@@ -155,8 +449,8 @@ steps:
         curl -s -o /dev/null --max-time 20 -X POST https://api.pushover.net/1/messages.json
         --form-string "token=$PUSHOVER_APP_TOKEN"
         --form-string "user=$PUSHOVER_USER_KEY"
-        --form-string "title=Sonar-Analyse fehlgeschlagen: plaintext-root (Woodpecker)"
-        --form-string "message=Die Analyse lief NICHT durch — das Quality-Gate zeigt weiterhin seinen alten Stand. Ein dort sichtbares OK ist damit nicht aussagekraeftig. root ist der Parent-POM von app, guild, iot und schuetu."
+        --form-string "title=Voll-Analyse fehlgeschlagen: plaintext-root (Woodpecker)"
+        --form-string "message=Die woechentliche Voll-Analyse lief NICHT durch — quality/quality-gate.properties zeigt weiterhin seinen alten Stand. Ein dort sichtbares OK ist damit nicht aussagekraeftig. Erste Vermutung: der CVE-Scan hat keinen Report erzeugt (NVD-Bestand pruefen). root ist der Parent-POM von app, guild, iot und schuetu — ein CVE-Ausfall hier faellt fuer alle vier aus."
         --form-string "priority=1"
         --form-string "url=$CI_PIPELINE_URL"
         --form-string "url_title=Lauf ansehen"
