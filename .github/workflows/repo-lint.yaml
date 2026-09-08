@@ -1,0 +1,112 @@
+name: Repo-Lint
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  DIE EINZIGE GITHUB-ACTIONS-DATEI IN plaintext-root — und das ist begruendet.
+#
+#  root hat seine .github/workflows am 30.08.2026 vollstaendig verloren, weil der Bau nach
+#  Woodpecker gezogen ist (.ci-engine: woodpecker). Diese Datei baut NICHTS und deployt NICHTS.
+#  Sie existiert fuer genau eine Sache, die in root ueber Woodpecker nicht sicher geht:
+#
+#  ── WARUM NICHT IN .woodpecker/build.yml (Karte 1128) ───────────────────────────────────────
+#  Die repo-uebergreifende Flyway-Pruefung muss die Migrationsnummern der vier PRIVATEN Repos
+#  (app, guild, schuetu, iot) lesen koennen. Sie braucht dafuer ein GitHub-Leserecht ueber die
+#  Org, also einen Token mit `repo`-Scope.
+#
+#  plaintext-root ist OEFFENTLICH. In Woodpecker laeuft die Pipeline eines Pull Requests aus
+#  DESSEN Fassung der .woodpecker/*.yml — wer einen PR aufmachen darf, bestimmt also, was der
+#  Schritt tut, und koennte ein `from_secret` einfach ausgeben lassen. Genau diese Ueberlegung
+#  steht in .woodpecker/build.yml schon einmal, dort als Begruendung dafuer, dass der
+#  Status-Token AUSSCHLIESSLICH `repo:status` traegt und bewusst nicht der PAT mit vollem
+#  repo-Scope. Ein Leserecht auf alle privaten Repos der Org waere eine ganz andere Groesse:
+#  ein Fremd-PR gegen ein oeffentliches Repo bekaeme damit den Quelltext aller privaten.
+#
+#  GitHub Actions hat an dieser Stelle eine Grenze, die Woodpecker nicht hat: bei einem
+#  `pull_request` aus einem FORK gibt GitHub keine Secrets heraus. Uebrig bleibt der PR aus
+#  einem Zweig DIESES Repos — und den kann nur anlegen, wer ohnehin Schreibrecht hat. Deshalb
+#  liegt diese eine Pruefung hier und nicht dort.
+#
+#  Der `if`-Ausdruck am Job macht die Fork-Grenze ausdruecklich, statt sich darauf zu
+#  verlassen: ein Fork-PR liefe sonst mit LEEREM Token los und waere rot mit einer Meldung
+#  ueber fehlende Berechtigungen — also rot aus einem Grund, den der Einreichende nicht
+#  beheben kann.
+#
+#  ── ZWEITER ZWECK: DIE NACHTSCHICHT, DIE root FEHLT (Karte 1128, Restluecke 3) ─────────────
+#  Ein Merge mit `[skip ci]` in der Betreffzeile ueberspringt die ganze Pipeline und damit auch
+#  jede Lint-Regel. In app/guild/schuetu/iot faengt das der naechtliche `schedule`-Lauf ihrer
+#  ci-cd.yaml auf: `schedule` ist vom Skip-Marker NICHT betroffen, und der Job "Repo-Lint"
+#  laeuft dort mit (nachgemessen 08.09.2026 an plaintext-schuetu, Lauf 34198709276:
+#  `pipeline / Repo-Lint: success` bei ansonsten komplett uebersprungenem Lauf).
+#
+#  root hatte dieses Netz NICHT. .woodpecker/build.yml laeuft auf `pull_request`, `manual` und
+#  `cron: nightly` — und ein `cron`-Lauf existiert dort nicht: unter den letzten 100 Pipelines
+#  von plaintext-root (zurueck bis 01.09.2026) sind 32 pull_request, 17 push, 1 manual und
+#  NULL cron. Der Cron ist in der Woodpecker-Oberflaeche nicht (mehr) scharf; ueber die API
+#  angelegte Crons stehen dort standardmaessig auf enabled=false. Solange das so ist, ist der
+#  `schedule` hier das einzige Netz unter root.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+on:
+  pull_request:
+    branches: [master]
+  schedule:
+    # Nicht zur vollen Stunde: GitHub verschiebt Zeitplaene bei Andrang, und der Andrang liegt
+    # auf :00. Die Uhrzeit muss sich mit nichts abstimmen — der Lauf braucht keinen NAS-Runner,
+    # keine Testdatenbank und keinen Deploy-Slot.
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repo-lint:
+    name: Repo-Lint
+    runs-on: ubuntu-latest
+    # Fork-PRs: siehe Kopf. Ohne diese Zeile liefe der Job mit leerem Token und waere rot aus
+    # einem Grund, den der Einreichende nicht beheben kann.
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout Projekt
+        # OHNE `ref:`. Bei `pull_request` holt actions/checkout von sich aus refs/pull/N/merge,
+        # also den Stand NACH dem Merge nach master. Wer hier ein
+        # `ref: github.event.pull_request.head.sha` ergaenzt, macht die Pruefung blind fuer den
+        # haeufigsten Fall (zwei Zweige, jeder fuer sich sauber), ohne dass etwas rot wird.
+        uses: actions/checkout@v7
+        with:
+          path: projekt
+
+      - name: Checkout plaintext-scripts (Pruefskripte)
+        # SHA-gepinnt wie ueberall in dieser Familie (Karte 313): plaintext-scripts ist
+        # oeffentlich und sein master ohne Fremd-Approval aenderbar. Ein `@master` hier hiesse,
+        # dass jeder Commit dort in diesem Lauf Code mit MVN_DEPLOY_TOKEN ausfuehrt.
+        uses: actions/checkout@v7
+        with:
+          repository: Plaintext-Gmbh/plaintext-scripts
+          ref: 7f75d609a2ce9594b4cef5bfa1cd3364e4d98a40
+          path: werkzeuge
+          token: ${{ secrets.MVN_DEPLOY_TOKEN }}
+
+      - name: Doppelte Flyway-Nummern INNERHALB von root
+        # Zweite Meinung, keine Doppelarbeit: .woodpecker/build.yml prueft den PR-HEAD und
+        # naehert den Merge ueber `--basis origin/master` an; hier steht der echte Merge-Ref.
+        # Und im `schedule`-Lauf ist das die EINZIGE Ausfuehrung ueberhaupt — Woodpecker hat
+        # fuer master keinen Lauf (build.yml hat kein `push`) und keinen scharfen Cron.
+        run: ./werkzeuge/quality/flyway-dubletten-lint.sh projekt
+
+      - name: Doppelte Flyway-Nummern gegen die NACHBARREPOS
+        # Der eigentliche Grund fuer diese Datei. Warum ein Token noetig ist und warum er hier
+        # und nicht in Woodpecker liegt: siehe Kopf. Warum die Nummern live geholt werden und
+        # welche zwei Bauformen dafuer verworfen wurden: im Kopf von
+        # quality/flyway-fremdrepo-lint.sh.
+        env:
+          GH_TOKEN: ${{ secrets.MVN_DEPLOY_TOKEN }}
+        run: |
+          ./werkzeuge/quality/flyway-fremdrepo-lint.sh projekt \
+            --eigenes "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}"
