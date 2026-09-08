@@ -21,7 +21,7 @@
 #       ({"network":false,"volumes":true,"security":false}), so the owasp-cve step may
 #       mount it — and it is the ONLY step here that mounts anything.
 #    2. python3 is installed in the gate step (6 seconds, 28 MB; the durable answer is an
-#       own step image, docs/CI-UMSCHALTEN pattern in app/guild/iot).
+#       own step image, the pattern app/guild/iot describe in their docs/CI-UMSCHALTEN.md).
 #    3. The secret `nvd_api_key` exists on this repo. With it the scan updates
 #       INCREMENTALLY (~25 seconds measured on 30.08.2026) instead of downloading the NVD.
 #  plaintext-app, plaintext-guild and plaintext-iot have run exactly this workflow as
@@ -245,7 +245,7 @@ steps:
         echo "  gruen meldet, hat nichts gemessen (Karten 896/925) — deshalb" >&2;
         echo "  bricht dieser Step lieber jetzt und sichtbar ab." >&2;
         echo "  Abhilfe: Secret nvd_api_key setzen, oder nachsehen, ob das Volume" >&2;
-        echo "  github-runners_odc-cache noch da ist (docs/CI-UMSCHALTEN.md, 5.5)." >&2;
+        echo "  github-runners_odc-cache noch da ist (docs/CI.md, \"The weekly full analysis\")." >&2;
         exit 1'
 
       # Suppression-Dateien (Karte 420): ZENTRAL aus plaintext-scripts fuer Befunde, die
@@ -342,7 +342,7 @@ steps:
       # SonarQube. python3-minimal waere kleiner, bringt ssl aber nicht verlaesslich mit.
       #
       # Das ist die schlanke, aber netzabhaengige Loesung. Die dauerhafte steht in
-      # docs/CI-UMSCHALTEN.md, Abschnitt 5.6: ein eigenes Step-Image mit python3 (und
+      # docs/CI.md („The weekly full analysis"): ein eigenes Step-Image mit python3 (und
       # docker-cli fuer deploy.yml); dann faellt dieser Befehl ersatzlos weg und es aendert
       # sich nur die `image:`-Zeile.
       - >-
