@@ -156,7 +156,7 @@
           selbst vor, deshalb hier gepinnt (siehe dependencyManagement).
         -->
         <swagger-ui.version>5.32.14</swagger-ui.version>
-        <sonar-maven-plugin.version>4.0.0.4121</sonar-maven-plugin.version>
+        <sonar-maven-plugin.version>4.0.1.6619</sonar-maven-plugin.version>
     </properties>
 
     <modules>
