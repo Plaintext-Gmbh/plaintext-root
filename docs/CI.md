@@ -42,7 +42,8 @@ the safe outcome; both deploying the same commit is not.
 3. **testbericht** — an Allure report, also on failure. See "Test reports" below.
 
 `.woodpecker/playwright.yml` runs the browser smoke tests on pull requests.
-`.woodpecker/sonar.yml` runs on the `wochenanalyse` cron and manually.
+`.woodpecker/sonar.yml` runs the weekly full analysis (SonarQube, OWASP CVE,
+SpotBugs, quality gate) on the `wochenanalyse` cron, and manually with `analyse = voll`.
 
 Two gates are **armed here that the consuming applications switch off**:
 
@@ -186,31 +187,49 @@ goes green. Anything else is an error.
 the unit tests of `build.yml`. A report spanning both needs either two writes into
 the same directory or a collecting workflow.
 
-## What no longer runs
+## The weekly full analysis (was a gap until 8 September 2026)
 
-Removing the GitHub Actions workflows (30 August 2026) took one thing with it that
-Woodpecker does **not** replace:
+Removing the GitHub Actions workflows (30 August 2026) took the weekly full
+analysis with it, and Woodpecker did not replace it for nine days. It is back:
+`.woodpecker/sonar.yml` now carries the whole `quality-analysis` chain —
 
-**The weekly full analysis.** `.github/workflows/ci-cd.yaml` carried a second cron
-(`0 4 * * 2` — Tuesdays, 04:00 UTC) that ran OWASP dependency-check, SpotBugs, the
-quality gate evaluation and wrote `quality/quality-gate.properties` back into the
-repository. `.woodpecker/sonar.yml` runs SonarQube on the `wochenanalyse` cron, but
-the rest of that job was deliberately not ported: the CVE scan needs a persistent
-NVD data set, and the Woodpecker agent mounts only `woodpecker-m2:/root/.m2` into a
-step container — everything else is gone when the container exits.
+```
+SonarQube  ->  OWASP dependency check (CVE)  ->  SpotBugs  ->  Quality gate
+```
 
-Consequences to be aware of:
+— and the gate step commits `quality/quality-gate.properties` back to the branch it
+ran on, with `[skip ci]` in the subject so the write-back triggers nothing.
 
-- `quality/quality-gate.properties` is now **frozen at its last state**. `QualityGateTest`
-  still reads it, so a stale `status=B` keeps failing (or passing) until someone
-  updates the file by hand.
-- No CVE scan runs on a schedule any more. Until this is resolved, dependency
-  vulnerabilities surface only through Renovate bumps and manual review.
+**What was in the way, and why it no longer is.** The CVE scan needs a persistent
+NVD data set; without one, dependency-check downloads the entire NVD on every run
+(~96 minutes without an API key), hits the repository timeout and writes **no**
+report — and `quality-gate.py` counts a missing report as "no breach". A green gate
+that measured nothing is worse than no gate (cards 365, 420, 896, 925). Three things
+had to be true, and all three are (checked, not assumed):
 
-Closing the gap needs one of: a persistent cache volume for the Woodpecker agent
-(then the job can move over as it is), a scheduled run somewhere else, or an
-explicit decision to do the analysis by hand and drop the automation. Whichever it
-becomes, `docs/ci/WOODPECKER_SETUP.md` section 3 explains how to add the cron.
+1. The data set lives in the named volume `github-runners_odc-cache` (card 914), and
+   this repository stands at `trusted.volumes = true` in Woodpecker, so the
+   `owasp-cve` step may mount it. It is the only step in the file that mounts anything.
+2. The gate step installs `python3` itself (6 seconds, 28 MB).
+3. The secret `nvd_api_key` exists on the repository, so the scan updates
+   incrementally (~25 seconds) instead of downloading the NVD.
+
+`plaintext-app`, `plaintext-guild` and `plaintext-iot` have run exactly this workflow
+as `.woodpecker/analyse.yml` since 30 August 2026.
+
+**Two crons, and both have to be switched on.** A cron created through the API is
+born with `enabled: false` while `next_exec` already shows a plausible future time —
+plaintext-root's `nightly` (id 15) and `wochenanalyse` (id 16) sat like that from
+8 September until it was noticed the same evening. Read the `enabled` field back after
+creating one; `next_exec` proves nothing.
+
+**A manual run has to say it means it.** `.woodpecker/analyse-freigabe.sh` demands the
+variable `analyse = voll` in the "Run pipeline" dialog and otherwise leaves every step
+with success, having done nothing. A full analysis occupies one of the agent's two
+slots for about an hour, and a stray click should not cost that. Cron runs pass without
+the variable. To start one workflow and only one, run the cron itself:
+`POST /api/repos/6/cron/16` — the "Run pipeline" button fires *every* file with
+`event: manual`.
 
 ## When something is red
 

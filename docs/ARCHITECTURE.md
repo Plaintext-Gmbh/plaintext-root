@@ -203,7 +203,7 @@ graph LR
     WP --> BUILD[".woodpecker/build.yml<br/>mvn install, embedded PostgreSQL"]
     WP --> PW[".woodpecker/playwright.yml<br/>browser smoke tests"]
     MASTER[merge to master] --> DEPLOY[".woodpecker/deploy.yml<br/>release + publish to Reposilite"]
-    CRON[nightly / weekly cron] --> SONAR[".woodpecker/sonar.yml"]
+    CRON[nightly / weekly cron] --> SONAR[".woodpecker/sonar.yml<br/>Sonar + OWASP CVE + SpotBugs + quality gate"]
 ```
 
 Three things about this repository specifically:
