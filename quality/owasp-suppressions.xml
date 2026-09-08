@@ -62,4 +62,58 @@
         <cve>CVE-2026-42154</cve>
     </suppress>
 
+    <!--
+      ==========================================================================================
+      Karte 1136 (08.09.2026) — spring-ai 1.1.8: CVE-2026-47851 und CVE-2026-47852, je CVSS 7.5.
+
+      Gefunden wurde das in plaintext-schuetu (Voll-Analyse 08.09.). root traegt dieselbe
+      Abhaengigkeit in derselben Version — in plaintext-root-webapp und, als optional/
+      compile-only Marker, in plaintext-admin-apitoken, -admin-settings und -admin-secrets.
+      Der Eintrag steht hier VORSORGLICH: root hat in Woodpecker derzeit gar keinen
+      `wochenanalyse`-Cron (Stand 08.09.2026 nachgesehen ueber /api/repos/6/cron: leere Liste),
+      sein quality/quality-gate.properties ist vom 25.08. Sobald das Scannen hier wieder
+      laeuft, wuerde root aus genau dem Grund rot, der in schuetu bereits bewertet ist.
+
+      NICHT "False Positive": beide CVEs sind echt und betreffen Spring AI in dieser Version.
+      Der verwundbare CODE liegt aber in Modulen, die hier nicht im Klassenpfad sind:
+        * CVE-2026-47851 (7.5) — StackOverflowError beim Einlesen eines PDF mit zyklischem
+          Inhaltsverzeichnis. Code: spring-ai-pdf-document-reader.
+        * CVE-2026-47852 (7.5) — ein lokaler Angreifer legt den deterministischen Cache-Pfad
+          vor und unterschiebt eine ONNX-Modelldatei. Code: spring-ai-transformers.
+      Gezogen wird ausschliesslich spring-ai-starter-mcp-server-webmvc (MCP-Server fuer die
+      @McpTool-Beans). Beleg am Artefakt (unzip -l, 08.09.2026): das Starter-Jar ist
+      2'536 Bytes gross und enthaelt 7 Eintraege, keine einzige Klasse; das ebenfalls
+      gemeldete spring-ai-autoconfigure-mcp-server-common-1.1.8.jar (65'326 Bytes) enthaelt
+      nur MCP-Autokonfiguration, kein pdf/onnx/tokenizer/transformer. Gemeldet werden beide
+      allein ueber die produktweite CPE cpe:2.3:a:vmware:spring_ai:1.1.8.
+
+      WARUM NICHT HOCHZIEHEN: NVD nennt 1.0.10 / 1.1.9 / 2.0.0.1 als behoben. 1.1.9 ist nie
+      erschienen (Maven Central endet bei 1.1.8, danach 2.0.0). Der Fix ist ein Linienwechsel
+      auf 2.0.x (Eichung: 1.1.8 = 3 CVEs, 2.0.1 = null) mit API-Bruch ueber vier Module — und
+      ohnehin faellig, weil 1.1.8 laut eigenem POM ein Spring-Boot-3.5.15-Artefakt ist,
+      waehrend 2.0.1 die Boot-4-Linie bedient. Eigene Karte, eigener Durchbau.
+
+      Versions-gepinnt auf @1.1.8; der Regex deckt ALLE spring-ai-Artefakte dieser Version.
+      PRUEFEN-AB: 2026-12-01.
+      ==========================================================================================
+    -->
+    <suppress>
+        <notes><![CDATA[
+            CVE-2026-47851 (PDF-Inhaltsverzeichnis -> StackOverflow) sitzt in
+            spring-ai-pdf-document-reader, das hier nicht im Klassenpfad liegt; gezogen wird nur
+            der MCP-Server-Starter. Produktweite CPE-Zuordnung. PRUEFEN-AB: 2026-12-01.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.ai/spring-ai-.*@1\.1\.8$</packageUrl>
+        <cve>CVE-2026-47851</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+            CVE-2026-47852 (untergeschobene ONNX-Modelldatei im deterministischen Cache-Pfad)
+            sitzt in spring-ai-transformers, das hier nicht im Klassenpfad liegt; gezogen wird nur
+            der MCP-Server-Starter. Produktweite CPE-Zuordnung. PRUEFEN-AB: 2026-12-01.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.ai/spring-ai-.*@1\.1\.8$</packageUrl>
+        <cve>CVE-2026-47852</cve>
+    </suppress>
+
 </suppressions>
