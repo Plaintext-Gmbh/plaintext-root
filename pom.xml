@@ -103,10 +103,34 @@
         <!--
           Security-Pins, die (auch) via Parent-Vererbung an die Consumer-Apps durchschlagen sollen.
           Spring Boot 4.1.0 (Parent) pinnt spring-framework 7.0.8 / tomcat 11.0.22 /
-          spring-security 7.0.6 / postgresql 42.7.11 selbst — hier nur die Ausnahme(n).
+          spring-security 7.1.0 / postgresql 42.7.11 selbst — hier nur die Ausnahme(n).
+          (Bis Karte 1136 stand hier „spring-security 7.0.6"; nachgesehen im POM von
+          spring-boot-dependencies:4.1.0 sind es 7.1.0. Die falsche Zahl war harmlos, aber sie
+          haette bei der naechsten Bewertung genau die Frage verstellt, um die es geht.)
           jackson-2 stand bis zum 18.08.2026 in dieser Aufzaehlung; seit Karte 931 ist es eine
           Ausnahme und unten gepinnt:
         -->
+        <!--
+          spring-framework (Karte 1136): Boot 4.1.0 pinnt 7.0.8. Darin CVE-2026-47890 (CVSS 9.8,
+          Stream-Korruption bei Server-Sent Events mit View-Fragmenten in MVC/WebFlux) und 14
+          weitere. Betroffen laut NVD 7.0.0 bis <7.0.8.1, behoben ab 7.0.9.
+          Geeicht statt geraten — NVD-CPE-Abfrage `cpe:2.3:a:vmware:spring_framework:<v>`:
+          7.0.8 traegt 15 CVEs (4x 9.8: CVE-2026-47890/47891/47892/59313, 1x 9.1: CVE-2026-59283),
+          7.0.9 traegt einen einzigen — und der ist CVE-2023-44794, ein Dromara-Sa-Token-Befund,
+          den NVD zusaetzlich an spring_framework/spring_boot haengt (dependency-check meldet ihn
+          nicht). Betrifft spring-core UND spring-web, beide erben aus dieser Property.
+        -->
+        <spring-framework.version>7.0.9</spring-framework.version>
+        <!--
+          spring-security (Karte 1136): Boot 4.1.0 pinnt 7.1.0. Darin CVE-2026-59270 (CVSS 9.1,
+          der eingebettete UnboundID-LDAP-Server registriert unbedingt eine Admin-Credential und
+          bindet auf alle Interfaces) und CVE-2026-47841 (7.4, Umgehung der User-Verification bei
+          WebAuthn mit verteiltem HTTP-Session-Store). Behoben ab 7.1.0.1, hier 7.1.1 als aktuelle
+          der Linie (dieselbe Version, die Boot 4.1.1 pinnt).
+          Eichung `cpe:2.3:a:vmware:spring_security:<v>`: 7.1.0 = 7 CVEs, 7.1.1 = null.
+          Betrifft spring-security-core, -web UND -oauth2-core.
+        -->
+        <spring-security.version>7.1.1</spring-security.version>
         <!-- Jackson 3: Boot 4.1.0 pinnt bereits 3.1.4 (CVE-2026-54512 gefixt); explizit als Sicherheitsnetz. -->
         <jackson-bom.version>3.1.4</jackson-bom.version>
         <!--
