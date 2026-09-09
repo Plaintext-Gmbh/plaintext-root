@@ -90,7 +90,7 @@
         <jakarta.enterprise.cdi-api.version>4.1.0</jakarta.enterprise.cdi-api.version>
         <bcprov-jdk18on.version>1.85.2</bcprov-jdk18on.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
+        <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
 
         <!-- Reporting -->
 
