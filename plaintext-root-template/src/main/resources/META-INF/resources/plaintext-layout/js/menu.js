@@ -196,9 +196,10 @@ function setupSubmenuHandlers() {
                         ptSchliessen($(this).children('ul')[0], true);
                     }
                 }).removeClass('active-menuitem');
-                item.toggleClass('active-menuitem');
 
                 if (animiert) {
+                    // Sidebar: the click IS the switch - open when closed, close when open.
+                    item.toggleClass('active-menuitem');
                     if (item.hasClass('active-menuitem')) {
                         ptOeffnen(submenu[0], true);
                         sessionStorage.setItem('openSubmenuLabel', label);
@@ -206,6 +207,16 @@ function setupSubmenuHandlers() {
                         ptSchliessen(submenu[0], true);
                         sessionStorage.removeItem('openSubmenuLabel');
                     }
+                } else {
+                    // Slim/Horizontal: the flyout is opened by hovering, and to click the
+                    // entry the pointer has to sit on it - so mouseenter.slim below has
+                    // ALWAYS set 'active-menuitem' already. Toggling would take it right
+                    // back off: whoever clicks instead of hovers would see nothing
+                    // (card 1169, measured 10 September 2026: li.className "" and
+                    // display:none 0x0 after the click). Opening is therefore idempotent
+                    // here; closing is done by mouseleave.slim and by the outside click in
+                    // layout.js ('.menu-wrapper' test), not by this handler.
+                    item.addClass('active-menuitem');
                 }
                 return false;
             });
