@@ -157,7 +157,7 @@ class PlaintextRootTemplateDriftTest {
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/colors/color-yellow.css",
                 "7653a6dac2f5dee1bea8abcc0b7169b50c06be6e0cb5e73e63c4987f31c06782");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/mobile-responsive.css",
-                "bacff28259efda38ac10f281106dbdfc5c23e57588488d093d91deff5ea52ba6");
+                "b194f2661cb70918968e486e4ed75fdfafcf295f9f13257d7f5b4ae58d1e033d");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/primeflex.min.css",
                 "eb6819b24b9489c43b9e86f5fb8c49baef36c85eb71377d6930387157cc180c9");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/primeicons.css",
@@ -177,7 +177,7 @@ class PlaintextRootTemplateDriftTest {
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/global-search.js",
                 "039fd4f0c3af9a29cf580a185ab2b0c6ec932c60c7ae9cf7df6d80b21baf3cef");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/menu.js",
-                "bfe098faabdb33118a634910e59f4f13a0651f3befa99545f8015457bc9c9ef6");
+                "d062e2ff0861dd4af1d41302d7c602f44b9b83faf328f68b33e26262314bc8d7");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/primefaces-fixes.js",
                 "70a3b2db35424d4718db57fe8b6be33240714ec5063fdef00443d957b775ae35");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/pushstate.js",

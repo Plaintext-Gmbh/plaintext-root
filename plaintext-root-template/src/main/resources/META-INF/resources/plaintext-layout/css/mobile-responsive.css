@@ -132,3 +132,47 @@
         margin-bottom: 0;
     }
 }
+
+/* ------------------------------------------------------------------ */
+/* 3. Card 1169: below 992px the hamburger is the ONLY way to the menu.*/
+/* ------------------------------------------------------------------ */
+/*
+ * Below 992px layout.js switches to mobile mode and layout-light/-dark.css run
+ * .menu-wrapper out of the picture (transform: translateX(-260px) !important).
+ * The only thing that brings it back is .layout-mobile-active, and the only
+ * control that sets that class is .menu-button in the topbar. If that button is
+ * hidden, the menu is unreachable - measured on 10 September 2026 against the
+ * inventory app: .menu-wrapper at -260,104 260x896, computed display of the
+ * button "none", no other control with menu/hamburger/toggle in its name.
+ *
+ * WHY HERE AND NOT IN layout-light.css: apps legitimately hide the button in
+ * horizontal mode - the menu sits at the top there and a button for folding a
+ * sidebar in and out has no job. They do that by extending
+ * plaintext-layout/css/layout-light.css on their own classpath (the inventory
+ * app appends about 1450 lines to it, among them "body a.menu-button {
+ * display: none !important }"), so its own copy REPLACES the library file and
+ * no change inside layout-light.css could reach it. mobile-responsive.css is a
+ * separate resource, the apps take it unchanged (sha256 identical on 10
+ * September 2026), and the template loads it LAST - so it wins the cascade.
+ *
+ * The rule deliberately lives inside the max-width query: above 992px nothing
+ * changes, and the sidebar apps (app, guild, iot, schuetu with layout-static)
+ * already show the button at every width, so for them this is a no-op.
+ */
+@media (max-width: 991px) {
+    /* Loading last is not enough: the cascade only decides between rules of EQUAL
+     * specificity, and both sides carry !important. The inventory app hides the
+     * button with "body .layout-topbar .menu-button" (2 classes, 2 elements), so a
+     * bare ".menu-button" (1 class) would lose no matter how late it is loaded. The
+     * selectors below carry 2 classes and 3 elements and therefore win - measured,
+     * see the card. That an app can still get past this with an even more specific
+     * or an inline rule is true; the right place for the exception stays the app.
+     * Every shape the button appears in is listed, so it does not depend on the
+     * topbar being an app copy or the library's own includes/topbar.xhtml. */
+    html body a.menu-button,
+    html body .layout-topbar a.menu-button,
+    html body .layout-topbar .menu-button,
+    html body .layout-topbar-wrapper .menu-button {
+        display: flex !important;
+    }
+}
