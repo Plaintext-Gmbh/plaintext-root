@@ -176,12 +176,21 @@ steps:
       # quality/quality-gate.properties, es gibt hier kein `git add -A` wie in do_release.
       - rm -rf .plaintext-scripts
       # Karte 1093: SHA-Pin statt beweglichem master, Begruendung wie in .woodpecker/deploy.yml
-      # (derselbe SHA, damit hoechstens EIN vertrauter Stand von plaintext-scripts im Umlauf ist).
+      # KARTE 1177: Dieser Pin ist BEWUSST neuer als der in .woodpecker/deploy.yml. Er zieht
+      # den UA-Fix in quality/quality-gate.py nach (ohne ihn floss die Sonar-Bewertung gar
+      # nicht in das Gate ein, sie stand auf UNKNOWN). Zwischen dem alten Pin 199e5cf und
+      # diesem SHA hat sich fuer DIESEN Workflow ausschliesslich quality-gate.py geaendert —
+      # owasp-dependency-check.sh, spotbugs.sh und owasp-suppressions-zentral.xml sind
+      # unberuehrt (nachgesehen per git diff --name-only). Der Pin in deploy.yml bleibt
+      # absichtlich stehen: dazwischen liegen 20 Commits Release- und Build-Logik
+      # (tui-build-logic.sh, rollback, getflywaynr), und die gehoeren nicht ungeprueft in
+      # den Release-Pfad von fuenf produktiven Anwendungen. Beide Pins wieder
+      # zusammenzufuehren ist eine eigene Aufgabe mit eigener Probe.
       - >-
         mkdir -p .plaintext-scripts &&
         git -C .plaintext-scripts init -q &&
         git -C .plaintext-scripts remote add origin https://github.com/Plaintext-Gmbh/plaintext-scripts.git &&
-        git -C .plaintext-scripts fetch --depth 1 origin 199e5cf367d4c8e9cb7665e81cc7fb3a894fc90a &&
+        git -C .plaintext-scripts fetch --depth 1 origin 17601b6e2aac9a20540bb740b3c10993d122d63f &&
         git -C .plaintext-scripts checkout FETCH_HEAD
 
       # STALE-SCHUTZ, wortgleich aus der GitHub-Pipeline: alte Reports weg, BEVOR gemessen
