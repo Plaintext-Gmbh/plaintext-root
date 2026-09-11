@@ -14,6 +14,31 @@
 
     <description>Plaintext Web Application Framework - Security, Login, Menu, Templates, Admin</description>
 
+    <properties>
+        <!--
+          Der Maven-Build-Cache hasht die Eingaben JE MODUL aus sourceDirectory, resources,
+          testSourceDirectory und testResources (MavenProjectInput.getInputFiles()).
+          `quality/quality-gate.properties` liegt in der REPO-WURZEL und ist damit in keiner
+          dieser Mengen — das Parent-Modul meldet "Found 0 input files". Folge (Karte 1185):
+          ein Wechsel von status=OK auf status=BREACHED invalidierte NICHTS, der Cache lieferte
+          das alte gruene Ergebnis, `surefire:test` wurde uebersprungen und der QualityGateTest
+          lief im Nightly gar nicht — also genau dann nicht, wenn er gebraucht wird.
+          An iot nachgestellt (11.09.2026, echter status=BREACHED): BUILD SUCCESS in 8,6 s mit 0 Treffern auf "Tests run:" — ohne Cache BUILD FAILURE in 32,7 s.
+
+          Jede Projekt-Property mit dem Praefix `maven.build.cache.input` wird als zusaetzlicher
+          Eingabepfad gelesen, relativ zum BASEDIR DIESES Moduls aufgeloest (`..` ist erlaubt und
+          wird normalisiert) und mitgehasht; fehlt die Datei, passiert nichts. Damit haengt die
+          Cache-Checksumme genau dieses Moduls — des einzigen, das den QualityGateTest traegt —
+          am Inhalt des Gate-Files.
+
+          Bewusst NICHT im Parent-POM: Properties werden vererbt, dann bekaeme jedes Modul die
+          Datei als Eingabe und wuerde jede Woche mit-invalidiert. Und bewusst nicht ueber
+          <runAlways> fuer maven-surefire-plugin: das laesst alle Tests aller Module immer laufen
+          und nimmt dem Cache genau den Teil, der etwas bringt.
+        -->
+        <maven.build.cache.input.qualitygate>../quality/quality-gate.properties</maven.build.cache.input.qualitygate>
+    </properties>
+
     <dependencies>
 
         <!-- === Template === -->
