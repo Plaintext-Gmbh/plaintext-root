@@ -67,6 +67,64 @@
                 <plugin artifactId="maven-deploy-plugin"/>
                 <plugin artifactId="maven-install-plugin"/>
             </plugins>
+            <!--
+              jacoco:prepare-agent MUSS immer laufen — und zwar GENAU dieses Goal, nicht das ganze
+              Plugin (Karte 1186). Bei einem PARTIAL RESTORE ("restored partially. Highest cached
+              goal: test-compile, requested: install") haelt der Cache prepare-agent fuer erledigt
+              und ueberspringt es, laesst surefire:test aber laufen. prepare-agent setzt jedoch eine
+              Property zur LAUFZEIT (argLine) und legt nichts ab, was sich restaurieren liesse.
+              Dieses Repo setzt kein <argLine>, es stuerzt deshalb NICHT ab — es ist der stille und
+              damit gefaehrlichere Fall. Am 11.09.2026 reproduziert:
+                  Skipping plugin execution (cached): jacoco:prepare-agent
+                  … alle Tests laufen und sind gruen, aber OHNE Agent …
+                  jacoco:report  -> Skipping JaCoCo execution due to missing execution data file.
+                  jacoco:check   -> Skipping JaCoCo execution due to missing execution data file
+                  BUILD SUCCESS
+              target/jacoco.exec existiert nicht, und das Coverage-Gate aus plaintext-root-parent
+              (jacoco:check, haltOnFailure=true, minimum 0.40, seit 29.08.2026 scharf) wird GRUEN
+              durchgelassen, ohne etwas gemessen zu haben. plaintext-app faellt im selben Fall laut
+              um ("could not open `{argLine}'"), weil es <argLine>@{argLine} …</argLine> setzt.
+              In der CI unsichtbar (dort laeuft immer `install`, es entsteht kein Teil-Eintrag),
+              lokal reproduzierbar mit
+                  mvn clean test-compile -pl <modul>   &&   mvn clean install -pl <modul>
+              Ein solcher Teil-Eintrag entsteht auch durch eingecheckte Skripte:
+              plaintext-root/scripts/coverage-report.sh fahrt `mvn test` mit aktivem Cache.
+              Derselbe Block steht in allen vier Repos mit Build-Cache (guild hat keinen).
+
+              NUR prepare-agent, nicht <plugin artifactId="jacoco-maven-plugin"/>: report und check
+              sollen cachebar bleiben, sonst laufen sie bei jedem restaurierten Modul ohne
+              jacoco.exec mit. Goal-Granularitaet ist vom Schema gedeckt
+              (Executables/goalsLists in build-cache-config-1.3.0.xsd) und von der Extension
+              ausgewertet (CacheConfigImpl.executionMatches prueft getGoalsLists() gegen
+              MojoExecution.getGoal()). Kosten gemessen: der Vollbau von app blieb bei 52-56 s
+              gegen 56-58 s vorher, prepare-agent schreibt nichts.
+
+              ROOT-SPEZIFISCH, WICHTIG: In root wirkt dieser Eintrag heute noch nicht, weil root
+              — anders als app, iot und schuetu — `maven-compiler-plugin` NICHT in runAlways hat
+              (dort seit Karte 1009 vom 31.08.2026). Im partial restore gilt compiler:testCompile
+              als erledigt, `clean` hat target/test-classes aber geloescht, und surefire meldet
+              schlicht "No tests to run." — ein gruener Bau ohne einen einzigen Test. Am
+              11.09.2026 an plaintext-root-common (47 Testklassen) gemessen. Nur compiler
+              nachzuziehen genuegt NICHT: dann laufen die Tests, aber resources:resources bleibt
+              uebersprungen, und PlaintextDefaultsPraezedenzTest.anwendungsdateiGewinnt faellt an
+              fehlenden Ressourcen um (ohne Cache ist derselbe Lauf gruen). Root braucht also
+              compiler UND resources in runAlways — eigene Karte, eigene Abnahme.
+              Dass die Zeile unten korrekt ist, ist trotzdem belegt: mit temporaer erzwungenem
+              compiler+resources lief derselbe Fall mit 50 Testklassen, jacoco.exec (307998 Bytes)
+              und "All coverage checks have been met." durch.
+
+              NICHT abgedeckt: endet der Teil-Eintrag BEI oder NACH `test` (z. B. aus `mvn test`),
+              wird surefire zu Recht uebersprungen, aber jacoco.exec wird nicht mitrestauriert —
+              <attachedOutputs><dirNames> kann nur Verzeichnisse, jacoco.exec ist eine Datei.
+              Eigener Befund, eigene Karte.
+            -->
+            <goalsLists>
+                <goalsList artifactId="jacoco-maven-plugin">
+                    <goals>
+                        <goal>prepare-agent</goal>
+                    </goals>
+                </goalsList>
+            </goalsLists>
         </runAlways>
         <reconcile>
             <!-- Reconcile outputs from cache -->
