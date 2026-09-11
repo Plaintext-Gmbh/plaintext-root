@@ -10,7 +10,23 @@ echo "Datum: $(date '+%Y-%m-%d %H:%M')"
 echo ""
 
 echo "Tests laufen (mit JaCoCo)..."
-mvn test -Dmaven.test.failure.ignore=true -q 2>/dev/null
+# -Dmaven.build.cache.enabled=false ist ZWINGEND (Karte 1187, 11.09.2026), aus zwei Gruenden:
+#
+# 1. MIT Cache liefert dieses Skript eine LEERE Tabelle. Bei warmem Cache werden alle Module
+#    restauriert, surefire:test und jacoco:report werden uebersprungen, und
+#    plaintext-*/target/site/jacoco/jacoco.csv — die einzige Quelle der Auswertung unten —
+#    entsteht gar nicht erst. Gemessen: mit Cache 41 s, KEINE einzige Modulzeile, kein
+#    Gesamtwert; ohne Cache 5:06 min, 22 Module, "Gesamt: 72% (46177/63814 instructions)".
+#    Die Test-Ergebnis-Zeile darunter zeigt trotzdem "Tests: 3024", weil die surefire-Reports
+#    ueber attachedOutputs mitrestauriert werden — das Skript sah also aus, als haette es
+#    gearbeitet. Dieselbe Falle wie bei `coverage-uebersicht` in der Pipeline (Karte 1018).
+#
+# 2. `mvn test` MIT Cache erzeugt Teil-Eintraege (highest cached goal: test). Genau die sind der
+#    reale Entstehungsweg der Karten 1185/1186/1187: ein spaeteres `mvn clean install` restauriert
+#    "partially", ueberspringt Schritte, deren Wirkung ein spaeterer Schritt noch braucht, und
+#    meldet gruen. Dieses Skript war der einzige eingecheckte Weg, auf dem solche Eintraege
+#    entstehen — die CI laeuft `install` oder ebenfalls mit abgeschaltetem Cache.
+mvn test -Dmaven.test.failure.ignore=true -q -Dmaven.build.cache.enabled=false 2>/dev/null
 
 echo ""
 echo "=== Coverage pro Modul ==="

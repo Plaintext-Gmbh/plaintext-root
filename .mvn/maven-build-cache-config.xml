@@ -64,6 +64,44 @@
                 <!-- spring-boot:repackage MUSS immer laufen: ein Cache-Restore liefert sonst kein
                      Exec-Jar und das M3-Jar-Staging des Deploys schlaegt fehl (iot/schuetu 17.07.). -->
                 <plugin artifactId="spring-boot-maven-plugin"/>
+                <!--
+                  compiler UND resources MUESSEN immer laufen — beide, nicht eines (Karte 1187).
+                  app, iot und schuetu tragen den compiler-Eintrag seit Karte 1009 (31.08.2026);
+                  root war die Luecke, aufgefallen am 11.09.2026.
+
+                  OHNE compiler: Bei einem PARTIAL RESTORE ("restored partially. Highest cached
+                  goal: test-compile, requested: install") gilt compiler:testCompile als erledigt,
+                  `clean` hat target/test-classes aber geloescht und die Teil-Restaurierung bringt
+                  es nicht mit. surefire meldet dann
+                      [INFO] No tests to run.
+                      [INFO] BUILD SUCCESS
+                  An plaintext-root-common gemessen: von 47 Testklassen lief KEINE, der Bau war
+                  gruen. Dieselbe Familie wie Karte 1009 (Layering-Tests sahen restaurierte Module
+                  nicht), 1185 (Quality-Gate-Waechter lief nicht) und 1186 (Coverage ohne Messung).
+
+                  OHNE resources genuegt der compiler NICHT: maven-compiler-plugin raeumt bei
+                  "Recompiling the module because of changed dependency" target/classes aus, und
+                  damit sind auch die restaurierten Ressourcen weg. Gemessen: die Tests laufen
+                  dann zwar (50 Klassen), aber
+                  PlaintextDefaultsPraezedenzTest.anwendungsdateiGewinnt faellt um — waehrend
+                  derselbe Lauf mit -Dmaven.build.cache.enabled=false gruen ist. Ein stiller Fehler
+                  waere gegen einen lauten getauscht worden, der nach einem echten Defekt aussieht.
+
+                  NICHT goal-genau (nur testCompile/testResources) — das waere billiger, ist aber
+                  FALSCH und wurde nachgemessen: bei einem VOLLEN Restore ist target/classes nicht
+                  ausgepackt (nur das Jar wird restauriert), erzwungenes compiler:testCompile
+                  kompiliert dann gegen nichts und der Reaktor bricht in
+                  plaintext-root-interfaces mit "Symbol nicht gefunden" ab.
+
+                  PREIS, ehrlich gemessen: ein Vollbau ohne jede Aenderung geht von ~5 s auf
+                  ~41 s. Das ist kein neues Regime, sondern dasselbe, in dem app, iot und schuetu
+                  seit Karte 1009 laufen — in app kostet derselbe Eintrag heute 54-57 s gegen 5-6 s
+                  ohne ihn (A/B am 11.09.2026 gemessen). root hatte den billigen Bau nur, weil es
+                  im partial restore seine Tests nicht ausfuehrte. surefire bleibt cachebar, die
+                  Testsumme bleibt 0, sobald sich nichts geaendert hat.
+                -->
+                <plugin artifactId="maven-compiler-plugin"/>
+                <plugin artifactId="maven-resources-plugin"/>
                 <plugin artifactId="maven-deploy-plugin"/>
                 <plugin artifactId="maven-install-plugin"/>
             </plugins>
@@ -99,19 +137,12 @@
               MojoExecution.getGoal()). Kosten gemessen: der Vollbau von app blieb bei 52-56 s
               gegen 56-58 s vorher, prepare-agent schreibt nichts.
 
-              ROOT-SPEZIFISCH, WICHTIG: In root wirkt dieser Eintrag heute noch nicht, weil root
-              — anders als app, iot und schuetu — `maven-compiler-plugin` NICHT in runAlways hat
-              (dort seit Karte 1009 vom 31.08.2026). Im partial restore gilt compiler:testCompile
-              als erledigt, `clean` hat target/test-classes aber geloescht, und surefire meldet
-              schlicht "No tests to run." — ein gruener Bau ohne einen einzigen Test. Am
-              11.09.2026 an plaintext-root-common (47 Testklassen) gemessen. Nur compiler
-              nachzuziehen genuegt NICHT: dann laufen die Tests, aber resources:resources bleibt
-              uebersprungen, und PlaintextDefaultsPraezedenzTest.anwendungsdateiGewinnt faellt an
-              fehlenden Ressourcen um (ohne Cache ist derselbe Lauf gruen). Root braucht also
-              compiler UND resources in runAlways — eigene Karte, eigene Abnahme.
-              Dass die Zeile unten korrekt ist, ist trotzdem belegt: mit temporaer erzwungenem
-              compiler+resources lief derselbe Fall mit 50 Testklassen, jacoco.exec (307998 Bytes)
-              und "All coverage checks have been met." durch.
+              ROOT-HISTORIE (Karte 1186 -> 1187): Dieser Eintrag war in root zunaechst wirkungslos,
+              weil root damals maven-compiler-plugin nicht in runAlways hatte und surefire im
+              partial restore "No tests to run." meldete. Mit den beiden Eintraegen oben
+              (compiler + resources, Karte 1187) wirkt er: an plaintext-root-common laufen 50
+              Testklassen, target/jacoco.exec entsteht (307998 Bytes) und jacoco:check meldet
+              "All coverage checks have been met." statt "Skipping JaCoCo execution".
 
               NICHT abgedeckt: endet der Teil-Eintrag BEI oder NACH `test` (z. B. aus `mvn test`),
               wird surefire zu Recht uebersprungen, aber jacoco.exec wird nicht mitrestauriert —
