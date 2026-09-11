@@ -79,13 +79,24 @@
                   gruen. Dieselbe Familie wie Karte 1009 (Layering-Tests sahen restaurierte Module
                   nicht), 1185 (Quality-Gate-Waechter lief nicht) und 1186 (Coverage ohne Messung).
 
-                  OHNE resources genuegt der compiler NICHT: maven-compiler-plugin raeumt bei
-                  "Recompiling the module because of changed dependency" target/classes aus, und
-                  damit sind auch die restaurierten Ressourcen weg. Gemessen: die Tests laufen
-                  dann zwar (50 Klassen), aber
-                  PlaintextDefaultsPraezedenzTest.anwendungsdateiGewinnt faellt um — waehrend
-                  derselbe Lauf mit -Dmaven.build.cache.enabled=false gruen ist. Ein stiller Fehler
-                  waere gegen einen lauten getauscht worden, der nach einem echten Defekt aussieht.
+                  OHNE resources genuegt der compiler NICHT, und zwar auf der TEST-Seite:
+                  `clean` loescht target/test-classes, die Teil-Restaurierung bringt es nicht
+                  zurueck, und erzwungenes compiler:testCompile legt es neu an — mit den
+                  kompilierten Testklassen, aber OHNE die Testressourcen, weil
+                  resources:testResources weiter als "cached" uebersprungen wird. Am 11.09.2026
+                  Datei fuer Datei nachgemessen:
+                      target/classes/plaintext-defaults.yml        -> vorhanden (Hauptressourcen
+                                                                     werden restauriert)
+                      target/test-classes/test-eigene-app.yml      -> FEHLT
+                  Genau diese Datei braucht
+                  PlaintextDefaultsPraezedenzTest.anwendungsdateiGewinnt: der Test startet eine
+                  echte Spring-Anwendung mit spring.config.name=test-eigene-app und prueft, dass
+                  sie die Grundeinstellung schlaegt. Ohne die Datei gewinnt die Grundeinstellung,
+                  und der Test faellt um — waehrend derselbe Lauf mit
+                  -Dmaven.build.cache.enabled=false gruen ist. Ein stiller Fehler waere gegen einen
+                  lauten getauscht worden, der nach einem echten Defekt aussieht.
+                  (maven-resources-plugin deckt resources:resources UND resources:testResources ab;
+                  die Hauptseite kommt sozusagen gratis mit.)
 
                   NICHT goal-genau (nur testCompile/testResources) — das waere billiger, ist aber
                   FALSCH und wurde nachgemessen: bei einem VOLLEN Restore ist target/classes nicht
