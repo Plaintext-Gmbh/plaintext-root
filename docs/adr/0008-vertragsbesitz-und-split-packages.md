@@ -138,3 +138,20 @@ copies live in three separate deployables that never share a classpath.
 
 * Status report of 29.08.2026, §3 (wave 3)
 * ADR-0006 — Releases and consumer pins
+
+## Status update — the move is complete (13 September 2026, Karte 1204)
+
+The expand/contract move of `ch.plaintext.upload.IUploadTarget` described above has been carried
+out in the mandatory order. Nothing in the decision changes; this note only records that the
+transitional state is over.
+
+| Step | What | When |
+| --- | --- | --- |
+| 1 Expand | `plaintext-app-interfaces` takes the contract under the same fully qualified name | plaintext-app PR #745, merged 13 September 2026 (released as 2.1792.0) |
+| 2 Contract, part 1 | root marks its copy `@Deprecated(since = "1.643.0", forRemoval = true)` | plaintext-root #142, 30 August 2026 |
+| 3 Contract, part 2 | root deletes `IUploadTarget` and `UploadResultTest`; app then pins the root release without the copy | this PR, Karte 1204 |
+
+The phase in which the type lay on the classpath twice — and in which the root copy won — lasted
+from 13 September 2026 12:12 UTC (app rollout) until this deletion is released and app is pinned
+to it. The warning in the Javadoc of the app copy about changes being silently ineffective can be
+dropped once that pin is in place.

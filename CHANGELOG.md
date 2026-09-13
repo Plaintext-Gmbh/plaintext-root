@@ -63,6 +63,18 @@ exhaustive.
   `ServletUriComponentsBuilder` outside a frozen list of legacy classes (Karte 1069 A-01).
   Consumers: set `plaintext.baseurl` (already the case in PROD) or `app.ownhost`.
 
+### Removed
+- **`ch.plaintext.upload.IUploadTarget` deleted** (Karte 1204, 13 September 2026). The contract
+  and its `UploadResultTest` are gone from `plaintext-root-interfaces`; the successor has lived
+  under **the same** fully qualified name in `plaintext-app-interfaces` since plaintext-app
+  2.1792.0 (PR #745, merged 13 September 2026). This completes the expand/contract move announced
+  under *Deprecated* in [1.643.0]. The mandatory order was kept: app first published its own
+  contract, root deletes only now, and app pins the root version without this copy afterwards.
+  Consumers change no import. Measured before the deletion: no module in root uses the type
+  except the module's own test, and `plaintext-guild`, `plaintext-iot` and `plaintext-schuetu`
+  do not mention it at all (fresh clones, 0 hits each; the same search finds 8 files in
+  plaintext-app).
+
 ### Changed
 - **Documentation overhauled and switched to English** (30 August 2026). All code
   comments and Javadoc across the 24 modules, the Woodpecker pipeline comments and
