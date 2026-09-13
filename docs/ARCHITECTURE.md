@@ -32,8 +32,8 @@ the authoritative view; the short version is four layers:
 Two rules keep this from turning into a ball of mud:
 
 1. **`plaintext-root-interfaces` never depends on anything.** A module that
-   implements `PlaintextCron`, `SearchProvider`, `DeepLinkTarget` or
-   `IUploadTarget` pulls in one small jar, not the framework. This is what lets
+   implements `PlaintextCron`, `SearchProvider` or `DeepLinkTarget` pulls in one
+   small jar, not the framework. This is what lets
    an application module register with the framework without the framework
    knowing the module exists.
 2. **Admin modules are leaves.** All twelve depend only on interfaces, common

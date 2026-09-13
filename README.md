@@ -90,9 +90,8 @@ Every arrow is a direct Maven dependency, read off the `pom.xml` files. Three
 things are worth knowing:
 
 - **`plaintext-root-interfaces` has no dependencies at all.** It holds the
-  contracts (`PlaintextCron`, `SearchProvider`, `DeepLinkTarget`,
-  `IUploadTarget`, …) so that a module can implement one without pulling in the
-  framework.
+  contracts (`PlaintextCron`, `SearchProvider`, `DeepLinkTarget`, …) so that a
+  module can implement one without pulling in the framework.
 - **`plaintext-root-webapp` does not depend on `plaintext-root-menu` directly** —
   it gets it through every module above it. The same is true for
   `plaintext-admin-requirements`: it is a module of this repository, but the

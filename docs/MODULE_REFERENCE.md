@@ -20,9 +20,7 @@ Shared interfaces that define the framework's public API and extension points. N
 | `ModuleRoleProperties` | `plaintext.menu.module-roles.*` — role required per module |
 | `SearchProvider` | Contributing results to the global search |
 | `DeepLinkTarget` / `DeepLinkService` | Resolving a deep link to one record |
-| `IUploadTarget` | Receiving a file from the generic upload endpoint |
 | `PlaintextCron` | Scheduled work with an admin UI, per tenant |
-| `IUploadTarget` | File upload handling |
 
 ### plaintext-root-common
 
