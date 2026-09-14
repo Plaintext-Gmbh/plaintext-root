@@ -35,6 +35,19 @@ public final class FacesMessages {
         add(FacesMessage.SEVERITY_INFO, text, detail);
     }
 
+    /**
+     * Titel der Meldungen, die in den Backing Beans immer wieder gleich lauten (Karte 1221,
+     * Sonar java:S1192 — „Define a constant instead of duplicating this literal").
+     *
+     * <p>Sie stehen hier und nicht je Bean, weil sie <b>dieselbe</b> Zeichenkette sind: drei
+     * eigene Konstanten in drei Klassen waeren derselbe Fehler, nur dreimal kleiner. Wer die
+     * Beschriftung aendern will, aendert sie an einer Stelle.
+     */
+    public static final String TITEL_FEHLER = "Fehler";
+
+    /** Gegenstueck zu {@link #TITEL_FEHLER} fuer die Erfolgsmeldung. */
+    public static final String TITEL_ERFOLG = "Erfolg";
+
     public static void warn(String text) {
         add(FacesMessage.SEVERITY_WARN, text, null);
     }

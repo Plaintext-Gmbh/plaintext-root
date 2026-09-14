@@ -322,12 +322,12 @@ public class MandateMenuBackingBean implements Serializable {
      */
     public void save() {
         if (selected == null) {
-            FacesMessages.error("Fehler", "Keine Konfiguration ausgewählt.");
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Keine Konfiguration ausgewählt.");
             return;
         }
 
         if (selected.getMandateName() == null || selected.getMandateName().trim().isEmpty()) {
-            FacesMessages.error("Fehler", "Mandatsname darf nicht leer sein.");
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Mandatsname darf nicht leer sein.");
             return;
         }
 
@@ -336,13 +336,13 @@ public class MandateMenuBackingBean implements Serializable {
         try {
             // Save with transactional service method that handles the collection properly
             service.saveConfig(selected.getMandateName(), selected.getHiddenMenus(), Boolean.TRUE.equals(selected.getWhitelistMode()));
-            FacesMessages.info("Erfolg", "Menükonfiguration gespeichert.");
+            FacesMessages.info(FacesMessages.TITEL_ERFOLG, "Menükonfiguration gespeichert.");
 
             // Redirect back to overview
             FacesContext.getCurrentInstance().getExternalContext().redirect("mandatemenu.xhtml");
         } catch (Exception e) {
             log.error("Error saving mandate menu configuration", e);
-            FacesMessages.error("Fehler", "Fehler beim Speichern: " + e.getMessage());
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Fehler beim Speichern: " + e.getMessage());
         }
     }
 
@@ -351,13 +351,13 @@ public class MandateMenuBackingBean implements Serializable {
      */
     public void delete() {
         if (selected == null) {
-            FacesMessages.error("Fehler", "Keine Konfiguration ausgewählt.");
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Keine Konfiguration ausgewählt.");
             return;
         }
 
         try {
             service.deleteConfig(selected);
-            FacesMessages.info("Erfolg", "Menükonfiguration gelöscht.");
+            FacesMessages.info(FacesMessages.TITEL_ERFOLG, "Menükonfiguration gelöscht.");
 
             selected = null;
             loadMandates();
@@ -366,7 +366,7 @@ public class MandateMenuBackingBean implements Serializable {
             FacesContext.getCurrentInstance().getExternalContext().redirect("mandatemenu.xhtml");
         } catch (Exception e) {
             log.error("Error deleting mandate menu configuration", e);
-            FacesMessages.error("Fehler", "Fehler beim Löschen: " + e.getMessage());
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Fehler beim Löschen: " + e.getMessage());
         }
     }
 
@@ -462,7 +462,7 @@ public class MandateMenuBackingBean implements Serializable {
 
         } catch (Exception e) {
             log.error("Error toggling mode", e);
-            FacesMessages.error("Fehler", "Fehler beim Umschalten des Modus: " + e.getMessage());
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Fehler beim Umschalten des Modus: " + e.getMessage());
         }
     }
 }

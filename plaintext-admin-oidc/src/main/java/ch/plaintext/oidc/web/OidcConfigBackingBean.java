@@ -115,20 +115,20 @@ public class OidcConfigBackingBean implements Serializable {
         FacesContext context = FacesContext.getCurrentInstance();
 
         if (selected.getIssuerUrl() == null || selected.getIssuerUrl().isBlank()) {
-            FacesMessages.error("Fehler", "Issuer-URL darf nicht leer sein.");
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Issuer-URL darf nicht leer sein.");
             context.validationFailed();
             return;
         }
 
         if (selected.getClientId() == null || selected.getClientId().isBlank()) {
-            FacesMessages.error("Fehler", "Client-ID darf nicht leer sein.");
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Client-ID darf nicht leer sein.");
             context.validationFailed();
             return;
         }
 
         selected = oidcConfigService.save(selected);
         loadData();
-        FacesMessages.info("Erfolg", "OIDC-Konfiguration gespeichert.");
+        FacesMessages.info(FacesMessages.TITEL_ERFOLG, "OIDC-Konfiguration gespeichert.");
     }
 
     public void delete() {
@@ -138,7 +138,7 @@ public class OidcConfigBackingBean implements Serializable {
         oidcConfigService.delete(selected);
         selected = null;
         loadData();
-        FacesMessages.info("Erfolg", "OIDC-Konfiguration gelöscht.");
+        FacesMessages.info(FacesMessages.TITEL_ERFOLG, "OIDC-Konfiguration gelöscht.");
     }
 
     public void testConnection() {
@@ -189,7 +189,7 @@ public class OidcConfigBackingBean implements Serializable {
             fc.responseComplete();
         } catch (Exception e) {
             log.error("Error downloading OIDC config as JSON", e);
-            FacesMessages.error("Fehler", "Download fehlgeschlagen: " + e.getMessage());
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Download fehlgeschlagen: " + e.getMessage());
         }
     }
 
@@ -221,10 +221,10 @@ public class OidcConfigBackingBean implements Serializable {
             if (json.containsKey("defaultRoles")) selected.setDefaultRoles((String) json.get("defaultRoles"));
             if (json.containsKey("defaultMandat")) selected.setDefaultMandat((String) json.get("defaultMandat"));
 
-            FacesMessages.info("Erfolg", "JSON importiert - bitte prüfen und speichern.");
+            FacesMessages.info(FacesMessages.TITEL_ERFOLG, "JSON importiert - bitte prüfen und speichern.");
         } catch (Exception e) {
             log.error("Error uploading OIDC config JSON", e);
-            FacesMessages.error("Fehler", "Import fehlgeschlagen: " + e.getMessage());
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, "Import fehlgeschlagen: " + e.getMessage());
         }
     }
 
