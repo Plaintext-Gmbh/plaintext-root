@@ -41,7 +41,7 @@
              (mit Begruendung und Datum, nie 0) — nie den Schalter. -->
         <jacoco.halt-on-failure>true</jacoco.halt-on-failure>
         <jacoco.coverage.minimum>0.40</jacoco.coverage.minimum>
-        <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
+        <build-helper-maven-plugin.version>3.6.2</build-helper-maven-plugin.version>
 
         <!-- Test Tools -->
         <!-- ArchUnit: Architektur-Regeln (geteiltes Modul plaintext-root-archtests). Nicht vom
