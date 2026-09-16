@@ -179,7 +179,7 @@
           ist DOMPurify 3.4.12 gebuendelt (Fix ab 3.4.11). springdoc gibt die Version nicht
           selbst vor, deshalb hier gepinnt (siehe dependencyManagement).
         -->
-        <swagger-ui.version>5.32.14</swagger-ui.version>
+        <swagger-ui.version>5.32.15</swagger-ui.version>
         <sonar-maven-plugin.version>4.0.1.6619</sonar-maven-plugin.version>
     </properties>
 
