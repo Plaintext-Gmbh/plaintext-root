@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                template="/nosec/watch/frame.xhtml">
+
+    <ui:define name="titel">Übersicht</ui:define>
+
+    <ui:define name="inhalt">
+        <div class="w-card">
+            <h:panelGroup layout="block" styleClass="#{watchHomeBean.spaltenKlasse}"
+                          rendered="#{not empty watchHomeBean.kacheln}">
+                <ui:repeat value="#{watchHomeBean.kacheln}" var="k">
+                    <div class="w-widget">
+                        <div class="w-value">#{k.value}</div>
+                        <div class="w-label">#{k.label}</div>
+                    </div>
+                </ui:repeat>
+            </h:panelGroup>
+
+            <h:panelGroup layout="block" styleClass="w-note"
+                          rendered="#{empty watchHomeBean.kacheln}">
+                Noch keine Kacheln. Module liefern sie über WatchWidget.
+            </h:panelGroup>
+        </div>
+    </ui:define>
+</ui:composition>

@@ -163,6 +163,17 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Watch-Modul: die kleinen Ansichten fuer Uhren und Telefone. Gehoert hierher, nicht nur
+             in den Reactor - ohne diesen Eintrag wird das Modul zwar gebaut, landet aber in keinem
+             Jar der laufenden Anwendung, und die Seiten unter /nosec/watch/ gibt es nirgends. Zugleich
+             stellt der Eintrag die session-scoped WatchFrameBean in das Sichtfeld der geteilten
+             Serialisierbarkeits-Regel (SessionBeanRegelDeckungTest). -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-watch</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Nur fuer die MCP-Annotationen der Benutzerverwaltung (BenutzerMcpTools). optional=true wie
              in plaintext-admin-apitoken: das Bean haengt an @ConditionalOnClass und laedt ausschliesslich
              in Apps mit eigenem MCP-Server (app/guild/schuetu/iot). plaintext-root selbst hat keinen und
