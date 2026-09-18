@@ -31,7 +31,7 @@ public interface WatchPage {
     /** Short title, shown in the header. Keep it to roughly 12 characters. */
     String title();
 
-    /** View to render, relative to the resource root, e.g. {@code /nosec/watch/zeit.xhtml}. */
+    /** View to render, relative to the resource root, e.g. {@code /watch/zeit.xhtml}. */
     String view();
 
     /** Lower numbers come first. The home page uses {@code 0}. */

@@ -5,8 +5,6 @@ package ch.plaintext.watch.service;
 
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import ch.plaintext.watch.entity.WatchUserState;
-import ch.plaintext.watch.page.WatchPage;
-import ch.plaintext.watch.page.WatchPageRegistry;
 import ch.plaintext.watch.repository.WatchUserStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +18,11 @@ import java.util.Optional;
  *
  * <h2>The user always comes from the security context</h2>
  *
- * <p>Never from a request parameter. The watch views live under {@code /nosec/} and are reached
- * with a token in the URL; that token is validated by {@code JwtTokenService} and the resulting
- * identity is what ends up here. An earlier module in this house took the user from a request
- * parameter and thereby let anyone read anyone else's data — see card 1195.</p>
+ * <p>Never from a request parameter. The watch views sit behind the normal sign-in, so the
+ * identity is whatever Spring Security established — the same source as on every other page.
+ * An earlier module in this house took the user from a request parameter and thereby let
+ * anyone read anyone else's data (card 1195); this one cannot, because there is no parameter
+ * to take it from.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -34,7 +33,6 @@ import java.util.Optional;
 public class WatchStateService {
 
     private final WatchUserStateRepository repository;
-    private final WatchPageRegistry registry;
 
     /** State of the signed-in user, created on first use. Empty if nobody is signed in. */
     @Transactional
@@ -52,14 +50,19 @@ public class WatchStateService {
                 }));
     }
 
-    /** The page to show: the remembered one, or the first available. */
+    /**
+     * Id of the page last shown, if there is one.
+     *
+     * <p>Deliberately returns the id and not the page. This service must not know the page
+     * registry: the registry collects every {@code WatchPage}, one of them ({@code WatchTestPage})
+     * asks this service whether it is switched on, and the circle would close — Spring refused to
+     * start the application with
+     * {@code BeanCurrentlyInCreationException: watchPageRegistry}. Resolving an id to a page is
+     * the job of whoever holds both, and that is the frame bean.</p>
+     */
     @Transactional
-    public Optional<WatchPage> aktuelleSeite() {
-        return eigenerZustand()
-                .map(WatchUserState::getAktuelleSeite)
-                .flatMap(registry::byId)
-                .filter(WatchPage::available)
-                .or(registry::erste);
+    public Optional<String> gemerkteSeitenId() {
+        return eigenerZustand().map(WatchUserState::getAktuelleSeite).filter(id -> !id.isBlank());
     }
 
     /**

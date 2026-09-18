@@ -104,7 +104,13 @@ public class PageAccessGuardService {
             "mandatemenudetail", "mandatemenu",
             "anforderungdetail", "anforderungen",
             "claudesummary", "anforderungen",
-            "howtodetail", "howtos"
+            "howtodetail", "howtos",
+            // The watch views (card 1245). They are reached from the watch navigation, never
+            // from the menu, so they carry no menu entry of their own and would stand without an
+            // access rule: open to every signed-in user in mode REPORT, closed to everyone in
+            // STRICT. They inherit the rule of the module's own menu entry instead.
+            "watch/home", "watch-einstellungen",
+            "watch/elemente", "watch-einstellungen"
     );
 
     /** Protection against cycles in the menu hierarchy. */

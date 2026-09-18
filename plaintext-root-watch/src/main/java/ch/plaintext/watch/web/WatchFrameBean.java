@@ -57,7 +57,14 @@ public class WatchFrameBean implements Serializable {
         if (fc != null && fc.isPostback() && aktuelle != null) {
             return;
         }
-        aktuelle = zustand.aktuelleSeite().orElse(null);
+        // Die Aufloesung id -> Seite liegt hier und nicht im Zustandsdienst: der Dienst darf das
+        // Seitenregister nicht kennen, sonst schliesst sich der Kreis ueber WatchTestPage, die
+        // ihn selbst befragt (Spring: BeanCurrentlyInCreationException).
+        aktuelle = zustand.gemerkteSeitenId()
+                .flatMap(registry::byId)
+                .filter(WatchPage::available)
+                .or(registry::erste)
+                .orElse(null);
         if (aktuelle != null) {
             zustand.merkeSeite(aktuelle.id());
         }

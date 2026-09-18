@@ -8,8 +8,12 @@ shaped that way, and what does *not* work on a watch.
 
 ## 1. What a "watch page" actually is here
 
-It is a normal JSF/Facelets page under `/nosec/watch/`, reached with a token in the query
-string, rendered by `WatchFrame`. It is **not** a native watchOS app.
+It is a normal JSF/Facelets page under `/watch/`, rendered inside `watch/frame.xhtml`. It is
+**not** a native watchOS app.
+
+It sits **behind the normal sign-in**, not under `/nosec/`. That was a deliberate choice: the
+view is opened from a phone, which signs in once and keeps the session. A token in the URL
+would buy nothing here and would leak into server logs, browser history and referrers.
 
 **Know the limits before you design** (measured 18.09.2026, sources in card 1245):
 
@@ -37,7 +41,7 @@ Contribute one Spring bean per page implementing `WatchPage`:
 public class ZeitWatchPage implements WatchPage {
     public String id()    { return "zeit"; }              // stable, persisted per user
     public String title() { return "Zeit"; }              // ~12 characters
-    public String view()  { return "/nosec/watch/zeit.xhtml"; }
+    public String view()  { return "/watch/zeit.xhtml"; }
     public int order()    { return 10; }                  // home is 0
     public boolean available() { return true; }           // per-user switch goes here
 }
@@ -148,7 +152,7 @@ plaintext-root-watch/
     entity/WatchUserState.java    what is persisted
   src/main/resources/
     META-INF/resources/watch/watch.css
-    META-INF/resources/nosec/watch/    the pages themselves
+    META-INF/resources/watch/    the pages themselves
 ```
 
 The signed-in user always comes from `PlaintextSecurityHolder`, never from a request

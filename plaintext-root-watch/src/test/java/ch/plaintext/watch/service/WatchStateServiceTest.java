@@ -57,7 +57,7 @@ class WatchStateServiceTest {
 
             @Override
             public String view() {
-                return "/nosec/watch/" + id + ".xhtml";
+                return "/watch/" + id + ".xhtml";
             }
 
             @Override
@@ -76,7 +76,7 @@ class WatchStateServiceTest {
     void setUp() {
         repository = mock(WatchUserStateRepository.class);
         registry = new WatchPageRegistry(List.of(seite("home", 0, true), seite("zeit", 10, true)));
-        service = new WatchStateService(repository, registry);
+        service = new WatchStateService(repository);
         sicherheit = Mockito.mockStatic(PlaintextSecurityHolder.class);
         sicherheit.when(PlaintextSecurityHolder::getUser).thenReturn("daniel@plaintext.ch");
         sicherheit.when(PlaintextSecurityHolder::getMandat).thenReturn("plaintext");
@@ -157,38 +157,37 @@ class WatchStateServiceTest {
     }
 
     @Test
-    @DisplayName("Die gemerkte Seite wird geliefert, wenn es sie gibt")
-    void gemerkteSeiteWirdGeliefert() {
+    @DisplayName("Die gemerkte Seitenkennung wird herausgegeben")
+    void gemerkteKennungWirdGeliefert() {
         WatchUserState vorhanden = new WatchUserState();
         vorhanden.setBenutzer("daniel@plaintext.ch");
         vorhanden.setAktuelleSeite("zeit");
         when(repository.findByBenutzerAndDeletedFalse("daniel@plaintext.ch")).thenReturn(Optional.of(vorhanden));
 
-        assertEquals("zeit", service.aktuelleSeite().orElseThrow().id());
+        assertEquals("zeit", service.gemerkteSeitenId().orElseThrow());
     }
 
     @Test
-    @DisplayName("Eine gemerkte Seite, die es nicht mehr gibt, faellt auf die erste zurueck")
-    void verschwundeneSeiteFaelltZurueck() {
+    @DisplayName("Ohne gemerkte Seite bleibt die Kennung leer — der Dienst raet keine")
+    void ohneGemerkteSeite() {
         WatchUserState vorhanden = new WatchUserState();
         vorhanden.setBenutzer("daniel@plaintext.ch");
-        vorhanden.setAktuelleSeite("gibtsnichtmehr");
         when(repository.findByBenutzerAndDeletedFalse("daniel@plaintext.ch")).thenReturn(Optional.of(vorhanden));
 
-        assertEquals("home", service.aktuelleSeite().orElseThrow().id());
+        assertTrue(service.gemerkteSeitenId().isEmpty());
     }
 
     @Test
-    @DisplayName("Eine gemerkte, inzwischen abgeschaltete Seite faellt ebenfalls zurueck")
-    void abgeschalteteSeiteFaelltZurueck() {
-        registry = new WatchPageRegistry(List.of(seite("home", 0, true), seite("test", 10, false)));
-        service = new WatchStateService(repository, registry);
-        WatchUserState vorhanden = new WatchUserState();
-        vorhanden.setBenutzer("daniel@plaintext.ch");
-        vorhanden.setAktuelleSeite("test");
-        when(repository.findByBenutzerAndDeletedFalse("daniel@plaintext.ch")).thenReturn(Optional.of(vorhanden));
-
-        assertEquals("home", service.aktuelleSeite().orElseThrow().id());
+    @DisplayName("Der Dienst kennt das Seitenregister nicht — sonst schliesst sich der Bean-Kreis")
+    void dienstKenntDasRegisterNicht() {
+        // Keine Stilfrage: WatchTestPage fragt diesen Dienst nach ihrer Verfuegbarkeit, das
+        // Register sammelt sie ein. Haette der Dienst das Register, startet die Anwendung nicht
+        // mehr (BeanCurrentlyInCreationException, gemessen im root-Reaktor am 18.09.2026).
+        boolean kenntRegister = java.util.Arrays.stream(WatchStateService.class.getDeclaredFields())
+                .anyMatch(f -> WatchPageRegistry.class.isAssignableFrom(f.getType()));
+        assertFalse(kenntRegister,
+                "WatchStateService haelt ein Feld vom Typ WatchPageRegistry — damit ist der "
+                        + "Bean-Kreis wieder da und die Anwendung startet nicht.");
     }
 
     @Test

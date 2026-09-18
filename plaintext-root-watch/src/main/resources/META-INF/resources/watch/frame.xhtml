@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Template for every watch page. A page supplies "inhalt"; header, navigation and the
+  stylesheet come from here, so no module has to repeat them.
+  See WATCH-UI-GUIDE.md for the CSS classes.
+
+  The pages live behind the normal sign-in, NOT under /nosec/. A watch view is opened from a
+  phone that can sign in once and keep the session; a token in the URL would buy nothing and
+  would end up in logs, browser history and referrers.
+-->
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns:ui="http://java.sun.com/jsf/facelets">
+
+    <!-- Directly below ui:composition, never inside h:body or h:form: JSF collects the metadata
+         before the view is built. Inside the body the preRenderView listener never fires and the
+         page renders empty — the very fault that kept the alkohol evaluation blank (card 1243). -->
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{watchFrameBean.seitenaufruf()}"/>
+    </f:metadata>
+
+    <h:head>
+        <meta charset="utf-8"/>
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+        <meta name="robots" content="noindex,nofollow"/>
+        <!-- Starts full screen from the home screen, without the Safari bars — one tap. -->
+        <meta name="apple-mobile-web-app-capable" content="yes"/>
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+        <meta name="mobile-web-app-capable" content="yes"/>
+        <meta name="theme-color" content="#0b0b0f"/>
+        <h:outputStylesheet library="watch" name="watch.css"/>
+        <title><ui:insert name="titel">Watch</ui:insert></title>
+    </h:head>
+
+    <h:body>
+        <div class="w-wrap">
+            <div class="w-head">
+                <h1><h:outputText value="#{watchFrameBean.titel}"/></h1>
+                <span class="w-pos"><h:outputText value="#{watchFrameBean.position}"/></span>
+            </div>
+
+            <ui:insert name="inhalt"/>
+
+            <h:form id="nav">
+                <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                <div class="w-nav">
+                    <h:commandButton styleClass="w-btn" value="‹" action="#{watchFrameBean.zurueck}"/>
+                    <h:commandButton styleClass="w-btn" value="›" action="#{watchFrameBean.weiter}"/>
+                </div>
+            </h:form>
+        </div>
+    </h:body>
+</ui:composition>

@@ -50,7 +50,7 @@ class WatchFrameBeanTest {
 
             @Override
             public String view() {
-                return "/nosec/watch/" + id + ".xhtml";
+                return "/watch/" + id + ".xhtml";
             }
 
             @Override
@@ -72,7 +72,7 @@ class WatchFrameBeanTest {
     @Test
     @DisplayName("Der Seitenaufruf holt die gemerkte Seite und bestaetigt sie")
     void seitenaufrufHoltGemerkteSeite() {
-        when(zustand.aktuelleSeite()).thenReturn(registry.byId("zeit"));
+        when(zustand.gemerkteSeitenId()).thenReturn(Optional.of("zeit"));
 
         bean.seitenaufruf();
 
@@ -83,7 +83,8 @@ class WatchFrameBeanTest {
     @Test
     @DisplayName("Liefert der Dienst keine Seite, bleibt die Anzeige leer statt zu werfen")
     void seitenaufrufOhneSeite() {
-        when(zustand.aktuelleSeite()).thenReturn(Optional.empty());
+        when(zustand.gemerkteSeitenId()).thenReturn(Optional.empty());
+        ReflectionTestUtils.setField(bean, "registry", new WatchPageRegistry(List.of()));
 
         bean.seitenaufruf();
 
@@ -96,7 +97,7 @@ class WatchFrameBeanTest {
     @Test
     @DisplayName("weiter() rueckt eine Seite vor und merkt sie")
     void weiterRuecktVor() {
-        when(zustand.aktuelleSeite()).thenReturn(registry.byId("home"));
+        when(zustand.gemerkteSeitenId()).thenReturn(Optional.of("home"));
         bean.seitenaufruf();
 
         bean.weiter();
@@ -108,7 +109,7 @@ class WatchFrameBeanTest {
     @Test
     @DisplayName("zurueck() von der ersten Seite laeuft auf die letzte um")
     void zurueckLaeuftUm() {
-        when(zustand.aktuelleSeite()).thenReturn(registry.byId("home"));
+        when(zustand.gemerkteSeitenId()).thenReturn(Optional.of("home"));
         bean.seitenaufruf();
 
         bean.zurueck();
@@ -120,7 +121,7 @@ class WatchFrameBeanTest {
     @Test
     @DisplayName("Die Positionsanzeige zaehlt ab eins")
     void positionZaehltAbEins() {
-        when(zustand.aktuelleSeite()).thenReturn(registry.byId("zeit"));
+        when(zustand.gemerkteSeitenId()).thenReturn(Optional.of("zeit"));
         bean.seitenaufruf();
 
         assertEquals("2/3", bean.getPosition());

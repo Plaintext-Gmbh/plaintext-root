@@ -26,7 +26,7 @@ public class WatchHomePage implements WatchPage {
 
     @Override
     public String view() {
-        return "/nosec/watch/home.xhtml";
+        return "/watch/home.xhtml";
     }
 
     @Override

@@ -1,0 +1,53 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{watchSettingsBean.seitenaufruf()}"/>
+    </f:metadata>
+
+    <ui:define name="title">Watch</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <p:growl id="messages" showDetail="true" life="5000"/>
+
+            <p:fieldset id="fsAdresse" legend="Ansicht auf dem Telefon">
+                <h:panelGrid columns="1" style="width:100%">
+                    <h:outputText value="Diese Adresse im Telefon-Browser oeffnen und zum Home-Bildschirm hinzufuegen. Sie startet dann ohne Browserleisten. Die Anmeldung erfolgt einmalig wie ueberall sonst; es gibt keinen Schluessel in der Adresse."
+                                  style="font-style:italic;color:#666"/>
+                    <h:outputText value="#{watchSettingsBean.watchAdresse}" style="font-family:monospace;font-size:1.1em"/>
+                </h:panelGrid>
+            </p:fieldset>
+
+            <p:fieldset id="fsSeiten" legend="Verfuegbare Seiten" style="margin-top:15px">
+                <p:dataTable id="tblSeiten" value="#{watchSettingsBean.seiten}" var="s" emptyMessage="Keine Seite verfuegbar">
+                    <p:column headerText="Reihenfolge" style="width:8rem">
+                        <h:outputText value="#{s.order()}"/>
+                    </p:column>
+                    <p:column headerText="Titel">
+                        <h:outputText value="#{s.title()}"/>
+                    </p:column>
+                    <p:column headerText="Kennung">
+                        <h:outputText value="#{s.id()}"/>
+                    </p:column>
+                </p:dataTable>
+            </p:fieldset>
+
+            <p:fieldset id="fsTest" legend="Elementseite" style="margin-top:15px">
+                <h:panelGrid columns="1" style="width:100%">
+                    <h:outputText value="Die Elementseite zeigt jedes Bedienelement, das auf der kleinen Anzeige zur Verfuegung steht, mit Beschriftung. Sie ist als Nachschlagewerk gedacht und im Alltag im Weg — deshalb einzeln schaltbar."
+                                  style="font-style:italic;color:#666"/>
+                    <p:selectBooleanCheckbox id="cbTest" value="#{watchSettingsBean.testseiteAktiv}"
+                                             itemLabel="Elementseite auf der Uhr anzeigen"/>
+                </h:panelGrid>
+                <p:commandButton id="btnSpeichern" value="Speichern" action="#{watchSettingsBean.speichern}"
+                                 update="messages tblSeiten" style="margin-top:10px"/>
+            </p:fieldset>
+        </h:form>
+    </ui:define>
+</ui:composition>

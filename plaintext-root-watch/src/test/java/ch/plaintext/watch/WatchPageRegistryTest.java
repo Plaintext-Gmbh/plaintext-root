@@ -23,7 +23,7 @@ class WatchPageRegistryTest {
         return new WatchPage() {
             public String id() { return id; }
             public String title() { return id; }
-            public String view() { return "/nosec/watch/" + id + ".xhtml"; }
+            public String view() { return "/watch/" + id + ".xhtml"; }
             public int order() { return order; }
             public boolean available() { return verfuegbar; }
         };

@@ -158,3 +158,82 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
     .w-widget .w-value { font-size: 1.7rem; }
     .w-head h1 { font-size: .95rem; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Elemente der Nachschlage-Seite (Karte 1247).
+   Alles hier folgt denselben zwei Regeln wie oben: Trefferflaeche mindestens
+   44 px, Schrift mindestens 16 px — kleiner zoomt iOS beim Antippen hinein.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Kleinere Variante von .w-value, fuer Statuszeilen mit laengerem Text. */
+.w-sm {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+/* Erklaerzeile unter einem Element. Bewusst gedaempft, aber nicht unter
+   #8a8a94 — auf der Uhr wird bei Sonne alles darunter unlesbar. */
+.w-hint {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #8a8a94;
+}
+
+/* Knopfreihe als Auswahl. flex-wrap statt Scrollen: eine waagrechte Leiste,
+   die man schieben muss, trifft man auf der Uhr nicht. */
+.w-chooser {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.w-chip {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid #3a3a42;
+    border-radius: 22px;
+    background: #1c1c22;
+    color: #f2f2f7;
+    font-size: 16px;
+}
+
+.w-chip-an {
+    background: #2f6fed;
+    border-color: #2f6fed;
+    font-weight: 600;
+}
+
+/* Kaestchen und Beschriftung sind zusammen die Trefferflaeche — das Kaestchen
+   allein ist mit dem Finger nicht sicher zu treffen. */
+.w-switch {
+    width: 28px;
+    height: 28px;
+    vertical-align: middle;
+}
+
+.w-switch-label {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-left: 10px;
+    font-size: 16px;
+}
+
+/* Warnblock: hebt sich ab, ohne auf Farbe allein zu setzen — der linke Balken
+   bleibt auch bei starker Sonneneinstrahlung erkennbar. */
+.w-card-warn {
+    border-left: 4px solid #e0a33a;
+}
+
+.w-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.w-list li {
+    margin-bottom: 6px;
+}
