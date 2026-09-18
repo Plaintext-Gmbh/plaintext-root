@@ -97,7 +97,9 @@ class MenuLinkInvariantTest {
             "mandatemenudetail", "mandatemenu",
             "anforderungdetail", "anforderungen",
             "claudesummary", "anforderungen",
-            "howtodetail", "howtos"
+            "howtodetail", "howtos",
+            "watch/home", "watch-einstellungen",
+            "watch/elemente", "watch-einstellungen"
     );
 
     // ------------------------------------------------------------------ Test 1

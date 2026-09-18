@@ -1,0 +1,239 @@
+/*
+ * Copyright (C) plaintext.ch, 2026.
+ *
+ * Styles for the watch / small-screen views. See WATCH-UI-GUIDE.md in the module root for
+ * when to use what — that file is written for humans and AI agents alike.
+ *
+ * Design rules encoded here:
+ *   - one column, always; no side-by-side layout except the explicit .w-row
+ *   - touch targets never below 44px (Apple's minimum for a reliable tap)
+ *   - no hover states: there is no pointer on a watch
+ *   - system font stack: no web font may be downloaded (slow link, tiny cache)
+ *   - colours carry meaning on their own AND through text, never through colour alone
+ */
+
+:root {
+    --w-bg: #0b0b0f;
+    --w-card: #17171f;
+    --w-ink: #f4f4f6;
+    --w-ink-dim: #a1a1ad;
+    --w-line: #2a2a35;
+    --w-go: #16a34a;
+    --w-stop: #dc2626;
+    --w-warn: #d97706;
+    --w-radius: 14px;
+    --w-tap: 44px;
+}
+
+/* Light rooms exist too; the watch itself is usually dark, the phone often not. */
+@media (prefers-color-scheme: light) {
+    :root {
+        --w-bg: #f4f5f7;
+        --w-card: #ffffff;
+        --w-ink: #1f2937;
+        --w-ink-dim: #6b7280;
+        --w-line: #e5e7eb;
+    }
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--w-bg);
+    color: var(--w-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;            /* never below 16px: iOS zooms on focus otherwise */
+    -webkit-text-size-adjust: 100%;
+}
+
+.w-wrap {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+}
+
+/* ── Header: title plus page position, one line ─────────────────────────── */
+.w-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.w-head h1 { font-size: 1.05rem; margin: 0; font-weight: 600; }
+.w-pos { color: var(--w-ink-dim); font-size: .8rem; font-variant-numeric: tabular-nums; }
+
+/* ── Card: the only container ───────────────────────────────────────────── */
+.w-card {
+    background: var(--w-card);
+    border-radius: var(--w-radius);
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--w-line);
+}
+
+/* ── Widget: one number with a label, readable at arm's length ──────────── */
+.w-widget { text-align: center; padding: 6px 0; }
+.w-widget .w-value {
+    font-size: 2.1rem;
+    font-weight: 650;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;   /* digits must not jump while counting */
+}
+.w-widget .w-label {
+    font-size: .78rem;
+    color: var(--w-ink-dim);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* Two or three widgets next to each other — the one exception to single column. */
+.w-widgets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.w-widgets.w-3 { grid-template-columns: repeat(3, 1fr); }
+
+/* ── Buttons: full width, thumb sized ───────────────────────────────────── */
+.w-btn {
+    display: block;
+    width: 100%;
+    min-height: var(--w-tap);
+    border: 0;
+    border-radius: var(--w-radius);
+    background: var(--w-line);
+    color: var(--w-ink);
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 12px;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+.w-btn-go { background: var(--w-go); color: #fff; }
+.w-btn-stop { background: var(--w-stop); color: #fff; }
+.w-btn:active { filter: brightness(1.25); }   /* :active, not :hover — there is no pointer */
+
+/* ── One row, two fields (from/to times) ────────────────────────────────── */
+.w-row { display: flex; gap: 8px; align-items: center; }
+.w-row > * { flex: 1 1 0; min-width: 0; }
+
+/* ── Inputs: native controls only ───────────────────────────────────────── */
+.w-field {
+    width: 100%;
+    min-height: var(--w-tap);
+    font-size: 1rem;                 /* below 16px iOS zooms the page on focus */
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--w-line);
+    background: var(--w-card);
+    color: var(--w-ink);
+    box-sizing: border-box;
+    -webkit-appearance: none;
+}
+select.w-field { appearance: none; background-image: none; text-align: center; }
+
+/* ── Navigation between pages ───────────────────────────────────────────── */
+.w-nav { display: flex; gap: 8px; margin-top: 4px; }
+.w-nav .w-btn { margin-bottom: 0; }
+
+/* ── State line: says what is going on, in words AND colour ─────────────── */
+.w-state { text-align: center; font-size: .9rem; padding: 6px 0; }
+.w-state-go { color: var(--w-go); }
+.w-state-off { color: var(--w-ink-dim); }
+
+/* ── Confirmation: shown inline, never as a modal ───────────────────────── */
+/* A modal dialog on a 40mm screen covers everything and is hard to dismiss. */
+.w-confirm { border: 1px solid var(--w-stop); border-radius: var(--w-radius); padding: 10px; }
+.w-confirm .w-confirm-text { font-size: .9rem; margin-bottom: 8px; }
+
+.w-note { font-size: .78rem; color: var(--w-ink-dim); line-height: 1.35; }
+.w-list { list-style: none; margin: 0; padding: 0; }
+.w-list li { padding: 10px 0; border-bottom: 1px solid var(--w-line); }
+.w-list li:last-child { border-bottom: 0; }
+
+/* Very small screens (watch link-tap view): trim everything once more. */
+@media (max-width: 250px) {
+    .w-wrap { padding: 6px 8px; }
+    .w-widgets, .w-widgets.w-3 { grid-template-columns: 1fr; }
+    .w-widget .w-value { font-size: 1.7rem; }
+    .w-head h1 { font-size: .95rem; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Elemente der Nachschlage-Seite (Karte 1247).
+   Alles hier folgt denselben zwei Regeln wie oben: Trefferflaeche mindestens
+   44 px, Schrift mindestens 16 px — kleiner zoomt iOS beim Antippen hinein.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Kleinere Variante von .w-value, fuer Statuszeilen mit laengerem Text. */
+.w-sm {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+/* Erklaerzeile unter einem Element. Bewusst gedaempft, aber nicht unter
+   #8a8a94 — auf der Uhr wird bei Sonne alles darunter unlesbar. */
+.w-hint {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #8a8a94;
+}
+
+/* Knopfreihe als Auswahl. flex-wrap statt Scrollen: eine waagrechte Leiste,
+   die man schieben muss, trifft man auf der Uhr nicht. */
+.w-chooser {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.w-chip {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid #3a3a42;
+    border-radius: 22px;
+    background: #1c1c22;
+    color: #f2f2f7;
+    font-size: 16px;
+}
+
+.w-chip-an {
+    background: #2f6fed;
+    border-color: #2f6fed;
+    font-weight: 600;
+}
+
+/* Kaestchen und Beschriftung sind zusammen die Trefferflaeche — das Kaestchen
+   allein ist mit dem Finger nicht sicher zu treffen. */
+.w-switch {
+    width: 28px;
+    height: 28px;
+    vertical-align: middle;
+}
+
+.w-switch-label {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-left: 10px;
+    font-size: 16px;
+}
+
+/* Warnblock: hebt sich ab, ohne auf Farbe allein zu setzen — der linke Balken
+   bleibt auch bei starker Sonneneinstrahlung erkennbar. */
+.w-card-warn {
+    border-left: 4px solid #e0a33a;
+}
+
+.w-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.w-list li {
+    margin-bottom: 6px;
+}

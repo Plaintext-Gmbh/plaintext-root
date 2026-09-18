@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The element gallery. Every block shows one control, what it is for, and what it costs.
+  Whoever builds a new watch page copies from here instead of guessing.
+
+  Two things are shown side by side on purpose: the plain h:-tag with our own CSS, and the
+  PrimeFaces equivalent. The measurement that decides between them belongs on this page,
+  not in a discussion (card 1247).
+-->
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                template="/watch/frame.xhtml">
+
+    <ui:define name="titel">Elemente</ui:define>
+
+    <ui:define name="inhalt">
+        <h:form id="el">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <div class="w-card">
+                <div class="w-label">Zuletzt</div>
+                <div class="w-value w-sm"><h:outputText value="#{watchElementeBean.letzteAktion}"/></div>
+            </div>
+
+            <!-- 1 — Knopf. Das Brot-und-Butter-Element. 44 px hoch, weil kleiner nicht zuverlaessig
+                 getroffen wird; Apples eigene Vorgabe nennt dieselbe Zahl. -->
+            <div class="w-card">
+                <div class="w-label">1 · Knopf (h:commandButton + eigener Stil)</div>
+                <div class="w-row">
+                    <h:commandButton styleClass="w-btn w-btn-go" value="Start"
+                                     action="#{watchElementeBean.tippe('Start')}"/>
+                    <h:commandButton styleClass="w-btn w-btn-stop" value="Stop"
+                                     action="#{watchElementeBean.tippe('Stop')}"/>
+                </div>
+                <div class="w-hint">Zwei nebeneinander ist das Maximum; ab drei trifft man daneben.</div>
+            </div>
+
+            <!-- 2 — dasselbe in PrimeFaces, zum Vergleich der Groesse. -->
+            <div class="w-card">
+                <div class="w-label">2 · Knopf (p:commandButton)</div>
+                <p:commandButton id="pfBtn" value="Start" styleClass="w-btn w-btn-go"
+                                 action="#{watchElementeBean.tippe('Start (PF)')}"
+                                 update="el" process="@this"/>
+                <div class="w-hint">Gleiche Wirkung, aber Ajax: erneuert nur diesen Bereich statt
+                    der ganzen Seite. Kostet dafuer die PrimeFaces-Skripte.</div>
+            </div>
+
+            <!-- 3 — Auswahl. Kein Dropdown: das Ausklappmenue verdeckt auf einer Uhr die halbe
+                 Anzeige und laesst sich kaum scrollen. Stattdessen Knoepfe, die den Wert setzen. -->
+            <div class="w-card">
+                <div class="w-label">3 · Auswahl als Knopfreihe</div>
+                <div class="w-chooser">
+                    <ui:repeat value="#{watchElementeBean.auswahlWerte}" var="w">
+                        <h:commandButton styleClass="w-chip #{watchElementeBean.auswahl eq w ? 'w-chip-an' : ''}"
+                                         value="#{w}" action="#{watchElementeBean.tippe(w)}">
+                            <f:setPropertyActionListener target="#{watchElementeBean.auswahl}" value="#{w}"/>
+                        </h:commandButton>
+                    </ui:repeat>
+                </div>
+                <div class="w-hint">Gewaehlt: <h:outputText value="#{watchElementeBean.auswahl}"/>.
+                    Bis etwa sechs Werte tragfaehig; darueber braucht es eine eigene Seite.</div>
+            </div>
+
+            <!-- 4 — Zahl. Schrittknoepfe statt Schieberegler: einen Regler trifft man auf der Uhr
+                 nicht, und ein Zahlenfeld oeffnet die Tastatur, die den Schirm fuellt. -->
+            <div class="w-card">
+                <div class="w-label">4 · Zahl in Schritten</div>
+                <div class="w-row">
+                    <h:commandButton styleClass="w-btn" value="−15" action="#{watchElementeBean.weniger}"/>
+                    <span class="w-value"><h:outputText value="#{watchElementeBean.zahl}"/></span>
+                    <h:commandButton styleClass="w-btn" value="+15" action="#{watchElementeBean.mehr}"/>
+                </div>
+                <div class="w-hint">Schrittweite 15 Minuten — die Einheit, in der wirklich erfasst wird.</div>
+            </div>
+
+            <!-- 5 — Schalter. -->
+            <div class="w-card">
+                <div class="w-label">5 · Schalter</div>
+                <h:selectBooleanCheckbox id="cb" styleClass="w-switch" value="#{watchElementeBean.schalter}"/>
+                <h:outputLabel for="cb" value="An" styleClass="w-switch-label"/>
+                <div class="w-hint">Das Kaestchen selbst ist winzig — deshalb ist die Beschriftung
+                    Teil der Trefferflaeche (w-switch-label mit Mindesthoehe).</div>
+            </div>
+
+            <!-- 6 — Zeit. Das native Eingabefeld gewinnt hier gegen jede JavaScript-Loesung:
+                 iOS zeigt sein eigenes Raedchen, das man auf der Uhr bedienen kann. -->
+            <div class="w-card">
+                <div class="w-label">6 · Zeit (natives input type=time)</div>
+                <div class="w-row">
+                    <h:inputText styleClass="w-field" value="#{watchElementeBean.zeit}" pt:type="time">
+                        <f:convertDateTime type="localTime" pattern="HH:mm"/>
+                    </h:inputText>
+                </div>
+                <div class="w-hint">Bewusst kein p:datePicker: dessen Kalender passt nicht auf die
+                    Anzeige. Das native Feld bringt iOS' eigenes Raedchen mit.</div>
+            </div>
+
+            <!-- 7 — Datum, gleiche Begruendung. -->
+            <div class="w-card">
+                <div class="w-label">7 · Datum (natives input type=date)</div>
+                <h:inputText styleClass="w-field" value="#{watchElementeBean.datum}" pt:type="date">
+                    <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                </h:inputText>
+            </div>
+
+            <!-- 8 — Text. Auf der Uhr diktiert man; das Feld muss die Diktierfunktion zulassen. -->
+            <div class="w-card">
+                <div class="w-label">8 · Text</div>
+                <h:inputText styleClass="w-field" value="#{watchElementeBean.text}"
+                             pt:enterkeyhint="done" pt:autocapitalize="sentences"/>
+                <div class="w-hint">Schriftgroesse mindestens 16 px, sonst zoomt iOS beim Antippen
+                    hinein und die Seite steht schief.</div>
+            </div>
+
+            <!-- 9 — Rueckfrage. Kein Dialog-Overlay: auf der Uhr ist ein modaler Dialog kaum zu
+                 schliessen. Die Rueckfrage ersetzt die Knopfreihe an Ort und Stelle. -->
+            <div class="w-card">
+                <div class="w-label">9 · Loeschen mit Rueckfrage</div>
+                <h:panelGroup layout="block" rendered="#{not watchElementeBean.bestaetigungOffen}">
+                    <h:commandButton styleClass="w-btn w-btn-stop" value="Löschen"
+                                     action="#{watchElementeBean.frageNach}"/>
+                </h:panelGroup>
+                <h:panelGroup layout="block" styleClass="w-confirm"
+                              rendered="#{watchElementeBean.bestaetigungOffen}">
+                    <div class="w-label">Wirklich?</div>
+                    <div class="w-row">
+                        <h:commandButton styleClass="w-btn w-btn-stop" value="Ja"
+                                         action="#{watchElementeBean.bestaetige}"/>
+                        <h:commandButton styleClass="w-btn" value="Nein"
+                                         action="#{watchElementeBean.brichAb}"/>
+                    </div>
+                </h:panelGroup>
+                <div class="w-hint">An Ort und Stelle statt als Dialog — ein modales Fenster laesst
+                    sich auf der Uhr kaum wieder schliessen.</div>
+            </div>
+
+            <!-- 10 — was NICHT geht. Ein Nachschlagewerk, das die Grenzen verschweigt, schickt den
+                 naechsten Bauenden in dieselbe Sackgasse. -->
+            <div class="w-card w-card-warn">
+                <div class="w-label">10 · Was auf der Uhr NICHT geht</div>
+                <ul class="w-list">
+                    <li><b>Kein Browser auf der Uhr.</b> watchOS hat bis heute keinen — auch 26 nicht.
+                        Diese Seiten laufen auf dem <i>Telefon</i>; auf die Uhr kommt nur, was eine
+                        Mitteilung tragen kann.</li>
+                    <li><b>Standort:</b> im Browser der Uhr nicht verfuegbar, auf dem Telefon nur
+                        ueber HTTPS und mit Nachfrage. Fuer eine Erfassung im Vorbeigehen unbrauchbar.</li>
+                    <li><b>Vibration:</b> die Vibration-API kennt Safari nicht. Eine Rueckmeldung
+                        muss sichtbar sein, nicht spuerbar.</li>
+                    <li><b>Alarm/Erinnerung:</b> geht nur als Web Push mit erteilter Erlaubnis, und
+                        die Mitteilung kommt vom Telefon auf die Uhr — nicht umgekehrt.</li>
+                    <li><b>Dauerhafter Bildschirm:</b> die Seite wird eingefroren, sobald das Telefon
+                        sperrt. Eine laufende Uhr im Bild muss beim Zurueckkommen neu rechnen.</li>
+                </ul>
+            </div>
+        </h:form>
+    </ui:define>
+</ui:composition>

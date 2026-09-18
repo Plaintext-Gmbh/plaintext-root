@@ -201,6 +201,7 @@
         <module>plaintext-root-webapp</module>
 
         <!-- geteilte Architektur-/Lint-Tests (via Surefire dependenciesToScan in Consumern nutzbar) -->
+        <module>plaintext-root-watch</module>
         <module>plaintext-root-archtests</module>
 
         <!-- admin -->
@@ -352,6 +353,11 @@
             <dependency>
                 <groupId>ch.plaintext</groupId>
                 <artifactId>plaintext-admin-notifications</artifactId>
+                <version>${plaintext-root.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.plaintext</groupId>
+                <artifactId>plaintext-root-watch</artifactId>
                 <version>${plaintext-root.version}</version>
             </dependency>
 
