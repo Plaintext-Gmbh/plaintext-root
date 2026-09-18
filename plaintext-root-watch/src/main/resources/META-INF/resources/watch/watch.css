@@ -237,3 +237,69 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 .w-list li {
     margin-bottom: 6px;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Eintragszeile (Karte 1246). Ein Modul zeigt hier eine Liste von Eintraegen,
+   die an Ort und Stelle aenderbar sind — Zeiterfassung ist der erste Fall,
+   Alkohol und Kalenderhost folgen. Deshalb steht der Stil hier und nicht im
+   Fachmodul: zwei Stilquellen fuer dieselbe Zeile driften auseinander.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Ein Eintrag als Block, durch eine Linie getrennt statt durch Abstand: auf
+   einer schmalen Anzeige verschwimmen sonst zwei Zeilen zu einer. */
+.w-entry {
+    padding: 10px 0;
+    border-top: 1px solid #2a2a32;
+}
+
+.w-entry:first-of-type {
+    border-top: none;
+}
+
+/* Zeitfeld. Schmaler als .w-field, weil zwei davon nebeneinander stehen —
+   aber nie unter 16px Schrift, sonst zoomt iOS beim Antippen hinein. */
+.w-time {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Der Strich zwischen von und bis. Kein Rand, keine Flaeche: er ist
+   Beschriftung, kein Bedienelement, und darf keine Tippfläche wegnehmen. */
+.w-dash {
+    flex: 0 0 auto;
+    padding: 0 8px;
+    color: #8a8a94;
+    font-size: 16px;
+}
+
+/* Das Label nimmt den Platz, der uebrig bleibt, und bricht nicht um —
+   lieber abgeschnitten als eine Zeile, die den Eintrag doppelt hoch macht. */
+.w-entry-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 16px;
+}
+
+.w-entry-total {
+    flex: 0 0 auto;
+    padding: 0 10px;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    color: #c7c7cf;
+}
+
+/* Kleiner Knopf fuer eine Nebenhandlung (loeschen). Bleibt bei 44px Hoehe —
+   klein ist er nur in der Breite; eine flachere Trefferflaeche wird verfehlt. */
+.w-btn-small {
+    flex: 0 0 auto;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 12px;
+    font-size: 18px;
+}
