@@ -51,6 +51,12 @@ public class WatchFrameBean implements Serializable {
     /**
      * preRenderView entry point. Loads the remembered page on a real page load and skips
      * postbacks — otherwise every button press would re-read and re-write the position.
+     *
+     * <p>It also guards the page that is actually being rendered. {@code available()} used to
+     * steer only the navigation; a page switched off was still reachable by typing its address.
+     * Measured on PROD: {@code /watch/elemente.html} answered 200 with the full gallery while
+     * the user's setting had it off. "Switched off" has to mean "not there", otherwise the
+     * setting promises something it does not keep.</p>
      */
     public void seitenaufruf() {
         FacesContext fc = FacesContext.getCurrentInstance();
@@ -60,6 +66,18 @@ public class WatchFrameBean implements Serializable {
         // Die Aufloesung id -> Seite liegt hier und nicht im Zustandsdienst: der Dienst darf das
         // Seitenregister nicht kennen, sonst schliesst sich der Kreis ueber WatchTestPage, die
         // ihn selbst befragt (Spring: BeanCurrentlyInCreationException).
+        WatchPage angefragt = angefragteSeite(fc).orElse(null);
+        if (angefragt != null) {
+            // Direkt aufgerufen: nur zeigen, wenn die Seite wirklich verfuegbar ist.
+            if (angefragt.available()) {
+                aktuelle = angefragt;
+                zustand.merkeSeite(aktuelle.id());
+                return;
+            }
+            log.info("Watch: Seite {} ist abgeschaltet, leite auf die erste um", angefragt.id());
+            wechsle(registry.erste().orElse(null));
+            return;
+        }
         aktuelle = zustand.gemerkteSeitenId()
                 .flatMap(registry::byId)
                 .filter(WatchPage::available)
@@ -68,6 +86,23 @@ public class WatchFrameBean implements Serializable {
         if (aktuelle != null) {
             zustand.merkeSeite(aktuelle.id());
         }
+    }
+
+    /**
+     * Which registered page the current request is rendering, if any.
+     *
+     * <p>Matched on the view id rather than on a parameter: the address is what the browser
+     * really asked for, and there is nothing a caller could set to name a different page.</p>
+     */
+    private java.util.Optional<WatchPage> angefragteSeite(FacesContext fc) {
+        if (fc == null || fc.getViewRoot() == null) {
+            return java.util.Optional.empty();
+        }
+        String view = fc.getViewRoot().getViewId();
+        if (view == null) {
+            return java.util.Optional.empty();
+        }
+        return registry.alle().stream().filter(p -> view.equals(p.view())).findFirst();
     }
 
     public void weiter() {
