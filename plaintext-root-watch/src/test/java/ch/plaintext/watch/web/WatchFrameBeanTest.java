@@ -129,6 +129,49 @@ class WatchFrameBeanTest {
     }
 
     @Test
+    @DisplayName("Eine abgeschaltete Seite wird nicht gezeigt, auch nicht bei Direktaufruf")
+    void abgeschalteteSeiteNichtDirektErreichbar() {
+        // Ohne FacesContext kann der Direktaufruf nicht nachgestellt werden; geprueft wird
+        // die Regel dahinter: was nicht verfuegbar ist, wird nicht zur aktuellen Seite.
+        WatchPage aus = new WatchPage() {
+            @Override
+            public String id() {
+                return "aus";
+            }
+
+            @Override
+            public String title() {
+                return "Aus";
+            }
+
+            @Override
+            public String view() {
+                return "/watch/aus.xhtml";
+            }
+
+            @Override
+            public int order() {
+                return 50;
+            }
+
+            @Override
+            public boolean available() {
+                return false;
+            }
+        };
+        ReflectionTestUtils.setField(bean, "registry",
+                new WatchPageRegistry(List.of(seite("home", 0), aus)));
+        when(zustand.gemerkteSeitenId()).thenReturn(Optional.of("aus"));
+
+        bean.seitenaufruf();
+
+        assertEquals("home", bean.getAktuelle().id(),
+                "Eine abgeschaltete Seite darf nicht die aktuelle werden");
+        assertTrue(bean.getSeiten().stream().noneMatch(p -> "aus".equals(p.id())),
+                "Sie gehoert auch nicht in die Seitenliste");
+    }
+
+    @Test
     @DisplayName("Ohne verfuegbare Seiten bewegt sich nichts und es wird nichts gemerkt")
     void ohneSeitenKeineBewegung() {
         ReflectionTestUtils.setField(bean, "registry", new WatchPageRegistry(List.of()));
