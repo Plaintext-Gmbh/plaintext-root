@@ -26,7 +26,10 @@ class ClaudeSummaryBackingBeanTest {
 
     @BeforeEach
     void setUp() {
-        bean = new ClaudeSummaryBackingBean(anforderungService);
+        // Aufbau wie Spring: Feldinjektion statt Konstruktor (Karte 1269) — bei einer
+        // Deserialisierung laeuft kein Konstruktor, ein final-Feld bliebe dauerhaft null.
+        bean = new ClaudeSummaryBackingBean();
+        bean.setAnforderungService(anforderungService);
     }
 
     // --- init ---
