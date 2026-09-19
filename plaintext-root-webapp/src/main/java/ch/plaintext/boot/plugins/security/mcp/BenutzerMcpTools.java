@@ -18,8 +18,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springaicommunity.mcp.annotation.McpTool;
-import org.springaicommunity.mcp.annotation.McpToolParam;
+import org.springframework.ai.mcp.annotation.McpTool;
+import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -92,7 +92,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnClass(name = "org.springaicommunity.mcp.annotation.McpTool")
+@ConditionalOnClass(name = "org.springframework.ai.mcp.annotation.McpTool")
 public class BenutzerMcpTools {
 
     /** Identifier in the header of the file. An import checks it instead of digesting arbitrary JSON. */

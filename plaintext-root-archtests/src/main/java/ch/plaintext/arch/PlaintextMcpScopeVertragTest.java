@@ -92,7 +92,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class PlaintextMcpScopeVertragTest {
 
-    private static final String MCP_TOOL = "org.springaicommunity.mcp.annotation.McpTool";
+    private static final String MCP_TOOL = "org.springframework.ai.mcp.annotation.McpTool";
     private static final String PRE_AUTHORIZE = "org.springframework.security.access.prepost.PreAuthorize";
 
     /** Location expected of the contract file in the consumer's test classpath. */

@@ -8,8 +8,8 @@ package ch.plaintext.apitoken;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springaicommunity.mcp.annotation.McpTool;
-import org.springaicommunity.mcp.annotation.McpToolParam;
+import org.springframework.ai.mcp.annotation.McpTool;
+import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -60,7 +60,7 @@ import java.util.Set;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnClass(name = "org.springaicommunity.mcp.annotation.McpTool")
+@ConditionalOnClass(name = "org.springframework.ai.mcp.annotation.McpTool")
 public class ApiTokenMcpTools {
 
     /**

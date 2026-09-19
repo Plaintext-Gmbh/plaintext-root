@@ -4,7 +4,7 @@
 package ch.plaintext.secrets.mcp;
 
 import org.junit.jupiter.api.Test;
-import org.springaicommunity.mcp.annotation.McpTool;
+import org.springframework.ai.mcp.annotation.McpTool;
 
 import java.lang.reflect.Method;
 import java.util.Set;
