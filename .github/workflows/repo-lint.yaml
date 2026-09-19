@@ -65,9 +65,28 @@ concurrency:
 jobs:
   repo-lint:
     name: Repo-Lint
-    runs-on: ubuntu-latest
-    # Fork-PRs: siehe Kopf. Ohne diese Zeile liefe der Job mit leerem Token und waere rot aus
-    # einem Grund, den der Einreichende nicht beheben kann.
+    # ── SELF-HOSTED, OBWOHL DIESES REPO OEFFENTLICH IST (Karte 1270, 19.09.2026) ─────────────
+    #
+    # Das ist normalerweise die falsche Kombination: an einem oeffentlichen Repo darf ein
+    # Fremd-PR keinen Runner im eigenen Netz bekommen. HIER traegt es, und zwar wegen der
+    # `if`-Bedingung direkt darunter, nicht wegen einer Abwaegung.
+    #
+    # Die Bedingung steht am JOB. Ein Fork-PR laesst ihn gar nicht erst entstehen — es wird
+    # kein Runner angefordert, kein Schritt ausgefuehrt, kein Checkout gemacht. Fremder Code
+    # erreicht die Maschine also nicht "eingeschraenkt", sondern ueberhaupt nicht. Sie war
+    # ohnehin schon da: der Job braucht MVN_DEPLOY_TOKEN, und den gibt GitHub einem Fork-PR
+    # nicht heraus — die Bedingung macht diese Grenze bloss ausdruecklich.
+    #
+    # WER DIESE BEDINGUNG ENTFERNT ODER AUFWEICHT, MUSS `runs-on` WIEDER AUF ubuntu-latest
+    # STELLEN. Beides gehoert zusammen.
+    #
+    # Der Anlass: am 19.09.2026 war das Actions-Kontingent der Org zu 100 Prozent aufgebraucht.
+    # GitHub rundet jeden Job einzeln auf die volle Minute auf; dieser hier lief 40-mal im
+    # Zyklus und kostete 44 Minuten. Der eigene Runner steht derweil zu 99,87 Prozent leer.
+    runs-on: ['self-hosted', 'nas']
+    # Fork-PRs: siehe Kopf und den Absatz oben. Ohne diese Zeile liefe der Job mit leerem Token
+    # und waere rot aus einem Grund, den der Einreichende nicht beheben kann — und er liefe auf
+    # dem Runner im eigenen Netz.
     if: >-
       github.event_name != 'pull_request'
       || github.event.pull_request.head.repo.full_name == github.repository
