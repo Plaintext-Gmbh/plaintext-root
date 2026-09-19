@@ -155,21 +155,40 @@ echo "Repo: $REPOSILITE_BASIS"
 echo "Modulliste aus: $QUELLE"
 kopf
 
-DA=0; FEHLT=0; FEHLLISTE=""
+# Erreichbarkeitsprobe VOR der Zaehlung. Ohne sie wird ein Netzhaenger zu einem
+# Befund: beim Vollzug ueber alle 163 Tags am 19.09.2026 meldete genau ein Tag
+# (1.599.0) "0 von 49 da" — die Nachmessung eine Minute spaeter ergab 49 von 49.
+# Ein Waechter, der bei jedem Schluckauf Alarm schlaegt, wird abgeschaltet.
+PROBE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 --retry 3 --retry-delay 5 \
+         "$REPOSILITE_BASIS/$GRUPPE_PFAD/$PARENT_ID/maven-metadata.xml")"
+if [ "$PROBE" != "200" ]; then
+  echo "Reposilite nicht erreichbar (Vorprobe auf maven-metadata.xml gab $PROBE)."
+  echo "Kein Befund und keine Entwarnung — hier wird nichts behauptet."
+  exit 0
+fi
+
+DA=0; FEHLT=0; UNKLAR=0; FEHLLISTE=""
 while IFS='|' read -r aid endung; do
   [ -n "$aid" ] || continue
   url="$REPOSILITE_BASIS/$GRUPPE_PFAD/$aid/$VERSION/$aid-$VERSION.$endung"
   code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 --retry 2 --retry-delay 3 -I "$url")"
-  if [ "$code" = "200" ]; then
-    DA=$((DA + 1))
-  else
-    FEHLT=$((FEHLT + 1))
-    FEHLLISTE="$FEHLLISTE  $code  $aid-$VERSION.$endung"$'\n'
-  fi
+  case "$code" in
+    200) DA=$((DA + 1)) ;;
+    404) FEHLT=$((FEHLT + 1))
+         FEHLLISTE="$FEHLLISTE  404  $aid-$VERSION.$endung"$'\n' ;;
+    # Nur 404 heisst "fehlt". 000 (Verbindung weg), 5xx, 429 heissen "gerade nicht
+    # feststellbar" — daraus darf kein halbes Release werden.
+    *)   UNKLAR=$((UNKLAR + 1))
+         echo "  $code bei $aid-$VERSION.$endung — weder da noch weg, nicht gewertet." ;;
+  esac
 done <<< "$ZU_PRUEFEN"
 
-GESAMT=$((DA + FEHLT))
-echo "Reposilite: $DA von $GESAMT Dateien da, $FEHLT fehlen."
+GESAMT=$((DA + FEHLT + UNKLAR))
+echo "Reposilite: $DA von $GESAMT Dateien da, $FEHLT fehlen, $UNKLAR unklar."
+if [ "$UNKLAR" -gt 0 ] && [ "$FEHLT" -eq 0 ]; then
+  echo "Nicht abschliessend beurteilbar ($UNKLAR Antworten unklar) — kein Befund."
+  exit 0
+fi
 
 # ── optional dasselbe gegen GitHub Packages ───────────────────────────────────
 #  WICHTIG: nur 404 heisst "fehlt". maven.pkg.github.com antwortet auf HEAD und auf
