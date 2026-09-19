@@ -39,9 +39,10 @@
 #                       ein vollstaendiger root-Release-Lauf braucht vom Tag bis
 #                       zum letzten Upload 14 min (1.699.0: 15:06:35 -> 15:20:51).
 #
-#  Die Modulliste kommt aus der pom.xml des Arbeitsverzeichnisses, NICHT aus einer
-#  gepflegten Liste — eine gepflegte Liste veraltet beim naechsten neuen Modul und
-#  meldet dann Vollstaendigkeit, die es nicht gibt.
+#  Die Modulliste kommt aus der pom.xml DES GEPRUEFTEN TAGS (`git show <tag>:pom.xml`),
+#  nicht aus einer gepflegten Liste und nicht aus dem Arbeitsverzeichnis. Eine
+#  gepflegte Liste veraltet beim naechsten neuen Modul; das Arbeitsverzeichnis
+#  faerbt umgekehrt die Vergangenheit rot, sobald ein Modul dazukommt.
 # ══════════════════════════════════════════════════════════════════════════════
 set -uo pipefail
 
@@ -101,21 +102,38 @@ case "$VERSION" in
     ;;
 esac
 
-# ── Modulliste aus der pom.xml, plus das Parent-Artefakt selbst ────────────────
-PARENT_ID="$(sed -n '/<\/parent>/,$p' pom.xml | grep -m1 -oE '<artifactId>[^<]+' | sed 's/<artifactId>//')"
+# ── Modulliste — AUS DEM STAND DES TAGS, nicht aus dem Arbeitsverzeichnis ──────
+#  Das ist keine Feinheit. Die erste Fassung las immer die aktuelle pom.xml und
+#  meldete daraufhin 27 alte Releases (1.662.0 bis 1.688.0) als halb — sie kennen
+#  `plaintext-root-watch` nicht, weil es das Modul damals noch nicht gab. Ein
+#  Waechter, der bei jedem neuen Modul die gesamte Vergangenheit rot faerbt, wird
+#  nach dem zweiten Fehlalarm abgeschaltet und prueft dann gar nichts mehr.
+#  Also: liegt ein Tag mit dieser Version vor, kommt die Modulliste aus dem Tag.
+if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null 2>&1; then
+  QUELLE="$VERSION"
+  hole() { git show "$VERSION:$1" 2>/dev/null; }
+else
+  QUELLE="Arbeitsverzeichnis"
+  hole() { cat "$1" 2>/dev/null; }
+fi
+
+WURZEL="$(hole pom.xml)"
+[ -n "$WURZEL" ] || { echo "release-vollstaendig: pom.xml aus '$QUELLE' nicht lesbar." >&2; exit 1; }
+
+PARENT_ID="$(printf '%s' "$WURZEL" | sed -n '/<\/parent>/,$p' | grep -m1 -oE '<artifactId>[^<]+' | sed 's/<artifactId>//')"
 [ -n "$PARENT_ID" ] || { echo "release-vollstaendig: artifactId aus pom.xml nicht lesbar." >&2; exit 1; }
 
-MODULE="$(grep -oE '<module>[^<]+' pom.xml | sed 's/<module>//')"
+MODULE="$(printf '%s' "$WURZEL" | grep -oE '<module>[^<]+' | sed 's/<module>//')"
 [ -n "$MODULE" ] || { echo "release-vollstaendig: keine <module>-Eintraege in pom.xml." >&2; exit 1; }
 
 # artefakt|dateiendung  — pom-Module haben kein Jar
 ZU_PRUEFEN="$(printf '%s|pom\n' "$PARENT_ID")"
 for m in $MODULE; do
-  mpom="$m/pom.xml"
-  [ -f "$mpom" ] || { echo "release-vollstaendig: $mpom fehlt im Checkout." >&2; exit 1; }
-  aid="$(sed -n '/<\/parent>/,$p' "$mpom" | grep -m1 -oE '<artifactId>[^<]+' | sed 's/<artifactId>//')"
+  MPOM="$(hole "$m/pom.xml")"
+  [ -n "$MPOM" ] || { echo "release-vollstaendig: $m/pom.xml fehlt in '$QUELLE'." >&2; exit 1; }
+  aid="$(printf '%s' "$MPOM" | sed -n '/<\/parent>/,$p' | grep -m1 -oE '<artifactId>[^<]+' | sed 's/<artifactId>//')"
   [ -n "$aid" ] || aid="$m"
-  pack="$(grep -m1 -oE '<packaging>[^<]+' "$mpom" | sed 's/<packaging>//')"
+  pack="$(printf '%s' "$MPOM" | grep -m1 -oE '<packaging>[^<]+' | sed 's/<packaging>//')"
   if [ "$pack" = "pom" ]; then
     ZU_PRUEFEN="$ZU_PRUEFEN
 $aid|pom"
@@ -131,6 +149,7 @@ kopf() { printf '%s\n' "──────────────────�
 kopf
 echo "Release-Vollstaendigkeit  Version $VERSION"
 echo "Repo: $REPOSILITE_BASIS"
+echo "Modulliste aus: $QUELLE"
 kopf
 
 DA=0; FEHLT=0; FEHLLISTE=""
