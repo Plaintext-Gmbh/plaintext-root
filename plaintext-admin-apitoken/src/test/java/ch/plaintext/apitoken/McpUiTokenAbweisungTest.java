@@ -25,8 +25,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * instead, and {@link McpBearerTokenFilter} enforces it.</p>
  *
  * <p>The counter-checks matter as much as the check: a normal API token and a machine token
- * <b>without</b> a name must keep working. A rule that rejected those would take the clock, the
- * Juriwagen and {@code minten} off the air (card 305).</p>
+ * <b>without</b> a name must keep working. A rule that rejected those would take the Juriwagen
+ * and {@code minten} off the air (card 305).</p>
+ *
+ * <p><b>Card 1279 (19.09.2026):</b> that sentence used to name "the clock" first. The old
+ * time-tracking clock at {@code /nosec/uhr.html} is gone — its link generation with card 1277,
+ * the page itself with this card. What replaced it is the watch page behind the sign-in, which
+ * takes its identity from the security context and not from a token in a URL. The counter-check
+ * below no longer uses that token as its example.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -51,8 +57,19 @@ class McpUiTokenAbweisungTest {
     void normalerTokenBleibt() {
         // Ohne diese Messung belegt der Test oben nichts — eine Pruefung, die IMMER true
         // liefert, haette jeden API-Token im Haus abgeschaltet.
+        //
+        // KARTE 1279 (19.09.2026): hier stand als zweites Beispiel "Zeiterfassung-Uhr". Die
+        // Aussage war nie falsch — der Name traegt kein ui:-Praefix, wird also nicht gefangen.
+        // Als BEISPIEL fuehrte er aber in die Irre: er zeigte einen Token, der weiterhin am API
+        // gilt, so als waere das ein erwuenschter Zustand. Karte 1275 hat gemessen, dass genau
+        // dieser Token mit scope WRITE am /mcp ein schreibender Vollzugang auf die ganze
+        // Anwendung war, nicht nur auf die Uhr. Ausgestellt wird er seit Karte 1277 nicht mehr,
+        // die zugehoerige Seite ist seit Karte 1279 weg.
+        //
+        // Ein Test, der einen stillgelegten Token als Muster fuer "so soll es sein" fuehrt, ist
+        // eine Falle fuer den naechsten Leser. Deshalb zwei Namen, die es wirklich noch gibt.
         assertFalse(McpBearerTokenFilter.istNurFuerDieOberflaeche("Mein API-Token"));
-        assertFalse(McpBearerTokenFilter.istNurFuerDieOberflaeche("Zeiterfassung-Uhr"));
+        assertFalse(McpBearerTokenFilter.istNurFuerDieOberflaeche("mcpZorin01"));
     }
 
     @Test
