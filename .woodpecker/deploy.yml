@@ -354,6 +354,51 @@ steps:
         echo "  fuehrt die Unit-Tests mit und braucht ihn (M1: build once)." >&2;
         exit 1'
 
+      # ── 6b. Halbe Releases der Vergangenheit (Karte 1281) ──────────────────────
+      # Der Release-Lauf laedt die 26 Modul-Artefakte NACHEINANDER hoch (kein
+      # deployAtEnd, siehe pom.xml:626). Wird er mittendrin abgeschossen, liegt ein
+      # TEIL im Paket-Repo. Das sieht von aussen aus wie ein fertiges Release:
+      # `plaintext-root-parent` ist da, Renovate schlaegt die Version vor, `mvn`
+      # findet sie — bis jemand das fehlende Modul braucht.
+      #
+      # GEMESSEN am 19.09.2026 (Karte 1281):
+      #   1.698.0  Lauf 228, `killed` bei Modul  5/26 ->  9 von 51 Dateien oben
+      #   1.700.0  Lauf 234, `killed` bei Modul 25/26 -> 47 von 51 Dateien oben
+      # Beide Laeufe wurden von Woodpecker abgeschossen, weil der naechste
+      # master-Push eintraf (228 starb 23 s nach dem Anlegen von 230, 234 starb 25 s
+      # nach dem Anlegen von 236). Die Ursache sitzt in der Repo-Einstellung
+      # `cancel_previous_pipeline_events` — ein Schritt kann sie nicht heilen.
+      #
+      # WARUM DIESE PRUEFUNG HIER VORNE STEHT UND NICHT NUR HINTEN:
+      # Ein abgeschossener Lauf fuehrt KEINE weiteren Schritte aus. `aufraeumen`
+      # steht auf `status: [success, failure]` und lief bei 228/234 gar nicht
+      # (Status `canceled`). Eine Pruefung am Ende DESSELBEN Laufs kann den Fall
+      # also grundsaetzlich nicht sehen. Der naechste Lauf kann es — und den gibt
+      # es immer, denn er ist es ja, der den vorigen abgeschossen hat.
+      #
+      # Tags juenger als MINDESTALTER_S werden uebersprungen: deren Release koennte
+      # noch laufen. 1800 s mit Reserve auf die gemessenen 14 min (1.699.0: Tag
+      # 15:06:35 UTC, letzter Upload 15:20:51 UTC).
+      #
+      # ABSICHTLICH OHNE PRUEFE_GITHUB: dieser Waechter zaehlt nur die Reposilite.
+      # In GitHub Packages stehen (Stand 19.09.2026) noch 29 halbe Paketversionen aus
+      # 1.698.0/1.700.0; sie lassen sich nicht entfernen, weil github.mvn-deploy-pat
+      # laut Vault-Notiz "bewusst OHNE delete:packages" ausgestellt ist. Mit
+      # PRUEFE_GITHUB=1 wuerde dieser Schritt JEDEN root-Release blockieren, bis das
+      # aufgeraeumt ist. Sobald die 29 Versionen weg sind: PRUEFE_GITHUB: "1" hier
+      # ergaenzen — der Schritt `vollstaendigkeit` unten prueft GitHub Packages schon
+      # heute, nur eben erst nach dem Release und nur fuer die neue Version.
+      #
+      # Laufzeit gemessen 19.09.2026: 42,8 s fuer --letzte 10 (510 HEAD-Anfragen)
+      # aus dem WLAN; auf dem Runner im LAN weniger.
+      - >-
+        case "$CI_COMMIT_MESSAGE" in
+          *"[halbe-release-ok]"*)
+            echo "[halbe-release-ok] gesetzt — Vollstaendigkeitspruefung uebersprungen." ;;
+          *)
+            bash scripts/release-vollstaendig.sh --letzte 10 ;;
+        esac
+
       # ── 7. Release ─────────────────────────────────────────────────────────────
       # From here on CHARACTER FOR CHARACTER the step "Build & Deploy" of the GitHub pipeline.
       # MVN_TEST_FLAG: unit tests run along in the ONLY build (ITs separately). The marker
@@ -409,3 +454,36 @@ steps:
       # A step of its own, because a `status:` filter exists only at step level; it runs in a
       # new container and therefore sees neither /tmp/ci nor ~/.ssh of the release step.
       - 'rm -f /root/.m2/settings.xml && echo "Geteiltes Volume geprueft: kein settings.xml in /root/.m2."'
+
+  # Zweite Haelfte der Vollstaendigkeitspruefung (Karte 1281): das eben
+  # veroeffentlichte Release gegen beide Paket-Repos zaehlen.
+  #
+  # WAS DIESER SCHRITT KANN: einen Upload, der einzeln scheitert oder den der
+  # Reactor mit --fail-at-end uebergeht, obwohl der Lauf weiterlaeuft.
+  # WAS ER NICHT KANN: einen ABGESCHOSSENEN Lauf. `status:` kennt nur success und
+  # failure; bei `killed` wird der Schritt `canceled` und laeuft nie (belegt an den
+  # Laeufen 228 und 234, wo genau das mit `aufraeumen` passiert ist). Dafuer steht
+  # die Pruefung 6b am Anfang des naechsten Laufs.
+  #
+  # Eigener Container, also eigener git-Stand: `git describe --tags` zeigt hier den
+  # Tag, den der Release-Schritt gerade gepusht hat — das ist die richtige Version.
+  vollstaendigkeit:
+    image: maven:3.9-eclipse-temurin-25
+    when:
+      - status: [success, failure]
+    environment:
+      PRUEFE_GITHUB: "1"
+      GITHUB_TOKEN:
+        from_secret: mvn_deploy_token
+    commands:
+      # NICHT ueber /tmp/deploy-target entscheiden: das schreibt der Release-Schritt
+      # in SEINEN Container, und der existiert hier nicht mehr (nur das Workspace-
+      # Volume wird geteilt). Eine Markierung ins Workspace zu legen waere schlimmer
+      # — `do_release` macht `git add -A`, die Datei landete im Release-Commit.
+      # Also aus der Umgebung entscheiden, genau wie Schritt 0 es tut.
+      - >-
+        if [ "$CI_PIPELINE_EVENT" = "manual" ] && [ "${deploy_target:-ci-only}" != "release-only" ]; then
+          echo "deploy_target=${deploy_target:-ci-only} — kein Release, nichts zu pruefen."; exit 0;
+        fi;
+        git config --global --add safe.directory "$PWD" || true;
+        bash scripts/release-vollstaendig.sh
