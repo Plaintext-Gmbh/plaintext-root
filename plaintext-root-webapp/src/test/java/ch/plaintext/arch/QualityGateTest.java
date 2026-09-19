@@ -87,7 +87,7 @@ class QualityGateTest {
                             + "ohne zu messen (.woodpecker/analyse-freigabe.sh).\n"
                             + "Faellt der Cron regelmaessig aus, ist DAS der Befund, nicht dieser Test.\n");
                 }
-            } catch (java.time.format.DateTimeParseException e) {
+            } catch (java.time.format.DateTimeParseException _) {
                 fail("Der Zeitstempel `checked=" + geprueft + "` ist nicht lesbar — dann sagt das "
                         + "Gate nicht, wie alt seine Aussage ist, und ein OK darin ist wertlos.");
             }
@@ -116,7 +116,7 @@ class QualityGateTest {
     private static int parseInt(String s) {
         try {
             return Integer.parseInt(s.trim());
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             return 0;
         }
     }
