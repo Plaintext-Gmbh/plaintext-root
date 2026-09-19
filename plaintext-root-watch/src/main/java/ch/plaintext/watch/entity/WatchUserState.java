@@ -47,6 +47,12 @@ public class WatchUserState extends SuperModel {
      * @deprecated use {@link #abgeschalteteSeiten}
      */
     @Deprecated(since = "1.694")
+    // java:S1133 ("remove this deprecated code someday") gilt hier bewusst nicht: das Feld ist
+    // eine Spalte mit Daten drin. Es zu entfernen hiesse, die Spalte zu loeschen — und damit den
+    // alten Wert, der einen Rueckbau auf den Stand vor 1257/1260 ueberhaupt erst moeglich macht.
+    // Wegzunehmen ist es erst, wenn dieser Rueckweg nicht mehr gebraucht wird; bis dahin ist das
+    // Feld kein Rest, sondern Absicht.
+    @SuppressWarnings("java:S1133")
     @Column(name = "testseite_aktiv", nullable = false)
     private boolean testseiteAktiv = false;
 

@@ -31,12 +31,25 @@ import java.util.List;
  * <p>The switches are the <b>same</b> selection the watch overview operates (card 1260) — one
  * mechanism, two places to reach it.</p>
  *
+ * <h2>Why field injection stays here (java:S6813, card 1273)</h2>
+ *
+ * <p>This bean is <b>session-scoped and serializable</b> — the one case in which constructor
+ * injection is the wrong answer. The services are {@code transient}, because a Spring bean has
+ * no business in a serialized session. On a deserialization <b>no constructor runs</b>: were the
+ * fields {@code private final} and set through the constructor, they would stay {@code null}
+ * forever and nobody could set them afterwards — a {@code NotSerializableException} would turn
+ * into a permanent {@code NullPointerException}. With field injection the context fills them in
+ * again. This has already happened on a watch bean once (cards 915/1246), and guild goes the
+ * same way for the same reason (card 1255, {@code BeitragsartKontoBackingBean}). Rebuilding this
+ * would not be a formality but a defect.</p>
+ *
  * @author info@plaintext.ch
  * @since 2026
  */
 @Component("watchSettingsBean")
 @Scope("session")
 @Slf4j
+@SuppressWarnings("java:S6813") // begründet im Klassenkommentar oben — nicht pauschal umbauen
 public class WatchSettingsBean implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -83,13 +96,11 @@ public class WatchSettingsBean implements Serializable {
     private void ladeSchalter() {
         List<SeitenSchalter> neu = new ArrayList<>();
         for (WatchPage s : registry.alle()) {
-            // Was die Rollen ohnehin verbieten, wird nicht als Schalter angeboten: ein Haken,
-            // der nichts bewirkt, ist schlimmer als kein Haken.
-            if (!sicherVerfuegbar(s)) {
-                continue;
-            }
-            // Die Uebersicht selbst ist nicht abschaltbar — sie ist der Weg zu den Schaltern.
-            if (!s.imUmlauf()) {
+            // Zwei Gruende, eine Seite nicht als Schalter anzubieten, und beide in einer
+            // Bedingung (java:S135): Was die Rollen ohnehin verbieten, gehoert nicht als Haken
+            // auf die Maske — ein Haken, der nichts bewirkt, ist schlimmer als kein Haken. Und
+            // die Uebersicht selbst ist nicht abschaltbar, sie ist der Weg zu den Schaltern.
+            if (!sicherVerfuegbar(s) || !s.imUmlauf()) {
                 continue;
             }
             neu.add(new SeitenSchalter(s.id(), s.title(), s.order(), zustand.seiteAktiv(s.id())));

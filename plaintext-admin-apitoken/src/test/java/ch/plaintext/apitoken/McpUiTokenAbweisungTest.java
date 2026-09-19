@@ -9,6 +9,7 @@ package ch.plaintext.apitoken;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -70,7 +71,7 @@ class McpUiTokenAbweisungTest {
     @Test
     @DisplayName("Der Praefix steht an einer Stelle, die beide Seiten lesen")
     void praefixIstGeteilt() {
-        assertTrue("ui:".equals(IApiTokenService.UI_TOKEN_NAME_PREFIX),
+        assertEquals("ui:", IApiTokenService.UI_TOKEN_NAME_PREFIX,
                 "aendert er sich, muessen Aussteller und Filter gemeinsam umziehen");
     }
 }

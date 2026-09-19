@@ -48,9 +48,13 @@ class WatchDirektaufrufTest {
 
     private static WatchPage seite(String id, int order) {
         return new WatchPage() {
+            @Override
             public String id() { return id; }
+            @Override
             public String title() { return id; }
+            @Override
             public String view() { return "/watch/" + id + ".xhtml"; }
+            @Override
             public int order() { return order; }
         };
     }

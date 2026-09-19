@@ -25,7 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -178,7 +178,7 @@ class WatchTokenAnmeldeControllerTest {
 
         var neu = request.getSession(false);
         assertNotNull(neu);
-        assertFalse(alteKennung.equals(neu.getId()),
+        assertNotEquals(alteKennung, neu.getId(),
                 "die vorher untergeschobene Sitzung darf nicht die angemeldete werden");
         assertNull(neu.getAttribute("fremd"));
     }
