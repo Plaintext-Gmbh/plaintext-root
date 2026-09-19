@@ -34,7 +34,7 @@
                     <div class="w-row">
                         <span class="w-value w-sm">#{e.titel}</span>
                         <h:commandButton styleClass="w-btn #{e.aktiv ? 'w-btn-go' : 'w-btn-stop'}"
-                                         value="#{e.schalterText}"
+                                         value="#{e.aktiv ? 'an' : 'aus'}"
                                          action="#{watchUebersichtBean.schalte(e.id)}"/>
                     </div>
                 </ui:repeat>

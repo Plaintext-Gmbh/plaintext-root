@@ -85,12 +85,23 @@ public class WatchUebersichtBean implements Serializable {
         FacesMessages.info(neu ? "an" : "aus");
     }
 
-    /** One row. Only what the small display shows. */
+    /**
+     * One row. Only what the small display shows.
+     *
+     * <h2>Why there is no helper method on this record</h2>
+     *
+     * <p>EL resolves a record through {@code RecordELResolver}, and that resolver knows
+     * <b>only the record components</b> — an added {@code getSchalterText()} is simply not a
+     * readable property, and the page dies with
+     * {@code PropertyNotFoundException} → HTTP 500 at render time. Measured on 19.09.2026: the
+     * page-walkthrough (AllPagesSmokePlaywrightIT) caught exactly that on
+     * {@code /watch/elemente.xhtml}; nothing in the unit tests did, because in Java the method
+     * is perfectly callable.</p>
+     *
+     * <p>Whatever the view needs is therefore a component here, or it is computed in the view.
+     * {@code WatchUebersichtEintragVertragTest} holds the expressions in the page against the
+     * components of this record.</p>
+     */
     public record Eintrag(String id, String titel, boolean aktiv) implements Serializable {
-
-        /** Label of the button: what a tap will do, not what the state is. */
-        public String getSchalterText() {
-            return aktiv ? "an" : "aus";
-        }
     }
 }
