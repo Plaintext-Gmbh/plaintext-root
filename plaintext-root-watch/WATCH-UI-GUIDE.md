@@ -106,7 +106,9 @@ Everything else is one column. On a 40mm screen two columns of text are unreadab
 
 ### Buttons
 
-`.w-btn` is full width and at least 44px tall — Apple's minimum for a tap that reliably hits.
+`.w-btn` is full width and at least `--w-tap` tall. That variable is **56px** since card 1276,
+not Apple's 44px: 44 is the floor for a tap that reliably hits, and on a watch the finger
+covers the button it is aiming at. Do not hard-code either number — use `var(--w-tap)`.
 `.w-btn-go` (green) and `.w-btn-stop` (red) carry meaning, but **always repeat that meaning in
 the label**: colour alone fails for colour-blind users and in bright sunlight.
 
@@ -120,6 +122,24 @@ and `<select>` are large, familiar, and work with the Digital Crown.
 
 `font-size` must stay at 16px or above. Below that, iOS zooms the page when the field takes
 focus and the user has to pinch back out.
+
+Since card 1276 no size is written as a number in the stylesheet. Everything hangs off four
+variables, so "make it bigger" is one edit instead of fifteen:
+
+| Variable | Wert | wofür |
+|---|---|---|
+| `--w-schrift` | 21px | Grundschrift (war 17px) |
+| `--w-schrift-klein` | 1rem | Beschriftungen, Hinweise, Listen (war .85rem / 15px) |
+| `--w-schrift-gross` | 1.2rem | Knöpfe, Felder, Zustandszeilen (war 1rem) |
+| `--w-tap` | 56px | jede Trefferfläche (war 44px) |
+
+### Auswahlknöpfe
+
+`.w-chooser` mit `.w-chip` je Eintrag — **eine Spalte über die ganze Breite**, nicht Pillen
+nebeneinander. Bis Karte 1276 war es `flex-wrap`, und dabei hing die Knopfbreite an der
+Textlänge: "Znüni" wurde ein Streifen, "Spaghetti Bolognese" ein Block, und welcher wo landet,
+entschied der Umbruch neu, sobald ein Eintrag dazukam. Wer blind nach dem zweiten Knopf tippt,
+traf am nächsten Tag den dritten.
 
 ### Confirmation
 
