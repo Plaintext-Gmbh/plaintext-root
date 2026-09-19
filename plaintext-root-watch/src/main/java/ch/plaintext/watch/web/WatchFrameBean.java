@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Drives the page stack of the watch view: which page is shown, and moving between them.
@@ -33,6 +34,12 @@ import java.util.List;
 public class WatchFrameBean implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    /**
+     * The key PrimeFaces uses for the CSP nonce — in the view map when rendering and as the
+     * request parameter on the way back ({@code org.primefaces.csp.CspState#getNonce}).
+     */
+    static final String NONCE_SCHLUESSEL = "primefaces.nonce";
 
     // Feldinjektion, nicht Konstruktorinjektion: die Bean liegt in der Session und muss
     // serialisierbar sein, die Dienste sind es nicht. Als `final transient` waeren sie nach
@@ -156,5 +163,45 @@ public class WatchFrameBean implements Serializable {
 
     public String getTitel() {
         return aktuelle == null ? "Watch" : aktuelle.title();
+    }
+
+    /**
+     * The CSP nonce of this view, for the hidden field every watch form has to carry.
+     *
+     * <h2>Why a page without PrimeFaces needs a PrimeFaces value</h2>
+     *
+     * <p>With {@code joinfaces.primefaces.csp=true} PrimeFaces compares, on every postback, the
+     * nonce stored in the view map against the request parameter of the same name and throws
+     * {@code CSP nonce mismatch} when they differ — a whitelabel error page, no message the user
+     * could act on. On a normal page PrimeFaces' own JavaScript appends that parameter. The watch
+     * pages deliberately carry no PrimeFaces (card 1247: one {@code p:} tag measured 1 055 KB
+     * against 56 KB), so nothing appends it and every button press failed (card 1256, reported
+     * from a phone on 19.09.2026, twice in the log).</p>
+     *
+     * <p>The value is read straight out of the view map, not through the PrimeFaces API: that
+     * keeps this module free of a PrimeFaces dependency, which is the whole point of it. The key
+     * is the same string PrimeFaces reads on the way back, so the two cannot drift apart
+     * silently — if PrimeFaces ever renames it, the field goes empty and
+     * {@code WatchNonceFeldVertragTest} in plaintext-app fails, rather than the pages breaking in
+     * production.</p>
+     *
+     * @return the nonce, or an empty string when there is none (then the field is inert)
+     */
+    public String getCspNonce() {
+        try {
+            FacesContext fc = FacesContext.getCurrentInstance();
+            if (fc == null || fc.getViewRoot() == null) {
+                return "";
+            }
+            Map<String, Object> viewMap = fc.getViewRoot().getViewMap(false);
+            if (viewMap == null) {
+                return "";
+            }
+            Object nonce = viewMap.get(NONCE_SCHLUESSEL);
+            return nonce == null ? "" : nonce.toString();
+        } catch (Exception e) {
+            log.warn("Watch: CSP-Nonce nicht lesbar: {}", e.toString());
+            return "";
+        }
     }
 }

@@ -50,6 +50,10 @@
 
             <h:form id="nav">
                 <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+                <!-- Ohne dieses Feld endet jeder Knopfdruck in einer Whitelabel-Seite:
+                     PrimeFaces vergleicht bei jedem Postback die Nonce, und sein eigenes
+                     JavaScript haengt den Parameter an — das es hier nicht gibt (Karte 1256). -->
+                <input type="hidden" name="primefaces.nonce" value="#{watchFrameBean.cspNonce}"/>
                 <div class="w-nav">
                     <h:commandButton styleClass="w-btn" value="‹" action="#{watchFrameBean.zurueck}"/>
                     <h:commandButton styleClass="w-btn" value="›" action="#{watchFrameBean.weiter}"/>

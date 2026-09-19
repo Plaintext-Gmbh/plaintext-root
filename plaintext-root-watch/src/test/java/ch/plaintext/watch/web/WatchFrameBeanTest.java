@@ -183,4 +183,54 @@ class WatchFrameBeanTest {
         assertTrue(bean.getSeiten().isEmpty());
         verify(zustand, never()).merkeSeite(anyString());
     }
+
+    // ── Die CSP-Nonce (Karte 1256) ────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Ohne FacesContext liefert die Nonce leer statt zu werfen")
+    void nonceOhneKontext() {
+        // Genau der Fall, der die Seite sonst mitreissen wuerde: ausserhalb eines Requests.
+        assertEquals("", bean.getCspNonce());
+    }
+
+    @Test
+    @DisplayName("Die Nonce kommt aus der View-Map — unter dem Schluessel, den PrimeFaces liest")
+    void nonceAusDerViewMap() {
+        jakarta.faces.context.FacesContext fc = mock(jakarta.faces.context.FacesContext.class);
+        jakarta.faces.component.UIViewRoot root = mock(jakarta.faces.component.UIViewRoot.class);
+        when(fc.getViewRoot()).thenReturn(root);
+        when(root.getViewMap(false)).thenReturn(
+                new java.util.HashMap<>(java.util.Map.of(WatchFrameBean.NONCE_SCHLUESSEL, "abc123")));
+
+        try (org.mockito.MockedStatic<jakarta.faces.context.FacesContext> statisch =
+                     org.mockito.Mockito.mockStatic(jakarta.faces.context.FacesContext.class)) {
+            statisch.when(jakarta.faces.context.FacesContext::getCurrentInstance).thenReturn(fc);
+
+            assertEquals("abc123", bean.getCspNonce());
+        }
+    }
+
+    @Test
+    @DisplayName("Eine leere View-Map gibt den leeren String, keinen NPE")
+    void nonceLeereViewMap() {
+        jakarta.faces.context.FacesContext fc = mock(jakarta.faces.context.FacesContext.class);
+        jakarta.faces.component.UIViewRoot root = mock(jakarta.faces.component.UIViewRoot.class);
+        when(fc.getViewRoot()).thenReturn(root);
+        when(root.getViewMap(false)).thenReturn(null);
+
+        try (org.mockito.MockedStatic<jakarta.faces.context.FacesContext> statisch =
+                     org.mockito.Mockito.mockStatic(jakarta.faces.context.FacesContext.class)) {
+            statisch.when(jakarta.faces.context.FacesContext::getCurrentInstance).thenReturn(fc);
+
+            assertEquals("", bean.getCspNonce());
+        }
+    }
+
+    @Test
+    @DisplayName("Der Schluessel ist der von PrimeFaces, nicht ein selbst ausgedachter")
+    void schluessel() {
+        // Weicht er ab, bleibt das Feld leer und jeder Knopfdruck gibt wieder eine
+        // Whitelabel-Seite — ohne dass irgendetwas rot wuerde.
+        assertEquals("primefaces.nonce", WatchFrameBean.NONCE_SCHLUESSEL);
+    }
 }

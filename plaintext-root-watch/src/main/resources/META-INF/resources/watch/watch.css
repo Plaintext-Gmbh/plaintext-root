@@ -42,7 +42,7 @@ html, body {
     background: var(--w-bg);
     color: var(--w-ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 16px;            /* never below 16px: iOS zooms on focus otherwise */
+    font-size: 17px;            /* never below 16px: iOS zooms on focus otherwise */
     -webkit-text-size-adjust: 100%;
 }
 
@@ -61,8 +61,8 @@ html, body {
     gap: 8px;
     margin-bottom: 8px;
 }
-.w-head h1 { font-size: 1.05rem; margin: 0; font-weight: 600; }
-.w-pos { color: var(--w-ink-dim); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.w-head h1 { font-size: 1.15rem; margin: 0; font-weight: 600; }
+.w-pos { color: var(--w-ink-dim); font-size: .9rem; font-variant-numeric: tabular-nums; }
 
 /* ── Card: the only container ───────────────────────────────────────────── */
 .w-card {
@@ -82,7 +82,7 @@ html, body {
     font-variant-numeric: tabular-nums;   /* digits must not jump while counting */
 }
 .w-widget .w-label {
-    font-size: .78rem;
+    font-size: .85rem;
     color: var(--w-ink-dim);
     text-transform: uppercase;
     letter-spacing: .04em;
@@ -116,6 +116,10 @@ html, body {
 /* ── One row, two fields (from/to times) ────────────────────────────────── */
 .w-row { display: flex; gap: 8px; align-items: center; }
 .w-row > * { flex: 1 1 0; min-width: 0; }
+/* Fangnetz: kein Kind einer Zeile darf breiter werden als die Zeile selbst. Ohne
+   das reicht ein einziges width:100% an einem flex:0-0-auto-Element, um die Zeile
+   ueber den Bildschirmrand zu schieben (Karte 1258). */
+.w-row > * { max-width: 100%; }
 
 /* ── Inputs: native controls only ───────────────────────────────────────── */
 .w-field {
@@ -137,16 +141,16 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 .w-nav .w-btn { margin-bottom: 0; }
 
 /* ── State line: says what is going on, in words AND colour ─────────────── */
-.w-state { text-align: center; font-size: .9rem; padding: 6px 0; }
+.w-state { text-align: center; font-size: 1rem; padding: 6px 0; }
 .w-state-go { color: var(--w-go); }
 .w-state-off { color: var(--w-ink-dim); }
 
 /* ── Confirmation: shown inline, never as a modal ───────────────────────── */
 /* A modal dialog on a 40mm screen covers everything and is hard to dismiss. */
 .w-confirm { border: 1px solid var(--w-stop); border-radius: var(--w-radius); padding: 10px; }
-.w-confirm .w-confirm-text { font-size: .9rem; margin-bottom: 8px; }
+.w-confirm .w-confirm-text { font-size: 1rem; margin-bottom: 8px; }
 
-.w-note { font-size: .78rem; color: var(--w-ink-dim); line-height: 1.35; }
+.w-note { font-size: .85rem; color: var(--w-ink-dim); line-height: 1.35; }
 .w-list { list-style: none; margin: 0; padding: 0; }
 .w-list li { padding: 10px 0; border-bottom: 1px solid var(--w-line); }
 .w-list li:last-child { border-bottom: 0; }
@@ -176,7 +180,7 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
    #8a8a94 — auf der Uhr wird bei Sonne alles darunter unlesbar. */
 .w-hint {
     margin-top: 6px;
-    font-size: 13px;
+    font-size: 15px;
     line-height: 1.35;
     color: #8a8a94;
 }
@@ -230,7 +234,7 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 .w-list {
     margin: 8px 0 0;
     padding-left: 18px;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.45;
 }
 
@@ -295,9 +299,18 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 }
 
 /* Kleiner Knopf fuer eine Nebenhandlung (loeschen). Bleibt bei 44px Hoehe —
-   klein ist er nur in der Breite; eine flachere Trefferflaeche wird verfehlt. */
+   klein ist er nur in der Breite; eine flachere Trefferflaeche wird verfehlt.
+
+   width:auto ist Pflicht, nicht Geschmack: .w-btn setzt width:100%, und in einer
+   .w-row rechnet der Browser diese 100% auf den ganzen Zeilenkasten. Der Knopf
+   wird dann so breit wie die Zeile und laeuft rechts aus dem Bild — genau das
+   Bild, das Daniel am 19.09.2026 von der Zeit-Seite geschickt hat (Karte 1258).
+   Sichtbar wird es nur neben anderen Elementen, deshalb faellt es beim Bauen
+   einer Seite mit nur einem Knopf nicht auf. */
 .w-btn-small {
     flex: 0 0 auto;
+    width: auto;
+    max-width: 100%;
     min-height: 44px;
     min-width: 44px;
     padding: 0 12px;

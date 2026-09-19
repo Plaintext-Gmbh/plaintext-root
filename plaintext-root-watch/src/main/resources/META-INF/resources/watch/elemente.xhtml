@@ -20,6 +20,8 @@
     <ui:define name="inhalt">
         <h:form id="el">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <!-- Siehe frame.xhtml: ohne die Nonce wirft PrimeFaces beim Postback (Karte 1256). -->
+            <input type="hidden" name="primefaces.nonce" value="#{watchFrameBean.cspNonce}"/>
 
             <div class="w-card">
                 <div class="w-label">Zuletzt</div>
