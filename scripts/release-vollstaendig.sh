@@ -50,7 +50,10 @@ REPOSILITE_BASIS="${REPOSILITE_BASIS:-https://maven.plaintext.ch/releases}"
 GRUPPE_PFAD="ch/plaintext"
 GITHUB_BASIS="https://maven.pkg.github.com/Plaintext-Gmbh/plaintext-mvn"
 
-cd "$(dirname "$0")/.." || exit 1
+# Absoluten Pfad VOR dem cd merken: der Modus --letzte ruft das Skript je Tag
+# erneut auf, und ein relatives $0 zeigt nach dem cd ins Leere.
+SELBST="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+cd "$(dirname "$SELBST")/.." || exit 1
 
 MINDESTALTER_S="${MINDESTALTER_S:-1800}"
 
@@ -68,7 +71,7 @@ if [ "${1:-}" = "--letzte" ]; then
       echo "  $t  uebersprungen (${alter}s alt, Grenze ${MINDESTALTER_S}s — Release laeuft evtl. noch)"
       continue
     fi
-    if "$0" "$t" > /tmp/rv.$$ 2>&1; then
+    if "$SELBST" "$t" > /tmp/rv.$$ 2>&1; then
       echo "  $t  vollstaendig"
     else
       rc=$?
