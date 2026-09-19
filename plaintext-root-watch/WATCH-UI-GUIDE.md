@@ -53,6 +53,31 @@ add a new page instead.
 `available()` is asked on every move, never cached — a page switched off mid-session disappears
 at once instead of rendering empty.
 
+### Loading the page's data
+
+A page that shows data must hook into the `laden` insert. It is the **only** place where that
+works:
+
+```xml
+<ui:composition xmlns:f="http://java.sun.com/jsf/core"
+                template="/watch/frame.xhtml">
+
+    <ui:define name="titel">Zeit</ui:define>
+
+    <ui:define name="laden">
+        <f:event type="preRenderView" listener="#{zeitWatchBean.seitenaufruf()}"/>
+    </ui:define>
+```
+
+Do **not** write your own `<f:metadata>`: a page that uses a template contributes `ui:define`
+blocks only, and JSF reads the metadata from the view root — which is `frame.xhtml`, not your
+page. A second `f:metadata` is silently ignored, the listener never fires, and the page renders
+perfectly well with empty lists. That is exactly how four pages shipped in card 1248; see card
+1253. `WatchSeiteLaedtVertragTest` in plaintext-app now fails when a bean with `seitenaufruf()`
+is not called from its page.
+
+Remember `xmlns:f` in the `ui:composition` tag — two of those four pages did not declare it.
+
 ---
 
 ## 3. The classes, and when to use them
@@ -126,6 +151,10 @@ what they are deleting while deciding.
 6. **Keep the DOM small.** The link-tap view is a cut-down renderer; long lists (>20 rows) may
    simply not render. Paginate or cap.
 7. **Test at 200px width**, not just in a desktop browser shrunk to phone size.
+8. **Never bring your own `<f:metadata>`.** Load through the `laden` insert (section 2). Your
+   own metadata block is ignored without a word and the page just stays empty.
+9. **A home tile reads the service, never the page bean.** Tiles are singletons; a singleton
+   depending on a session-scoped bean makes Spring refuse to build the context at all.
 
 ---
 
