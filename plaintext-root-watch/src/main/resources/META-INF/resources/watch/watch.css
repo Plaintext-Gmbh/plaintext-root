@@ -6,7 +6,8 @@
  *
  * Design rules encoded here:
  *   - one column, always; no side-by-side layout except the explicit .w-row
- *   - touch targets never below 44px (Apple's minimum for a reliable tap)
+ *   - touch targets never below --w-tap (Karte 1276: 56px; Apple's minimum of 44px is the
+ *     FLOOR, not the target — on a watch the finger covers the button)
  *   - no hover states: there is no pointer on a watch
  *   - system font stack: no web font may be downloaded (slow link, tiny cache)
  *   - colours carry meaning on their own AND through text, never through colour alone
@@ -22,7 +23,22 @@
     --w-stop: #dc2626;
     --w-warn: #d97706;
     --w-radius: 14px;
-    --w-tap: 44px;
+
+    /* ── GROESSEN AN EINER STELLE (Karte 1276, Daniel 19.09.2026) ──────────────────────
+       "schrift viel zu klein auf watch elemente noch viel groesser machen bitte"
+
+       Vorher standen die Groessen als einzelne Zahlen ueber die Datei verteilt (17px
+       Grundschrift, 1.15rem Titel, .85rem Beschriftung, 1rem Knopf, 44px Trefferflaeche).
+       Wer sie hochdrehen wollte, musste fuenfzehn Stellen finden und keine vergessen.
+       Jetzt haengt alles an diesen vier Werten, und die Abstufung dazwischen bleibt
+       erhalten, weil die Regeln unten in rem statt in px rechnen.
+
+       Die 44px von Apple sind der UNTERE Rand fuer einen sicher treffbaren Knopf, nicht
+       das Ziel. Auf der Uhr verdeckt der Finger den Knopf, den er trifft — deshalb 56. */
+    --w-tap: 56px;
+    --w-schrift: 21px;        /* Grundschrift; war 17px */
+    --w-schrift-klein: 1rem;  /* Beschriftungen und Hinweise; war .85rem bzw. 15px */
+    --w-schrift-gross: 1.2rem;/* Knoepfe, Felder, Zustandszeilen; war 1rem */
 }
 
 /* Light rooms exist too; the watch itself is usually dark, the phone often not. */
@@ -42,7 +58,7 @@ html, body {
     background: var(--w-bg);
     color: var(--w-ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 17px;            /* never below 16px: iOS zooms on focus otherwise */
+    font-size: var(--w-schrift);   /* never below 16px: iOS zooms on focus otherwise */
     -webkit-text-size-adjust: 100%;
 }
 
@@ -61,28 +77,28 @@ html, body {
     gap: 8px;
     margin-bottom: 8px;
 }
-.w-head h1 { font-size: 1.15rem; margin: 0; font-weight: 600; }
-.w-pos { color: var(--w-ink-dim); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.w-head h1 { font-size: 1.35rem; margin: 0; font-weight: 600; }
+.w-pos { color: var(--w-ink-dim); font-size: var(--w-schrift-klein); font-variant-numeric: tabular-nums; }
 
 /* ── Card: the only container ───────────────────────────────────────────── */
 .w-card {
     background: var(--w-card);
     border-radius: var(--w-radius);
-    padding: 12px;
-    margin-bottom: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
     border: 1px solid var(--w-line);
 }
 
 /* ── Widget: one number with a label, readable at arm's length ──────────── */
 .w-widget { text-align: center; padding: 6px 0; }
 .w-widget .w-value {
-    font-size: 2.1rem;
+    font-size: 2.8rem;
     font-weight: 650;
     line-height: 1.1;
     font-variant-numeric: tabular-nums;   /* digits must not jump while counting */
 }
 .w-widget .w-label {
-    font-size: .85rem;
+    font-size: var(--w-schrift-klein);
     color: var(--w-ink-dim);
     text-transform: uppercase;
     letter-spacing: .04em;
@@ -101,10 +117,10 @@ html, body {
     border-radius: var(--w-radius);
     background: var(--w-line);
     color: var(--w-ink);
-    font-size: 1rem;
+    font-size: var(--w-schrift-gross);
     font-weight: 600;
-    padding: 12px;
-    margin-bottom: 8px;
+    padding: 16px 12px;
+    margin-bottom: 10px;
     box-sizing: border-box;
     -webkit-appearance: none;
     cursor: pointer;
@@ -125,8 +141,8 @@ html, body {
 .w-field {
     width: 100%;
     min-height: var(--w-tap);
-    font-size: 1rem;                 /* below 16px iOS zooms the page on focus */
-    padding: 10px;
+    font-size: var(--w-schrift-gross);  /* below 16px iOS zooms the page on focus */
+    padding: 14px 12px;
     border-radius: 10px;
     border: 1px solid var(--w-line);
     background: var(--w-card);
@@ -141,37 +157,44 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 .w-nav .w-btn { margin-bottom: 0; }
 
 /* ── State line: says what is going on, in words AND colour ─────────────── */
-.w-state { text-align: center; font-size: 1rem; padding: 6px 0; }
+.w-state { text-align: center; font-size: var(--w-schrift-gross); padding: 8px 0; }
 .w-state-go { color: var(--w-go); }
 .w-state-off { color: var(--w-ink-dim); }
 
 /* ── Confirmation: shown inline, never as a modal ───────────────────────── */
 /* A modal dialog on a 40mm screen covers everything and is hard to dismiss. */
 .w-confirm { border: 1px solid var(--w-stop); border-radius: var(--w-radius); padding: 10px; }
-.w-confirm .w-confirm-text { font-size: 1rem; margin-bottom: 8px; }
+.w-confirm .w-confirm-text { font-size: var(--w-schrift-gross); margin-bottom: 10px; }
 
-.w-note { font-size: .85rem; color: var(--w-ink-dim); line-height: 1.35; }
+.w-note { font-size: var(--w-schrift-klein); color: var(--w-ink-dim); line-height: 1.35; }
 .w-list { list-style: none; margin: 0; padding: 0; }
 .w-list li { padding: 10px 0; border-bottom: 1px solid var(--w-line); }
 .w-list li:last-child { border-bottom: 0; }
 
-/* Very small screens (watch link-tap view): trim everything once more. */
+/* Sehr schmale Bildschirme (die Uhr selbst).
+   KARTE 1276: dieser Block hat bisher genau dort verkleinert, wo Daniel "viel zu klein"
+   gemeldet hat — auf der Uhr. Er bleibt, weil eine zweispaltige Anordnung auf 250px
+   wirklich nicht traegt, aber er senkt die Schrift nicht mehr unter den Normalwert.
+   Was hier schrumpft, ist der Abstand, nicht die Lesbarkeit. */
 @media (max-width: 250px) {
     .w-wrap { padding: 6px 8px; }
     .w-widgets, .w-widgets.w-3 { grid-template-columns: 1fr; }
-    .w-widget .w-value { font-size: 1.7rem; }
-    .w-head h1 { font-size: .95rem; }
+    /* Die grosse Zahl darf etwas nachgeben, sonst bricht sie um; alles andere nicht. */
+    .w-widget .w-value { font-size: 2.2rem; }
+    .w-head h1 { font-size: 1.2rem; }
+    .w-card { padding: 12px; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
    Elemente der Nachschlage-Seite (Karte 1247).
    Alles hier folgt denselben zwei Regeln wie oben: Trefferflaeche mindestens
-   44 px, Schrift mindestens 16 px — kleiner zoomt iOS beim Antippen hinein.
+   --w-tap, Schrift mindestens --w-schrift-klein — unter 16px zoomt iOS beim
+   Antippen hinein, und beide Werte liegen seit Karte 1276 deutlich darueber.
    ───────────────────────────────────────────────────────────────────────── */
 
 /* Kleinere Variante von .w-value, fuer Statuszeilen mit laengerem Text. */
 .w-sm {
-    font-size: 16px;
+    font-size: 1.05rem;
     font-weight: 400;
     line-height: 1.3;
 }
@@ -179,29 +202,47 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 /* Erklaerzeile unter einem Element. Bewusst gedaempft, aber nicht unter
    #8a8a94 — auf der Uhr wird bei Sonne alles darunter unlesbar. */
 .w-hint {
-    margin-top: 6px;
-    font-size: 15px;
+    margin-top: 8px;
+    font-size: var(--w-schrift-klein);
     line-height: 1.35;
     color: #8a8a94;
 }
 
-/* Knopfreihe als Auswahl. flex-wrap statt Scrollen: eine waagrechte Leiste,
-   die man schieben muss, trifft man auf der Uhr nicht. */
+/* Auswahlknoepfe, EINE SPALTE UEBER DIE GANZE BREITE (Karte 1276, Daniel 19.09.2026:
+   "gerichte auswahl schnellgerichte buttons uebet ganze breite und auch groesser").
+
+   Vorher: `flex-wrap` mit Pillen nebeneinander. Das sah auf dem Telefon aufgeraeumt aus
+   und war auf der Uhr die schlechteste aller Anordnungen — die Knopfbreite haengt an der
+   Textlaenge, also ist "Znueni" ein Streifen und "Spaghetti Bolognese" ein Block, und
+   welcher wo landet, entscheidet der Umbruch neu, sobald ein Gericht dazukommt. Wer
+   blind nach dem zweiten Knopf tippt, trifft morgen den dritten.
+
+   Eine Spalte nimmt das weg: jeder Knopf gleich breit, gleiche Hoehe, feste Reihenfolge.
+   Die Trefferflaeche ist dann nicht mehr die Textbreite, sondern der ganze Bildschirm. */
 .w-chooser {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .w-chip {
-    min-height: 44px;
-    padding: 0 14px;
+    display: block;
+    width: 100%;
+    min-height: var(--w-tap);
+    padding: 14px 16px;
     border: 1px solid #3a3a42;
-    border-radius: 22px;
+    /* Kein Pillen-Radius mehr: 22px an einem Knopf ueber die ganze Breite sieht aus wie
+       ein verrutschtes Eingabefeld. Derselbe Radius wie bei jeder anderen Flaeche. */
+    border-radius: var(--w-radius);
     background: #1c1c22;
     color: #f2f2f7;
-    font-size: 16px;
+    font-size: var(--w-schrift-gross);
+    font-weight: 600;
+    text-align: center;
+    box-sizing: border-box;
+    -webkit-appearance: none;
 }
+.w-chip:active { filter: brightness(1.25); }
 
 .w-chip-an {
     background: #2f6fed;
@@ -220,9 +261,9 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 .w-switch-label {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: var(--w-tap);
     margin-left: 10px;
-    font-size: 16px;
+    font-size: var(--w-schrift-klein);
 }
 
 /* Warnblock: hebt sich ab, ohne auf Farbe allein zu setzen — der linke Balken
@@ -234,7 +275,7 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 .w-list {
     margin: 8px 0 0;
     padding-left: 18px;
-    font-size: 15px;
+    font-size: var(--w-schrift-klein);
     line-height: 1.45;
 }
 
@@ -261,12 +302,13 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 }
 
 /* Zeitfeld. Schmaler als .w-field, weil zwei davon nebeneinander stehen —
-   aber nie unter 16px Schrift, sonst zoomt iOS beim Antippen hinein. */
+   aber nie unter 16px Schrift, sonst zoomt iOS beim Antippen hinein. Die Groesse
+   kommt seit Karte 1276 aus --w-schrift-klein (1rem von 21px = 21px, also drueber). */
 .w-time {
     flex: 1 1 0;
     min-width: 0;
     text-align: center;
-    font-size: 16px;
+    font-size: var(--w-schrift-klein);
     font-variant-numeric: tabular-nums;
 }
 
@@ -276,7 +318,7 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
     flex: 0 0 auto;
     padding: 0 8px;
     color: #8a8a94;
-    font-size: 16px;
+    font-size: var(--w-schrift-klein);
 }
 
 /* Das Label nimmt den Platz, der uebrig bleibt, und bricht nicht um —
@@ -287,13 +329,13 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 16px;
+    font-size: var(--w-schrift-klein);
 }
 
 .w-entry-total {
     flex: 0 0 auto;
     padding: 0 10px;
-    font-size: 16px;
+    font-size: var(--w-schrift-klein);
     font-variant-numeric: tabular-nums;
     color: #c7c7cf;
 }
@@ -311,8 +353,8 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
     flex: 0 0 auto;
     width: auto;
     max-width: 100%;
-    min-height: 44px;
+    min-height: var(--w-tap);
     min-width: 44px;
     padding: 0 12px;
-    font-size: 18px;
+    font-size: var(--w-schrift-gross);
 }
