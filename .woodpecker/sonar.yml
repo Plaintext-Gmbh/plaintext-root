@@ -176,21 +176,32 @@ steps:
       # quality/quality-gate.properties, es gibt hier kein `git add -A` wie in do_release.
       - rm -rf .plaintext-scripts
       # Karte 1093: SHA-Pin statt beweglichem master, Begruendung wie in .woodpecker/deploy.yml
-      # KARTE 1177: Dieser Pin ist BEWUSST neuer als der in .woodpecker/deploy.yml. Er zieht
-      # den UA-Fix in quality/quality-gate.py nach (ohne ihn floss die Sonar-Bewertung gar
-      # nicht in das Gate ein, sie stand auf UNKNOWN). Zwischen dem alten Pin 199e5cf und
-      # diesem SHA hat sich fuer DIESEN Workflow ausschliesslich quality-gate.py geaendert —
-      # owasp-dependency-check.sh, spotbugs.sh und owasp-suppressions-zentral.xml sind
-      # unberuehrt (nachgesehen per git diff --name-only). Der Pin in deploy.yml bleibt
-      # absichtlich stehen: dazwischen liegen 20 Commits Release- und Build-Logik
-      # (tui-build-logic.sh, rollback, getflywaynr), und die gehoeren nicht ungeprueft in
-      # den Release-Pfad von fuenf produktiven Anwendungen. Beide Pins wieder
-      # zusammenzufuehren ist eine eigene Aufgabe mit eigener Probe.
+      # KARTE 1242 (20.09.2026): Pin von 17601b6e auf b99b1721 nachgezogen. Er zieht die
+      # zentrale Suppression gegen die CPE-Fehlzuordnung cpe:2.3:a:vmware:server:2.0.1 herein
+      # (quality/owasp-suppressions-zentral.xml). Vorher lag sie seit dem 19.09.2026 im Repo
+      # und wirkte in KEINER Analyse — alle fuenf Anwendungen meldeten weiter
+      # cve.high.count=2 mit CVE-2009-3732 (CVSS 10.0) an mcp-spring-webmvc-2.0.1.jar.
+      # DAS IST DIE LEHRE AN DIESER ZEILE: eine zentrale Suppression wirkt nur so weit, wie
+      # die Pins sie hereinlassen. Wer die Datei in plaintext-scripts aendert, muss diesen
+      # Pin in ALLEN Repos mitziehen, sonst ist die Aenderung folgenlos und sieht trotzdem
+      # nach Erledigung aus.
+      # Zwischen 17601b6e und b99b1721 liegen 6 Commits und 5 Dateien; fuer DIESEN Workflow
+      # aendert sich ausschliesslich owasp-suppressions-zentral.xml — dazu eine versehentlich
+      # mitcommittete quality/__pycache__/*.pyc, die hier nichts tut (ein direkt aufgerufenes
+      # Skript liest kein __pycache__). quality-gate.py, owasp-dependency-check.sh und
+      # spotbugs.sh sind unberuehrt; ci-cd-pipeline.yaml und runtime/ zieht der Analysepfad
+      # gar nicht (nachgesehen per git diff --name-only).
+      # KARTE 1177 gilt weiter: dieser Pin ist BEWUSST neuer als der in .woodpecker/deploy.yml
+      # (dort $HOME/codeplain/plaintext-scripts fuer ./build). Der bleibt absichtlich stehen —
+      # dazwischen liegen Release- und Build-Logik (tui-build-logic.sh, rollback, getflywaynr),
+      # und die gehoeren nicht ungeprueft in den Release-Pfad von fuenf produktiven
+      # Anwendungen. Beide Pins wieder zusammenzufuehren ist eine eigene Aufgabe mit
+      # eigener Probe.
       - >-
         mkdir -p .plaintext-scripts &&
         git -C .plaintext-scripts init -q &&
         git -C .plaintext-scripts remote add origin https://github.com/Plaintext-Gmbh/plaintext-scripts.git &&
-        git -C .plaintext-scripts fetch --depth 1 origin 17601b6e2aac9a20540bb740b3c10993d122d63f &&
+        git -C .plaintext-scripts fetch --depth 1 origin b99b1721a5fe97c74ef8d9987760cdc699f11d9e &&
         git -C .plaintext-scripts checkout FETCH_HEAD
 
       # STALE-SCHUTZ, wortgleich aus der GitHub-Pipeline: alte Reports weg, BEVOR gemessen
