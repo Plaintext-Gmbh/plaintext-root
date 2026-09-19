@@ -170,7 +170,26 @@ public class WatchHandyLinkService {
      */
     private String basis() {
         EigeneAdresse adresse = eigeneAdresse.getIfAvailable();
-        return adresse == null ? "" : adresse.basis("");
+        String basis = adresse == null ? "" : adresse.basis("");
+        if (basis.isBlank()) {
+            // Karte 1277 (19.09.2026): Bis heute war dieser Fall still. Ist app.ownhost
+            // nirgends gepflegt — weder als Einstellung noch als Property —, liefert basis("")
+            // den leeren String, und der ausgegebene Link lautet "/nosec/watch?t=<jwt>": ohne
+            // Schema, ohne Host, auf einem Telefon kein Link, sondern ein Textschnipsel. Genau
+            // so stand es in app-prod, bis der Wert gesetzt wurde.
+            //
+            // Der Wert wird hier NICHT geraten. Karte 1046 hat EigeneAdresse eingefuehrt, weil
+            // app unter app.plaintext.ch laeuft und guild unter app.guild42.ch — was immer hier
+            // fest verdrahtet stuende, zeigte bei einer der beiden Installationen auf die
+            // falsche. Aber lautlos einen kaputten Link auszugeben ist die schlechtere von zwei
+            // Antworten: der Aufrufer sieht nichts, und der Benutzer merkt es erst am Telefon.
+            log.warn("⚠️ WATCH-HANDY-LINK ohne Basisadresse: app.ownhost ist weder als Einstellung"
+                    + " noch als Property gesetzt. Der Link wird ohne Schema und Host ausgegeben"
+                    + " und ist auf einem Telefon nicht anklickbar. In den Einstellungen"
+                    + " 'app.ownhost' auf die oeffentliche Adresse dieser Installation setzen,"
+                    + " mit https, ohne Schraegstrich am Ende (Karte 1277).");
+        }
+        return basis;
     }
 
     /**
