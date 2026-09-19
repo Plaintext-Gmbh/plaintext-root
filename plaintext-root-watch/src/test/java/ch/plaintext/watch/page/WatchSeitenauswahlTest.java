@@ -38,11 +38,17 @@ class WatchSeitenauswahlTest {
 
     private static WatchPage seite(String id, int order, boolean erlaubt, boolean imUmlauf) {
         return new WatchPage() {
+            @Override
             public String id() { return id; }
+            @Override
             public String title() { return id; }
+            @Override
             public String view() { return "/watch/" + id + ".xhtml"; }
+            @Override
             public int order() { return order; }
+            @Override
             public boolean available() { return erlaubt; }
+            @Override
             public boolean imUmlauf() { return imUmlauf; }
         };
     }
@@ -90,9 +96,13 @@ class WatchSeitenauswahlTest {
         WatchStateService zustand = mock(WatchStateService.class);
         when(zustand.seiteAktiv("kaputt")).thenReturn(true);
         WatchPage kaputt = new WatchPage() {
+            @Override
             public String id() { return "kaputt"; }
+            @Override
             public String title() { return "kaputt"; }
+            @Override
             public String view() { return "/watch/kaputt.xhtml"; }
+            @Override
             public boolean available() { throw new IllegalStateException("Absicht"); }
         };
 

@@ -34,12 +34,22 @@ import java.util.List;
  * seven checkboxes and a button is a form nobody fills in. Each tap writes at once, which is
  * also why the page can afford to re-read its list on every render.</p>
  *
+ * <h2>Why field injection stays here (java:S6813, card 1273)</h2>
+ *
+ * <p>This bean lives in the JSF view state and is serializable, so the same reasoning applies as
+ * for the session-scoped beans: the services are {@code transient}, and on a deserialization
+ * <b>no constructor runs</b>. As {@code private final} they would stay {@code null} forever and
+ * could not be set afterwards — a {@code NotSerializableException} would become a permanent
+ * {@code NullPointerException} (cards 915/1246; guild does the same, card 1255). With field
+ * injection the context fills them in again.</p>
+ *
  * @author info@plaintext.ch
  * @since 2026
  */
 @Component("watchUebersichtBean")
 @Scope("view")
 @Slf4j
+@SuppressWarnings("java:S6813") // begründet im Klassenkommentar oben — nicht pauschal umbauen
 public class WatchUebersichtBean implements Serializable {
 
     private static final long serialVersionUID = 1L;

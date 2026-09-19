@@ -355,6 +355,18 @@ public class McpBearerTokenFilter implements Filter {
     }
 
     /**
+     * Whether the token name marks it as a browser credential
+     * ({@link IApiTokenService#UI_TOKEN_NAME_PREFIX}). A token without a name is <b>not</b> one:
+     * machine tokens minted directly via {@code JwtTokenService} carry none, and they must keep
+     * working (card 305).
+     */
+    static boolean istNurFuerDieOberflaeche(String tokenName) {
+        return tokenName != null
+                && tokenName.trim().toLowerCase(java.util.Locale.ROOT)
+                        .startsWith(IApiTokenService.UI_TOKEN_NAME_PREFIX);
+    }
+
+    /**
      * Grants cumulative {@code SCOPE_*} authorities: SCOPE_READ always, SCOPE_WRITE <b>and</b>
      * SCOPE_EINTRAGEN additionally for WRITE/EINTRAGEN/ADMIN, SCOPE_ADMIN additionally for ADMIN. An
      * unrecognized claim value gets ONLY SCOPE_READ (least privilege).
@@ -373,18 +385,6 @@ public class McpBearerTokenFilter implements Filter {
      * {@code plaintext.mcp.bearer-filter.legacy-scope-admin=true}
      * (see {@link McpBearerTokenFilterProperties#isLegacyScopeAdmin()}).</p>
      */
-    /**
-     * Whether the token name marks it as a browser credential
-     * ({@link IApiTokenService#UI_TOKEN_NAME_PREFIX}). A token without a name is <b>not</b> one:
-     * machine tokens minted directly via {@code JwtTokenService} carry none, and they must keep
-     * working (card 305).
-     */
-    static boolean istNurFuerDieOberflaeche(String tokenName) {
-        return tokenName != null
-                && tokenName.trim().toLowerCase(java.util.Locale.ROOT)
-                        .startsWith(IApiTokenService.UI_TOKEN_NAME_PREFIX);
-    }
-
     private void addScopeAuthorities(Set<GrantedAuthority> authorities, String scope) {
         String fallback = legacyScopeAdmin ? "ADMIN" : "READ";
         String effective = (scope == null || scope.isBlank()) ? fallback : scope.trim().toUpperCase();

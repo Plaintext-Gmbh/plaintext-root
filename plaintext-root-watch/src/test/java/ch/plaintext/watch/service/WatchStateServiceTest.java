@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -22,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -107,15 +109,30 @@ class WatchStateServiceTest {
     }
 
     @Test
-    @DisplayName("Beim ersten Aufruf wird ein Zustand angelegt — mit Benutzer und Mandat aus dem Sicherheitskontext")
-    void ersterAufrufLegtAn() {
+    @DisplayName("Lesen legt nichts an — auch nicht beim allerersten Aufruf (Karte 1273)")
+    void lesenLegtNichtsAn() {
         when(repository.findByBenutzerAndDeletedFalse("daniel@plaintext.ch")).thenReturn(Optional.empty());
 
-        WatchUserState z = service.eigenerZustand().orElseThrow();
+        // Vorher legte genau dieser Aufruf eine Zeile an, und damit taten es auch
+        // abgeschalteteSeiten(), handyLinkAktiv() und handyLinkErstellt() — Abfragen dem Namen
+        // nach. Das war der Mangel hinter den S2229/S6809-Befunden, nicht die fehlende Annotation.
+        assertTrue(service.eigenerZustand().isEmpty(), "eine Abfrage bringt keine Zeile in die Welt");
+        verify(repository, never()).save(any());
+    }
 
+    @Test
+    @DisplayName("Der erste SCHREIBENDE Zugriff legt an — mit Benutzer und Mandat aus dem Sicherheitskontext")
+    void ersterSchreibzugriffLegtAn() {
+        when(repository.findByBenutzerAndDeletedFalse("daniel@plaintext.ch")).thenReturn(Optional.empty());
+
+        service.merkeSeite("zeit");
+
+        ArgumentCaptor<WatchUserState> gespeichert = ArgumentCaptor.forClass(WatchUserState.class);
+        verify(repository, atLeastOnce()).save(gespeichert.capture());
+        WatchUserState z = gespeichert.getValue();
         assertEquals("daniel@plaintext.ch", z.getBenutzer());
         assertEquals("plaintext", z.getMandat());
-        verify(repository, times(1)).save(any(WatchUserState.class));
+        assertEquals("zeit", z.getAktuelleSeite());
     }
 
     @Test
