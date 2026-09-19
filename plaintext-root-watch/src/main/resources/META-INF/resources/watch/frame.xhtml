@@ -18,6 +18,11 @@
          page renders empty — the very fault that kept the alkohol evaluation blank (card 1243). -->
     <f:metadata>
         <f:event type="preRenderView" listener="#{watchFrameBean.seitenaufruf()}"/>
+        <!-- A page loads its own data here. It cannot bring its own f:metadata: a page using
+             this template contributes ui:define blocks only, and JSF takes the metadata from
+             the view root — which is this file. Without this insert a module bean is never
+             called and its page stays empty no matter what the user has recorded. -->
+        <ui:insert name="laden"/>
     </f:metadata>
 
     <h:head>
