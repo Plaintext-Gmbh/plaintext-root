@@ -40,13 +40,37 @@ public interface WatchPage {
     }
 
     /**
-     * Whether this page is available for the current user right now.
+     * Whether the <b>access rules</b> let the current user see this page — the module's roles,
+     * usually asked of {@code PageAccessGuardService}.
      *
-     * <p>Used by pages that are switched on and off per user (the element gallery, for
-     * instance). A page that returns {@code false} is skipped when moving forward or back, and
-     * is not reachable directly.</p>
+     * <p><b>This is not the user's own selection.</b> Since card 1257 every user can additionally
+     * switch single pages off; that is stored per user and evaluated in
+     * {@link WatchPageRegistry#sichtbar(WatchPage)}, not here. Both have to say yes: a page
+     * switched off is additionally invisible, a page locked by role stays locked. A module
+     * therefore keeps answering exactly one question here, the one it alone can answer.</p>
+     *
+     * <p>A page that is not visible is skipped when moving forward or back, and is not
+     * reachable directly either.</p>
      */
     default boolean available() {
+        return true;
+    }
+
+    /**
+     * Whether this page takes part in the next/previous rotation and counts in the "x/n" in the
+     * header.
+     *
+     * <p>{@code false} makes a page reachable only by its address or by a link of its own — it
+     * is not stepped to and does not inflate the count. Card 1260: the element gallery became
+     * the overview with the page switches. It is the only way to the switches, so it must not
+     * be switchable off; but a reference sheet has no business in the everyday rotation
+     * either.</p>
+     *
+     * <p>Deliberately separate from {@link #available()}: "not in the way" and "not allowed" are
+     * different statements, and folding them together would make the overview unreachable as
+     * soon as somebody switched it off.</p>
+     */
+    default boolean imUmlauf() {
         return true;
     }
 }

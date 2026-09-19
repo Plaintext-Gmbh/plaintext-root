@@ -3,6 +3,7 @@
  */
 package ch.plaintext.watch.page;
 
+import ch.plaintext.watch.service.WatchStateService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -22,9 +23,29 @@ import java.util.Optional;
  *
  * <h2>Unavailable pages</h2>
  *
- * <p>{@link WatchPage#available()} is evaluated on every move, not cached. A page that is
- * switched off mid-session (the element gallery, for instance) disappears immediately instead
- * of showing an empty screen on the next tap.</p>
+ * <p>Visibility is evaluated on every move, not cached. A page that is switched off mid-session
+ * disappears immediately instead of showing an empty screen on the next tap.</p>
+ *
+ * <p>Two independent questions are asked, and both have to say yes ({@link #sichtbar}):</p>
+ * <ol>
+ *   <li>{@link WatchPage#available()} — may the user see the module at all? The module answers
+ *       it against its own menu roles.</li>
+ *   <li>{@code WatchStateService.seiteAktiv(id)} — does the user <em>want</em> to see it? That
+ *       is the per-user selection from card 1257.</li>
+ * </ol>
+ *
+ * <h2>Why the selection is evaluated here and not in every page (card 1257)</h2>
+ *
+ * <p>There are seven pages in three repositories, and each would have had to remember to ask
+ * the same second question — a module that forgets it silently ignores the switch. Here it is
+ * one place, and a new module page is covered the day it is written.</p>
+ *
+ * <p><b>The direction of the dependency is not negotiable.</b> The registry may know the state
+ * service; the state service must <b>not</b> know the registry. {@code WatchTestPage} asks the
+ * service about itself, the registry collects the pages — the other direction closes the circle
+ * and Spring refuses to build the context at all
+ * ({@code BeanCurrentlyInCreationException: watchPageRegistry}, card 1245). A test in
+ * {@code WatchStateServiceTest} pins it.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -35,9 +56,16 @@ public class WatchPageRegistry {
 
     private final List<WatchPage> alle;
 
-    public WatchPageRegistry(List<WatchPage> seiten) {
+    /**
+     * The per-user selection. {@code null} is allowed and means "no selection is evaluated" —
+     * that is the case in unit tests that build the registry with pages only.
+     */
+    private final WatchStateService zustand;
+
+    public WatchPageRegistry(List<WatchPage> seiten, WatchStateService zustand) {
         this.alle = seiten.stream().sorted(Comparator.comparingInt(WatchPage::order)
                 .thenComparing(WatchPage::id)).toList();
+        this.zustand = zustand;
         log.info("Watch-Seiten erkannt: {}", this.alle.stream().map(WatchPage::id).toList());
     }
 
@@ -46,9 +74,40 @@ public class WatchPageRegistry {
         return alle;
     }
 
-    /** Only the pages the current user may see, ordered. */
+    /**
+     * Whether the current user may see this page <b>and</b> has it switched on.
+     *
+     * <p>The single place where the two questions are put together. Whoever asks
+     * {@code available()} on its own gets only half the answer and lets a switched-off page
+     * through — which is exactly what a direct call of the view id used to do.</p>
+     *
+     * <p>Never lets an exception out: this decides whether the watch shows anything at all.</p>
+     */
+    public boolean sichtbar(WatchPage seite) {
+        if (seite == null) {
+            return false;
+        }
+        try {
+            if (!seite.available()) {
+                return false;
+            }
+        } catch (Exception e) {
+            log.warn("Watch: Zugriffsregel von {} nicht auswertbar: {}", seite.id(), e.toString());
+            return false;
+        }
+        // Fail-OPEN on purpose, and only on this half: without a state service (unit test) or
+        // with an unreadable selection the user sees what the access rules allow — the state
+        // before card 1257. Fail-closed here would turn a database hiccup into an empty watch,
+        // while the half above, the one that actually protects something, stays fail-closed.
+        return zustand == null || zustand.seiteAktiv(seite.id());
+    }
+
+    /**
+     * The pages of the rotation: visible and taking part in next/previous. This is what the
+     * "x/n" in the header counts.
+     */
     public List<WatchPage> verfuegbare() {
-        return alle.stream().filter(WatchPage::available).toList();
+        return alle.stream().filter(this::sichtbar).filter(WatchPage::imUmlauf).toList();
     }
 
     public Optional<WatchPage> byId(String id) {

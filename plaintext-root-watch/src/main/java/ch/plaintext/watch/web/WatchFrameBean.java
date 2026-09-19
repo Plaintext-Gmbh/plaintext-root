@@ -75,8 +75,14 @@ public class WatchFrameBean implements Serializable {
         // ihn selbst befragt (Spring: BeanCurrentlyInCreationException).
         WatchPage angefragt = angefragteSeite(fc).orElse(null);
         if (angefragt != null) {
-            // Direkt aufgerufen: nur zeigen, wenn die Seite wirklich verfuegbar ist.
-            if (angefragt.available()) {
+            // Direkt aufgerufen: nur zeigen, wenn die Seite wirklich sichtbar ist. Bewusst
+            // registry.sichtbar(...) und nicht angefragt.available(): available() beantwortet seit
+            // Karte 1257 nur noch die Rollenfrage, die Auswahl des Benutzers liegt daneben. Wer
+            // hier nur available() fraegt, laesst eine abgeschaltete Seite per Adresszeile wieder
+            // herein — genau die Luecke, die PR #219 fuer die Testseite geschlossen hat.
+            // imUmlauf() wird hier NICHT geprueft: eine Seite ausserhalb des Umlaufs (die
+            // Uebersicht) ist ueber ihre Adresse gerade erwuenscht.
+            if (registry.sichtbar(angefragt)) {
                 aktuelle = angefragt;
                 zustand.merkeSeite(aktuelle.id());
                 return;
@@ -87,7 +93,7 @@ public class WatchFrameBean implements Serializable {
         }
         aktuelle = zustand.gemerkteSeitenId()
                 .flatMap(registry::byId)
-                .filter(WatchPage::available)
+                .filter(registry::sichtbar)
                 .or(registry::erste)
                 .orElse(null);
         if (aktuelle != null) {
@@ -140,9 +146,24 @@ public class WatchFrameBean implements Serializable {
         }
     }
 
-    /** All pages the user may see — for the position indicator in the header. */
+    /** The pages of the rotation — for the position indicator in the header. */
     public List<WatchPage> getSeiten() {
         return registry.verfuegbare();
+    }
+
+    /**
+     * Address of the overview with the page switches, or empty when there is none.
+     *
+     * <p>The overview sits outside the rotation ({@link WatchPage#imUmlauf()}), so next/previous
+     * never reaches it — without this link it would only be reachable by typing the address.</p>
+     */
+    public String getUebersichtAdresse() {
+        return registry.alle().stream()
+                .filter(p -> !p.imUmlauf())
+                .filter(registry::sichtbar)
+                .findFirst()
+                .map(p -> p.view().replace(".xhtml", ".html"))
+                .orElse("");
     }
 
     /** Human-readable position, e.g. "2/4". Empty when there is nothing to show. */

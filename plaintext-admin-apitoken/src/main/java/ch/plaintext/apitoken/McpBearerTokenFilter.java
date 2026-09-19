@@ -149,7 +149,8 @@ public class McpBearerTokenFilter implements Filter {
         Objects.requireNonNull(jwtTokenService, "jwtTokenService");
         return new McpBearerTokenFilter(
                 token -> jwtTokenService.validateToken(token)
-                        .map(r -> new ValidatedToken(r.userId(), r.mandat(), r.email(), r.scope(), r.jti())),
+                        .map(r -> new ValidatedToken(r.userId(), r.mandat(), r.email(), r.scope(), r.jti(),
+                                r.tokenName())),
                 mcpUserRoles, revocationChecker);
     }
 
@@ -181,7 +182,8 @@ public class McpBearerTokenFilter implements Filter {
                         // strategy would arrive without a claim and the fail-closed default would
                         // degrade it to READ — switching to validation: DATABASE would then silently
                         // cut all EINTRAGEN flows (Zeiterfassung-Uhr, Juriwagen) down to read access.
-                        .map(r -> new ValidatedToken(r.userId(), r.mandat(), r.email(), r.scope(), null)),
+                        .map(r -> new ValidatedToken(r.userId(), r.mandat(), r.email(), r.scope(), null,
+                                r.tokenName())),
                 mcpUserRoles, revocationChecker);
     }
 
@@ -205,6 +207,19 @@ public class McpBearerTokenFilter implements Filter {
         }
 
         ValidatedToken validation = result.get();
+        // SECURITY (card 1257): a browser credential is not an API credential. The watch phone
+        // link is a signed token in a URL; whoever gets the link holds it. Its scope cannot say
+        // "watch pages only" — the ladder knows READ/EINTRAGEN/ADMIN, and an unknown value falls
+        // back to READ, which HERE is read access to the whole application with the owner's
+        // roles. The name prefix says it instead, and this is where it is enforced: such a token
+        // is worth nothing at the API, no matter what its scope claims.
+        if (istNurFuerDieOberflaeche(validation.tokenName())) {
+            log.warn("MCP request rejected: token '{}' (userId={}, mandat={}) is a UI credential ('{}')",
+                    validation.tokenName(), validation.userId(), validation.mandat(),
+                    IApiTokenService.UI_TOKEN_NAME_PREFIX);
+            unauthorized(httpResponse);
+            return;
+        }
         if (validation.jti() != null && revocationChecker.isRevoked(validation.jti())) {
             log.warn("MCP request rejected: token jti={} (userId={}, mandat={}) is revoked",
                     validation.jti(), validation.userId(), validation.mandat());
@@ -358,6 +373,18 @@ public class McpBearerTokenFilter implements Filter {
      * {@code plaintext.mcp.bearer-filter.legacy-scope-admin=true}
      * (see {@link McpBearerTokenFilterProperties#isLegacyScopeAdmin()}).</p>
      */
+    /**
+     * Whether the token name marks it as a browser credential
+     * ({@link IApiTokenService#UI_TOKEN_NAME_PREFIX}). A token without a name is <b>not</b> one:
+     * machine tokens minted directly via {@code JwtTokenService} carry none, and they must keep
+     * working (card 305).
+     */
+    static boolean istNurFuerDieOberflaeche(String tokenName) {
+        return tokenName != null
+                && tokenName.trim().toLowerCase(java.util.Locale.ROOT)
+                        .startsWith(IApiTokenService.UI_TOKEN_NAME_PREFIX);
+    }
+
     private void addScopeAuthorities(Set<GrantedAuthority> authorities, String scope) {
         String fallback = legacyScopeAdmin ? "ADMIN" : "READ";
         String effective = (scope == null || scope.isBlank()) ? fallback : scope.trim().toUpperCase();
@@ -391,5 +418,16 @@ public class McpBearerTokenFilter implements Filter {
      * @param jti    token ID for the revocation check, or {@code null} (legacy token, or the
      *               DATABASE strategy, which uses its own hash-based revocation)
      */
-    public record ValidatedToken(Long userId, String mandat, String email, String scope, String jti) {}
+    public record ValidatedToken(Long userId, String mandat, String email, String scope, String jti,
+                                 String tokenName) {
+
+        /**
+         * Without a name — the previous shape of this record. Kept so that a validation
+         * strategy outside this reactor keeps compiling; such a token then counts as an API
+         * token, which is the behaviour before card 1257.
+         */
+        public ValidatedToken(Long userId, String mandat, String email, String scope, String jti) {
+            this(userId, mandat, email, scope, jti, null);
+        }
+    }
 }

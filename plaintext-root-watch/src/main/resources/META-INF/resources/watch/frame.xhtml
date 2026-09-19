@@ -4,9 +4,21 @@
   stylesheet come from here, so no module has to repeat them.
   See WATCH-UI-GUIDE.md for the CSS classes.
 
-  The pages live behind the normal sign-in, NOT under /nosec/. A watch view is opened from a
-  phone that can sign in once and keep the session; a token in the URL would buy nothing and
-  would end up in logs, browser history and referrers.
+  ACCESS (changed by card 1257, 19.09.2026). Until now this comment said the pages lie behind
+  the normal sign-in and a token in the URL "would buy nothing". That decision was reversed:
+  Daniel wants a personal link that works on a phone WITHOUT signing in. The pages still do not
+  lie under /nosec/ — only the entry point /nosec/watch does. It reads the token ONCE, exchanges
+  it for a server-side session and redirects here without it.
+
+  The three costs the old comment named are not gone, they are paid:
+    * log      — the token appears in the access log of the entry request and nowhere else;
+                 the application itself never logs it, not even truncated.
+    * history  — a redirect replaces the history entry, so the address with the token is not
+                 even behind the back button.
+    * referrer — the meta below sends none, from any watch page.
+  On top of that the session is bound to the token: every request re-checks it against
+  api_token, so a revoked link dies on the next tap instead of at the session timeout, and
+  WatchTokenSitzungFilter answers 403 for anything that is not a watch page.
 -->
 <ui:composition xmlns="http://www.w3.org/1999/xhtml"
                 xmlns:h="http://java.sun.com/jsf/html"
@@ -30,6 +42,10 @@
         <meta name="viewport"
               content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
         <meta name="robots" content="noindex,nofollow"/>
+        <!-- Karte 1257: keine Verweisadresse nach draussen. Die Uhr wird ueber einen Link mit
+             Token geoeffnet; ohne diese Zeile stuende die Einstiegsadresse samt Token im
+             Referer jedes Aufrufs, den eine Seite von hier aus macht. -->
+        <meta name="referrer" content="no-referrer"/>
         <!-- Starts full screen from the home screen, without the Safari bars — one tap. -->
         <meta name="apple-mobile-web-app-capable" content="yes"/>
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -56,6 +72,11 @@
                 <input type="hidden" name="primefaces.nonce" value="#{watchFrameBean.cspNonce}"/>
                 <div class="w-nav">
                     <h:commandButton styleClass="w-btn" value="‹" action="#{watchFrameBean.zurueck}"/>
+                    <!-- Der Weg zur Uebersicht mit den Seiten-Schaltern. Sie laeuft seit Karte 1260
+                         nicht mehr im Umlauf mit, ist also mit ‹/› nicht erreichbar — ohne diesen
+                         Knopf kaeme niemand mehr an die Schalter. -->
+                    <h:outputLink styleClass="w-btn" value="#{request.contextPath}#{watchFrameBean.uebersichtAdresse}"
+                                  rendered="#{not empty watchFrameBean.uebersichtAdresse}">≡</h:outputLink>
                     <h:commandButton styleClass="w-btn" value="›" action="#{watchFrameBean.weiter}"/>
                 </div>
             </h:form>

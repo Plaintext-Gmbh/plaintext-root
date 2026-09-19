@@ -15,9 +15,34 @@
                 xmlns:ui="http://java.sun.com/jsf/facelets"
                 template="/watch/frame.xhtml">
 
-    <ui:define name="titel">Elemente</ui:define>
+    <ui:define name="titel">Seiten</ui:define>
 
     <ui:define name="inhalt">
+        <!-- Karte 1260: Die Uebersicht mit den Seiten-Schaltern. Sie steht oben, weil sie der
+             Grund ist, aus dem man diese Seite oeffnet; die Elementgalerie darunter bleibt als
+             Nachschlagewerk (Karte 1247) erhalten.
+
+             Dieselbe Auswahl wie in watch-einstellungen.xhtml, kein zweiter Mechanismus: beide
+             rufen WatchStateService.setzeSeite(). Ein Knopf je Seite statt Haken plus Speichern
+             — ein Formular mit sieben Haken fuellt auf 184 px niemand aus. -->
+        <h:form id="ue">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <input type="hidden" name="primefaces.nonce" value="#{watchFrameBean.cspNonce}"/>
+            <div class="w-card">
+                <div class="w-label">Sichtbare Seiten</div>
+                <ui:repeat value="#{watchUebersichtBean.seiten}" var="e">
+                    <div class="w-row">
+                        <span class="w-value w-sm">#{e.titel}</span>
+                        <h:commandButton styleClass="w-btn #{e.aktiv ? 'w-btn-go' : 'w-btn-stop'}"
+                                         value="#{e.schalterText}"
+                                         action="#{watchUebersichtBean.schalte(e.id)}"/>
+                    </div>
+                </ui:repeat>
+                <div class="w-note">Diese Uebersicht selbst laeuft nicht im Umlauf mit und laesst
+                    sich nicht abschalten — sonst gaebe es keinen Weg zurueck zu den Schaltern.</div>
+            </div>
+        </h:form>
+
         <h:form id="el">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
             <!-- Siehe frame.xhtml: ohne die Nonce wirft PrimeFaces beim Postback (Karte 1256). -->

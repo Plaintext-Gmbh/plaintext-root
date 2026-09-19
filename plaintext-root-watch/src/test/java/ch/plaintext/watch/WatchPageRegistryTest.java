@@ -33,14 +33,14 @@ class WatchPageRegistryTest {
     @DisplayName("Seiten werden nach order sortiert, bei Gleichstand nach id")
     void sortierung() {
         var r = new WatchPageRegistry(List.of(
-                seite("zeit", 10, true), seite("home", 0, true), seite("alkohol", 10, true)));
+                seite("zeit", 10, true), seite("home", 0, true), seite("alkohol", 10, true)), null);
         assertEquals(List.of("home", "alkohol", "zeit"), r.alle().stream().map(WatchPage::id).toList());
     }
 
     @Test
     @DisplayName("Vorwaerts laeuft am Ende auf die erste Seite zurueck")
     void vorwaertsWickeltUm() {
-        var r = new WatchPageRegistry(List.of(seite("a", 1, true), seite("b", 2, true)));
+        var r = new WatchPageRegistry(List.of(seite("a", 1, true), seite("b", 2, true)), null);
         assertEquals("b", r.naechste("a").orElseThrow().id());
         assertEquals("a", r.naechste("b").orElseThrow().id(), "am Ende zurueck auf die erste");
     }
@@ -48,7 +48,7 @@ class WatchPageRegistryTest {
     @Test
     @DisplayName("Rueckwaerts laeuft am Anfang auf die letzte Seite")
     void rueckwaertsWickeltUm() {
-        var r = new WatchPageRegistry(List.of(seite("a", 1, true), seite("b", 2, true)));
+        var r = new WatchPageRegistry(List.of(seite("a", 1, true), seite("b", 2, true)), null);
         assertEquals("a", r.vorherige("b").orElseThrow().id());
         assertEquals("b", r.vorherige("a").orElseThrow().id(), "am Anfang auf die letzte");
     }
@@ -57,7 +57,7 @@ class WatchPageRegistryTest {
     @DisplayName("Abgeschaltete Seiten werden uebersprungen, nicht angezeigt")
     void abgeschalteteUebersprungen() {
         var r = new WatchPageRegistry(List.of(
-                seite("a", 1, true), seite("test", 2, false), seite("c", 3, true)));
+                seite("a", 1, true), seite("test", 2, false), seite("c", 3, true)), null);
         assertEquals(List.of("a", "c"), r.verfuegbare().stream().map(WatchPage::id).toList());
         assertEquals("c", r.naechste("a").orElseThrow().id(), "die abgeschaltete wird uebersprungen");
     }
@@ -65,14 +65,14 @@ class WatchPageRegistryTest {
     @Test
     @DisplayName("Eine gemerkte, inzwischen verschwundene Seite faellt auf die erste zurueck")
     void unbekannteIdFaelltZurueck() {
-        var r = new WatchPageRegistry(List.of(seite("a", 1, true), seite("b", 2, true)));
+        var r = new WatchPageRegistry(List.of(seite("a", 1, true), seite("b", 2, true)), null);
         assertEquals("a", r.naechste("gibtsnichtmehr").orElseThrow().id());
     }
 
     @Test
     @DisplayName("Ohne verfuegbare Seite wird nichts geliefert statt zu werfen")
     void keineSeiteKeinFehler() {
-        var r = new WatchPageRegistry(List.of(seite("nur-aus", 1, false)));
+        var r = new WatchPageRegistry(List.of(seite("nur-aus", 1, false)), null);
         assertTrue(r.verfuegbare().isEmpty());
         assertTrue(r.naechste("nur-aus").isEmpty());
         assertTrue(r.erste().isEmpty());
@@ -81,7 +81,7 @@ class WatchPageRegistryTest {
     @Test
     @DisplayName("Eine einzelne Seite bleibt bei sich selbst — kein Sprung ins Leere")
     void einzelneSeite() {
-        var r = new WatchPageRegistry(List.of(seite("allein", 1, true)));
+        var r = new WatchPageRegistry(List.of(seite("allein", 1, true)), null);
         assertEquals("allein", r.naechste("allein").orElseThrow().id());
         assertEquals("allein", r.vorherige("allein").orElseThrow().id());
     }

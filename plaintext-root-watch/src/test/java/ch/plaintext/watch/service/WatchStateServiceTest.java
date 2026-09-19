@@ -75,7 +75,7 @@ class WatchStateServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(WatchUserStateRepository.class);
-        registry = new WatchPageRegistry(List.of(seite("home", 0, true), seite("zeit", 10, true)));
+        registry = new WatchPageRegistry(List.of(seite("home", 0, true), seite("zeit", 10, true)), null);
         service = new WatchStateService(repository);
         sicherheit = Mockito.mockStatic(PlaintextSecurityHolder.class);
         sicherheit.when(PlaintextSecurityHolder::getUser).thenReturn("daniel@plaintext.ch");
@@ -190,26 +190,129 @@ class WatchStateServiceTest {
                         + "Bean-Kreis wieder da und die Anwendung startet nicht.");
     }
 
-    @Test
-    @DisplayName("Die Testseite laesst sich schalten und wird zurueckgelesen")
-    void testseiteSchalten() {
+    // ---- Seitenauswahl je Benutzer (Karte 1257) ----------------------------------------------
+
+    private WatchUserState vorhandenerZustand() {
         WatchUserState vorhanden = new WatchUserState();
         vorhanden.setBenutzer("daniel@plaintext.ch");
         when(repository.findByBenutzerAndDeletedFalse("daniel@plaintext.ch")).thenReturn(Optional.of(vorhanden));
-
-        assertFalse(service.testseiteAktiv());
-        service.setzeTestseite(true);
-        assertTrue(service.testseiteAktiv());
-        verify(repository, times(1)).save(vorhanden);
+        return vorhanden;
     }
 
     @Test
-    @DisplayName("Ohne Benutzer meldet die Testseiten-Abfrage schlicht 'aus' statt zu werfen")
-    void testseiteOhneBenutzer() {
+    @DisplayName("Ohne Eintrag gilt jede Seite als an — gespeichert wird die Negativliste")
+    void ohneEintragAllesAn() {
+        vorhandenerZustand();
+
+        assertTrue(service.seiteAktiv("zeit"));
+        assertTrue(service.seiteAktiv("gibtsnochnicht"),
+                "eine Seite, die ein Modul morgen beisteuert, ist von sich aus sichtbar");
+    }
+
+    @Test
+    @DisplayName("Eine abgeschaltete Seite wird zurueckgelesen, die anderen bleiben an")
+    void seiteAbschalten() {
+        WatchUserState z = vorhandenerZustand();
+
+        service.setzeSeite("zeit", false);
+
+        assertFalse(service.seiteAktiv("zeit"));
+        assertTrue(service.seiteAktiv("home"), "nur die genannte Seite ist betroffen");
+        assertEquals("zeit", z.getAbgeschalteteSeiten());
+        verify(repository, times(1)).save(z);
+    }
+
+    @Test
+    @DisplayName("Mehrere abgeschaltete Seiten stehen nebeneinander und gehen einzeln wieder an")
+    void mehrereSeiten() {
+        WatchUserState z = vorhandenerZustand();
+
+        service.setzeSeite("zeit", false);
+        service.setzeSeite("alkohol", false);
+        assertEquals("zeit,alkohol", z.getAbgeschalteteSeiten());
+
+        service.setzeSeite("zeit", true);
+        assertEquals("alkohol", z.getAbgeschalteteSeiten());
+        assertTrue(service.seiteAktiv("zeit"));
+        assertFalse(service.seiteAktiv("alkohol"));
+    }
+
+    @Test
+    @DisplayName("Ist die letzte Seite wieder an, steht null statt einer leeren Zeichenkette")
+    void leereListeWirdNull() {
+        WatchUserState z = vorhandenerZustand();
+        service.setzeSeite("zeit", false);
+
+        service.setzeSeite("zeit", true);
+
+        assertEquals(null, z.getAbgeschalteteSeiten());
+    }
+
+    @Test
+    @DisplayName("Ohne echte Aenderung wird nicht geschrieben")
+    void keinSchreibenOhneAenderung() {
+        WatchUserState z = vorhandenerZustand();
+
+        service.setzeSeite("zeit", true);
+
+        verify(repository, never()).save(z);
+    }
+
+    @Test
+    @DisplayName("Ein Komma zu viel schaltet keine Seite mit leerem Namen ab")
+    void stolperkomma() {
+        WatchUserState z = vorhandenerZustand();
+        z.setAbgeschalteteSeiten("zeit,,  ,alkohol");
+
+        assertEquals(java.util.Set.of("zeit", "alkohol"), service.abgeschalteteSeiten());
+        assertFalse(service.seiteAktiv(""), "eine leere Kennung ist nie eine Seite");
+    }
+
+    @Test
+    @DisplayName("Ohne Benutzer meldet die Abfrage 'alles an' statt zu werfen — und schreibt nichts")
+    void auswahlOhneBenutzer() {
         sicherheit.when(PlaintextSecurityHolder::getUser).thenReturn(null);
 
-        assertFalse(service.testseiteAktiv());
-        service.setzeTestseite(true);
+        assertTrue(service.seiteAktiv("zeit"));
+        service.setzeSeite("zeit", false);
+        verify(repository, never()).save(any());
+    }
+
+    // ---- Handy-Link (Karte 1257) --------------------------------------------------------------
+
+    @Test
+    @DisplayName("Ein gemerkter Handy-Link ist aktiv, traegt einen Zeitpunkt und die jti")
+    void handyLinkMerken() {
+        WatchUserState z = vorhandenerZustand();
+
+        assertFalse(service.handyLinkAktiv());
+        service.merkeHandyLink("jti-4711");
+
+        assertTrue(service.handyLinkAktiv());
+        assertEquals("jti-4711", z.getHandyLinkJti());
+        assertTrue(service.handyLinkErstellt().isPresent());
+    }
+
+    @Test
+    @DisplayName("Abschalten loescht Kennzeichen und Zeitpunkt mit — kein halber Zustand")
+    void handyLinkAbschalten() {
+        WatchUserState z = vorhandenerZustand();
+        service.merkeHandyLink("jti-4711");
+
+        service.schalteHandyLinkAb();
+
+        assertFalse(service.handyLinkAktiv());
+        assertEquals(null, z.getHandyLinkJti());
+        assertTrue(service.handyLinkErstellt().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Die Abfrage fuer den Token-Pfad legt keine Zeile an")
+    void handyLinkFuerFremdenBenutzerLegtNichtsAn() {
+        when(repository.findByBenutzerAndDeletedFalse("jasmin@plaintext.ch")).thenReturn(Optional.empty());
+
+        assertFalse(service.handyLinkAktivFuer("jasmin@plaintext.ch"));
+        assertFalse(service.handyLinkAktivFuer(null));
         verify(repository, never()).save(any());
     }
 }
