@@ -77,6 +77,7 @@ public class ApiTokenService implements IApiTokenService {
      * @param scope {@code READ}, {@code EINTRAGEN} or {@code ADMIN}; {@code null}/empty omits the
      *              claim (legacy behaviour, the filter's fail-closed default then applies)
      */
+    @Override
     @Transactional
     public String createToken(Long userId, String mandat, String tokenName, String email, int validityDays,
                               String scope) {
@@ -291,6 +292,35 @@ public class ApiTokenService implements IApiTokenService {
             log.info("Invalidated token '{}' (ID={}) for userId={}, mandat={}",
                     token.getTokenName(), tokenId, userId, mandat);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Reads with {@code deleted=false} and writes both flags, exactly like
+     * {@link #invalidateToken(Long, Long, String)} — a revoked token is gone from the lists and
+     * fails {@link #validateVerifiedToken} twice over (hash no longer found, and invalidated).</p>
+     */
+    @Override
+    @Transactional
+    public int invalidateTokensByName(Long userId, String mandat, String tokenName) {
+        if (userId == null || tokenName == null || tokenName.isBlank()) {
+            return 0;
+        }
+        List<ApiToken> treffer = apiTokenRepository
+                .findByUserIdAndMandatAndDeletedOrderByCreatedAtDesc(userId, mandat, false).stream()
+                .filter(t -> tokenName.equals(t.getTokenName()))
+                .toList();
+        for (ApiToken t : treffer) {
+            t.setInvalidated(true);
+            t.setDeleted(true);
+        }
+        if (!treffer.isEmpty()) {
+            apiTokenRepository.saveAll(treffer);
+            log.info("{} Token(s) '{}' widerrufen (userId={}, mandat={})",
+                    treffer.size(), tokenName, userId, mandat);
+        }
+        return treffer.size();
     }
 
     /**

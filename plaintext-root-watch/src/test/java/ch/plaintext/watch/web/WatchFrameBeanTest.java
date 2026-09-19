@@ -63,7 +63,7 @@ class WatchFrameBeanTest {
     @BeforeEach
     void setUp() {
         zustand = mock(WatchStateService.class);
-        registry = new WatchPageRegistry(List.of(seite("home", 0), seite("zeit", 10), seite("test", 20)));
+        registry = new WatchPageRegistry(List.of(seite("home", 0), seite("zeit", 10), seite("test", 20)), null);
         bean = new WatchFrameBean();
         ReflectionTestUtils.setField(bean, "registry", registry);
         ReflectionTestUtils.setField(bean, "zustand", zustand);
@@ -84,7 +84,7 @@ class WatchFrameBeanTest {
     @DisplayName("Liefert der Dienst keine Seite, bleibt die Anzeige leer statt zu werfen")
     void seitenaufrufOhneSeite() {
         when(zustand.gemerkteSeitenId()).thenReturn(Optional.empty());
-        ReflectionTestUtils.setField(bean, "registry", new WatchPageRegistry(List.of()));
+        ReflectionTestUtils.setField(bean, "registry", new WatchPageRegistry(List.of(), null));
 
         bean.seitenaufruf();
 
@@ -160,7 +160,7 @@ class WatchFrameBeanTest {
             }
         };
         ReflectionTestUtils.setField(bean, "registry",
-                new WatchPageRegistry(List.of(seite("home", 0), aus)));
+                new WatchPageRegistry(List.of(seite("home", 0), aus), null));
         when(zustand.gemerkteSeitenId()).thenReturn(Optional.of("aus"));
 
         bean.seitenaufruf();
@@ -174,7 +174,7 @@ class WatchFrameBeanTest {
     @Test
     @DisplayName("Ohne verfuegbare Seiten bewegt sich nichts und es wird nichts gemerkt")
     void ohneSeitenKeineBewegung() {
-        ReflectionTestUtils.setField(bean, "registry", new WatchPageRegistry(List.of()));
+        ReflectionTestUtils.setField(bean, "registry", new WatchPageRegistry(List.of(), null));
 
         bean.weiter();
         bean.zurueck();

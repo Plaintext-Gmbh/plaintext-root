@@ -163,7 +163,12 @@ public class RateLimitFilter implements Filter {
             }
         }
 
-        if (path.startsWith("/nosec/schiri-mobile")) {
+        // Card 1257: the watch phone link. A signed token in a query string is guessable in
+        // principle, so it belongs in the STRICT bucket next to schiri-mobile and not in the
+        // generous /nosec one — behind that sit publicly readable pages that several visitors
+        // share, here sits a personal permanent pass. One person opening their watch needs a
+        // handful of requests a minute, not twenty.
+        if (path.startsWith("/nosec/schiri-mobile") || path.startsWith("/nosec/watch")) {
             String clientIp = getClientIp(request);
             if (!nosecTokenLimiter.tryConsume(clientIp)) {
                 log.warn("Rate limit exceeded for nosec-token endpoint {} from IP: {}", path, clientIp);

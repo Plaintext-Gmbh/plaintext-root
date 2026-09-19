@@ -14,7 +14,7 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="5000"/>
+            <p:growl id="messages" showDetail="true" life="8000"/>
 
             <p:fieldset id="fsAdresse" legend="Ansicht auf dem Telefon">
                 <h:panelGrid columns="1" style="width:100%">
@@ -24,27 +24,66 @@
                 </h:panelGrid>
             </p:fieldset>
 
-            <p:fieldset id="fsSeiten" legend="Verfuegbare Seiten" style="margin-top:15px">
-                <p:dataTable id="tblSeiten" value="#{watchSettingsBean.seiten}" var="s" emptyMessage="Keine Seite verfuegbar">
-                    <p:column headerText="Reihenfolge" style="width:8rem">
-                        <h:outputText value="#{s.order()}"/>
-                    </p:column>
-                    <p:column headerText="Titel">
-                        <h:outputText value="#{s.title()}"/>
-                    </p:column>
-                    <p:column headerText="Kennung">
-                        <h:outputText value="#{s.id()}"/>
-                    </p:column>
-                </p:dataTable>
+            <!-- Karte 1257: der persoenliche Handy-Link. -->
+            <p:fieldset id="fsHandy" legend="Handy-Link (ohne Anmeldung)" style="margin-top:15px">
+                <h:panelGrid columns="1" style="width:100%">
+                    <h:outputText value="Ein persoenlicher Link mit signiertem Token in der Adresse. Er oeffnet die Uhr ohne Anmeldung — nur fuer Sie, nicht weitergeben. Er zeigt ausschliesslich die Watch-Seiten; jede andere Seite der Anwendung bleibt ihm verschlossen. Gueltig 90 Tage."
+                                  style="font-style:italic;color:#666"/>
+
+                    <h:outputText value="Dieser Installation fehlt das Token-Modul — ein Handy-Link ist hier nicht moeglich."
+                                  rendered="#{not watchSettingsBean.handyLinkMoeglich}"
+                                  style="color:#a00"/>
+
+                    <h:outputText value="Aktiv, erstellt am #{watchSettingsBean.handyLinkErstellt}."
+                                  rendered="#{watchSettingsBean.handyLinkMoeglich and watchSettingsBean.handyLinkAktiv}"/>
+                    <h:outputText value="Zurzeit ist kein Handy-Link aktiv."
+                                  rendered="#{watchSettingsBean.handyLinkMoeglich and not watchSettingsBean.handyLinkAktiv}"/>
+
+                    <!-- Der Link wird EINMAL gezeigt, direkt nach dem Erstellen, und nirgends
+                         gespeichert: er ist ein Dauerausweis. Wie jeder Token im Haus liegt er
+                         nur als SHA-256 in api_token, und watch_user_state wird ueber den
+                         ModuleDescriptor exportiert — eine Klartextspalte waere in jeder
+                         Moduldatei. -->
+                    <h:panelGroup layout="block" rendered="#{not empty watchSettingsBean.neuerLink}"
+                                  style="margin-top:8px">
+                        <h:outputText value="Jetzt speichern — dieser Link wird nicht noch einmal angezeigt:"
+                                      style="font-weight:bold"/>
+                        <br/>
+                        <h:inputText id="linkFeld" value="#{watchSettingsBean.neuerLink}" readonly="true"
+                                     style="width:100%;font-family:monospace"/>
+                    </h:panelGroup>
+                </h:panelGrid>
+
+                <p:commandButton id="btnErzeugen" value="Handy-Link erstellen"
+                                 action="#{watchSettingsBean.erzeugeHandyLink}"
+                                 rendered="#{watchSettingsBean.handyLinkMoeglich}"
+                                 update="fsHandy messages" style="margin-top:10px"/>
+                <p:commandButton id="btnAbschalten" value="Deaktivieren"
+                                 action="#{watchSettingsBean.schalteHandyLinkAb}"
+                                 rendered="#{watchSettingsBean.handyLinkMoeglich and watchSettingsBean.handyLinkAktiv}"
+                                 update="fsHandy messages" style="margin-top:10px;margin-left:8px"/>
             </p:fieldset>
 
-            <p:fieldset id="fsTest" legend="Elementseite" style="margin-top:15px">
-                <h:panelGrid columns="1" style="width:100%">
-                    <h:outputText value="Die Elementseite zeigt jedes Bedienelement, das auf der kleinen Anzeige zur Verfuegung steht, mit Beschriftung. Sie ist als Nachschlagewerk gedacht und im Alltag im Weg — deshalb einzeln schaltbar."
-                                  style="font-style:italic;color:#666"/>
-                    <p:selectBooleanCheckbox id="cbTest" value="#{watchSettingsBean.testseiteAktiv}"
-                                             itemLabel="Elementseite auf der Uhr anzeigen"/>
-                </h:panelGrid>
+            <!-- Karten 1257/1260: die Seitenauswahl je Benutzer. Dieselbe Auswahl bedient die
+                 Uebersicht auf der Uhr selbst — ein Mechanismus, zwei Bedienstellen. -->
+            <p:fieldset id="fsSeiten" legend="Sichtbare Seiten" style="margin-top:15px">
+                <h:outputText value="Was hier abgeschaltet ist, erscheint weder im Umlauf der Uhr noch ueber den Handy-Link — auch nicht beim direkten Aufruf der Adresse. Seiten, fuer die Ihnen die Rolle fehlt, stehen gar nicht erst in der Liste."
+                              style="font-style:italic;color:#666"/>
+                <p:dataTable id="tblSeiten" value="#{watchSettingsBean.schalter}" var="s"
+                             emptyMessage="Keine Seite verfuegbar">
+                    <p:column headerText="Reihenfolge" style="width:8rem">
+                        <h:outputText value="#{s.reihenfolge}"/>
+                    </p:column>
+                    <p:column headerText="Titel">
+                        <h:outputText value="#{s.titel}"/>
+                    </p:column>
+                    <p:column headerText="Kennung">
+                        <h:outputText value="#{s.id}"/>
+                    </p:column>
+                    <p:column headerText="Sichtbar" style="width:8rem">
+                        <p:selectBooleanCheckbox value="#{s.aktiv}"/>
+                    </p:column>
+                </p:dataTable>
                 <p:commandButton id="btnSpeichern" value="Speichern" action="#{watchSettingsBean.speichern}"
                                  update="messages tblSeiten" style="margin-top:10px"/>
             </p:fieldset>
