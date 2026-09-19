@@ -37,11 +37,22 @@ import java.util.List;
 @Slf4j
 public class SetupBackingBean implements Serializable {
 
-    private final transient BrandingService brandingService;
-    private final transient SetupConfigService setupConfigService;
-    private final PlaintextSecurity security;
-    private final transient ApplicationContext applicationContext;
-    private final transient BrandingBean brandingBean;
+    // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
+    // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
+    // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
+    // setzen — aus einer NotSerializableException wuerde eine dauerhafte NullPointerException
+    // (Karten 915/1246). Ueber @Autowired fuellt der Kontext die Felder nach dem Aufwachen wieder.
+    // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
+    @Autowired
+    private transient BrandingService brandingService;
+    @Autowired
+    private transient SetupConfigService setupConfigService;
+    @Autowired
+    private transient PlaintextSecurity security;
+    @Autowired
+    private transient ApplicationContext applicationContext;
+    @Autowired
+    private transient BrandingBean brandingBean;
 
     // Branding fields
     private String footerText;
@@ -84,16 +95,6 @@ public class SetupBackingBean implements Serializable {
     private transient SystemMailSender systemMailSender;
 
     private boolean root;
-
-    public SetupBackingBean(BrandingService brandingService, SetupConfigService setupConfigService,
-                            PlaintextSecurity security, ApplicationContext applicationContext,
-                            BrandingBean brandingBean) {
-        this.brandingService = brandingService;
-        this.setupConfigService = setupConfigService;
-        this.security = security;
-        this.applicationContext = applicationContext;
-        this.brandingBean = brandingBean;
-    }
 
     /**
      * preRenderView listener (session-scoped instead of @ViewScoped): sets the role, locks out non-ROOT

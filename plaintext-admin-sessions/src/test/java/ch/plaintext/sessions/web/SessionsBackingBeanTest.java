@@ -47,7 +47,9 @@ class SessionsBackingBeanTest {
 
     @BeforeEach
     void setUp() {
-        bean = new SessionsBackingBean(sessionService, security);
+        bean = new SessionsBackingBean();
+        bean.setSessionService(sessionService);
+        bean.setSecurity(security);
         facesContextMock = mockStatic(FacesContext.class);
         facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
     }

@@ -16,6 +16,7 @@ import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -34,17 +35,26 @@ import java.util.stream.Collectors;
 public class MyUserInfoBackingBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // Constructor injection instead of field injection (Sonar S6813): Lombok's @RequiredArgsConstructor
-    // (from @Data) builds the injection constructor from the final fields. All injected
-    // framework beans are transient (Sonar S1948) – they are singletons and not part of the
-    // serializable session state of this bean.
-    private final transient MyUserRepository userRepository;
-    private final transient PlaintextSecurity plaintextSecurity;
-    private final transient ISetupConfigService setupConfigService;
-    private final transient TotpService totpService;
-    private final transient TotpAuthenticationService totpAuthenticationService;
-    private final transient PlaintextSecurityProperties securityProperties;
-    private final transient MagicLinkService magicLinkService;
+    // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
+    // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
+    // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
+    // setzen — aus einer NotSerializableException wuerde eine dauerhafte NullPointerException
+    // (Karten 915/1246). Ueber @Autowired fuellt der Kontext die Felder nach dem Aufwachen wieder.
+    // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
+    @Autowired
+    private transient MyUserRepository userRepository;
+    @Autowired
+    private transient PlaintextSecurity plaintextSecurity;
+    @Autowired
+    private transient ISetupConfigService setupConfigService;
+    @Autowired
+    private transient TotpService totpService;
+    @Autowired
+    private transient TotpAuthenticationService totpAuthenticationService;
+    @Autowired
+    private transient PlaintextSecurityProperties securityProperties;
+    @Autowired
+    private transient MagicLinkService magicLinkService;
 
     /**
      * SECURITY (card 314, item 7): the central {@link PasswordEncoder} bean instead of a local
@@ -52,7 +62,8 @@ public class MyUserInfoBackingBean implements Serializable {
      * factor 10, while the bean in {@code PlaintextSecurityConfig} stands at 12 — the
      * cost factors would therefore have drifted apart depending on the code path.
      */
-    private final transient PasswordEncoder passwordEncoder;
+    @Autowired
+    private transient PasswordEncoder passwordEncoder;
 
     // Advanced mode flag (activated via Ctrl+Shift+D)
     private boolean advancedMode = false;

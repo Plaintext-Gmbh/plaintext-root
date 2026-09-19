@@ -56,7 +56,9 @@ class RollenzuteilungRechtetrennungTest {
 
     @BeforeEach
     void setUp() {
-        bean = new RollenzuteilungBackingBean(service, security);
+        bean = new RollenzuteilungBackingBean();
+        bean.setService(service);
+        bean.setSecurity(security);
         facesContextMock = mockStatic(FacesContext.class);
         facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
     }
