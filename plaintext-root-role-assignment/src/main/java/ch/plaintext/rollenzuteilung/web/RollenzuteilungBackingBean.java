@@ -12,7 +12,6 @@ import ch.plaintext.rollenzuteilung.entity.Rollenzuteilung;
 import ch.plaintext.rollenzuteilung.service.RollenzuteilungService;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
-import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -32,31 +31,30 @@ import java.util.TreeSet;
 @Slf4j
 public class RollenzuteilungBackingBean implements Serializable {
 
-    private final RollenzuteilungService service;
-    private final PlaintextSecurity security;
+    // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
+    // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
+    // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
+    // setzen — aus einer NotSerializableException wuerde eine dauerhafte NullPointerException
+    // (Karten 915/1246). Ueber @Autowired fuellt der Kontext die Felder nach dem Aufwachen wieder.
+    // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
+    @Autowired
+    private transient RollenzuteilungService service;
+    @Autowired
+    private transient PlaintextSecurity security;
 
     /**
      * Role registry (module role registration): supplies the roles declared by the modules for the
      * selection. Optional ({@code null} allowed), so that contexts without a registry keep
-     * working.
+     * working. {@code required = false} keeps exactly that property after the switch to field
+     * injection (card 1269) — a plain {@code @Autowired} would turn the optional dependency into
+     * a mandatory one and let a context without a registry fail to start.
      */
-    private final transient PlaintextRoleRegistry roleRegistry;
+    @Autowired(required = false)
+    private transient PlaintextRoleRegistry roleRegistry;
 
     private List<Rollenzuteilung> rollenzuteilungen;
     private Rollenzuteilung selected;
     private boolean admin;
-
-    public RollenzuteilungBackingBean(RollenzuteilungService service, PlaintextSecurity security) {
-        this(service, security, null);
-    }
-
-    @Autowired
-    public RollenzuteilungBackingBean(RollenzuteilungService service, PlaintextSecurity security,
-                                      @Nullable PlaintextRoleRegistry roleRegistry) {
-        this.service = service;
-        this.security = security;
-        this.roleRegistry = roleRegistry;
-    }
 
     /**
      * preRenderView listener (session-scoped): sets the role, locks non-admins out via redirect and

@@ -35,7 +35,9 @@ class SettingsBackingBeanTest {
 
     @BeforeEach
     void setUp() {
-        bean = new SettingsBackingBean(service, security);
+        bean = new SettingsBackingBean();
+        bean.setService(service);
+        bean.setSecurity(security);
     }
 
     // --- onLoad ---

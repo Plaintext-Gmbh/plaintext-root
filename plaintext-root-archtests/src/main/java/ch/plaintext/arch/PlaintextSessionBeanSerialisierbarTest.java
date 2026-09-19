@@ -35,12 +35,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * a configuration change that looks harmless. Precisely for that reason a test is needed rather than
  * a ticket "when there is time": without it the regression would only surface in production.
  *
- * <p><b>What the test checks.</b> Exclusively a non-transient field whose type is a
- * <em>Spring bean</em> ({@code @Component}, {@code @Service}, {@code @Repository},
- * {@code @Controller}) and does not implement {@code Serializable}. The criterion is structural and
- * not read off the name — a suffix such as {@code ...Service} is a habit, not a promise. For a
- * Spring bean the answer is <em>always</em> {@code transient}: after a deserialization the context
- * injects it anew, no state is lost.
+ * <p><b>What the test checks.</b> Exclusively a field whose type is a <em>Spring bean</em>
+ * ({@code @Component}, {@code @Service}, {@code @Repository}, {@code @Controller}). The criterion
+ * is structural and not read off the name — a suffix such as {@code ...Service} is a habit, not a
+ * promise. Such a field survives a session in exactly one shape: {@code @Autowired}, {@code
+ * transient}, <em>not</em> {@code final}. Then the context injects it anew after a deserialization
+ * and no state is lost. Everything else is a finding, and there are two kinds
+ * ({@link #befund(JavaField, JavaClass)}): {@code final} means dead after a deserialization
+ * (card 1269, see below), non-transient with a non-serializable type means
+ * {@code NotSerializableException} when the session is written (card 915).
  *
  * <p><b>A field type that is SESSION-SCOPED ITSELF is exempt.</b> It is not a stateless service but
  * a state carrier — and if it is injected with
@@ -48,12 +51,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * a proxy anyway, whose serializability depends on the target class
  * (noticed on {@code GameSelectionHolder} in schuetu).
  *
- * <p><b>{@code final} fields are exempt, and that is no loophole.</b> With constructor injection
- * (Lombok {@code @RequiredArgsConstructor}) {@code transient} is the <em>wrong</em> answer: on a
- * deserialization no constructor runs, the field would stay {@code null} forever, and because it is
- * {@code final} nobody can set it afterwards either. A {@code NotSerializableException} would turn
- * into a {@code NullPointerException} — no progress. Fixing that is a design question there and does
- * not belong in a mechanical sweep (inventory in root: card 915).
+ * <p><b>{@code final} fields were exempt, and that WAS a loophole (card 1269).</b> The old
+ * reasoning ran: with constructor injection (Lombok {@code @RequiredArgsConstructor})
+ * {@code transient} is the wrong answer, because on a deserialization no constructor runs, the
+ * field stays {@code null} forever, and being {@code final} nobody can set it afterwards — a
+ * {@code NotSerializableException} would merely turn into a {@code NullPointerException}. Every
+ * step of that is true, and the conclusion drawn from it was wrong: it describes a
+ * <em>defect</em>, and the test answered by looking away. Measured on 19.09.2026 (card 1274): of
+ * 273 service fields in 137 session-scoped {@code Serializable} beans, <b>85 (31 %) were
+ * {@code final}</b> and therefore invisible here. The guard reported zero.
+ *
+ * <p>A guard that misses its main case is worse than none, because it produces the confidence
+ * that something was checked. {@code final} is therefore a <b>violation</b> now, and the fix
+ * named in the message is the house rule: <b>field injection</b>
+ * ({@code @Autowired private transient …}), so the context refills the field after a
+ * deserialization — not {@code final}, and not a bare {@code transient} in front of a
+ * {@code final}. In guild 20 of 22 session-scoped beans already do it that way. The material
+ * criterion is unchanged: only fields whose type is a Spring bean.
  *
  * <p><b>Known gap:</b> a service field typed via an <em>interface</em> carries no stereotype
  * annotation — the interface is not the bean, the implementation is. This test does not catch such
@@ -112,7 +126,7 @@ class PlaintextSessionBeanSerialisierbarTest {
      * zero, because zero was precisely the failure case.
      */
     @Test
-    @DisplayName("Positivkontrolle: der Test sieht session-scoped Serializable-Beans ueberhaupt")
+    @DisplayName("Positivkontrolle: der Test sieht session-scoped Serializable-Beans und ihre Dienstfelder")
     void derTestSiehtEtwas() {
         long beans = KLASSEN.stream()
                 .filter(k -> istSessionScoped(k) && k.isAssignableTo(Serializable.class))
@@ -121,10 +135,24 @@ class PlaintextSessionBeanSerialisierbarTest {
                 () -> "Keine session-scoped Serializable-Bean unter '" + BASE_PACKAGE + "' gefunden — der "
                         + "Importfilter greift zu scharf oder das Kompilat fehlt. Ein gruener Haupttest "
                         + "wuerde hier nichts bedeuten.");
+
+        // Zweite Haelfte der Kontrolle (Karte 1269): Bohnen zu sehen reicht nicht, der Test muss
+        // auch die FELDER sehen, um die es geht. Waere diese Zahl null, liefe die Hauptpruefung
+        // ueber eine leere Menge und meldete "alles gut" — genau die Zuversicht ohne Deckung, die
+        // der final-Filter jahrelang erzeugt hat.
+        long dienstfelder = KLASSEN.stream()
+                .filter(k -> istSessionScoped(k) && k.isAssignableTo(Serializable.class))
+                .flatMap(k -> k.getFields().stream())
+                .filter(f -> !f.getModifiers().contains(JavaModifier.STATIC))
+                .filter(f -> istSpringBean(f.getRawType()) && !istSessionScoped(f.getRawType()))
+                .count();
+        assertTrue(dienstfelder >= 1,
+                () -> "Keine dienst-artigen Felder in den " + beans + " gefundenen Bohnen — die "
+                        + "Hauptpruefung laeuft ueber eine leere Menge und bedeutet nichts.");
     }
 
     @Test
-    @DisplayName("Jedes nicht-transiente Feld einer session-scoped Serializable-Bean ist serialisierbar")
+    @DisplayName("Kein Dienstfeld einer session-scoped Serializable-Bean ist nach der Deserialisierung tot")
     void sessionBeansSindSerialisierbar() {
         ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
         List<String> verstoesse = new ArrayList<>(allowlist.fehler());
@@ -134,28 +162,72 @@ class PlaintextSessionBeanSerialisierbarTest {
                 continue;
             }
             for (JavaField feld : klasse.getFields()) {
-                if (feld.getModifiers().contains(JavaModifier.STATIC)
-                        || feld.getModifiers().contains(JavaModifier.TRANSIENT)
-                        || feld.getModifiers().contains(JavaModifier.FINAL)) {
+                if (feld.getModifiers().contains(JavaModifier.STATIC)) {
                     continue;
                 }
                 JavaClass typ = feld.getRawType();
-                if (istSpringBean(typ) && !istSessionScoped(typ) && !typ.isAssignableTo(Serializable.class)) {
-                    String ziel = klasse.getSimpleName() + "." + feld.getName();
-                    if (!allowlist.erlaubt(ziel)) {
-                        verstoesse.add("%s : %s".formatted(ziel, typ.getSimpleName()));
-                    }
+                // Das materielle Kriterium, unveraendert: nur ein Feld, dessen Typ ein
+                // wiederinjizierbarer Spring-Dienst ist. Zustandsfelder sind hier weiterhin nicht
+                // gemeint (Begruendung im Klassenkommentar).
+                if (!istSpringBean(typ) || istSessionScoped(typ)) {
+                    continue;
+                }
+                String grund = befund(feld, typ);
+                String ziel = klasse.getSimpleName() + "." + feld.getName();
+                if (grund != null && !allowlist.erlaubt(ziel)) {
+                    verstoesse.add("%s : %s — %s".formatted(ziel, typ.getSimpleName(), grund));
                 }
             }
         }
 
         // The list is deliberately part of the error message: it is the work instruction.
         assertTrue(verstoesse.isEmpty(),
-                () -> "%d nicht-serialisierbare Felder in session-scoped Serializable-Beans.\n".formatted(verstoesse.size())
-                        + "Dienst -> 'transient' davorschreiben; Zustand -> Typ serialisierbar machen.\n"
+                () -> "%d tote oder nicht-serialisierbare Dienstfelder in session-scoped Serializable-Beans.\n".formatted(verstoesse.size())
+                        + "final -> auf Feldinjektion umstellen (@Autowired + transient, NICHT final);\n"
+                        + "nicht transient -> 'transient' davorschreiben; Zustand -> Typ serialisierbar machen.\n"
                         + "Begruendete Ausnahme: '" + ALLOWLIST_REGEL + " Klasse.feld  # <Grund>' in "
                         + ArchAllowlist.DATEINAME + ".\n  "
                         + String.join("\n  ", verstoesse.stream().sorted().toList()));
+    }
+
+    /**
+     * What is wrong with this service field, or {@code null} if nothing is.
+     *
+     * <p><b>{@code final} is the case this test used to skip (card 1269), and it is the one that
+     * actually bites.</b> On a deserialization <em>no constructor runs</em>. A field set only
+     * through the constructor therefore stays {@code null} — and because it is {@code final},
+     * nothing can set it afterwards, not even the Spring context. A
+     * {@code NotSerializableException} at least shouts; this is silent and permanent, and it
+     * surfaces as a {@code NullPointerException} on the first use after a session was restored
+     * (cards 915/1246). Skipping it because "fixing it is a design question" turned the guard
+     * into a source of confidence with nothing behind it: 31&nbsp;% of all service fields in
+     * session beans were invisible to it.</p>
+     *
+     * <p>The way out is <b>field injection</b> ({@code @Autowired private transient …}), not
+     * {@code final}: then the context refills the field after a deserialization. That is the
+     * house rule — in guild 20 of 22 session-scoped beans already follow it.</p>
+     *
+     * <p>A {@code final} field whose type is itself {@code Serializable} and which is not
+     * {@code transient} is fine: its value travels with the session, so nothing has to be
+     * re-injected.</p>
+     */
+    private static String befund(JavaField feld, JavaClass typ) {
+        boolean istFinal = feld.getModifiers().contains(JavaModifier.FINAL);
+        boolean istTransient = feld.getModifiers().contains(JavaModifier.TRANSIENT);
+        boolean serialisierbar = typ.isAssignableTo(Serializable.class);
+        if (istFinal && istTransient) {
+            return "final transient: nach der Deserialisierung dauerhaft null (kein Konstruktor, "
+                    + "und final laesst sich nicht nachsetzen)";
+        }
+        if (istFinal && !serialisierbar) {
+            return "final und nicht serialisierbar: die Session laesst sich nicht schreiben, und "
+                    + "transient davorzuschreiben wuerde das Feld dauerhaft null machen";
+        }
+        if (!istFinal && !istTransient && !serialisierbar) {
+            return "nicht transient und nicht serialisierbar: NotSerializableException beim "
+                    + "Schreiben der Session";
+        }
+        return null;
     }
 
     private static boolean istSessionScoped(JavaClass klasse) {

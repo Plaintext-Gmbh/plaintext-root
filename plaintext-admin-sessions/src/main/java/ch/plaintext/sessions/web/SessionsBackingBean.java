@@ -9,6 +9,7 @@ import ch.plaintext.sessions.entity.UserSession;
 import ch.plaintext.sessions.service.SessionAuditServiceImpl;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import lombok.Getter;
@@ -25,17 +26,20 @@ import java.util.List;
 @Slf4j
 public class SessionsBackingBean implements Serializable {
 
-    private final SessionAuditServiceImpl sessionService;
-    private final PlaintextSecurity security;
+    // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
+    // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
+    // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
+    // setzen — aus einer NotSerializableException wuerde eine dauerhafte NullPointerException
+    // (Karten 915/1246). Ueber @Autowired fuellt der Kontext die Felder nach dem Aufwachen wieder.
+    // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
+    @Autowired
+    private transient SessionAuditServiceImpl sessionService;
+    @Autowired
+    private transient PlaintextSecurity security;
 
     private List<UserSession> sessions;
     private UserSession selected;
     private boolean root;
-
-    public SessionsBackingBean(SessionAuditServiceImpl sessionService, PlaintextSecurity security) {
-        this.sessionService = sessionService;
-        this.security = security;
-    }
 
     /**
      * preRenderView listener (session-scoped): sets the role, locks out non-admins/non-ROOT via a

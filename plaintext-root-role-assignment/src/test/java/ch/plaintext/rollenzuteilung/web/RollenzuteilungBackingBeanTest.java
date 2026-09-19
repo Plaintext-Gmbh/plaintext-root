@@ -30,8 +30,22 @@ class RollenzuteilungBackingBeanTest {
 
     @BeforeEach
     void setUp() {
-        bean = new RollenzuteilungBackingBean(service, security);
+        bean = neueBean(null);
     }
+
+    /**
+     * Baut die Bohne so auf, wie Spring es tut: Feldinjektion statt Konstruktor (Karte 1269).
+     * Die Dienste sind nicht mehr {@code final}, weil eine session-scoped Bohne nach der
+     * Deserialisierung keinen Konstruktor mehr sieht und {@code final} dort dauerhaft null bliebe.
+     */
+    private RollenzuteilungBackingBean neueBean(ch.plaintext.framework.PlaintextRoleRegistry registry) {
+        RollenzuteilungBackingBean neu = new RollenzuteilungBackingBean();
+        neu.setService(service);
+        neu.setSecurity(security);
+        neu.setRoleRegistry(registry);
+        return neu;
+    }
+
 
     @Test
     void getAvailableRoles_combinesRegistryAndBestand() {
@@ -40,7 +54,7 @@ class RollenzuteilungBackingBeanTest {
                 new java.util.LinkedHashSet<>(List.of("ROLE_ADMIN", "ROLE_ROOT", "ROLE_USER")));
         when(service.getDistinctRoleNames()).thenReturn(List.of("ROLE_POSTKONTO", "ROLE_ADMIN"));
 
-        RollenzuteilungBackingBean beanWithRegistry = new RollenzuteilungBackingBean(service, security, registry);
+        RollenzuteilungBackingBean beanWithRegistry = neueBean(registry);
         List<String> roles = beanWithRegistry.getAvailableRoles();
 
         assertNotNull(roles);

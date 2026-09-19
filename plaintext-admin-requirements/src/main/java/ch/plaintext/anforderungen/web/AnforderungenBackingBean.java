@@ -11,6 +11,7 @@ import ch.plaintext.anforderungen.repository.HowtoRepository;
 import ch.plaintext.anforderungen.service.AnforderungService;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import lombok.Getter;
@@ -27,9 +28,18 @@ import java.util.List;
 @Slf4j
 public class AnforderungenBackingBean implements Serializable {
 
-    private final AnforderungService service;
-    private final PlaintextSecurity security;
-    private final HowtoRepository howtoRepository;
+    // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
+    // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
+    // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
+    // setzen — aus einer NotSerializableException wuerde eine dauerhafte NullPointerException
+    // (Karten 915/1246). Ueber @Autowired fuellt der Kontext die Felder nach dem Aufwachen wieder.
+    // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
+    @Autowired
+    private transient AnforderungService service;
+    @Autowired
+    private transient PlaintextSecurity security;
+    @Autowired
+    private transient HowtoRepository howtoRepository;
 
     private List<Anforderung> anforderungen;
     private List<Anforderung> tableFilteredAnforderungen;
@@ -38,12 +48,6 @@ public class AnforderungenBackingBean implements Serializable {
     private boolean admin;
     private List<Howto> availableHowtos = new java.util.ArrayList<>();
     private List<Long> selectedHowtoIds = new java.util.ArrayList<>();
-
-    public AnforderungenBackingBean(AnforderungService service, PlaintextSecurity security, HowtoRepository howtoRepository) {
-        this.service = service;
-        this.security = security;
-        this.howtoRepository = howtoRepository;
-    }
 
     /**
      * preRenderView listener (session-scoped): sets the role, locks out non-admins via redirect and

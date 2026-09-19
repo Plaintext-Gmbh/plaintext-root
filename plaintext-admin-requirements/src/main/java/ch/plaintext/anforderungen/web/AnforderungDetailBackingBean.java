@@ -13,6 +13,7 @@ import ch.plaintext.anforderungen.repository.HowtoRepository;
 import ch.plaintext.anforderungen.service.AnforderungService;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import lombok.Getter;
@@ -32,10 +33,20 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AnforderungDetailBackingBean implements Serializable {
 
-    private final AnforderungService anforderungService;
-    private final HowtoRepository howtoRepository;
-    private final ClaudePromptRepository claudePromptRepository;
-    private final PlaintextSecurity security;
+    // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
+    // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
+    // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
+    // setzen — aus einer NotSerializableException wuerde eine dauerhafte NullPointerException
+    // (Karten 915/1246). Ueber @Autowired fuellt der Kontext die Felder nach dem Aufwachen wieder.
+    // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
+    @Autowired
+    private transient AnforderungService anforderungService;
+    @Autowired
+    private transient HowtoRepository howtoRepository;
+    @Autowired
+    private transient ClaudePromptRepository claudePromptRepository;
+    @Autowired
+    private transient PlaintextSecurity security;
 
     @Getter @Setter
     private Long anforderungId;
@@ -87,14 +98,6 @@ public class AnforderungDetailBackingBean implements Serializable {
 
     @Getter @Setter
     private boolean isNewMode = false;
-
-    public AnforderungDetailBackingBean(AnforderungService anforderungService, HowtoRepository howtoRepository,
-                                        ClaudePromptRepository claudePromptRepository, PlaintextSecurity security) {
-        this.anforderungService = anforderungService;
-        this.howtoRepository = howtoRepository;
-        this.claudePromptRepository = claudePromptRepository;
-        this.security = security;
-    }
 
     /**
      * preRenderView listener (session-scoped): loads the requirement from the {@code id} viewParam on every GET

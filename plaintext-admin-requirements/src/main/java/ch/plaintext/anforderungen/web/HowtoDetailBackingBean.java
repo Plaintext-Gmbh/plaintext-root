@@ -8,6 +8,7 @@ import ch.plaintext.anforderungen.entity.Howto;
 import ch.plaintext.anforderungen.repository.HowtoRepository;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import lombok.Getter;
@@ -29,7 +30,14 @@ import java.io.Serializable;
 public class HowtoDetailBackingBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final HowtoRepository howtoRepository;
+    // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
+    // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
+    // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
+    // setzen — aus einer NotSerializableException wuerde eine dauerhafte NullPointerException
+    // (Karten 915/1246). Ueber @Autowired fuellt der Kontext die Felder nach dem Aufwachen wieder.
+    // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
+    @Autowired
+    private transient HowtoRepository howtoRepository;
 
     @Getter @Setter
     private Long howtoId;
@@ -50,10 +58,6 @@ public class HowtoDetailBackingBean implements Serializable {
 
     @Getter @Setter
     private Boolean tempActive;
-
-    public HowtoDetailBackingBean(HowtoRepository howtoRepository) {
-        this.howtoRepository = howtoRepository;
-    }
 
     /**
      * preRenderView listener (session-scoped): loads the Howto from the {@code id} viewParam on every GET.

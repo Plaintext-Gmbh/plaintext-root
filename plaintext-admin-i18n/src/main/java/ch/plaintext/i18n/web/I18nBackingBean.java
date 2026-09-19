@@ -34,8 +34,16 @@ import java.util.List;
 @Slf4j
 public class I18nBackingBean implements Serializable {
 
-    private final I18nService i18nService;
-    private final PlaintextSecurity security;
+    // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
+    // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
+    // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
+    // setzen — aus einer NotSerializableException wuerde eine dauerhafte NullPointerException
+    // (Karten 915/1246). Ueber @Autowired fuellt der Kontext die Felder nach dem Aufwachen wieder.
+    // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
+    @Autowired
+    private transient I18nService i18nService;
+    @Autowired
+    private transient PlaintextSecurity security;
 
     @Autowired(required = false)
     private transient MenuRegistry menuRegistry;
@@ -50,11 +58,6 @@ public class I18nBackingBean implements Serializable {
     private String newTranslatedText;
 
     private boolean root;
-
-    public I18nBackingBean(I18nService i18nService, PlaintextSecurity security) {
-        this.i18nService = i18nService;
-        this.security = security;
-    }
 
     /**
      * preRenderView listener (session-scoped instead of @ViewScoped): sets the role, locks out non-ROOT
