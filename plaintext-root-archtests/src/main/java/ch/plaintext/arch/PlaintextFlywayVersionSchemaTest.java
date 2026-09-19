@@ -68,8 +68,9 @@ class PlaintextFlywayVersionSchemaTest {
     private static final Pattern NEUES_SCHEMA = Pattern.compile("V17\\d{8}__.*\\.sql");
 
     /**
-     * Feste Liste der 58 bereits vorhandenen Altdateien (Stand 06.09.2026, Karte 1069; die beiden
-     * schuetu-Eintraege am 08.09.2026 nachgetragen, Karte 1133) — Pfade relativ zur Reactor-Wurzel,
+     * Feste Liste der 86 bereits vorhandenen Altdateien (Stand 06.09.2026, Karte 1069; die beiden
+     * schuetu-Eintraege am 08.09.2026 nachgetragen, Karte 1133; die 28 fwtool-Eintraege am
+     * 19.09.2026, Karte 1268) — Pfade relativ zur Reactor-Wurzel,
      * wie {@link ReactorLayout#relativ(Path)} sie liefert.
      * Neue Eintraege kommen hier NICHT mehr hinzu: eine neue Migration muss das neue Schema
      * tragen, das ist der Zweck der Regel.
@@ -142,7 +143,61 @@ class PlaintextFlywayVersionSchemaTest {
             "plaintext-z-zeiterfassung/src/main/resources/db/migration/V822129836__create_zeiterfassung_calendar_token.sql",
             "plaintext-z-zeiterfassung/src/main/resources/db/migration/V822129851__add_export_token_to_zeiterfassung_settings.sql",
             "plaintext-z-zeiterfassung/src/main/resources/db/migration/V835866626__zeiterfassung_kalender_export_via_hosting.sql",
-            "plaintext-z-zeiterfassung/src/main/resources/db/migration/V839357632__schliesse_offene_alt_zaehlungen.sql"
+            "plaintext-z-zeiterfassung/src/main/resources/db/migration/V839357632__schliesse_offene_alt_zaehlungen.sql",
+
+            // ── plaintext-fwtool, nachgetragen 19.09.2026 (Karte 1268) ───────────────────────
+            //
+            // DAS IST DAS DRITTE MAL, DASS DIESE LISTE UNVOLLSTAENDIG WAR. Der Klassenkommentar
+            // haelt die Lehre aus Karte 1133 schon fest: "eine feste Liste, die aus einem Scan
+            // entsteht, ist nur so vollstaendig wie der Scan — und der kannte die konsumierenden
+            // Repos nicht alle." Die Erhebung vom 06.09.2026 deckte root, app und guild ab, am
+            // 08.09. kam schuetu dazu — plaintext-fwtool war in keiner der beiden.
+            //
+            // Aufgefallen ist es beim Bump von fwtool auf root 1.694.0 (Karte 1268): dieser Test
+            // kam mit der neuen root-Version dorthin und meldete 28 von 33 Migrationsdateien.
+            //
+            // WARUM AUSNAHME UND NICHT UMBENENNUNG: es sind bestehende Altdateien im alten
+            // Schema ("Sekunden seit 2000", V820... bis V827...), keine neuen Migrationen. Zehn
+            // davon sind byte-identische Kopien von root-Migrationen (geprueft gegen die Jars von
+            // 1.694.0), die uebrigen 18 stammen aus plaintext-admin-requirements, das es in
+            // 1.694.0 nicht mehr gibt — fwtool ist fuer sie die einzige Quelle. Umbenennen wuerde
+            // sie fuer Flyway zu neuen Migrationen machen.
+            //
+            // EHRLICHKEIT ZUM BELEG: bei schuetu liess sich in flyway_schema_history nachmessen,
+            // dass die Dateien angewendet sind. Fuer fwtool geht das NICHT — es gibt weder einen
+            // PROD-Container noch ein nasdb-Ziel (geprueft am 19.09.2026). Der Eintrag stuetzt
+            // sich also allein darauf, dass die Dateien alt sind und im alten Schema stehen, nicht
+            // auf eine Messung an einer laufenden Datenbank. Wer fwtool je in Betrieb nimmt und
+            // dabei feststellt, dass hier nie etwas angewendet war, kann diese 28 Zeilen durch
+            // eine saubere Umbenennung ersetzen — dann wird die Liste kuerzer statt laenger.
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503544__create_anforderung.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503545__create_cron_tables.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503546__create_file_metadata.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503550__create_rollenzuteilung.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503551__create_user_session.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503552__create_setting.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503554__create_werteliste.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503557__create_email_tables.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503558__create_menu_tables.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820503559__create_webapp_tables.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820595160__add_claude_automation.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820611675__extend_claude_automation.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820625502__remove_cron_and_template.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820629636__create_api_settings_and_cleanup_anforderung.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820661894__fix_lockfile_references.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820662288__refactor_anforderung_fields.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820671802__create_howto_and_add_howto_ids.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820708164__fix_missing_howto_table.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820751400__increase_beschreibung_length.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820751865__remove_menu_name_from_api_settings.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820752808__increase_beschreibung_length_fix.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820774656__add_mandat_to_anforderungen_entities.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V820887908__refactor_howto_table_fields.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V821036618__add_wiederkehrend_tage.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V821465986__fix_invalid_cron_patterns.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V821516397__fix_cron_expressions.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V821518200__add_cron_statistics_columns.sql",
+            "plaintext-fwtool-webapp/src/main/resources/db/migration/V827340596__add_version_to_simple_storable_entity.sql"
     );
 
     /**
