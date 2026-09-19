@@ -20,7 +20,16 @@
                 <h:panelGrid columns="1" style="width:100%">
                     <h:outputText value="Diese Adresse im Telefon-Browser oeffnen und zum Home-Bildschirm hinzufuegen. Sie startet dann ohne Browserleisten. Die Anmeldung erfolgt einmalig wie ueberall sonst; es gibt keinen Schluessel in der Adresse."
                                   style="font-style:italic;color:#666"/>
-                    <h:outputText value="#{watchSettingsBean.watchAdresse}" style="font-family:monospace;font-size:1.1em"/>
+                    <!-- Karte 1277 (Daniel, 19.09.2026: "Als echten link bitte"): war ein
+                         h:outputText. Die Adresse liess sich lesen und abtippen, aber nicht
+                         antippen — und abtippen ist genau das, was man auf einem Telefon nicht
+                         tun will. target/rel: die Uhr soll den Arbeitsplatz nicht ersetzen,
+                         und noopener gehoert an jedes target="_blank". -->
+                    <h:outputLink value="#{watchSettingsBean.watchAdresse}" target="_blank"
+                                  style="font-family:monospace;font-size:1.1em;word-break:break-all">
+                        <f:passThroughAttribute name="rel" value="noopener noreferrer"/>
+                        <h:outputText value="#{watchSettingsBean.watchAdresse}"/>
+                    </h:outputLink>
                 </h:panelGrid>
             </p:fieldset>
 
