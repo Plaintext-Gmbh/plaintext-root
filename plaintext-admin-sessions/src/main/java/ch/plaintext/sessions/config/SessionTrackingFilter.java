@@ -13,7 +13,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.core.annotation.Order;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -29,11 +28,21 @@ import java.io.IOException;
  * via Root&nbsp;→&nbsp;Setup. The transient registration in the
  * {@link HttpSessionRegistry} deliberately stays unaffected by that — it is the basis for
  * forcibly terminating a session, and is not a recording.</p>
+ *
+ * <p><b>Karte 1290:</b> die Anmeldung des Filters steht seit dem 20.09.2026 in
+ * {@link SessionTrackingFilterConfig} statt in einem {@code @Order} an dieser Klasse — sie muss
+ * {@code FORWARD} mitbringen, sonst laeuft der Filter auf keiner Seite. Dort steht die
+ * Begruendung samt Messung.</p>
  */
 @Component
-@Order(100)
 @Slf4j
 public class SessionTrackingFilter implements Filter {
+
+    /**
+     * Verhindert eine doppelte Aufzeichnung, wenn REQUEST- und FORWARD-Durchgang derselben
+     * Anfrage beide hier ankommen (Karte 1290).
+     */
+    static final String ATTRIBUT_GEZAEHLT = SessionTrackingFilter.class.getName() + ".gezaehlt";
 
     private final SessionAuditWriter sessionAuditWriter;
     private final PlaintextSecurity security;
@@ -59,7 +68,9 @@ public class SessionTrackingFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
 
-        if (request instanceof HttpServletRequest httpRequest) {
+        if (request instanceof HttpServletRequest httpRequest
+                && httpRequest.getAttribute(ATTRIBUT_GEZAEHLT) == null) {
+            httpRequest.setAttribute(ATTRIBUT_GEZAEHLT, Boolean.TRUE);
             sammleUndUebergib(httpRequest);
         }
 
