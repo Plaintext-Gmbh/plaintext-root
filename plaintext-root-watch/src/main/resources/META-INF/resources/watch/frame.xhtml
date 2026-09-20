@@ -52,6 +52,10 @@
         <meta name="mobile-web-app-capable" content="yes"/>
         <meta name="theme-color" content="#0b0b0f"/>
         <h:outputStylesheet library="watch" name="watch.css"/>
+        <!-- Karte 1276: der lange Druck auf den Vorwaerts-Knopf. Als Datei, nicht inline —
+             siehe die Begruendung am Knopf unten. `target="body"` waere hier falsch: das
+             Skript verdrahtet sich selbst ueber DOMContentLoaded. -->
+        <h:outputScript library="watch" name="watch.js"/>
         <title><ui:insert name="titel">Watch</ui:insert></title>
     </h:head>
 
@@ -70,15 +74,42 @@
                      PrimeFaces vergleicht bei jedem Postback die Nonce, und sein eigenes
                      JavaScript haengt den Parameter an — das es hier nicht gibt (Karte 1256). -->
                 <input type="hidden" name="primefaces.nonce" value="#{watchFrameBean.cspNonce}"/>
+                <!-- ── EIN KNOPF STATT DREI (Karte 1276, Daniel 19.09.2026) ──────────────────
+                     "Das mittlere menue braucht es nicht beim navigieren ... Navigieren nur
+                     vorwaerts und mit einem einzelnen button"
+
+                     Hier standen ‹ zurueck, ≡ Uebersicht und › weiter. Auf einem 40-mm-Bildschirm
+                     teilen sich drei Knoepfe die Breite, die einer braucht — und der Finger
+                     verdeckt beim Tippen ohnehin alle drei.
+
+                     ZURUECK ENTFAELLT ERSATZLOS. Der Umlauf ist geschlossen: wer einmal zu weit
+                     tippt, ist nach n-1 weiteren Tippern wieder da. Bei vier bis sechs Seiten ist
+                     das billiger als ein zweiter Knopf, den man auf dieser Groesse schlecht trifft.
+
+                     DIE UEBERSICHT HAENGT JETZT AM LANGEN DRUCK (Entscheid Daniel). Sie laeuft
+                     seit Karte 1260 bewusst nicht im Umlauf mit, war also nur ueber ≡ erreichbar.
+                     Ohne Ersatz waere sie von der Uhr aus verschwunden — die Seiten-Schalter gibt
+                     es zwar auch in der normalen App unter Watch-Einstellungen, aber nicht in der
+                     Hand.
+
+                     Der Preis steht im Hinweis darunter: ein langer Druck ist nicht sichtbar.
+                     Deshalb die Zeile "lang druecken: Uebersicht" — ohne sie findet es niemand,
+                     und eine Funktion, die man nicht findet, gibt es nicht. -->
                 <div class="w-nav">
-                    <h:commandButton styleClass="w-btn" value="‹" action="#{watchFrameBean.zurueck}"/>
-                    <!-- Der Weg zur Uebersicht mit den Seiten-Schaltern. Sie laeuft seit Karte 1260
-                         nicht mehr im Umlauf mit, ist also mit ‹/› nicht erreichbar — ohne diesen
-                         Knopf kaeme niemand mehr an die Schalter. -->
-                    <h:outputLink styleClass="w-btn" value="#{request.contextPath}#{watchFrameBean.uebersichtAdresse}"
-                                  rendered="#{not empty watchFrameBean.uebersichtAdresse}">≡</h:outputLink>
-                    <h:commandButton styleClass="w-btn" value="›" action="#{watchFrameBean.weiter}"/>
+                    <h:commandButton styleClass="w-btn" value="›" action="#{watchFrameBean.weiter}">
+                        <!-- Das Ziel als data-Attribut, nicht als onclick: Inline-JavaScript ist
+                             per PlaintextInlineJsVertragTest verboten, damit die CSP ohne
+                             script-src 'unsafe-inline' auskommt. watch.js liest es aus.
+                             Fehlt die Uebersicht (kein sichtbarer Eintrag ausserhalb des Umlaufs),
+                             fehlt das Attribut, und der Knopf bleibt ein reiner Vorwaerts-Knopf. -->
+                        <f:passThroughAttribute name="data-lang-ziel"
+                                                value="#{empty watchFrameBean.uebersichtAdresse ? '' : request.contextPath.concat(watchFrameBean.uebersichtAdresse)}"/>
+                    </h:commandButton>
                 </div>
+                <h:panelGroup layout="block" styleClass="w-nav-hinweis"
+                              rendered="#{not empty watchFrameBean.uebersichtAdresse}">
+                    lang drücken: Übersicht
+                </h:panelGroup>
             </h:form>
         </div>
     </h:body>

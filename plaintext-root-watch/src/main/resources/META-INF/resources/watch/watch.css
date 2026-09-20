@@ -156,6 +156,16 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 .w-nav { display: flex; gap: 8px; margin-top: 4px; }
 .w-nav .w-btn { margin-bottom: 0; }
 
+/* Karte 1276: der Hinweis auf den langen Druck. Ein langer Druck ist nicht sichtbar —
+   ohne diese Zeile findet ihn niemand, und eine Funktion, die man nicht findet, gibt es
+   nicht. Bewusst gedaempft und klein: sie soll einmal gelesen und dann uebersehen werden. */
+.w-nav-hinweis {
+    text-align: center;
+    font-size: var(--w-schrift-klein);
+    color: var(--w-ink-dim);
+    margin-top: 6px;
+}
+
 /* ── State line: says what is going on, in words AND colour ─────────────── */
 .w-state { text-align: center; font-size: var(--w-schrift-gross); padding: 8px 0; }
 .w-state-go { color: var(--w-go); }
