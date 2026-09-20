@@ -57,6 +57,13 @@ class PlaintextGroessenLeitplankeTest {
 
     private static final List<String> JAVA_SUFFIXES = List.of("src/main/java", "src/test/java");
 
+    /**
+     * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
+     * the six reactors on 20.09.2026 — schuetu and iot with four roots each (two modules, each with
+     * {@code src/main/java} and {@code src/test/java}).
+     */
+    private static final int MINDESTENS_SCANWURZELN = 4;
+
     @Test
     @DisplayName("Keine Java-Datei ueber " + MAX_ZEILEN + " Zeilen")
     void keineUeberlangenJavaDateien() throws IOException {
@@ -64,9 +71,7 @@ class PlaintextGroessenLeitplankeTest {
         for (String suffix : JAVA_SUFFIXES) {
             roots.addAll(ReactorLayout.sourceRoots(suffix));
         }
-        if (roots.isEmpty()) {
-            return; // reactor without Java sources at this point -> nothing to check
-        }
+        ReactorLayout.untergrenze(roots, MINDESTENS_SCANWURZELN, String.join(" + ", JAVA_SUFFIXES));
         ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
 
         List<String> verstoesse = new ArrayList<>(allowlist.fehler());

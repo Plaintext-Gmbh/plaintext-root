@@ -85,6 +85,12 @@ class PlaintextI18nSeedTest {
 
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
+    /**
+     * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
+     * the six reactors on 20.09.2026 — schuetu and iot with two roots each.
+     */
+    private static final int MINDESTENS_SCANWURZELN = 2;
+
     private static final String SEED_SUFFIX = "src/main/resources/i18n";
 
     /** Pattern of the importer ({@code I18nService.SEED_PATTERN}); a literal here so that archtests does not depend on admin-i18n. */
@@ -93,9 +99,7 @@ class PlaintextI18nSeedTest {
     @Test
     void jedesI18nLabelHatEineSeedZeileInDerLeitsprache() {
         List<Path> resourceRoots = ReactorLayout.sourceRoots(RESOURCES_SUFFIX);
-        if (resourceRoots.isEmpty()) {
-            return;
-        }
+        ReactorLayout.untergrenze(resourceRoots, MINDESTENS_SCANWURZELN, RESOURCES_SUFFIX);
         ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
         List<String> violations = new ArrayList<>(allowlist.fehler());
 
