@@ -632,8 +632,14 @@ class WatchHandyLinkPlaywrightIT {
                         + "' — sie wird aus der Seitenauswahl dieses Benutzers gerechnet.");
         assertTrue(p.locator(".w-card").count() > 0,
                 "Die Uhr hat keine einzige Karte (" + wo + ") — Seitenauszug: " + auszug(p));
-        assertTrue(p.locator("#nav .w-btn").count() >= 2,
-                "Die Navigation der Uhr fehlt (" + wo + ")");
+        // Bewusst ">= 1" und nicht eine feste Zahl: seit Karte 1276 ist aus ‹ ≡ › EIN
+        // Vorwaerts-Knopf geworden (die Uebersicht haengt am langen Druck). Der Test soll
+        // belegen, dass die Uhr bedienbar gerendert ist — nicht, wie viele Knoepfe Daniel
+        // gerade will. Genau daran ist der erste CI-Lauf dieser Klasse rot geworden: lokal
+        // gruen gegen 1.705.0, im CI gegen 1.706.0 mit dem neuen Knopf.
+        assertTrue(p.locator("#nav .w-btn").count() >= 1,
+                "Die Navigation der Uhr fehlt (" + wo + ") — im Formular #nav steht kein "
+                        + "einziger .w-btn. Seitenauszug: " + auszug(p));
         assertFalse(AUSNAHME_IM_HTML.matcher(p.content()).find(),
                 "Serverfehler im HTML der Uhr (" + wo + "): " + auszug(p));
     }
