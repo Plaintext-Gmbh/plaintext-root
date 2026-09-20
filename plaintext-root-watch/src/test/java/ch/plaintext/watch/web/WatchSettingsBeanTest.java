@@ -142,7 +142,17 @@ class WatchSettingsBeanTest {
     @Test
     @DisplayName("Ohne FacesContext liefert die Adresse den relativen Pfad statt zu werfen")
     void adresseOhneKontext() {
-        assertEquals("/watch/home.html", bean.getWatchAdresse());
+        assertEquals(WatchStartController.PFAD, bean.getWatchAdresse());
+    }
+
+    @Test
+    @DisplayName("Die Adresse fuer den Home-Bildschirm nennt keine feste Seite (Karte 1289)")
+    void adresseNenntKeineFesteSeite() {
+        // Ein Symbol auf dem Home-Bildschirm wird EINMAL gespeichert und danach jahrelang
+        // getippt. Stuende hier eine konkrete Seite, oeffnete es fuer immer diese eine — das
+        // Gemerkte wuerde bei jedem Wechsel geschrieben und nie gelesen.
+        assertFalse(bean.getWatchAdresse().endsWith(".html"),
+                "Die Startadresse zeigt wieder auf eine konkrete Seite: " + bean.getWatchAdresse());
     }
 
     // ---- Handy-Link ---------------------------------------------------------------------------

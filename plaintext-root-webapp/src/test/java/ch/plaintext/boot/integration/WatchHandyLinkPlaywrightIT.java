@@ -7,6 +7,7 @@ import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.settings.ISettingsService;
 import ch.plaintext.settings.SettingsKeys;
+import ch.plaintext.watch.web.WatchStartController;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
@@ -81,6 +82,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   <li>{@link #abgeschalteteSeiteIstUeberDenLinkNichtErreichbar()} — switched off it is gone,
  *       switched on again it is back. Without the second half the test would also be green if
  *       the watch were simply always empty.</li>
+ *   <li>{@link #handyLinkOeffnetDieZuletztOffeneSeite()} and
+ *       {@link #homeBildschirmAdresseOeffnetDieZuletztOffeneSeite()} (card 1289) — the
+ *       <b>same</b> link and the <b>same</b> saved address land on two different pages,
+ *       depending only on which one was open last. Without the first half a start that always
+ *       went to the second page would be green as well.</li>
  * </ul>
  *
  * <h2>What it found on its first run (20.09.2026)</h2>
@@ -141,6 +147,19 @@ class WatchHandyLinkPlaywrightIT {
 
     /** Titel der einzigen Seite, die in root im Umlauf ist ({@code WatchHomePage.title()}). */
     private static final String UHR_TITEL = "Übersicht";
+
+    /**
+     * Titel der Seite ausserhalb des Umlaufs ({@code WatchTestPage.title()}). In root ist sie
+     * die einzige zweite Seite — und damit die einzige, an der sich „die zuletzt offene Seite"
+     * ueberhaupt von „immer dieselbe" unterscheiden laesst (Karte 1289).
+     */
+    private static final String ZWEITE_TITEL = "Seiten";
+
+    /** Adresse ebendieser zweiten Seite. */
+    private static final String ZWEITE_ADRESSE = "/watch/elemente.html";
+
+    /** Adresse der ersten Seite im Umlauf — der Rueckfall, wenn nichts gemerkt ist. */
+    private static final String ERSTE_ADRESSE = "/watch/home.html";
 
     /** Fehlerbild im HTML — dieselbe enge Fassung wie in {@code AllPagesSmokePlaywrightIT}. */
     private static final Pattern AUSNAHME_IM_HTML = Pattern.compile(
@@ -476,6 +495,131 @@ class WatchHandyLinkPlaywrightIT {
         }
     }
 
+    // ================================================================= Start auf der letzten Seite
+
+    /**
+     * Karte 1289: die Uhr startet auf der Seite, die zuletzt offen war.
+     *
+     * <h2>Warum der Beleg aus zwei Haelften bestehen muss</h2>
+     *
+     * <p>Ein Test, der nur „nach dem Oeffnen von {@code elemente} landet der Link auf
+     * {@code elemente}" misst, waere auch dann gruen, wenn der Einstieg schlicht immer dorthin
+     * ginge. Deshalb wird <b>derselbe Link</b> zweimal aus einem frischen Browser gestartet,
+     * einmal mit gemerkter erster Seite und einmal mit gemerkter zweiter — und er muss beide
+     * Male woanders landen. Die erste Haelfte ist zugleich die Gegenprobe zur Lage vor dieser
+     * Karte: damals landete er immer auf {@code /watch/home.html}.</p>
+     *
+     * <p>Gemerkt wird ueber einen echten Seitenaufruf und nicht ueber die Datenbank: genau das
+     * tut {@code WatchFrameBean} bei jedem Wechsel, und nur so belegt der Lauf die ganze
+     * Strecke vom Tippen bis zum naechsten Start.</p>
+     */
+    @Test
+    @DisplayName("der Handy-Link oeffnet die zuletzt offene Seite, nicht immer die erste")
+    void handyLinkOeffnetDieZuletztOffeneSeite() {
+        String link;
+        try (BrowserContext admin = angemeldeterKontext()) {
+            link = erzeuge(einstellungen(admin));
+        }
+
+        try {
+            // ---- Haelfte 1 (Gegenprobe): gemerkt ist die erste Seite, also kommt sie.
+            merkeUeberDenLink(link, ERSTE_ADRESSE);
+            try (BrowserContext telefon = frischerKontext()) {
+                Page p = telefon.newPage();
+                p.navigate(link);
+                p.waitForLoadState();
+                uhrIstDa(p, "Start mit gemerkter erster Seite");
+            }
+
+            // ---- Haelfte 2: eine andere Seite zuletzt offen — und der Start folgt ihr.
+            merkeUeberDenLink(link, ZWEITE_ADRESSE);
+            try (BrowserContext telefon = frischerKontext()) {
+                Page p = telefon.newPage();
+                Response antwort = p.navigate(link);
+                p.waitForLoadState();
+
+                assertNotNull(antwort, "keine Antwort auf " + redigiert(link));
+                assertEquals(200, antwort.status(),
+                        "Der Start antwortete mit HTTP " + antwort.status() + " statt 200");
+                assertTrue(p.url().endsWith(ZWEITE_ADRESSE),
+                        "Der Handy-Link landete auf " + p.url() + " statt auf " + ZWEITE_ADRESSE
+                                + ". Zuletzt offen war diese Seite — wird sie beim Start nicht "
+                                + "gelesen, ist der gemerkte Zustand nur Schreibarbeit.");
+                // Nicht nur die Adresse: eine Seite mit Status 200 kann leer sein (Karten 1243,
+                // 1248). Die Kopfzeile kommt aus WatchFrameBean und nennt die Seite, die
+                // wirklich gerendert wurde.
+                assertEquals(ZWEITE_TITEL, kopfzeile(p),
+                        "Die Adresse stimmt, die Seite nicht: die Kopfzeile sagt '"
+                                + kopfzeile(p) + "'. Seitenauszug: " + auszug(p));
+                assertEquals(1, p.locator(".w-wrap").count(),
+                        "Der Rahmen der Uhr fehlt — Seitenauszug: " + auszug(p));
+                assertFalse(AUSNAHME_IM_HTML.matcher(p.content()).find(),
+                        "Serverfehler im HTML der Uhr: " + auszug(p));
+                assertFalse(p.url().contains("t="),
+                        "Der Token steht nach dem Einstieg noch in der Adresse: " + p.url());
+            }
+        } finally {
+            // Der gemerkte Zustand ist je Benutzer und ueberlebt den Test. Ohne dieses
+            // Aufraeumen startet jeder folgende Test dieser Klasse auf 'elemente', und
+            // uhrIstDa() faende dort weder die Adresse noch den Titel, den es erwartet.
+            merkeUeberDenLink(link, ERSTE_ADRESSE);
+        }
+    }
+
+    /**
+     * Die andere Haelfte des Auftrags: das Symbol auf dem Home-Bildschirm. Es wird EINMAL
+     * gespeichert und danach jahrelang getippt — stuende darin eine konkrete Seite, oeffnete es
+     * fuer immer diese eine.
+     *
+     * <p>Die Adresse wird aus der Maske gelesen und nicht zusammengebaut: nur so belegt der
+     * Lauf, dass das, was dort zum Speichern angeboten wird, auch traegt (dieselbe Regel wie
+     * beim Handy-Link in {@link #erzeuge(Page)}).</p>
+     */
+    @Test
+    @DisplayName("die Adresse fuer den Home-Bildschirm oeffnet die zuletzt offene Seite")
+    void homeBildschirmAdresseOeffnetDieZuletztOffeneSeite() {
+        try (BrowserContext admin = angemeldeterKontext()) {
+            Page p = einstellungen(admin);
+            String adresse = p.locator("#fm\\:adresseLink").getAttribute("href");
+
+            assertNotNull(adresse, "Die Maske zeigt keine Adresse zum Speichern an");
+            assertTrue(adresse.startsWith(basis()),
+                    "Die angebotene Adresse ist nicht absolut und auf einem Telefon kein Link: "
+                            + adresse);
+            assertTrue(adresse.endsWith(WatchStartController.PFAD),
+                    "Die Maske bietet " + adresse + " zum Speichern an. Nennt sie eine konkrete "
+                            + "Seite, friert jedes gespeicherte Symbol genau diese ein.");
+
+            try {
+                // ---- Gegenprobe: gemerkt ist die erste Seite.
+                oeffne(p, ERSTE_ADRESSE);
+                p.navigate(adresse);
+                p.waitForLoadState();
+                assertTrue(p.url().endsWith(ERSTE_ADRESSE),
+                        "Die gespeicherte Adresse landete auf " + p.url() + " statt auf "
+                                + ERSTE_ADRESSE);
+                assertEquals(UHR_TITEL, kopfzeile(p), "Seitenauszug: " + auszug(p));
+
+                // ---- Und jetzt dieselbe Adresse mit einer anderen zuletzt offenen Seite.
+                oeffne(p, ZWEITE_ADRESSE);
+                p.navigate(adresse);
+                p.waitForLoadState();
+                assertTrue(p.url().endsWith(ZWEITE_ADRESSE),
+                        "Dieselbe gespeicherte Adresse landete auf " + p.url() + " statt auf "
+                                + ZWEITE_ADRESSE + " — dann nuetzt das Merken beim Start nichts.");
+                assertEquals(ZWEITE_TITEL, kopfzeile(p),
+                        "Die Adresse stimmt, die Seite nicht: '" + kopfzeile(p)
+                                + "'. Seitenauszug: " + auszug(p));
+                assertEquals(1, p.locator(".w-wrap").count(),
+                        "Der Rahmen der Uhr fehlt — Seitenauszug: " + auszug(p));
+                assertFalse(AUSNAHME_IM_HTML.matcher(p.content()).find(),
+                        "Serverfehler im HTML der Uhr: " + auszug(p));
+            } finally {
+                oeffne(p, ERSTE_ADRESSE);
+            }
+        }
+    }
+
     // ================================================================= Werkzeug
 
     private BrowserContext frischerKontext() {
@@ -603,6 +747,29 @@ class WatchHandyLinkPlaywrightIT {
         return zeile.locator("input[type=submit], button");
     }
 
+    /**
+     * Oeffnet eine Watch-Seite ueber den Handy-Link und laesst sie damit als „zuletzt offen"
+     * merken — in einem frischen Browser, damit das Merken wirklich in der Datenbank landet und
+     * nicht in einer Sitzung, die der naechste Schritt ohnehin weiterbenutzt (Karte 1289).
+     */
+    private void merkeUeberDenLink(String link, String pfad) {
+        try (BrowserContext telefon = frischerKontext()) {
+            Page p = telefon.newPage();
+            p.navigate(link);
+            p.waitForLoadState();
+            oeffne(p, pfad);
+        }
+    }
+
+    /** Ruft eine Watch-Adresse auf und belegt, dass sie wirklich stehen bleibt. */
+    private void oeffne(Page p, String pfad) {
+        p.navigate(url(pfad));
+        p.waitForLoadState();
+        assertTrue(p.url().endsWith(pfad),
+                "Konnte " + pfad + " nicht oeffnen, gelandet auf " + p.url()
+                        + " — dann merkt der folgende Schritt die falsche Seite.");
+    }
+
     /** Die Growl-Meldungen der Maske — fuer Fehlermeldungen, nie fuer eine Zusicherung. */
     private String meldungen(Page maske) {
         Locator growl = maske.locator("#fm\\:messages");
@@ -620,8 +787,11 @@ class WatchHandyLinkPlaywrightIT {
      * Karten 1243 und 1248 durchgerutscht ist.</p>
      */
     private void uhrIstDa(Page p, String wo) {
-        assertTrue(p.url().endsWith("/watch/home.html"),
-                "Nicht auf der Uhr gelandet (" + wo + "): " + p.url());
+        assertTrue(p.url().endsWith(ERSTE_ADRESSE),
+                "Nicht auf der Uhr gelandet (" + wo + "): " + p.url()
+                        + ". Seit Karte 1289 fuehrt der Einstieg auf die ZULETZT OFFENE Seite — "
+                        + "steht hier eine andere Watch-Adresse, hat ein Test vorher etwas "
+                        + "anderes gemerkt und nicht aufgeraeumt.");
         assertEquals(1, p.locator(".w-wrap").count(),
                 "Der Rahmen der Uhr fehlt (" + wo + ") — Seitenauszug: " + auszug(p));
         assertEquals(UHR_TITEL, kopfzeile(p),

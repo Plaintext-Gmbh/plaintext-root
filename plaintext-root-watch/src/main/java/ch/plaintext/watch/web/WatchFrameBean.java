@@ -91,11 +91,9 @@ public class WatchFrameBean implements Serializable {
             wechsle(registry.erste().orElse(null));
             return;
         }
-        aktuelle = zustand.gemerkteSeitenId()
-                .flatMap(registry::byId)
-                .filter(registry::sichtbar)
-                .or(registry::erste)
-                .orElse(null);
+        // Dieselbe Regel, die auch WatchStartController anwendet — seit Karte 1289 steht sie
+        // einmal in der Registry statt zweimal hier und dort.
+        aktuelle = registry.einstieg(zustand.gemerkteSeitenId().orElse(null)).orElse(null);
         if (aktuelle != null) {
             zustand.merkeSeite(aktuelle.id());
         }

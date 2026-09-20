@@ -120,6 +120,35 @@ public class WatchPageRegistry {
     }
 
     /**
+     * Where the watch starts: the remembered page if it is still visible, otherwise the first
+     * one (card 1289).
+     *
+     * <h2>Why this is a method and not four lines twice</h2>
+     *
+     * <p>The rule existed, but only inside {@code WatchFrameBean.seitenaufruf()}, and only on
+     * the branch that runs when a watch page is called <b>without naming itself</b> — a way
+     * nobody actually goes. The phone link and the address for the home screen both named
+     * {@code /watch/home.html} outright, so the remembered page never decided anything at
+     * start. {@code WatchStartController} is the second caller of the same rule, and two copies
+     * of it would drift: a page that is switched off has to fall back here exactly as it does
+     * in the frame, or the start would send the user to a page the frame then redirects away
+     * from again.</p>
+     *
+     * <p>Deliberately takes the id rather than asking the state service itself, although the
+     * registry holds one: the frame bean has already read the state for this request, and a
+     * second lookup would be a second query per render — the one thing card 1273 took out of
+     * this path.</p>
+     *
+     * @param gemerkteId the id stored for this user, {@code null} or blank when there is none
+     */
+    public Optional<WatchPage> einstieg(String gemerkteId) {
+        if (gemerkteId == null || gemerkteId.isBlank()) {
+            return erste();
+        }
+        return byId(gemerkteId).filter(this::sichtbar).or(this::erste);
+    }
+
+    /**
      * The page after {@code aktuelleId}, wrapping around at the end.
      *
      * <p>An unknown or no longer available id falls back to the first page rather than
