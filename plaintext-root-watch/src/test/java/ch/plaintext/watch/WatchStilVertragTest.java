@@ -37,15 +37,43 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class WatchStilVertragTest {
 
-    /** Class attributes in the pages; {@code styleClass} and plain {@code class} alike. */
-    private static final Pattern GENUTZT = Pattern.compile("\\bw-[a-z0-9-]+");
+    /**
+     * Class attributes in the pages; {@code styleClass} and plain {@code class} alike.
+     *
+     * <p>Der Vorschau-Ausschluss {@code (?<![-\w])} ist nicht Kosmetik: ohne ihn liest das
+     * Muster auch die CSS-Variablen als Klassennamen — {@code var(--w-schrift-knopf)} in einer
+     * Seite oder auch nur in einem Kommentar meldete dann eine Klasse, die es nie gab
+     * (Karte 1312). Eine Variable beginnt mit zwei Bindestrichen, eine Klasse nicht.
+     */
+    private static final Pattern GENUTZT = Pattern.compile("(?<![-\\w])w-[a-z0-9-]+");
 
     /** Selectors in the stylesheet. */
     private static final Pattern DEFINIERT = Pattern.compile("\\.(w-[a-z0-9-]+)");
 
-    private static Path wurzel() {
-        Path p = Path.of("src/main/resources/META-INF/resources/watch");
+    private static Path modul() {
+        Path p = Path.of("src/main/resources");
         return Files.isDirectory(p) ? p : Path.of("plaintext-root-watch").resolve(p);
+    }
+
+    private static Path wurzel() {
+        return modul().resolve("META-INF/resources/watch");
+    }
+
+    /**
+     * Die Composite Components der Uhr (Karte 1312). Sie stehen nicht unter
+     * {@code META-INF/resources/watch}, benutzen aber dieselben {@code w-}Klassen — und ein
+     * Tippfehler dort trifft alle sieben Seiten auf einmal statt nur eine.
+     *
+     * @return die Komponenten, leer wenn es keine gibt
+     */
+    private static List<Path> tagFiles() throws IOException {
+        Path tags = modul().resolve("META-INF/resources/watch-ui");
+        if (!Files.isDirectory(tags)) {
+            return List.of();
+        }
+        try (Stream<Path> s = Files.list(tags)) {
+            return s.filter(p -> p.toString().endsWith(".xhtml")).sorted().toList();
+        }
     }
 
     private static Set<String> gefunden(Pattern muster, String text, int gruppe) {
@@ -69,8 +97,9 @@ class WatchStilVertragTest {
         StringBuilder seiten = new StringBuilder();
         List<Path> dateien;
         try (Stream<Path> s = Files.list(wurzel)) {
-            dateien = s.filter(p -> p.toString().endsWith(".xhtml")).sorted().toList();
+            dateien = new java.util.ArrayList<>(s.filter(p -> p.toString().endsWith(".xhtml")).sorted().toList());
         }
+        dateien.addAll(tagFiles());
         for (Path datei : dateien) {
             seiten.append(Files.readString(datei)).append('\n');
         }

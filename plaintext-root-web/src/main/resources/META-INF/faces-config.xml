@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Karte 1311 — die Ressourcenadressen tragen die Projektversion.
+
+  WARUM HIER UND NICHT IM WATCH-MODUL: der Fehler ist nicht der der Uhr. Jede ueber
+  library=/name= eingebundene Ressource jeder Anwendung lautet nach einer Aenderung gleich und
+  liegt sieben Tage im Browser-Zwischenspeicher — watch.css genauso wie plaintext-app.css, die
+  am 20.09.2026 gerade die Handy-Darstellung repariert hat (Karte 1286). plaintext-root-web ist
+  das Modul, das jede Web-App dieses Hauses ohnehin mitbringt; die Korrektur wirkt damit in
+  root, app, guild, iot und schuetu, ohne dass dort eine Zeile geaendert wird.
+
+  Eine faces-config.xml in META-INF eines Jars findet Mojarra von selbst — dieselbe Mechanik,
+  mit der plaintext-app-webapp seinen AppStylesheetListener registriert.
+-->
+<faces-config xmlns="https://jakarta.ee/xml/ns/jakartaee"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                                   https://jakarta.ee/xml/ns/jakartaee/web-facesconfig_4_0.xsd"
+              version="4.0">
+    <application>
+        <resource-handler>ch.plaintext.boot.web.resource.StandResourceHandler</resource-handler>
+    </application>
+</faces-config>

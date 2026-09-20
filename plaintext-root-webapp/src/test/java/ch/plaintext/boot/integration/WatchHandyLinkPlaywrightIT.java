@@ -939,9 +939,16 @@ class WatchHandyLinkPlaywrightIT {
         // belegen, dass die Uhr bedienbar gerendert ist — nicht, wie viele Knoepfe Daniel
         // gerade will. Genau daran ist der erste CI-Lauf dieser Klasse rot geworden: lokal
         // gruen gegen 1.705.0, im CI gegen 1.706.0 mit dem neuen Knopf.
-        assertTrue(p.locator("#nav .w-btn").count() >= 1,
+        //
+        // Karte 1312: der Knopf heisst nicht mehr .w-btn. Ein h:commandButton rendert ein
+        // <input>, und ein <input> kann keine Kinder tragen — der Hinweis "lang druecken"
+        // steht deshalb NEBEN dem Eingabefeld, und die sichtbare Knopfflaeche ist .w-aktion
+        // mit dem durchsichtigen .w-aktion-flaeche darueber. Gesucht ist die TREFFERFLAECHE,
+        // also das Eingabefeld: es allein belegt, dass der Knopf bedienbar ist. Wie er
+        // aussieht, misst WatchMusterPlaywrightIT bei 390px.
+        assertTrue(p.locator("#nav .w-aktion-flaeche").count() >= 1,
                 "Die Navigation der Uhr fehlt (" + wo + ") — im Formular #nav steht kein "
-                        + "einziger .w-btn. Seitenauszug: " + auszug(p));
+                        + "einziger .w-aktion-flaeche. Seitenauszug: " + auszug(p));
         assertFalse(AUSNAHME_IM_HTML.matcher(p.content()).find(),
                 "Serverfehler im HTML der Uhr (" + wo + "): " + auszug(p));
     }
