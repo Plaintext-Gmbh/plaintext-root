@@ -13,6 +13,7 @@
                 xmlns:p="http://primefaces.org/ui"
                 xmlns:pt="http://xmlns.jcp.org/jsf/passthrough"
                 xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:w="jakarta.faces.composite/watch-ui"
                 template="/watch/frame.xhtml">
 
     <ui:define name="titel">Seiten</ui:define>
@@ -165,10 +166,59 @@
                     sich auf der Uhr kaum wieder schliessen.</div>
             </div>
 
-            <!-- 10 — was NICHT geht. Ein Nachschlagewerk, das die Grenzen verschweigt, schickt den
+            <!-- 10 — der handelnde Knopf (Karte 1312). Er steht hier, weil das Muster sonst nur
+                 in der CSS stuende: wer eine neue Seite baut, liest diese Galerie und nicht
+                 watch.css. Der Knopf traegt selbst, woran er arbeitet und wie weit es ist —
+                 vorher waren das drei Elemente uebereinander, von denen das dritte zufaellig
+                 ein Knopf war. -->
+            <div class="w-card">
+                <div class="w-label">10 · Handelnder Knopf (w:aktion)</div>
+                <w:aktion oben="#{watchElementeBean.auswahl}"
+                          gross="#{watchElementeBean.zeit}"
+                          wort="Stop"
+                          aktionStil="w-aktion-stop"
+                          action="#{watchElementeBean.tippe('Stop (gross)')}"/>
+                <w:aktion wort="Start"
+                          hinweis="ohne laufende Aufgabe traegt er nur das Wort"
+                          aktionStil="w-aktion-go"
+                          action="#{watchElementeBean.tippe('Start (gross)')}"/>
+                <div class="w-hint">Kategorie und Dauer liegen IM Knopfrechteck, nicht darueber.
+                    Das Eingabefeld ist durchsichtig und deckt den ganzen Kasten ab — sichtbare
+                    Flaeche und Trefferflaeche sind dasselbe. Ohne Angaben bleibt nur das Wort.</div>
+            </div>
+
+            <!-- 11 — die Eintragszeile. Drei Module bauen sie (zeit, kalorien, alkohol), die
+                 Galerie zeigte sie bisher nicht — und genau dort fehlte der Abstand ueber dem
+                 Loeschknopf (Karte 1312, Punkt 1). Zwei gestapelte .w-row bekommen ihn jetzt
+                 aus watch.css, ohne dass eine Seite etwas dafuer tut. -->
+            <div class="w-card">
+                <div class="w-label">11 · Eintragszeile mit Loeschknopf</div>
+                <div class="w-entry">
+                    <div class="w-row">
+                        <h:inputText styleClass="w-field w-time" value="#{watchElementeBean.zeit}" pt:type="time">
+                            <f:convertDateTime type="localTime" pattern="HH:mm"/>
+                        </h:inputText>
+                        <span class="w-dash">–</span>
+                        <h:inputText styleClass="w-field w-time" value="#{watchElementeBean.zeit}" pt:type="time">
+                            <f:convertDateTime type="localTime" pattern="HH:mm"/>
+                        </h:inputText>
+                    </div>
+                    <div class="w-row">
+                        <span class="w-entry-label"><h:outputText value="#{watchElementeBean.auswahl}"/></span>
+                        <span class="w-entry-total"><h:outputText value="#{watchElementeBean.zahl}"/></span>
+                        <h:commandButton styleClass="w-btn w-btn-small" value="×"
+                                         action="#{watchElementeBean.tippe('Loeschen')}"/>
+                    </div>
+                </div>
+                <div class="w-hint">Die zweite Zeile klebte an der ersten (0 px). Der Abstand
+                    kommt aus .w-row + .w-row und gilt damit fuer jede Seite, die zwei Zeilen
+                    stapelt.</div>
+            </div>
+
+            <!-- 12 — was NICHT geht. Ein Nachschlagewerk, das die Grenzen verschweigt, schickt den
                  naechsten Bauenden in dieselbe Sackgasse. -->
             <div class="w-card w-card-warn">
-                <div class="w-label">10 · Was auf der Uhr NICHT geht</div>
+                <div class="w-label">12 · Was auf der Uhr NICHT geht</div>
                 <ul class="w-list">
                     <li><b>Kein Browser auf der Uhr.</b> watchOS hat bis heute keinen — auch 26 nicht.
                         Diese Seiten laufen auf dem <i>Telefon</i>; auf die Uhr kommt nur, was eine

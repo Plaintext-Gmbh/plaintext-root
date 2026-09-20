@@ -92,24 +92,47 @@
                      es zwar auch in der normalen App unter Watch-Einstellungen, aber nicht in der
                      Hand.
 
-                     Der Preis steht im Hinweis darunter: ein langer Druck ist nicht sichtbar.
-                     Deshalb die Zeile "lang druecken: Uebersicht" — ohne sie findet es niemand,
-                     und eine Funktion, die man nicht findet, gibt es nicht. -->
+                     Der Preis steht im Hinweis: ein langer Druck ist nicht sichtbar. Deshalb die
+                     Zeile "lang druecken: Uebersicht" — ohne sie findet es niemand, und eine
+                     Funktion, die man nicht findet, gibt es nicht. Seit Karte 1312 steht sie IM
+                     Knopf statt darunter. -->
+                <!-- ── DER HINWEIS STEHT IM KNOPF (Karte 1312, Daniel 20.09.2026) ───────────
+                     "lan klick: Uebersicht im button und button schrift groesser"
+
+                     Bis hierher war der Hinweis ein eigenes Element UNTER dem Knopf, mit eigener
+                     Klasse (aus watch.css entfernt). Auf Daniels Bild las er sich wie eine Fussnote
+                     der Seite — dabei beschreibt er eine Eigenschaft genau dieses Knopfes. Jetzt
+                     steht er in dessen Rechteck, und das Zeichen darueber traegt die groesste
+                     Schrift der Seite (eigene Groessenvariable in watch.css).
+
+                     WARUM NICHT EINFACH ALS ZWEITE ZEILE IM value: h:commandButton rendert
+                     <input type="submit"> — ein leeres Element ohne Kinder und ohne zweite
+                     Zeile. Der Text steht darum neben dem Eingabefeld, .w-aktion ist optisch der
+                     Knopf und das Eingabefeld liegt durchsichtig ueber dem ganzen Kasten. Die
+                     Trefferflaeche ist damit genau das, was man sieht.
+
+                     Der Aufbau ist derselbe wie bei der Komponente w:aktion; hier steht er von
+                     Hand, weil der Knopf zusaetzlich das data-Attribut fuer den langen Druck
+                     traegt. -->
                 <div class="w-nav">
-                    <h:commandButton styleClass="w-btn" value="›" action="#{watchFrameBean.weiter}">
-                        <!-- Das Ziel als data-Attribut, nicht als onclick: Inline-JavaScript ist
-                             per PlaintextInlineJsVertragTest verboten, damit die CSP ohne
-                             script-src 'unsafe-inline' auskommt. watch.js liest es aus.
-                             Fehlt die Uebersicht (kein sichtbarer Eintrag ausserhalb des Umlaufs),
-                             fehlt das Attribut, und der Knopf bleibt ein reiner Vorwaerts-Knopf. -->
-                        <f:passThroughAttribute name="data-lang-ziel"
-                                                value="#{empty watchFrameBean.uebersichtAdresse ? '' : request.contextPath.concat(watchFrameBean.uebersichtAdresse)}"/>
-                    </h:commandButton>
+                    <h:panelGroup layout="block" styleClass="w-aktion">
+                        <span class="w-aktion-wort">›</span>
+                        <h:panelGroup layout="block" styleClass="w-aktion-hinweis"
+                                      rendered="#{not empty watchFrameBean.uebersichtAdresse}">
+                            lang drücken: Übersicht
+                        </h:panelGroup>
+                        <h:commandButton styleClass="w-aktion-flaeche" value="weiter"
+                                         action="#{watchFrameBean.weiter}">
+                            <!-- Das Ziel als data-Attribut, nicht als onclick: Inline-JavaScript ist
+                                 per PlaintextInlineJsVertragTest verboten, damit die CSP ohne
+                                 script-src 'unsafe-inline' auskommt. watch.js liest es aus.
+                                 Fehlt die Uebersicht (kein sichtbarer Eintrag ausserhalb des Umlaufs),
+                                 fehlt das Attribut, und der Knopf bleibt ein reiner Vorwaerts-Knopf. -->
+                            <f:passThroughAttribute name="data-lang-ziel"
+                                                    value="#{empty watchFrameBean.uebersichtAdresse ? '' : request.contextPath.concat(watchFrameBean.uebersichtAdresse)}"/>
+                        </h:commandButton>
+                    </h:panelGroup>
                 </div>
-                <h:panelGroup layout="block" styleClass="w-nav-hinweis"
-                              rendered="#{not empty watchFrameBean.uebersichtAdresse}">
-                    lang drücken: Übersicht
-                </h:panelGroup>
             </h:form>
         </div>
     </h:body>

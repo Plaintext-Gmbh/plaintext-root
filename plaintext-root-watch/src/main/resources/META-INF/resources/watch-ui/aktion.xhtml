@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  w:aktion — der grosse Handlungsknopf einer Watch-Seite (Karte 1312).
+
+  Daniel, 20.09.2026: "stop button bit 0:0 im button selber und groesser. Diese aenderungen
+  als neues Muster auf alle watch seiten anwenden."
+
+  WAS ES ERSETZT. In zeit.xhtml standen drei getrennte Elemente uebereinander: ein w-label mit
+  der laufenden Kategorie, ein w-value mit der Dauer und darunter ein h:commandButton mit dem
+  Wort "Stop". Drei Angaben der Seite, von denen die dritte zufaellig ein Knopf ist. Gemeint
+  ist: DIESER Knopf beendet DIESE Aufgabe, die seit 0:00 laeuft. Daraus wird eine Zeile:
+
+      <w:aktion oben="#{bean.laufendeKategorie}" gross="#{bean.laufendeDauer}"
+                wort="Stop" aktionStil="w-aktion-stop" action="#{bean.knopf}"/>
+
+  WARUM DAS EINGABEFELD UEBER ALLEM LIEGT. h:commandButton rendert <input type="submit">. Ein
+  input ist ein leeres Element: es kann keine Kinder tragen, also auch keine zweite Zeile und
+  keine eigene Schriftgroesse je Zeile. Der Text steht darum NEBEN dem Eingabefeld; .w-aktion
+  ist optisch der Knopf, und das Eingabefeld liegt durchsichtig ueber dem ganzen Kasten
+  (position:absolute; inset:0; opacity:0). Sichtbares Rechteck und Trefferflaeche sind damit
+  dasselbe — nachgemessen bei 390px in WatchMusterPlaywrightIT.
+
+  WARUM EINE COMPOSITE COMPONENT UND KEIN TAG-FILE. Die pt:-Taglib dieses Hauses (Karte 984)
+  besteht aus Tag-Files, und aus gutem Grund: p:column muss direktes Kind der p:dataTable
+  bleiben, und eine Composite Component kapselt ihren Inhalt in einen NamingContainer. Fuer
+  diesen Knopf gilt das nicht — er steht fuer sich.
+
+  Umgekehrt scheitert hier genau das, was dort traegt: ein Tag-File kann die AKTION nicht
+  durchreichen. Am 20.09.2026 gemessen, erste Fassung genau so gebaut:
+
+      jakarta.el.MethodNotFoundException: .../tags/aktion.xhtml @55,92 action="#{aktion}":
+          Identity [aktion] was null and was unable to invoke
+
+  Ein Tag-File legt seine Attribute als ValueExpression in den VariableMapper. Beim Tippen
+  wird #{aktion} ausgewertet statt aufgerufen, das Ergebnis ist null, und der Knopf endet in
+  einer Fehlerseite. Die Seite RENDERT dabei tadellos — der Fehler kommt erst beim Druck.
+  Gefunden hat ihn nur, dass WatchMusterPlaywrightIT wirklich tippt.
+
+  Eine Composite Component hat fuer denselben Zweck den vorgesehenen Weg: method-signature
+  plus targets. JSF haengt die Methode an den Knopf mit der genannten id, statt sie durch einen
+  Ausdruck zu schleusen.
+
+  PFLICHT:   wort, action
+  OPTIONAL:  oben, gross, hinweis, aktionStil (w-aktion-go oder w-aktion-stop)
+-->
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:cc="jakarta.faces.composite">
+
+    <cc:interface>
+        <cc:attribute name="wort" type="java.lang.String" required="true"
+                      shortDescription="Die Handlung: Stop, Start, Erfassen. Groesste Schrift der Seite."/>
+        <!-- DER NAME MUSS "action" HEISSEN, und das ist keine Geschmacksfrage. JSF haengt eine
+             durchgereichte Methode nur bei den vier bekannten Namen (action, actionListener,
+             validator, valueChangeListener) an die Komponente; bei jedem anderen Namen legt es
+             sie bloss als Attribut gleichen Namens im Ziel ab, wo sie niemand liest. Mit
+             name="aktion" rendert der Knopf tadellos, schickt beim Tippen brav ein POST — und
+             ruft nichts auf. Am 20.09.2026 genau so gemessen: 'Zuletzt' blieb auf "—".
+             targets="knopf" nennt den h:commandButton, an den sie gehoert. -->
+        <cc:attribute name="action" required="true" targets="knopf"
+                      method-signature="java.lang.String action()"
+                      shortDescription="Was der Knopf ausloest."/>
+        <cc:attribute name="oben" shortDescription="Woran gearbeitet wird (Kategorie, Gericht)."/>
+        <cc:attribute name="gross" shortDescription="Die Zahl dazu (Dauer, Menge)."/>
+        <cc:attribute name="hinweis" type="java.lang.String"
+                      shortDescription="Verborgene Bedienung, z.B. lang druecken."/>
+        <cc:attribute name="aktionStil" type="java.lang.String"
+                      shortDescription="w-aktion-go oder w-aktion-stop."/>
+    </cc:interface>
+
+    <cc:implementation>
+        <div class="w-aktion #{cc.attrs.aktionStil}">
+            <h:panelGroup layout="block" styleClass="w-aktion-oben" rendered="#{not empty cc.attrs.oben}">
+                <h:outputText value="#{cc.attrs.oben}"/>
+            </h:panelGroup>
+            <h:panelGroup layout="block" styleClass="w-aktion-gross" rendered="#{not empty cc.attrs.gross}">
+                <h:outputText value="#{cc.attrs.gross}"/>
+            </h:panelGroup>
+            <h:panelGroup layout="block" styleClass="w-aktion-wort">
+                <h:outputText value="#{cc.attrs.wort}"/>
+            </h:panelGroup>
+            <h:panelGroup layout="block" styleClass="w-aktion-hinweis" rendered="#{not empty cc.attrs.hinweis}">
+                <h:outputText value="#{cc.attrs.hinweis}"/>
+            </h:panelGroup>
+            <!-- value ist der zugaengliche Name des Knopfes und bleibt gesetzt, obwohl das Feld
+                 durchsichtig ist. -->
+            <h:commandButton id="knopf" styleClass="w-aktion-flaeche" value="#{cc.attrs.wort}"/>
+        </div>
+    </cc:implementation>
+</ui:composition>

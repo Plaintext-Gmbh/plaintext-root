@@ -6,6 +6,7 @@ package ch.plaintext.boot.web;
 import ch.plaintext.boot.menu.MenuAutoConfiguration;
 import ch.plaintext.boot.menu.SecurityProvider;
 import ch.plaintext.boot.plugins.config.UrlRewriteConfig;
+import ch.plaintext.boot.web.resource.RessourcenStandInitialisierer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -13,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Registers the reusable web infrastructure.
@@ -60,5 +62,24 @@ public class WebAutoConfiguration {
     public SpringSecurityProvider springSecurityProvider() {
         log.info("Registering SpringSecurityProvider");
         return new SpringSecurityProvider();
+    }
+
+    /**
+     * Uebernimmt die Projektversion als Marke fuer die Ressourcenadressen — Karte 1311.
+     *
+     * <p>Den {@code ResourceHandler} baut JSF, nicht Spring; er kommt an keine Eigenschaft
+     * heran. Dieser Bean ist die einzige Bruecke: er laeuft beim Hochfahren einmal und setzt
+     * die Marke, die danach in jeder Ressourcenadresse steht. Ohne ihn bliebe die Startzeit
+     * der JVM stehen — auch richtig, aber sie wechselt bei jedem Neustart und wuerfe den
+     * Zwischenspeicher oefter weg als noetig.
+     *
+     * @param version {@code plaintext.version}, ersatzweise {@code plaintext.root.version}
+     * @return der Initialisierer
+     */
+    @Bean
+    @ConditionalOnMissingBean(RessourcenStandInitialisierer.class)
+    public RessourcenStandInitialisierer ressourcenStandInitialisierer(
+            @Value("${plaintext.version:${plaintext.root.version:}}") String version) {
+        return new RessourcenStandInitialisierer(version);
     }
 }

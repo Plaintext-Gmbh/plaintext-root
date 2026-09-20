@@ -42,6 +42,21 @@
                                  body — alle rem-Werte dieser Datei wachsen also mit. */
     --w-schrift-klein: 1rem;  /* Beschriftungen und Hinweise; war .85rem bzw. 15px */
     --w-schrift-gross: 1.2rem;/* Knoepfe, Felder, Zustandszeilen; war 1rem */
+
+    /* ── KARTE 1312 (Daniel, 20.09.2026) ──────────────────────────────────────────────
+       "lan klick: Uebersicht im button und button schrift groesser / stop button bit 0:0
+        im button selber und groesser / Loeschbutton ... sbstand zu oben"
+
+       --w-schrift-knopf ist die Schrift des HANDELNDEN Knopfes, nicht die jedes Knopfes.
+       Er ist die groesste Flaeche der Seite und trug bisher dieselbe Groesse wie ein
+       Feldtext. --w-schrift-gross bleibt, wo es steht (Felder, Zustandszeilen); wer beides
+       in einen Wert zoege, muesste zum Vergroessern des Knopfes auch die Eingabefelder
+       vergroessern.
+
+       --w-zeilenluft ist der Abstand zwischen zwei gestapelten .w-row. Er war 0 — die
+       Zeile mit Betrag und x klebte an der Zeile mit den Zeitfeldern. */
+    --w-schrift-knopf: 1.5rem;
+    --w-zeilenluft: 10px;
 }
 
 /* Light rooms exist too; the watch itself is usually dark, the phone often not. */
@@ -140,6 +155,19 @@ html, body {
    ueber den Bildschirmrand zu schieben (Karte 1258). */
 .w-row > * { max-width: 100%; }
 
+/* ── ZWEI ZEILEN KLEBEN NICHT (Karte 1312, Punkt 1) ───────────────────────
+   Daniel, 20.09.2026: "Loeschbutton kuerzer unf sbstand zu oben". Auf der Zeit-Seite
+   folgt der Zeile mit den Zeitfeldern unmittelbar die Zeile mit Betrag und x; bei 390px
+   gemessen lagen 0 px dazwischen. Weder .w-row noch .w-btn-small setzten je einen oberen
+   Abstand, und .w-entry gibt seine 10px nur nach aussen, nicht zwischen die Zeilen.
+
+   Die Regel haengt am Geschwisterpaar und nicht am Loeschknopf. Damit gilt sie fuer jede
+   Seite, die zwei Zeilen stapelt — heute zeit, morgen die naechste — und KEINE Seite muss
+   dafuer etwas aendern. Genau das ist der Unterschied zwischen einem Muster und einer
+   Korrektur an zeit.xhtml. Der ERSTEN Zeile einer Gruppe gibt sie nichts: die steht schon
+   unter der Polsterung der Karte oder des Eintrags. */
+.w-row + .w-row { margin-top: var(--w-zeilenluft); }
+
 /* ── Inputs: native controls only ───────────────────────────────────────── */
 .w-field {
     width: 100%;
@@ -158,15 +186,112 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
 /* ── Navigation between pages ───────────────────────────────────────────── */
 .w-nav { display: flex; gap: 8px; margin-top: 4px; }
 .w-nav .w-btn { margin-bottom: 0; }
+.w-nav .w-aktion { margin-bottom: 0; }
 
-/* Karte 1276: der Hinweis auf den langen Druck. Ein langer Druck ist nicht sichtbar —
-   ohne diese Zeile findet ihn niemand, und eine Funktion, die man nicht findet, gibt es
-   nicht. Bewusst gedaempft und klein: sie soll einmal gelesen und dann uebersehen werden. */
-.w-nav-hinweis {
+/* ─────────────────────────────────────────────────────────────────────────
+   DER GROSSKNOPF (Karte 1312, Punkte 2 und 3).
+
+   Daniel, 20.09.2026, zu zwei Bildschirmfotos:
+     "lan klick: Uebersicht im button und button schrift groesser"
+     "stop button bit 0:0 im button selber und groesser"
+     "Diese aenderungen als neues Muster auf alle watch seiten anwenden"
+
+   WAS FALSCH WAR: der Knopf trug ein Zeichen, und alles, was ihn erklaert, stand als
+   eigenes Element darueber oder darunter — der Hinweis auf den langen Druck als graue
+   Zeile unter dem Knopf, Kategorie und Dauer als w-label und w-value ueber dem Stop-Knopf.
+   Drei Elemente uebereinander sehen aus wie drei Angaben der Seite; gemeint ist eine
+   Eigenschaft des Knopfes. Der Knopf ist die groesste Flaeche der Uhr und trug ein Wort.
+
+   WARUM ES NICHT EINFACH IN DEN KNOPF GESCHRIEBEN WIRD: h:commandButton rendert
+   <input type="submit">. Ein input ist ein leeres Element — es kann keine Kinder tragen,
+   keine zweite Zeile und keine eigene Schriftgroesse je Zeile. Darum steht der Text
+   NEBEN dem Eingabefeld, und .w-aktion ist optisch der Knopf: das input liegt
+   durchsichtig darueber und nimmt den ganzen Kasten als Trefferflaeche. Was der Benutzer
+   sieht und was er trifft, ist damit dasselbe Rechteck — genau das ist die Aussage, die
+   WatchMusterPlaywrightIT bei 390px nachmisst.
+
+   WARUM ES EINE KOMPONENTE IST UND NICHT NUR CSS: stuende hier nur die Klasse, erfaende
+   jede der sieben Seiten ihr eigenes Markup dazu, und das Muster zerfiele beim ersten
+   Nachbauen. Der Aufbau steht darum EINMAL in META-INF/resources/watch-ui/aktion.xhtml und
+   heisst in einer Seite <w:aktion oben=".." gross=".." wort=".." aktion=".."/>.
+   ───────────────────────────────────────────────────────────────────────── */
+.w-aktion {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-height: var(--w-tap);
+    box-sizing: border-box;
+    padding: 14px 12px;
+    margin-bottom: 10px;
+    border: 0;
+    border-radius: var(--w-radius);
+    background: var(--w-line);
+    color: var(--w-ink);
     text-align: center;
+}
+.w-aktion-go { background: var(--w-go); color: #fff; }
+.w-aktion-stop { background: var(--w-stop); color: #fff; }
+
+/* Das echte <input>. Es deckt den ganzen Kasten ab und ist unsichtbar; sein value bleibt
+   gesetzt, denn es ist der zugaengliche Name des Knopfes. Ohne inset:0 waere die
+   Trefferflaeche wieder nur der Knopf und nicht das, was man sieht. */
+.w-aktion-flaeche {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: var(--w-schrift-klein);   /* nie unter 16px: iOS zoomt sonst beim Antippen */
+    opacity: 0;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+/* :active am Kasten wirkt in Chromium und Safari auch, wenn das Kind gedrueckt wird; die
+   zweite Zeile ist die Zusicherung fuer alles, was das nicht weiterreicht. */
+.w-aktion:active,
+.w-aktion:has(.w-aktion-flaeche:active) { filter: brightness(1.25); }
+/* Die Tastatur bedient niemand auf der Uhr — am Telefon mit Tastatur aber schon, und
+   ohne das waere der Fokus nach dem Durchsichtigmachen unsichtbar geworden. */
+.w-aktion:has(.w-aktion-flaeche:focus-visible) { outline: 3px solid var(--w-ink); outline-offset: 2px; }
+
+/* Das Wort, das die Handlung nennt — groesser als jede andere Schrift der Seite. */
+.w-aktion-wort {
+    display: block;
+    font-size: var(--w-schrift-knopf);
+    font-weight: 700;
+    line-height: 1.15;
+}
+/* Erste Zeile im Knopf: woran gearbeitet wird (Kategorie, Gericht, Getraenk). */
+.w-aktion-oben {
+    display: block;
+    font-size: var(--w-schrift-gross);
+    font-weight: 600;
+    line-height: 1.2;
+}
+/* Die Zahl im Knopf (Dauer, Menge). Bewusst etwas kleiner als die 2.8rem einer Kachel: im
+   Knopf steht sie zwischen zwei weiteren Zeilen, und der Kasten waere sonst hoeher als eine
+   Daumenlaenge. Gemessen bei 390px sind es 57px — die Zahl war vorher 26px, weil .w-value
+   ausserhalb von .w-widget gar keine Regel trifft. */
+.w-aktion-gross {
+    display: block;
+    font-size: 2.2rem;
+    font-weight: 650;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+/* Der Hinweis auf eine verborgene Bedienung (langer Druck). Er gehoert IN den Knopf: als
+   eigene Zeile darunter las er sich wie eine Fussnote der Seite statt wie eine
+   Eigenschaft des Knopfes — Daniels Bild vom 20.09.2026. */
+.w-aktion-hinweis {
+    display: block;
+    margin-top: 4px;
     font-size: var(--w-schrift-klein);
-    color: var(--w-ink-dim);
-    margin-top: 6px;
+    font-weight: 400;
+    opacity: .85;
 }
 
 /* ── State line: says what is going on, in words AND colour ─────────────── */

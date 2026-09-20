@@ -11,9 +11,14 @@
 #  against a deployed address. These are THREE JAVA integration tests in
 #  plaintext-root-webapp — SelfServicePlaywrightIT (self-registration and
 #  password reset), RootPagesPlaywrightIT (the root/admin pages: menu diagnosis,
-#  rootentities, menu entries, mail texts) and WatchHandyLinkPlaywrightIT
+#  rootentities, menu entries, mail texts), WatchHandyLinkPlaywrightIT
 #  (card 1280: the personal phone link of the watch — generate, open without a
-#  sign-in, revoke, re-issue). All three bring up the complete Spring
+#  sign-in, revoke, re-issue), WatchMusterPlaywrightIT (card 1312: the watch
+#  pattern measured at 390px — spacing above the delete button, hint inside the
+#  button, category and duration inside the stop button, each with its
+#  counter-check at the state before) and RessourcenMarkePlaywrightIT (card 1311:
+#  two fetches of watch.css with a release in between — the address must differ).
+#  All of them bring up the complete Spring
 #  application on a random port and drive it with Chromium.
 #  Node and the Playwright NPM world do NOT appear in it; the browser binding
 #  is com.microsoft.playwright (Java), version 1.60.0 (plaintext-root-webapp/pom.xml).
@@ -220,7 +225,7 @@ steps:
       - >-
         mvn -B -pl plaintext-root-webapp -Dmaven.build.cache.enabled=false
         failsafe:integration-test failsafe:verify
-        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,WatchHandyLinkPlaywrightIT
+        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,WatchHandyLinkPlaywrightIT,WatchMusterPlaywrightIT,RessourcenMarkePlaywrightIT
 
   berichte-bei-fehlschlag:
     image: mcr.microsoft.com/playwright/java:v1.60.0-noble

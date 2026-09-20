@@ -115,6 +115,54 @@ the label**: colour alone fails for colour-blind users and in bright sunlight.
 There is no `:hover` anywhere in this stylesheet, on purpose: a watch has no pointer, and
 hover styles get stuck in the "on" state after a tap.
 
+### Der handelnde Knopf — `w:aktion` (Karte 1312)
+
+**Der Knopf trägt seinen Zustand selbst.** Nicht eine Beschriftung darüber, ein Wert darunter
+und dann ein Knopf, der ein Wort trägt — das sind drei Angaben der Seite, von denen die dritte
+zufällig ein Knopf ist. Der Knopf ist die größte Fläche der Uhr.
+
+```xml
+<ui:composition xmlns:w="jakarta.faces.composite/watch-ui" ...>
+  <w:aktion oben="#{bean.laufendeKategorie}"
+            gross="#{bean.laufendeDauer}"
+            wort="Stop"
+            aktionStil="w-aktion-stop"
+            action="#{bean.knopf}"/>
+```
+
+| Attribut | Pflicht | Inhalt |
+|---|---|---|
+| `wort` | ja | die Handlung: Stop, Start, Erfassen. Größte Schrift der Seite |
+| `action` | ja | die Methode, `#{bean.knopf}`. **Der Name muss `action` sein** — bei jedem anderen legt JSF die Methode nur als Attribut ab und der Knopf tut nichts |
+| `oben` | nein | woran gearbeitet wird (Kategorie, Gericht) |
+| `gross` | nein | die Zahl dazu (Dauer, Menge) |
+| `hinweis` | nein | verborgene Bedienung, z.B. „lang drücken: Übersicht" |
+| `aktionStil` | nein | `w-aktion-go` oder `w-aktion-stop` |
+
+Leere Angaben fallen weg; ohne `oben` und `gross` bleibt ein Knopf mit einem Wort.
+
+**Schreib das Markup nicht selbst nach.** `h:commandButton` rendert `<input type="submit">` —
+ein leeres Element, das keine Kinder tragen kann. Der Text steht deshalb *neben* dem
+Eingabefeld, `.w-aktion` ist optisch der Knopf, und das Eingabefeld liegt durchsichtig über dem
+ganzen Kasten. Wer das von Hand nachbaut, vergisst eine der drei Bedingungen und hat einen
+Knopf, dessen Trefferfläche kleiner ist als das, was man sieht. Der einzige Ort, an dem es von
+Hand steht, ist `frame.xhtml` — dort trägt der Knopf zusätzlich das `data-`Attribut für den
+langen Druck.
+
+**Und es ist eine Composite Component, kein Tag-File wie bei `pt:`.** Ein Tag-File kann die
+*Aktion* nicht durchreichen: es legt seine Attribute als ValueExpression in den VariableMapper,
+beim Tippen wird `#{aktion}` ausgewertet statt aufgerufen, und der Knopf endet in einer
+Fehlerseite (`MethodNotFoundException: Identity [aktion] was null`, am 20.09.2026 gemessen).
+Die Seite **rendert** dabei tadellos — gefunden hat es nur, dass `WatchMusterPlaywrightIT`
+wirklich tippt. Für `pt:` gilt weiter das Umgekehrte: dort muss `p:column` direktes Kind der
+`p:dataTable` bleiben, und ein NamingContainer bräche das.
+
+### Zwei Zeilen untereinander
+
+`.w-row + .w-row` bekommt `--w-zeilenluft` von selbst. Setz **keinen** eigenen `margin-top` an
+eine Zeile: bis Karte 1312 klebte die Zeile mit Betrag und `×` an der Zeile mit den Zeitfeldern
+(bei 390px gemessen: 0 px), und die Korrektur gehört an genau eine Stelle.
+
 ### Inputs
 
 Use native controls with `.w-field`. Do **not** build your own pickers: the system time picker
@@ -128,10 +176,12 @@ variables, so "make it bigger" is one edit instead of fifteen:
 
 | Variable | Wert | wofür |
 |---|---|---|
-| `--w-schrift` | 21px | Grundschrift (war 17px) |
+| `--w-schrift` | 26px | Grundschrift (war 17px, dann 21px — Karte 1285) |
 | `--w-schrift-klein` | 1rem | Beschriftungen, Hinweise, Listen (war .85rem / 15px) |
-| `--w-schrift-gross` | 1.2rem | Knöpfe, Felder, Zustandszeilen (war 1rem) |
+| `--w-schrift-gross` | 1.2rem | Felder, Zustandszeilen, Auswahlknöpfe (war 1rem) |
+| `--w-schrift-knopf` | 1.5rem | das Wort im handelnden Knopf (Karte 1312) |
 | `--w-tap` | 56px | jede Trefferfläche (war 44px) |
+| `--w-zeilenluft` | 10px | Abstand zwischen zwei gestapelten `.w-row` (Karte 1312) |
 
 ### Auswahlknöpfe
 
@@ -175,6 +225,11 @@ what they are deleting while deciding.
    own metadata block is ignored without a word and the page just stays empty.
 9. **A home tile reads the service, never the page bean.** Tiles are singletons; a singleton
    depending on a session-scoped bean makes Spring refuse to build the context at all.
+10. **Eine CSS-Änderung kommt erst mit dem nächsten Release an.** Die Adresse von `watch.css`
+    trägt seit Karte 1311 die Projektversion (`…?ln=watch&rev=1.714.0`) und wird sieben Tage
+    zwischengespeichert. Das ist Absicht — aber es heißt: ohne Release und Versionsbump sieht
+    ein Browser mit warmem Zwischenspeicher deine Änderung **nicht**. Wer am ausgelieferten
+    Stand zweifelt, ruft die Adresse ab und liest den Inhalt, statt ins Stylesheet zu schauen.
 
 ---
 
@@ -202,6 +257,7 @@ plaintext-root-watch/
   src/main/resources/
     META-INF/resources/watch/watch.css
     META-INF/resources/watch/    the pages themselves
+    META-INF/resources/watch-ui/aktion.xhtml   w:aktion — der handelnde Knopf (Karte 1312)
 ```
 
 The signed-in user always comes from `PlaintextSecurityHolder`, never from a request
