@@ -40,6 +40,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Card 1280: the <b>positive</b> way of the personal phone link, in a real browser.
  *
+ * <p>Card 1305 added the two cases about what the confinement <em>feels</em> like: the refusal
+ * explains itself instead of showing a whitelabel page, and there is a way out of the session.
+ * They live here and not in a class of their own — the statement "the page is still withheld"
+ * and the statement "and it says so" are one measurement, and splitting them would let the
+ * pleasant half stay green while the sharp half quietly disappeared.</p>
+ *
  * <h2>Why this class exists at all</h2>
  *
  * <p>Card 1257 built the link and measured everything that must <em>not</em> work: no token 403,
@@ -77,6 +83,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       when somebody takes the revocation out.</li>
  *   <li>{@link #dieTokenSitzungKommtAusDerUhrNichtHeraus()} — and afterwards the watch still
  *       works, so the confinement locks the way out and not the session.</li>
+ *   <li>{@link #nichtWatchSeiteErklaertSichStattWhitelabel()} (card 1305) — the refused page
+ *       explains itself instead of showing the whitelabel page, <b>and</b> the requested page
+ *       is still not delivered. Without the second half this one would be green with the
+ *       confinement gone altogether — which is exactly what card 1280 found.</li>
+ *   <li>{@link #abmeldenBeendetDieSitzungOhneDenLinkZuWiderrufen()} (card 1305) — signing out
+ *       ends the session, the <b>same</b> link carries afterwards (signing out is not
+ *       revoking), and a revoked link is still refused.</li>
  *   <li>{@link #offeneSitzungStirbtMitDemWiderruf()} — an <b>already open</b> session ends on
  *       the next tap, not at the session timeout.</li>
  *   <li>{@link #abgeschalteteSeiteIstUeberDenLinkNichtErreichbar()} — switched off it is gone,
@@ -370,6 +383,125 @@ class WatchHandyLinkPlaywrightIT {
             p.navigate(url("/watch/home.html"));
             p.waitForLoadState();
             uhrIstDa(p, "nach den beiden abgewiesenen Ausfluegen");
+        }
+    }
+
+    // ================================================================= Karte 1305: Antwort und Ausgang
+
+    /**
+     * Die Einsperrung aus dem Test darueber, von der anderen Seite gesehen: was steht auf dem
+     * Telefon?
+     *
+     * <p>Bis zum 20.09.2026 stand dort Spring Boots Whitelabel-Seite — drei Zeilen Englisch,
+     * keine Erklaerung, kein Weg zurueck. Daniel hat genau das auf seinem eigenen Telefon
+     * gesehen und fuer einen kaputten Deploy gehalten. Der Test verlangt beide Haelften: die
+     * Erklaerung <b>und</b> dass die angeforderte Seite weiterhin nicht kommt. Ohne die zweite
+     * Haelfte waere er auch gruen, wenn die Schranke ganz gefallen waere — und genau das war
+     * heute frueh der Befund.</p>
+     */
+    @Test
+    @DisplayName("eine Nicht-Watch-Seite erklaert sich, statt die Whitelabel-Seite zu zeigen")
+    void nichtWatchSeiteErklaertSichStattWhitelabel() {
+        String link;
+        try (BrowserContext admin = angemeldeterKontext()) {
+            link = erzeuge(einstellungen(admin));
+        }
+
+        try (BrowserContext telefon = frischerKontext()) {
+            Page p = telefon.newPage();
+            p.navigate(link);
+            p.waitForLoadState();
+            uhrIstDa(p, "vor der Probe auf die Sperrseite");
+
+            Response antwort = p.navigate(url("/index.html"));
+            p.waitForLoadState();
+
+            // ---- Haelfte 1: die Schranke steht unveraendert.
+            assertNotNull(antwort, "keine Antwort auf /index.html");
+            assertEquals(403, antwort.status(),
+                    "Eine Token-Sitzung kam auf /index.html mit HTTP " + antwort.status()
+                            + " durch. Die Erklaerung darf die Schranke nicht ersetzen.");
+            assertEquals(0, p.locator(".dashboard-grid").count(),
+                    "Die Kacheln des Dashboards stehen auf der Seite — dann ist /index.html "
+                            + "trotz 403 ausgeliefert worden: " + auszug(p));
+            assertFalse(p.content().contains("plaintext-layout"),
+                    "Die Seite laedt die Layout-Ressourcen der normalen Masken, ist also das "
+                            + "Dashboard und nicht die Sperrseite: " + auszug(p));
+
+            // ---- Haelfte 2: und sie sagt, was los ist.
+            assertFalse(p.content().contains("Whitelabel Error Page"),
+                    "Immer noch die Whitelabel-Seite: " + auszug(p));
+            assertEquals(1, p.locator("#wt-sperre").count(),
+                    "Die Sperrseite fehlt — der Container antwortet wieder selbst: " + auszug(p));
+            assertEquals(1, p.locator("#wt-zur-uhr").count(),
+                    "Kein Weg zurueck zur Uhr: " + auszug(p));
+            assertEquals(1, p.locator("#wt-abmelden").count(),
+                    "Kein Ausgang aus der Sitzung: " + auszug(p));
+
+            // ---- Und der angebotene Weg zurueck traegt wirklich.
+            p.click("#wt-zur-uhr");
+            p.waitForLoadState();
+            uhrIstDa(p, "nach dem Klick auf 'Zurueck zur Uhr'");
+        }
+    }
+
+    /**
+     * Der Ausgang: abmelden beendet die Sitzung — und <b>nur</b> sie.
+     *
+     * <p>Der Filterkommentar begruendet die Einsperrung damit, dass ein Link sich nicht selbst
+     * verwalten soll. Abmelden ist kein Verwalten: es widerruft nichts und stellt nichts aus,
+     * es beendet eine Sitzung auf einem Geraet. Dieser Test misst genau diesen Unterschied und
+     * braucht dafuer drei Haelften — ohne die zweite waere er auch gruen, wenn Abmelden den
+     * Link mit abraeumte, ohne die dritte auch dann, wenn Widerrufen gar nicht mehr wirkte.</p>
+     */
+    @Test
+    @DisplayName("abmelden beendet die Sitzung, der Link traegt weiter — widerrufen nicht")
+    void abmeldenBeendetDieSitzungOhneDenLinkZuWiderrufen() {
+        String link;
+        try (BrowserContext admin = angemeldeterKontext()) {
+            link = erzeuge(einstellungen(admin));
+        }
+
+        try (BrowserContext telefon = frischerKontext()) {
+            Page p = telefon.newPage();
+            p.navigate(link);
+            p.waitForLoadState();
+            uhrIstDa(p, "vor dem Abmelden");
+
+            // Der Knopf steht auf der Sperrseite — dort, wo man ihn braucht.
+            p.navigate(url("/index.html"));
+            p.waitForLoadState();
+            assertEquals(1, p.locator("#wt-abmelden").count(),
+                    "Ohne Abmeldeknopf kommt man aus dieser Sitzung nur heraus, indem man die "
+                            + "Website-Daten im Browser loescht: " + auszug(p));
+            p.click("#wt-abmelden button");
+            p.waitForLoadState();
+            assertTrue(p.url().contains("login"),
+                    "Abmelden fuehrte nicht zur Anmeldung, sondern auf " + p.url()
+                            + ". Haeufigste Ursache: das CSRF-Feld auf der Sperrseite fehlt — "
+                            + "/logout ist ein gepruefter POST.");
+
+            // ---- Haelfte 1: die Sitzung ist wirklich weg, nicht nur die Anzeige.
+            p.navigate(url("/watch/home.html"));
+            p.waitForLoadState();
+            assertTrue(p.url().contains("login"),
+                    "Nach dem Abmelden traegt die Uhr weiter (" + p.url() + ") — dann hat der "
+                            + "Knopf nur die Seite gewechselt und nichts beendet.");
+            assertEquals(0, p.locator(".w-wrap").count(),
+                    "Die Uhr ist nach dem Abmelden noch da: " + auszug(p));
+
+            // ---- Haelfte 2: DERSELBE Link traegt weiterhin. Abmelden ist kein Widerruf.
+            p.navigate(link);
+            p.waitForLoadState();
+            uhrIstDa(p, "mit dem alten Link nach dem Abmelden");
+        }
+
+        // ---- Haelfte 3: was den Link wirklich beendet, wirkt weiterhin.
+        try (BrowserContext admin = angemeldeterKontext()) {
+            schalteAb(einstellungen(admin));
+        }
+        try (BrowserContext telefon = frischerKontext()) {
+            abgewiesen(telefon, link, "nach dem Widerruf (Gegenprobe zum Abmelden)");
         }
     }
 

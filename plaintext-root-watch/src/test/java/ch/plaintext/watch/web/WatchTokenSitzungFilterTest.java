@@ -105,14 +105,27 @@ class WatchTokenSitzungFilterTest {
     }
 
     private Lauf rufe(String pfad, boolean mitToken) throws Exception {
+        return rufe(pfad, mitToken, null);
+    }
+
+    /** {@code accept} null heisst: kein Accept-Kopf, wie ihn ein Skript oder curl schickt. */
+    private Lauf rufe(String pfad, boolean mitToken, String accept) throws Exception {
         MockHttpServletRequest anfrage = new MockHttpServletRequest("GET", pfad);
         if (mitToken) {
             anfrage.getSession(true).setAttribute(WatchTokenAnmeldeController.SITZUNG_TOKEN, JWT);
+        }
+        if (accept != null) {
+            anfrage.addHeader("Accept", accept);
         }
         MockHttpServletResponse antwort = new MockHttpServletResponse();
         MockFilterChain kette = new MockFilterChain();
         filter.doFilter(anfrage, antwort, kette);
         return new Lauf(antwort, kette, anfrage);
+    }
+
+    /** Wie ein Telefon eine Seite aufruft. */
+    private Lauf rufeAlsBrowser(String pfad) throws Exception {
+        return rufe(pfad, true, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
     }
 
     @Test
@@ -237,5 +250,102 @@ class WatchTokenSitzungFilterTest {
 
         assertEquals(HttpServletResponse.SC_OK,
                 rufe("/jakarta.faces.resource/watch.css.html", true).antwort().getStatus());
+    }
+
+    // ================================================================= Karte 1305: Antwort und Ausgang
+
+    @Test
+    @DisplayName("Abmelden ist erlaubt — eine Sitzung, die man nicht verlassen kann, ist eine Falle")
+    void logoutErlaubt() throws Exception {
+        alsTokenSitzung();
+        tokenGueltig();
+
+        Lauf l = rufe("/logout", true);
+
+        org.junit.jupiter.api.Assertions.assertTrue(l.durchgelassen(),
+                "Abmelden ist kein Verwalten: es widerruft den Link nicht, es beendet nur diese "
+                        + "Sitzung. Ohne diesen Weg kommt man aus der Token-Sitzung nur noch "
+                        + "heraus, indem man die Website-Daten im Browser loescht.");
+        assertEquals(HttpServletResponse.SC_OK, l.antwort().getStatus());
+    }
+
+    @Test
+    @DisplayName("GEGENPROBE: /logout gilt als ganzer Pfad, nicht als Praefix")
+    void logoutIstKeinPraefix() throws Exception {
+        // Sonst oeffnete der Ausgang eine ganze Adressfamilie: alles, was mit /logout anfaengt.
+        alsTokenSitzung();
+        tokenGueltig();
+
+        Lauf l = rufe("/logout-alles.html", true);
+
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, l.antwort().getStatus());
+        org.junit.jupiter.api.Assertions.assertFalse(l.durchgelassen());
+    }
+
+    @Test
+    @DisplayName("Die Abweisung erklaert sich und bietet den Ausgang an — keine Whitelabel-Seite")
+    void abweisungIstLesbar() throws Exception {
+        alsTokenSitzung();
+        tokenGueltig();
+
+        Lauf l = rufeAlsBrowser("/index.html");
+        String seite = l.antwort().getContentAsString();
+
+        // Die Schranke bleibt: Status und Nichtdurchlass sind unveraendert.
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, l.antwort().getStatus());
+        org.junit.jupiter.api.Assertions.assertFalse(l.durchgelassen(),
+                "Die Seite darf trotz lesbarer Antwort nicht geliefert werden.");
+
+        // Neu ist nur, was auf dem Telefon steht.
+        org.junit.jupiter.api.Assertions.assertTrue(
+                l.antwort().getContentType().startsWith("text/html"),
+                "Ein Browser bekommt eine Seite, kein Textschnipsel: " + l.antwort().getContentType());
+        org.junit.jupiter.api.Assertions.assertTrue(seite.contains("wt-sperre"),
+                "Die Sperrseite fehlt — dann liefert der Container wieder die Whitelabel-Seite: "
+                        + seite);
+        org.junit.jupiter.api.Assertions.assertTrue(seite.contains("/watch/start"),
+                "Ohne den Weg zurueck zur Uhr ist die Seite eine Sackgasse: " + seite);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                seite.contains("action=\"/logout\"") && seite.contains("method=\"post\""),
+                "Der Ausgang fehlt: /logout wird als POST abgeschickt (PlaintextSecurityConfig). "
+                        + seite);
+    }
+
+    @Test
+    @DisplayName("GEGENPROBE: ein Skript bekommt keine Seite, sondern einen Satz")
+    void ressourcenBekommenKeineSeite() throws Exception {
+        // 20.09.2026 stand /plaintext-layout/js/config.js im Log — eine Ressource mitten in
+        // einer halb geladenen Seite. Eine HTML-Seite als Antwort auf ein <script src> macht
+        // daraus einen Parserfehler statt einer verschlossenen Tuer.
+        alsTokenSitzung();
+        tokenGueltig();
+
+        Lauf l = rufe("/plaintext-layout/js/config.js", true, "*/*");
+
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, l.antwort().getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                l.antwort().getContentType().startsWith("text/plain"),
+                "erwartet text/plain, war " + l.antwort().getContentType());
+        org.junit.jupiter.api.Assertions.assertFalse(
+                l.antwort().getContentAsString().contains("<html"),
+                "HTML an eine JavaScript-Anfrage: " + l.antwort().getContentAsString());
+    }
+
+    @Test
+    @DisplayName("Auch der widerrufene Link antwortet lesbar, mit dem Weg zur Anmeldung")
+    void widerrufAntwortetLesbar() throws Exception {
+        alsTokenSitzung();
+        when(tokenDienst.validateToken(JWT)).thenReturn(Optional.empty());
+
+        Lauf l = rufeAlsBrowser("/watch/home.html");
+        String seite = l.antwort().getContentAsString();
+
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, l.antwort().getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(seite.contains("Dieser Link gilt nicht mehr."),
+                "Dieselbe Formulierung wie am Einstieg — kein Orakel: " + seite);
+        org.junit.jupiter.api.Assertions.assertTrue(seite.contains("/login.html"),
+                "Die Sitzung ist beendet; was bleibt, ist die normale Anmeldung: " + seite);
+        org.junit.jupiter.api.Assertions.assertFalse(seite.contains("/logout"),
+                "Ein Abmeldeknopf auf einer schon beendeten Sitzung fuehrt ins Leere: " + seite);
     }
 }
