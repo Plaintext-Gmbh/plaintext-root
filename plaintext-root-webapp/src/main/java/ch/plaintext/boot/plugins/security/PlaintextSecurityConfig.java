@@ -16,6 +16,7 @@ import ch.plaintext.boot.deeplink.DeepLinkService;
 import ch.plaintext.boot.security.PageAccessGuardFilter;
 import ch.plaintext.boot.security.PageAccessGuardService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -462,6 +463,33 @@ public class PlaintextSecurityConfig {
     @Bean
     RememberMeAuthenticationFilter rememberMeFilter(PersistentTokenBasedRememberMeServices service, AuthenticationManager auth) {
         return new RememberMeAuthenticationFilter(auth, service);
+    }
+
+    /**
+     * Nimmt den {@link #rememberMeFilter} aus der <b>Servlet</b>-Filterkette heraus
+     * (Karte 1290, gemessen am 20.09.2026).
+     *
+     * <p><b>Der Befund:</b> Jede Bohne vom Typ {@code Filter} wird von Spring Boot zusaetzlich
+     * als eigenstaendiger Servlet-Filter auf {@code /*} angemeldet. Im Inventar des laufenden
+     * Containers stand {@code rememberMeFilter} deshalb ein zweites Mal — ganz am Ende der
+     * Kette ({@code LOWEST_PRECEDENCE}, ohne {@code @Order}) und nur fuer
+     * {@code DispatcherType.REQUEST}. Damit lief er auf keiner {@code .html}-Seite (er sitzt
+     * hinter dem Rewrite) und auf allen uebrigen Adressen <b>nach</b> der Autorisierung, also
+     * an einer Stelle, an der er nichts mehr beitragen kann.</p>
+     *
+     * <p><b>Warum nicht einfach {@code FORWARD} dazu:</b> das waere die falsche Antwort. Die
+     * Wiedererkennung gehoert in die Sicherheitskette und steht dort bereits — {@code .rememberMe(...)}
+     * im {@link #securityFilterChain} baut ihre eigene Instanz und laeuft vor der Autorisierung.
+     * Die globale Anmeldung war nie beabsichtigt; die Bohne existiert nur, damit die
+     * Sicherheitskette und die Tests sie bekommen. Sie wird darum abgeschaltet statt erweitert.</p>
+     */
+    @Bean
+    FilterRegistrationBean<RememberMeAuthenticationFilter> rememberMeFilterNichtGlobalAnmelden(
+            RememberMeAuthenticationFilter rememberMeFilter) {
+        FilterRegistrationBean<RememberMeAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(rememberMeFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
