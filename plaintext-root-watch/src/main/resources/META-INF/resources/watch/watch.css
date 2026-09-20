@@ -36,7 +36,10 @@
        Die 44px von Apple sind der UNTERE Rand fuer einen sicher treffbaren Knopf, nicht
        das Ziel. Auf der Uhr verdeckt der Finger den Knopf, den er trifft — deshalb 56. */
     --w-tap: 56px;
-    --w-schrift: 21px;        /* Grundschrift; war 17px */
+    --w-schrift: 26px;        /* Grundschrift. 17px -> 21px (Karte 1276) reichte Daniel auf der
+                                 Uhr nicht: "ich kann dort fast nichts sehen". Entscheid vom
+                                 20.09.2026, Karte 1285. Die Regel unten trifft html, nicht nur
+                                 body — alle rem-Werte dieser Datei wachsen also mit. */
     --w-schrift-klein: 1rem;  /* Beschriftungen und Hinweise; war .85rem bzw. 15px */
     --w-schrift-gross: 1.2rem;/* Knoepfe, Felder, Zustandszeilen; war 1rem */
 }
