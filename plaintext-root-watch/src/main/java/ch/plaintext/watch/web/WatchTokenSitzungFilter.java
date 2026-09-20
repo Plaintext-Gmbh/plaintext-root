@@ -52,8 +52,13 @@ import java.util.List;
  * already passed. This filter only ever takes away, never grants; it cannot open anything
  * Spring Security has closed.</p>
  *
- * <p>Only on {@code DispatcherType.REQUEST}. The {@code ERROR} pass is the container's own and
- * carries no caller (card 652); intercepting it would turn a 404 into a 403.</p>
+ * <p>On {@code DispatcherType.REQUEST} <b>and {@code FORWARD}</b>, never {@code ERROR}. The
+ * {@code ERROR} pass is the container's own and carries no caller (card 652); intercepting it
+ * would turn a 404 into a 403. {@code FORWARD} is not a nicety: every page is addressed as
+ * {@code .html} and reaches its view through the forward of
+ * {@code UrlRewriteConfig.HtmlToXhtmlRewriteFilter}, which sits far ahead of this filter. While
+ * {@code FORWARD} was missing, this confinement bit on no page at all — see
+ * {@code WatchTokenFilterConfig} for the measurement (card 1280).</p>
  *
  * @author info@plaintext.ch
  * @since 2026
