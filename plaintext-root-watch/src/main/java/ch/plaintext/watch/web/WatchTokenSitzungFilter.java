@@ -36,6 +36,19 @@ import java.util.List;
  * answered 403. A new page somewhere in the application is therefore out of reach the day it is
  * written, without anybody having to remember this filter.</p>
  *
+ * <h2>How the refusal answers, and that there is a way out (card 1305)</h2>
+ *
+ * <p>The refusal itself is unchanged — same status, same paths, nothing opened. What changed is
+ * what arrives on the phone. {@code sendError} handed the answer to the container, which ends in
+ * Spring Boot's whitelabel page; the owner opened his own start page and got a white screen with
+ * no explanation and no way on. {@link WatchSperrSeite} writes the answer instead: what this
+ * session is, the way back to the watch, and a button that ends the session.</p>
+ *
+ * <p>That button is the second half. {@code /logout} is on {@link #ERLAUBT_GENAU} — ending a
+ * session is not administering a link (the reasoning is at the constant). Before this card a
+ * token session could only be left by deleting the site data in the browser, which is knowledge
+ * nobody outside this file had.</p>
+ *
  * <h2>Why the token is checked on every request</h2>
  *
  * <p>"Revocation takes effect immediately" is only true if something looks. Checking once, at
@@ -85,6 +98,44 @@ public class WatchTokenSitzungFilter extends OncePerRequestFilter {
             "/javax.faces.resource/",
             "/nosec/");
 
+    /**
+     * The way out — matched whole, not as a prefix (card 1305).
+     *
+     * <h2>Why signing out is not "administration"</h2>
+     *
+     * <p>The list above keeps this session out of {@code /watch-einstellungen.html} with the
+     * argument that a link must not administer itself. {@code /logout} looked like the same
+     * thing and was therefore not on any list. It is not the same thing: administering means
+     * changing what the link is worth for <em>every</em> device — issuing, revoking, switching
+     * off. Signing out changes nothing about the link at all. It ends this one session on this
+     * one phone, and the link opens the watch again on the next tap. A session that cannot be
+     * left is not a barrier, it is a trap: until this card the only way out of a token session
+     * was to delete the site data in the browser.</p>
+     *
+     * <h2>What the entry does and does not do</h2>
+     *
+     * <p>Measured, and the measurement says the entry is <b>not</b> what makes the button work:
+     * with this list emptied,
+     * {@code WatchHandyLinkPlaywrightIT#abmeldenBeendetDieSitzungOhneDenLinkZuWiderrufen} stays
+     * green (20.09.2026, card 1305). A {@code POST /logout} never reaches this filter — Spring
+     * Security's {@code LogoutFilter} sits inside the security chain at {@code -100} and answers
+     * there, while this filter runs at {@code -99}, that is behind the whole chain. Signing out
+     * was therefore already possible before this card; what was missing was a page that offers
+     * it.</p>
+     *
+     * <p>The entry stays nonetheless, and the reason is not belt and braces. It catches every
+     * other dispatch onto the path (a {@code GET}, a forward), it survives somebody moving this
+     * filter inside the chain, and above all it puts the decision where the confinement is
+     * defined: whoever reads this list to find out whether this session can be left now finds
+     * the answer in it instead of in the ordering of two filters.
+     * {@code WatchTokenSitzungFilterTest#logoutErlaubt} goes red without it and holds the
+     * statement in place.</p>
+     *
+     * <p>Whole-path match on purpose: as a prefix, {@code /logout} would also cover a future
+     * {@code /logout-everything.html}. An exit is one address, not a family of them.</p>
+     */
+    static final List<String> ERLAUBT_GENAU = List.of("/logout");
+
     private final ObjectProvider<IApiTokenService> tokenDienst;
 
     @Override
@@ -98,7 +149,11 @@ public class WatchTokenSitzungFilter extends OncePerRequestFilter {
         String pfad = pfadOhneKontext(request);
         if (!erlaubt(pfad)) {
             log.info("Watch-Token-Sitzung abgewiesen auf {} — nur Watch-Seiten sind erlaubt", pfad);
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Nur die Watch-Seiten");
+            // Karte 1305: kein sendError. Das erzeugte den zweiten, containereigenen Durchgang
+            // auf /error und damit die Whitelabel-Seite — auf dem Telefon des Besitzers eine
+            // weisse Seite ohne ein Wort der Erklaerung und ohne Ausgang. Begruendung der
+            // Wahl im Klassenkommentar von WatchSperrSeite.
+            WatchSperrSeite.nurDieUhr(request, response);
             return;
         }
 
@@ -109,7 +164,7 @@ public class WatchTokenSitzungFilter extends OncePerRequestFilter {
             }
             SecurityContextHolder.clearContext();
             log.info("Watch-Token-Sitzung beendet: der Token ist nicht mehr gueltig");
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Dieser Link gilt nicht mehr.");
+            WatchSperrSeite.linkGiltNichtMehr(request, response);
             return;
         }
 
@@ -139,7 +194,7 @@ public class WatchTokenSitzungFilter extends OncePerRequestFilter {
     }
 
     private static boolean erlaubt(String pfad) {
-        return ERLAUBT.stream().anyMatch(pfad::startsWith);
+        return ERLAUBT_GENAU.contains(pfad) || ERLAUBT.stream().anyMatch(pfad::startsWith);
     }
 
     /**
