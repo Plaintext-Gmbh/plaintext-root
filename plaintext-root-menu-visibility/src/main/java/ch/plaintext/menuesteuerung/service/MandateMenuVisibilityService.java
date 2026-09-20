@@ -221,6 +221,18 @@ public class MandateMenuVisibilityService implements MenuVisibilityProvider {
      */
     @org.springframework.transaction.annotation.Transactional
     public MandateMenuConfig saveConfig(String mandateName, java.util.Set<String> hiddenMenus, boolean whitelistMode) {
+        return speichere(mandateName, hiddenMenus, whitelistMode);
+    }
+
+    /**
+     * The actual save, <b>private</b> (java:S6809, card 1273). Both public overloads lead here.
+     * Previously the shorter one called the longer one through {@code this}, which goes past the
+     * Spring proxy — the {@code @Transactional} of the called method was then without effect, and
+     * the lazy collection this method deliberately repopulates "within a transaction" relied on
+     * the caller happening to carry the annotation. Now the boundary is at the entry, where it is
+     * visible.
+     */
+    private MandateMenuConfig speichere(String mandateName, java.util.Set<String> hiddenMenus, boolean whitelistMode) {
         MandateMenuConfig config = repository.findByMandateName(mandateName)
                 .orElse(new MandateMenuConfig());
 
@@ -247,7 +259,7 @@ public class MandateMenuVisibilityService implements MenuVisibilityProvider {
      */
     @org.springframework.transaction.annotation.Transactional
     public MandateMenuConfig saveConfig(String mandateName, java.util.Set<String> hiddenMenus) {
-        return saveConfig(mandateName, hiddenMenus, false);
+        return speichere(mandateName, hiddenMenus, false);
     }
 
     /**

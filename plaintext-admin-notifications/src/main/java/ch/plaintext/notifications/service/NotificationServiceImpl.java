@@ -32,6 +32,22 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notify(String empfaengerUsername, String mandat, String typ, String defaultTitel,
                         String defaultText, Map<String, String> platzhalter, String link) {
+        lege(empfaengerUsername, mandat, typ, defaultTitel, defaultText, platzhalter, link);
+    }
+
+    /**
+     * Creates the one notification — <b>private</b>, and that is the point (java:S6809, card 1273).
+     *
+     * <p>{@link #notifyMandant} used to reach this via {@code this.notify(...)}. Such a call goes
+     * past the Spring proxy, so the {@code @Transactional} of the called method has no effect —
+     * the finding of card 891, which was answered back then by moving the boundary up to
+     * {@code notifyMandant}. That answer was right and stayed fragile: the self-call remained, and
+     * with it the invitation to trust an annotation that does not fire. Now the two public entry
+     * points each carry their own boundary and both call this private method, so the question
+     * cannot come back.</p>
+     */
+    private void lege(String empfaengerUsername, String mandat, String typ, String defaultTitel,
+                      String defaultText, Map<String, String> platzhalter, String link) {
         if (empfaengerUsername == null || empfaengerUsername.isBlank()) {
             return;
         }
@@ -51,13 +67,14 @@ public class NotificationServiceImpl implements NotificationService {
     // SELF-INVOCATION — such a call bypasses the Spring proxy, and the annotation has no effect. The
     // notifications therefore ran without the promised transaction boundary, every save() on its own.
     // The boundary therefore belongs here: one event creates the notifications for all recipients
-    // of the tenant, or none at all.
+    // of the tenant, or none at all. Since card 1273 the loop no longer calls the public notify()
+    // but the private lege() — same behaviour, but no self-call left that could mislead anyone.
     @Override
     @Transactional
     public void notifyMandant(String mandat, String typ, String defaultTitel, String defaultText,
                                Map<String, String> platzhalter, String link) {
         for (String username : security.getUsersForMandat(mandat)) {
-            notify(username, mandat, typ, defaultTitel, defaultText, platzhalter, link);
+            lege(username, mandat, typ, defaultTitel, defaultText, platzhalter, link);
         }
     }
 

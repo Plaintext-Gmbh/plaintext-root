@@ -143,8 +143,7 @@ class PlaintextSessionBeanSerialisierbarTest {
         long dienstfelder = KLASSEN.stream()
                 .filter(k -> istSessionScoped(k) && k.isAssignableTo(Serializable.class))
                 .flatMap(k -> k.getFields().stream())
-                .filter(f -> !f.getModifiers().contains(JavaModifier.STATIC))
-                .filter(f -> istSpringBean(f.getRawType()) && !istSessionScoped(f.getRawType()))
+                .filter(f -> gemeint(f, f.getRawType()))
                 .count();
         assertTrue(dienstfelder >= 1,
                 () -> "Keine dienst-artigen Felder in den " + beans + " gefundenen Bohnen — die "
@@ -162,14 +161,8 @@ class PlaintextSessionBeanSerialisierbarTest {
                 continue;
             }
             for (JavaField feld : klasse.getFields()) {
-                if (feld.getModifiers().contains(JavaModifier.STATIC)) {
-                    continue;
-                }
                 JavaClass typ = feld.getRawType();
-                // Das materielle Kriterium, unveraendert: nur ein Feld, dessen Typ ein
-                // wiederinjizierbarer Spring-Dienst ist. Zustandsfelder sind hier weiterhin nicht
-                // gemeint (Begruendung im Klassenkommentar).
-                if (!istSpringBean(typ) || istSessionScoped(typ)) {
+                if (!gemeint(feld, typ)) {
                     continue;
                 }
                 String grund = befund(feld, typ);
@@ -182,12 +175,28 @@ class PlaintextSessionBeanSerialisierbarTest {
 
         // The list is deliberately part of the error message: it is the work instruction.
         assertTrue(verstoesse.isEmpty(),
-                () -> "%d tote oder nicht-serialisierbare Dienstfelder in session-scoped Serializable-Beans.\n".formatted(verstoesse.size())
+                () -> "%d tote oder nicht-serialisierbare Dienstfelder in session-scoped Serializable-Beans.%n".formatted(verstoesse.size())
                         + "final -> auf Feldinjektion umstellen (@Autowired + transient, NICHT final);\n"
                         + "nicht transient -> 'transient' davorschreiben; Zustand -> Typ serialisierbar machen.\n"
                         + "Begruendete Ausnahme: '" + ALLOWLIST_REGEL + " Klasse.feld  # <Grund>' in "
                         + ArchAllowlist.DATEINAME + ".\n  "
                         + String.join("\n  ", verstoesse.stream().sorted().toList()));
+    }
+
+    /**
+     * Is this field one the check is about at all? Exactly one criterion, in one place — the
+     * material one, unchanged: a non-static field whose type is a <em>re-injectable</em> Spring
+     * service. State-carrying fields are still not meant here, and a field type that is
+     * session-scoped itself is a state carrier, not a service (justification in the class
+     * comment).
+     *
+     * <p>Standing in one method rather than as two {@code continue} guards inside the loop
+     * (java:S135, card 1273): the criterion is one thought and reads as one.</p>
+     */
+    private static boolean gemeint(JavaField feld, JavaClass typ) {
+        return !feld.getModifiers().contains(JavaModifier.STATIC)
+                && istSpringBean(typ)
+                && !istSessionScoped(typ);
     }
 
     /**

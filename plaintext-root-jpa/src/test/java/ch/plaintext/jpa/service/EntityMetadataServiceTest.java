@@ -22,8 +22,16 @@ class EntityMetadataServiceTest {
         service = new EntityMetadataService();
     }
 
+    /**
+     * Fixture for the metadata analysis. Its fields look unused (java:S1068) and are precisely the
+     * input: {@code EntityMetadataService} reads them by reflection, and each one stands for one
+     * case the analysis has to get right — {@code mandat} and {@code createdBy} for the framework
+     * columns, {@code items} for a collection, {@code staticField} for the one that must be
+     * skipped. Removing them would not shrink the code, it would shrink the test (card 1273).
+     */
     @Entity
     @Table(name = "test_entities")
+    @SuppressWarnings("java:S1068") // Felder sind die Eingabe der Reflexionsanalyse, siehe oben
     static class TestEntity {
         @Id
         private Long id;

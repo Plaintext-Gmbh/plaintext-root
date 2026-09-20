@@ -32,7 +32,12 @@ class EntityRegistryServiceTest {
 
     private EntityRegistryService service;
 
+    /**
+     * Fixtures for the registry. The fields look unused (java:S1068) and are read by reflection by
+     * {@code EntityMetadataService} — they are the input, not leftovers (card 1273).
+     */
     @Entity
+    @SuppressWarnings("java:S1068") // Felder werden per Reflexion analysiert, siehe oben
     public static class SampleEntity {
         @Id
         private Long id;
@@ -40,7 +45,9 @@ class EntityRegistryServiceTest {
         private String mandat;
     }
 
+    /** Second fixture; {@code title} is read by reflection, see {@link SampleEntity}. */
     @Entity
+    @SuppressWarnings("java:S1068") // Felder werden per Reflexion analysiert
     public static class AnotherEntity {
         @Id
         private Long id;

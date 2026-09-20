@@ -29,8 +29,16 @@ public class WatchElementeBean implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** Labels are short on purpose: anything longer wraps on a 184 px display. */
-    public static final List<String> AUSWAHL = List.of("Büro", "Kunde", "Weg", "Pause");
+    /**
+     * Labels are short on purpose: anything longer wraps on a 184 px display.
+     *
+     * <p>Named after its getter {@code getAuswahlWerte()} and not {@code AUSWAHL}: the field
+     * {@code auswahl} right below holds the <em>chosen</em> value, and two names that differ only
+     * in case are a reading trap (java:S1845, card 1273). The constant was renamed rather than the
+     * field, because {@code #{watchElementeBean.auswahl}} is bound in {@code elemente.xhtml} three
+     * times — renaming the field would have been a silent EL break.</p>
+     */
+    public static final List<String> AUSWAHL_WERTE = List.of("Büro", "Kunde", "Weg", "Pause");
 
     @Getter
     @Setter
@@ -63,7 +71,7 @@ public class WatchElementeBean implements Serializable {
     private boolean bestaetigungOffen;
 
     public List<String> getAuswahlWerte() {
-        return AUSWAHL;
+        return AUSWAHL_WERTE;
     }
 
     public void tippe(String was) {

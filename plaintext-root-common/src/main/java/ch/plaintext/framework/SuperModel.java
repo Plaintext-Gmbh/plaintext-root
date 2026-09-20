@@ -85,6 +85,7 @@ public class SuperModel implements XstreamStorable {
             }
     }
 
+    @Override
     public List<Field> getFields() {
         Set<Field> all = new HashSet<>();
         all.addAll(Arrays.asList(this.getClass().getDeclaredFields()));
