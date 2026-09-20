@@ -79,8 +79,21 @@ public class WatchTokenAnmeldeController {
     /** Session attribute holding the raw token, for the per-request revocation check. */
     public static final String SITZUNG_TOKEN = "watch.handylink.token";
 
-    /** Where the link lands after the token has been taken out of the address. */
-    static final String ZIEL = "/watch/home.html";
+    /**
+     * Where the link lands after the token has been taken out of the address.
+     *
+     * <p>Not a page but {@link WatchStartController#PFAD} (card 1289). While this was the
+     * literal {@code /watch/home.html}, every tap on the phone link landed on the overview, no
+     * matter which page the owner had been on the evening before — the remembered position was
+     * written faithfully and then never read at start.</p>
+     *
+     * <p>Resolving the page <em>here</em> was tried and does not work: the security context of
+     * this request is put into the session a few lines below, the current thread has none, and
+     * {@link WatchStateService} reads the user through {@code PlaintextSecurityHolder}. The
+     * redirect makes the question go away — the follow-up request is an ordinary one with the
+     * context restored from the session.</p>
+     */
+    static final String ZIEL = WatchStartController.PFAD;
 
     private final ObjectProvider<IApiTokenService> tokenDienst;
     private final ObjectProvider<McpUserRoles> benutzerRollen;

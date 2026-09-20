@@ -177,11 +177,17 @@ public class WatchSettingsBean implements Serializable {
      * a normal sign-in. Built from the current request rather than from a configured value:
      * behind the reverse proxy the host header is what the browser used, and a property here
      * would be one more value to keep in step with the deployment.
+     *
+     * <p>It names {@link WatchStartController#PFAD} and no page (card 1289). This used to hand
+     * out {@code /watch/home.html}, and an icon saved from it opened the overview for the rest
+     * of its life — the page the user was last on was stored on every move and read by nobody.
+     * The entry point resolves it on each start; {@code /watch/home.html} itself keeps working
+     * and keeps meaning the overview, for whoever wants exactly that.</p>
      */
     public String getWatchAdresse() {
         FacesContext fc = FacesContext.getCurrentInstance();
         if (fc == null) {
-            return "/watch/home.html";
+            return WatchStartController.PFAD;
         }
         var ext = fc.getExternalContext();
         Object req = ext.getRequest();
@@ -195,7 +201,7 @@ public class WatchSettingsBean implements Serializable {
                 basis = schema + "://" + host;
             }
         }
-        return basis + ext.getRequestContextPath() + "/watch/home.html";
+        return basis + ext.getRequestContextPath() + WatchStartController.PFAD;
     }
 
     /** One row of the switch list. */

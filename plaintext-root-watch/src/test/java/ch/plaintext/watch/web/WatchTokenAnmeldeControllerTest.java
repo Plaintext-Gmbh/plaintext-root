@@ -94,8 +94,11 @@ class WatchTokenAnmeldeControllerTest {
         MockHttpServletResponse antwort = einstieg(JWT);
 
         assertEquals(HttpServletResponse.SC_MOVED_TEMPORARILY, antwort.getStatus());
-        assertEquals("/watch/home.html", antwort.getRedirectedUrl(),
-                "Weiterleitung OHNE Token — sonst steht er im Verlauf und im Referrer");
+        assertEquals(WatchStartController.PFAD, antwort.getRedirectedUrl(),
+                "Weiterleitung OHNE Token — sonst steht er im Verlauf und im Referrer. Und auf "
+                        + "den Einstieg, nicht auf /watch/home.html: sonst landet der Handy-Link "
+                        + "immer auf der Uebersicht statt auf der zuletzt offenen Seite "
+                        + "(Karte 1289).");
         var sitzung = letzteAnfrage.getSession(false);
         assertNotNull(sitzung);
         SecurityContext kontext = (SecurityContext) sitzung.getAttribute(
