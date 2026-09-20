@@ -170,6 +170,17 @@ public class SecretService implements SecretResolver {
 
     @Transactional
     public void setActiveBackend(SecretBackendType type, String configJson) {
+        schalteBackendUm(type, configJson);
+    }
+
+    /**
+     * The switchover itself, <b>private</b> (java:S6809, card 1273). {@link #migrate} needs it in
+     * the middle of its own transaction; as a call to the public method it went past the proxy, so
+     * the {@code @Transactional} there did nothing. It did no harm, because {@code migrate} is
+     * itself {@code @Transactional} and the boundary was already open — but that held by accident,
+     * not by construction. As a private method the boundary sits unambiguously at the public entry.
+     */
+    private void schalteBackendUm(SecretBackendType type, String configJson) {
         String mandat = PlaintextSecurityHolder.getMandat();
         configRepo.findByMandatAndDeleted(mandat, false).forEach(c -> {
             c.setAktiv(false);
@@ -236,7 +247,7 @@ public class SecretService implements SecretResolver {
             }
         }
 
-        setActiveBackend(newType, newConfigJson);                                  // phase 2: switch over
+        schalteBackendUm(newType, newConfigJson);                                  // phase 2: switch over
         SecretHealth h = health();
         if (!h.ok() && newType != SecretBackendType.LOCAL_DB) {
             throw new IllegalStateException("Ziel-Backend greift nicht: " + h.detail());

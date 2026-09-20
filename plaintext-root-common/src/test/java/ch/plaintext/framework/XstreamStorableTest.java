@@ -15,7 +15,14 @@ class XstreamStorableTest {
 
     /**
      * Concrete test implementation with private and non-private fields.
+     *
+     * <p>{@code extraField} looks unused (java:S1068) and is the <b>subject</b> of the test: it is
+     * read by reflection in {@code getFields_returnsOnlyPrivateFields()}, which asserts that
+     * exactly it appears and {@code protectedField} does not. Deleting it would leave the test
+     * green while it no longer proved the private/non-private distinction — the rule cannot see a
+     * reflective read (card 1273).</p>
      */
+    @SuppressWarnings("java:S1068") // extraField wird per Reflexion gelesen — siehe Kommentar oben
     static class TestStorableImpl implements XstreamStorable {
         private String key;
         private Date lastModifiedDate;

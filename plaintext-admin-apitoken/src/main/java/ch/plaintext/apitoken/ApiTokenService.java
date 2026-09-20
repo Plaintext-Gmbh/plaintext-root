@@ -61,7 +61,7 @@ public class ApiTokenService implements IApiTokenService {
     @Override
     @Transactional
     public String createToken(Long userId, String mandat, String tokenName, String email, int validityDays) {
-        return createToken(userId, mandat, tokenName, email, validityDays, null);
+        return erzeugeToken(userId, mandat, tokenName, email, validityDays, null);
     }
 
     /**
@@ -81,6 +81,22 @@ public class ApiTokenService implements IApiTokenService {
     @Transactional
     public String createToken(Long userId, String mandat, String tokenName, String email, int validityDays,
                               String scope) {
+        return erzeugeToken(userId, mandat, tokenName, email, validityDays, scope);
+    }
+
+    /**
+     * The actual issuing, <b>private</b> on purpose (java:S6809/S2229, card 1273).
+     *
+     * <p>Four public entry points lead here: two {@code createToken} overloads and both
+     * {@code regenerateToken} overloads. As long as one public method called another, the call
+     * went past the Spring proxy and the {@code @Transactional} of the called method was without
+     * effect — here it happened to do no harm, because every caller already carries the
+     * annotation and the outer transaction was open. That is luck, not a design: the moment a
+     * caller without an annotation is added, the write silently runs unbounded. With a private
+     * implementation the question cannot arise, because the boundary sits where it is entered.</p>
+     */
+    private String erzeugeToken(Long userId, String mandat, String tokenName, String email, int validityDays,
+                                String scope) {
         // Check max tokens limit
         long existingCount = apiTokenRepository.countByUserIdAndMandatAndDeleted(userId, mandat, false);
         if (existingCount >= MAX_TOKENS_PER_USER) {
@@ -134,7 +150,7 @@ public class ApiTokenService implements IApiTokenService {
      */
     @Transactional
     public String createToken(Long userId, String mandat, String tokenName, String email) {
-        return createToken(userId, mandat, tokenName, email, JwtTokenService.DEFAULT_VALIDITY_DAYS);
+        return erzeugeToken(userId, mandat, tokenName, email, JwtTokenService.DEFAULT_VALIDITY_DAYS, null);
     }
 
     /**
@@ -241,6 +257,11 @@ public class ApiTokenService implements IApiTokenService {
      */
     @Transactional
     public String regenerateToken(Long tokenId, Long userId, String mandat, String email, int validityDays) {
+        return erneuereToken(tokenId, userId, mandat, email, validityDays);
+    }
+
+    /** Implementation of the regeneration — private for the reason given at {@link #erzeugeToken}. */
+    private String erneuereToken(Long tokenId, Long userId, String mandat, String email, int validityDays) {
         Optional<ApiToken> existing = apiTokenRepository.findById(tokenId);
 
         if (existing.isEmpty() || existing.get().getDeleted() ||
@@ -258,7 +279,7 @@ public class ApiTokenService implements IApiTokenService {
         apiTokenRepository.save(oldToken);
 
         // Create a new token with the same name
-        return createToken(userId, mandat, tokenName, email, validityDays);
+        return erzeugeToken(userId, mandat, tokenName, email, validityDays, null);
     }
 
     /**
@@ -268,7 +289,7 @@ public class ApiTokenService implements IApiTokenService {
      */
     @Transactional
     public String regenerateToken(Long tokenId, Long userId, String mandat, String email) {
-        return regenerateToken(tokenId, userId, mandat, email, JwtTokenService.DEFAULT_VALIDITY_DAYS);
+        return erneuereToken(tokenId, userId, mandat, email, JwtTokenService.DEFAULT_VALIDITY_DAYS);
     }
 
     /**

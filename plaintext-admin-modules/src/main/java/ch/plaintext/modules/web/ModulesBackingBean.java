@@ -30,11 +30,29 @@ import java.util.List;
 /**
  * Backing Bean of the module management (module.html): display the list + switch modules on/off
  * as well as export/import of the module data as JSON (Task #016 phase 2, PR 3).
+ *
+ * <h2>Why field injection stays here (java:S6813, card 1273)</h2>
+ *
+ * <p>This bean is <b>session-scoped and serializable</b> — the one case in which constructor
+ * injection is the wrong answer. On a deserialization <b>no constructor runs</b>: a service
+ * field set only through the
+ * constructor stays {@code null} forever, and being {@code final} nothing can set it afterwards,
+ * not even the context. A {@code NotSerializableException} would thereby turn into a permanent
+ * {@code NullPointerException} (cards 915/1246). Field injection ({@code @Autowired}, not
+ * {@code final}) lets the context refill the field after a deserialization — that is the house
+ * rule, and {@code PlaintextSessionBeanSerialisierbarTest} enforces it as a build-breaking
+ * guard.</p>
+ *
+ * <p>{@code java:S6813} demands the exact opposite at these fields, so both cannot hold at once.
+ * The guard wins: it protects against a defect that is silent and permanent, the rule protects a
+ * style. The suppression sits on the class because every injected service of such a bean falls
+ * under the house rule — card 1273 carries the measurement and the decision.</p>
  */
 @Slf4j
 @Scope("session")
 @Component
 @Data
+@SuppressWarnings("java:S6813") // begruendet im Klassenkommentar oben (Karte 1273) — nicht umbauen
 public class ModulesBackingBean implements Serializable {
 
     private static final long serialVersionUID = 1L;

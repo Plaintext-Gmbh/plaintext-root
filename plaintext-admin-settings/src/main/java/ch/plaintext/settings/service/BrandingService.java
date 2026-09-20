@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.settings.service;
 
-import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.settings.ISettingsService;
 import ch.plaintext.settings.SettingsKeys;
 import ch.plaintext.settings.entity.BrandingLogo;
@@ -43,14 +42,21 @@ public class BrandingService {
 
     private final BrandingLogoRepository logoRepository;
     private final ISettingsService settingsService;
-    private final PlaintextSecurity security;
 
+    /**
+     * {@code PlaintextSecurity} was injected here and never asked (java:S1068, card 1273).
+     *
+     * <p>Checked before removing it, because an unused dependency can also mean a forgotten
+     * check: every method of this service takes the {@code mandat} as a parameter, and both
+     * callers — {@code BrandingRestController} and {@code BrandingBean} — read it from
+     * {@code security.getMandat()} themselves before calling. The tenant is therefore decided one
+     * layer up, deliberately and in both places. A second, never-consulted source of the same
+     * truth in here was not a gap but a decoy.</p>
+     */
     public BrandingService(BrandingLogoRepository logoRepository,
-                           ISettingsService settingsService,
-                           PlaintextSecurity security) {
+                           ISettingsService settingsService) {
         this.logoRepository = logoRepository;
         this.settingsService = settingsService;
-        this.security = security;
     }
 
     public Optional<BrandingLogo> getLogo(String mandat, String theme) {

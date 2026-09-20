@@ -105,10 +105,11 @@ public abstract class SuperCron implements PlaintextCron, InitializingBean, Appl
 
     private ApplicationContext context;
 
-    private boolean startup = false;
-
-    private boolean enabled = false;
-
+    // 'startup' und 'enabled' standen hier seit dem Initial-Release als tote private Felder
+    // (java:S1068, Karte 1273). Nichts hat sie je gelesen: der Laufzeitzustand eines Cron-Jobs
+    // steht in CronConfigEntity (isEnabled()/isStartup()), die Vorbelegung liefert das Interface
+    // PlaintextCron (isEnabledByDefault()/isStartupByDefault()). Zwei Halter fuer denselben
+    // Zustand waeren die eigentliche Gefahr; entfernt statt unterdrueckt.
     private boolean global = false;
     @Getter
     @Setter

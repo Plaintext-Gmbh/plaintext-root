@@ -21,11 +21,11 @@ class WatchPageRegistryTest {
 
     private static WatchPage seite(String id, int order, boolean verfuegbar) {
         return new WatchPage() {
-            public String id() { return id; }
-            public String title() { return id; }
-            public String view() { return "/watch/" + id + ".xhtml"; }
-            public int order() { return order; }
-            public boolean available() { return verfuegbar; }
+            @Override public String id() { return id; }
+            @Override public String title() { return id; }
+            @Override public String view() { return "/watch/" + id + ".xhtml"; }
+            @Override public int order() { return order; }
+            @Override public boolean available() { return verfuegbar; }
         };
     }
 

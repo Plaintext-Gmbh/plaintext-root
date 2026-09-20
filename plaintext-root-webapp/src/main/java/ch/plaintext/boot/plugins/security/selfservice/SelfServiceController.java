@@ -43,8 +43,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Slf4j
 public class SelfServiceController {
 
-    private static final String DEFAULT_MANDAT = "default";
-
     private final RegistrationService registrationService;
     private final PasswordResetService passwordResetService;
     private final SelfServiceProperties properties;

@@ -5,7 +5,6 @@ package ch.plaintext.watch.service;
 
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import ch.plaintext.watch.entity.WatchUserState;
-import ch.plaintext.watch.page.WatchPage;
 import ch.plaintext.watch.page.WatchPageRegistry;
 import ch.plaintext.watch.repository.WatchUserStateRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -16,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,43 +39,12 @@ import static org.mockito.Mockito.when;
 class WatchStateServiceTest {
 
     private WatchUserStateRepository repository;
-    private WatchPageRegistry registry;
     private WatchStateService service;
     private MockedStatic<PlaintextSecurityHolder> sicherheit;
-
-    private static WatchPage seite(String id, int order, boolean verfuegbar) {
-        return new WatchPage() {
-            @Override
-            public String id() {
-                return id;
-            }
-
-            @Override
-            public String title() {
-                return id;
-            }
-
-            @Override
-            public String view() {
-                return "/watch/" + id + ".xhtml";
-            }
-
-            @Override
-            public int order() {
-                return order;
-            }
-
-            @Override
-            public boolean available() {
-                return verfuegbar;
-            }
-        };
-    }
 
     @BeforeEach
     void setUp() {
         repository = mock(WatchUserStateRepository.class);
-        registry = new WatchPageRegistry(List.of(seite("home", 0, true), seite("zeit", 10, true)), null);
         service = new WatchStateService(repository);
         sicherheit = Mockito.mockStatic(PlaintextSecurityHolder.class);
         sicherheit.when(PlaintextSecurityHolder::getUser).thenReturn("daniel@plaintext.ch");
