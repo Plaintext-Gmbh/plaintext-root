@@ -109,13 +109,44 @@ if [ "$ANZAHL" -eq 0 ]; then
     echo "$REPORT_BASE_URL/$REPO/latest/ ."
     exit 0
   fi
-  echo "ERROR: not a single JUnit XML found." >&2
-  echo "       Searched: */target/surefire-reports/*.xml and */target/failsafe-reports/*.xml" >&2
-  echo "       $GETROFFEN of $MODULE modules came from the build cache, so this is NOT the" >&2
-  echo "       harmless 'nothing was rebuilt' case." >&2
-  echo "       Most common cause: the build broke before the first test (compile error)." >&2
-  echo '       Second most common: an "mvn clean" AFTER the tests emptied target/.' >&2
-  exit 1
+  #  KEIN exit 1 MEHR (Karte 1058 in plaintext-app, 05.09.2026; hierher uebernommen mit
+  #  Karte 1295 am 22.09.2026). Ein fehlender Bericht ist ein Bericht-Problem und darf den Bau
+  #  nicht rot faerben — die beiden Faelle, die der Fehlschlag fangen sollte, faerben ihn
+  #  ohnehin selbst rot:
+  #    * "der Bau brach vor dem ersten Test ab"  -> `build-und-test` ist rot.
+  #    * "ein mvn clean nach den Tests"          -> ebenfalls in `build-und-test` sichtbar.
+  #  Was der exit 1 tatsaechlich getroffen hat, war der HARMLOSE Fall: ein voller Cache-Treffer,
+  #  bei dem die Erkennung oben ins Leere greift, weil `target/maven-incremental/cache-report*.xml`
+  #  gar nicht erst existiert (MODULE bleibt 0, die Bedingung MODULE -eq GETROFFEN ist damit
+  #  unerfuellbar).
+  #
+  #  GEMESSEN in plaintext-app am 05.09.2026 an EINEM Zweig, zwei Commits, sonst alles gleich:
+  #    Commit 1, nur .woodpecker/build.yml geaendert  -> Cache-Treffer -> Lauf 144: testbericht
+  #                                                      failure, exit 1, 1 s, NULL Logzeilen
+  #    Commit 2, zusaetzlich eine Java-Datei          -> echter Bau   -> Lauf 145: testbericht
+  #                                                      success
+  #  Davor hatte dasselbe Muster vier PR-Laeufe rot gemacht (140, 142, 143, 144) und Karte 1043
+  #  blockiert. Die Meldung war dabei nie zu sehen: ein Schritt, der nach einer Sekunde endet,
+  #  verliert seine gesamte Ausgabe im Nachlauf zum Server ("agent can not append logs to a step
+  #  that is marked not running").
+  #
+  #  WARUM DAS AUSGERECHNET HIER SPAETER KAM (Karte 1295): app wurde am 05.09.2026 repariert,
+  #  root und guild trugen den exit 1 weiter — und das sind die beiden Repos mit dem aktivsten
+  #  Cache. Ein PR, der nur .woodpecker/ oder eine .md anfasst, baut hier kein einziges Modul
+  #  und war damit rot, ohne dass irgendetwas kaputt war.
+  #
+  #  WAS DAMIT NICHT ABGESCHALTET IST: die Aussage "wurde ueberhaupt getestet?" haengt an
+  #  `build-und-test`, nicht an diesem Schritt. Ein echter Fehlschlag (Kompilierfehler, roter
+  #  Test, Quality-Gate) laesst den Bau weiterhin rot — dieser Schritt laeuft mit
+  #  `when: status: [success, failure]` und kann ein rotes Ergebnis nicht gruen machen.
+  echo "Kein Testbericht fuer diesen Lauf: keine einzige JUnit-XML gefunden." >&2
+  echo "  Gesucht: */target/surefire-reports/*.xml und */target/failsafe-reports/*.xml" >&2
+  echo "  Cache-Bericht: $GETROFFEN von $MODULE Modulen als unveraendert gemeldet" >&2
+  echo "  (0 von 0 heisst: es gab gar keinen Cache-Bericht — typisch fuer einen vollen" >&2
+  echo "   Cache-Treffer, bei dem kein Modul gebaut wurde.)" >&2
+  echo "  Letzter Bericht: $REPORT_BASE_URL/$REPO/latest/" >&2
+  echo "  Das faerbt den Bau NICHT rot — ob getestet wurde, sagt build-und-test." >&2
+  exit 0
 fi
 echo "$ANZAHL XML file(s) collected."
 
