@@ -203,6 +203,8 @@
         <!-- geteilte Architektur-/Lint-Tests (via Surefire dependenciesToScan in Consumern nutzbar) -->
         <module>plaintext-root-watch</module>
         <module>plaintext-root-archtests</module>
+        <!-- geteilte Test-Hilfsklassen (EmbeddedPg, Seitenliste), Karte 1298 -->
+        <module>plaintext-root-testsupport</module>
 
         <!-- admin -->
         <module>plaintext-admin-requirements</module>
@@ -365,6 +367,12 @@
             <dependency>
                 <groupId>ch.plaintext</groupId>
                 <artifactId>plaintext-root-archtests</artifactId>
+                <version>${plaintext-root.version}</version>
+            </dependency>
+            <!-- Geteilte Test-Hilfsklassen (EmbeddedPg, Seitenliste), Karte 1298 -->
+            <dependency>
+                <groupId>ch.plaintext</groupId>
+                <artifactId>plaintext-root-testsupport</artifactId>
                 <version>${plaintext-root.version}</version>
             </dependency>
 

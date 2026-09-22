@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author info@plaintext.ch
  * @since 2026
  */
-final class ReactorLayout {
+public final class ReactorLayout {
 
     /** Marker for our own source: if it lies under {@code <modul>/src/main/java}, that module is this one. */
     private static final String OWN_SOURCE_MARKER = "ch/plaintext/arch/ReactorLayout.java";
@@ -160,6 +160,44 @@ final class ReactorLayout {
                         + "wirklich geschrumpft — dann die Zahl bewusst senken und begruenden — oder die "
                         + "Pfadsuche greift daneben. Gefunden: "
                         + roots.stream().map(ReactorLayout::relativ).sorted().collect(Collectors.joining(", ")));
+    }
+
+    /**
+     * The {@code artifactId} of the reactor's root POM ({@code plaintext-root-parent},
+     * {@code plaintext-parent}, {@code plaintext-guild-parent}, ...), or {@code null} if no reactor is
+     * found. The {@code <parent>} block and comments are skipped, so the first remaining
+     * {@code <artifactId>} is the POM's own.
+     *
+     * <p>Used by the guards lifted from the consumers (card 1298) to keep their <b>per-repository</b>
+     * lower bounds: the copies carried one number each (root 40, schuetu 35, iot 2 ...). Taking the
+     * smallest of the six for everybody would have been the weakest version winning — exactly what the
+     * card forbids.
+     */
+    public static String reactorArtifactId() {
+        Path root = repoRoot();
+        if (root == null) {
+            return null;
+        }
+        try {
+            String pom = Files.readString(root.resolve("pom.xml"));
+            pom = pom.replaceAll("(?s)<!--.*?-->", "");
+            pom = pom.replaceFirst("(?s)<parent>.*?</parent>", "");
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("<artifactId>\\s*([^<\\s]+)\\s*</artifactId>").matcher(pom);
+            return m.find() ? m.group(1) : null;
+        } catch (IOException e) {
+            throw new UncheckedIOException("pom.xml nicht lesbar: " + root, e);
+        }
+    }
+
+    /**
+     * Lower bound for this reactor: the measured value from {@code jeReactor} (key = root
+     * {@code artifactId}), or {@code sonst} for a reactor that is not listed — the smallest of the
+     * measured values, so that an unknown consumer is not red for a number measured elsewhere.
+     */
+    public static int mindestensFuerDiesenReactor(java.util.Map<String, Integer> jeReactor, int sonst) {
+        String id = reactorArtifactId();
+        return id != null && jeReactor.containsKey(id) ? jeReactor.get(id) : sonst;
     }
 
     static boolean shipsTheseLinters(Path moduleDir) {

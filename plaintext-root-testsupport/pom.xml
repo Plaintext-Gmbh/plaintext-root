@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ch.plaintext</groupId>
+        <artifactId>plaintext-root-parent</artifactId>
+        <version>1.718.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>plaintext-root-testsupport</artifactId>
+    <name>plaintext-root-testsupport</name>
+    <description>
+        Geteilte Test-Hilfsklassen fuer plaintext-root und die abhaengigen Projekte (app, guild,
+        schuetu, iot): eingebettetes PostgreSQL fuer die Integrationstests (EmbeddedPg) und die aus
+        dem Klassenpfad abgeleitete Seitenliste der Playwright-Durchgaenge (Seitenliste). Karte 1298:
+        beide lagen fuenfmal wortgleich als Kopie vor. Consumer binden das Modul mit scope test ein.
+    </description>
+
+    <properties>
+        <!-- Kein Coverage-Gate: src/main/java dieses Moduls IST Testcode (Hilfsklassen fuer die
+             Integrationstests der Webapps). Gemessen wird er dort, wo er laeuft. -->
+        <jacoco.skip>true</jacoco.skip>
+    </properties>
+
+    <dependencies>
+        <!-- EmbeddedPg: eingebettetes PostgreSQL statt Testcontainers (Karte 451). Die Version
+             stand bisher in plaintext-root-webapp und in jedem Consumer einzeln; die Binaries
+             kommen ueber das embedded-postgres-binaries-bom aus dem Wurzel-POM. -->
+        <dependency>
+            <groupId>io.zonky.test</groupId>
+            <artifactId>embedded-postgres</artifactId>
+            <version>2.2.2</version>
+        </dependency>
+        <!-- DynamicPropertyRegistry -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+        </dependency>
+        <!-- PathMatchingResourcePatternResolver (Seitenliste) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+        </dependency>
+    </dependencies>
+</project>

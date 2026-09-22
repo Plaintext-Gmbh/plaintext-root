@@ -13,6 +13,18 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **Seven guards lifted from the consumers into `plaintext-root-archtests`, plus a new module
+  `plaintext-root-testsupport`** (Karte 1298, 23 September 2026). `QualityGateTest`,
+  `WurzelVersionVertragTest`, `XhtmlWohlgeformtVertragTest`, `AjaxZielAufloesbarTest`,
+  `MethodSecurityEnabledTest`, `McpToolParamVertragTest` and `PageGuardZuordnungTest` existed as
+  3 to 6 copies across root/app/guild/schuetu/iot/fwtool and had measurably drifted. The shared
+  version is the strongest copy in each case; per-repository lower bounds stay per repository
+  (keyed on the reactor's root `artifactId`, `ReactorLayout.mindestensFuerDiesenReactor`).
+  `@Tag("quality-gate")` on `QualityGateTest` is unchanged. `EmbeddedPg` and `Seitenliste` (five
+  identical copies) move to `plaintext-root-testsupport` (package `ch.plaintext.testsupport`),
+  which consumers pull in with `<scope>test</scope>` instead of `io.zonky.test:embedded-postgres`.
+  **Consumer impact:** after bumping to this release, consumers delete their copies (otherwise the
+  test runs twice); fwtool now gets `MethodSecurityEnabledTest` and needs `@EnableMethodSecurity`.
 - **Drift guard widened from 3 to 35 files** (Karte 1088, 7 September 2026).
   `PlaintextTableSettingsDriftTest` is renamed to `PlaintextRootTemplateDriftTest` and now pins
   the SHA-256 of 35 of the 42 `plaintext-root-template` resource files that

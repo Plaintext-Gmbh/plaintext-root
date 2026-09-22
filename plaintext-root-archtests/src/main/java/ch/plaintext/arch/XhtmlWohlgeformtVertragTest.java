@@ -1,6 +1,6 @@
-/*
- * Copyright (C) plaintext.ch, 2026.
- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.arch;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -22,9 +22,9 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 1029 (uebertragen aus Karte 1012, plaintext-app): jede Facelets-Seite dieses Repos ist
+ * Karte 1029 (uebertragen aus Karte 1012, plaintext-app): jede Facelets-Seite des Reactors ist
  * wohlgeformtes XML.
  *
  * <p><b>Die Fehlerklasse, und sie stand am 01.09.2026 in PROD.</b> Ein erklaerender Kommentar in
@@ -44,19 +44,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * es bemerkt: Modultests arbeiten auf Java und Datenbank, und eine rollengeschuetzte Seite wird
  * von keinem Statuscode-Durchgang ohne Anmeldung geladen — der sieht nur die Umleitung aufs Login.
  *
- * <p><b>Warum derselbe Test hier steht.</b> root liefert 53 XHTML-Dateien aus, die in <i>jeder</i>
- * der fuenf Anwendungen landen. Ein {@code --} in einer davon nimmt nicht eine Seite einer
- * Anwendung mit, sondern dieselbe Seite in allen. Der statische Durchgang vom 01.09.2026 hat root
- * sauber gefunden — dieser Test haelt das fest, statt es zu glauben.
+ * <p><b>Karte 1298: eine Fassung statt vier.</b> Bis zum 22.09.2026 lag dieser Test als Kopie in
+ * root, app, schuetu und iot; guild und fwtool hatten ihn nicht. Die Kopien suchten nur eine
+ * Modulebene unter der Repo-Wurzel ({@code Files.list}); diese Fassung sucht ueber
+ * {@link ReactorLayout#sourceRoots(String)} in jedem, auch geschachtelten Modul. Die Untergrenze
+ * der Dateisuche bleibt je Repo die gemessene (root 40, app 50, schuetu 35, iot 2 — siehe
+ * {@link #MINDESTENS_JE_REACTOR}); die kleinste fuer alle zu nehmen, haette die schwaechste Kopie
+ * gewinnen lassen. Der app-eigene Fall „die reparierte Seite ist wohlgeformt" ist im
+ * Hauptdurchgang enthalten: {@code auszahlungeinstellungen.xhtml} liegt in app unter
+ * {@code src/main/resources} und wird wie jede andere Seite geparst.
  *
- * <p><b>Warum er in der Webapp liegt und nicht in {@code plaintext-root-archtests}.</b> root baut
- * mit dem Maven-Build-Cache. Ein Modul, dessen eigene Dateien sich nicht geaendert haben, wird
- * aus dem Cache restauriert — <b>seine Tests laufen dann gar nicht</b>. In {@code archtests}
- * (haengt nur an {@code plaintext-root-common}) waere dieser Test damit genau in dem Fall stumm,
- * fuer den es ihn gibt: eine Aenderung an einer XHTML-Datei in einem <i>anderen</i> Modul.
- * Gemessen am 04.09.2026 — ein absichtlich kaputt gemachtes {@code admin-api-token.xhtml} ergab
- * in archtests „BUILD SUCCESS" ohne eine einzige ausgefuehrte Testklasse. Die Webapp haengt an
- * allen 24 Modulen; aendert sich irgendwo eine Seite, aendert sich ihr Cache-Schluessel mit.
+ * <p><b>Build-Cache.</b> Der Test laeuft im Webapp-Modul des jeweiligen Repos (dort wird dieses Jar
+ * gescannt), nicht im Modul {@code plaintext-root-archtests} selbst. Das ist Absicht: die Webapp
+ * haengt an allen Modulen, aendert sich irgendwo eine Seite, aendert sich ihr Cache-Schluessel mit.
+ * In archtests selbst liefe er bei einer XHTML-Aenderung in einem anderen Modul gar nicht
+ * (gemessen am 04.09.2026: „BUILD SUCCESS" ohne eine einzige ausgefuehrte Testklasse).
  *
  * <p><b>Was der Test NICHT leistet:</b> Wohlgeformtheit ist keine Lauffaehigkeit. Eine unbekannte
  * Komponente, ein nicht aufloesbarer EL-Ausdruck oder ein ins Leere zeigendes
@@ -65,36 +67,45 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author info@plaintext.ch
  * @since 2026
  */
-@DisplayName("Karte 1029: jede XHTML-Seite von root ist wohlgeformtes XML")
+@DisplayName("Karte 1029: jede XHTML-Seite des Reactors ist wohlgeformtes XML")
 class XhtmlWohlgeformtVertragTest {
 
+    private static final String RESOURCES_SUFFIX = "src/main/resources";
+
     /**
-     * Begruendete Ausnahmen als Repo-relativer Pfad. <b>Heute leer</b>, und das ist der Punkt: eine
-     * Seite, die sich nicht parsen laesst, ist im Betrieb HTTP 500. Es gibt keinen guten Grund.
+     * Begruendete Ausnahmen als Reactor-relativer Pfad. <b>Heute leer</b>, und das ist der Punkt:
+     * eine Seite, die sich nicht parsen laesst, ist im Betrieb HTTP 500. Es gibt keinen guten Grund.
      */
     private static final Set<String> AUSNAHMEN = Set.of();
 
     /**
-     * Untergrenze fuer die Dateisuche. root hatte am 04.09.2026 <b>53</b> XHTML-Dateien; die
-     * Grenze liegt bewusst darunter, damit ein neues Modul den Test nicht rot faerbt, aber weit
-     * genug oben, dass ein verrutschter Pfad auffaellt.
+     * Untergrenze der gefundenen XHTML-Dateien je Reactor (Schluessel = artifactId der Wurzel-pom).
+     * Die Werte der vier Kopien uebernommen (dort als {@code > n} formuliert, hier {@code >= n+1});
+     * guild und fwtool am 22.09.2026 gezaehlt (21 bzw. 6 Dateien) und mit Abstand darunter gesetzt.
      */
-    private static final int MINDESTENS = 40;
+    static final Map<String, Integer> MINDESTENS_JE_REACTOR = Map.of(
+            "plaintext-root-parent", 41,
+            "plaintext-parent", 51,
+            "plaintext-guild-parent", 15,
+            "plaintext-schuetu-parent", 36,
+            "plaintext-iot-parent", 3,
+            "plaintext-fwtool-parent", 4);
+
+    /** Fuer einen unbekannten Reactor: der kleinste gemessene Wert. */
+    private static final int MINDESTENS_SONST = 3;
 
     private static Path repoWurzel;
     private static List<Path> xhtmls;
 
     @BeforeAll
-    static void quellenEinlesen() throws IOException {
-        repoWurzel = findeRepoWurzel();
-        try (Stream<Path> module = Files.list(repoWurzel)) {
-            xhtmls = module
-                    .map(modul -> modul.resolve("src/main/resources"))
-                    .filter(Files::isDirectory)
-                    .flatMap(XhtmlWohlgeformtVertragTest::xhtmlDateien)
-                    .sorted()
-                    .toList();
-        }
+    static void quellenEinlesen() {
+        repoWurzel = ReactorLayout.repoRoot();
+        assertNotNull(repoWurzel, "Kein Reactor oberhalb von " + ReactorLayout.start() + " gefunden.");
+        xhtmls = ReactorLayout.sourceRoots(RESOURCES_SUFFIX).stream()
+                .flatMap(XhtmlWohlgeformtVertragTest::xhtmlDateien)
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     @Test
@@ -102,7 +113,7 @@ class XhtmlWohlgeformtVertragTest {
     void alleSeitenSindWohlgeformt() {
         List<String> funde = new ArrayList<>();
         for (Path datei : xhtmls) {
-            String relativ = repoWurzel.relativize(datei).toString();
+            String relativ = ReactorLayout.relativ(datei);
             if (AUSNAHMEN.contains(relativ)) {
                 continue;
             }
@@ -123,11 +134,13 @@ class XhtmlWohlgeformtVertragTest {
      * erste Anlauf zu Karte 1012 gescheitert ist.
      */
     @Test
-    @DisplayName("die Suche erfasst die XHTML-Dateien dieses Repos")
+    @DisplayName("die Suche erfasst die XHTML-Dateien dieses Reactors")
     void dieSucheGreift() {
-        assertTrue(xhtmls.size() > MINDESTENS,
-                "Nur " + xhtmls.size() + " XHTML-Dateien unter " + repoWurzel
-                        + " gefunden — die Suche greift ins Leere und ihr Ergebnis ist wertlos.");
+        int mindestens = ReactorLayout.mindestensFuerDiesenReactor(MINDESTENS_JE_REACTOR, MINDESTENS_SONST);
+        assertTrue(xhtmls.size() >= mindestens,
+                "Nur " + xhtmls.size() + " XHTML-Dateien unter " + repoWurzel + " gefunden, festgehalten "
+                        + "sind fuer " + ReactorLayout.reactorArtifactId() + " mindestens " + mindestens
+                        + " — die Suche greift ins Leere und ihr Ergebnis ist wertlos.");
     }
 
     /**
@@ -185,7 +198,7 @@ class XhtmlWohlgeformtVertragTest {
     // ------------------------------------------------------------------------------------------
 
     /** Liefert die Fehlermeldung des XML-Parsers, oder {@code null}, wenn die Seite wohlgeformt ist. */
-    private static String parseFehler(String inhalt) {
+    static String parseFehler(String inhalt) {
         try {
             DocumentBuilder builder = builder();
             builder.parse(new InputSource(new StringReader(inhalt)));
@@ -223,7 +236,8 @@ class XhtmlWohlgeformtVertragTest {
 
     private static Stream<Path> xhtmlDateien(Path wurzel) {
         try (Stream<Path> pfade = Files.walk(wurzel)) {
-            return pfade.filter(p -> p.toString().endsWith(".xhtml")).toList().stream();
+            return pfade.filter(p -> p.toString().endsWith(".xhtml")).map(p -> p.toAbsolutePath().normalize())
+                    .toList().stream();
         } catch (IOException e) {
             throw new UncheckedIOException("Dateien unter " + wurzel + " nicht lesbar", e);
         }
@@ -235,18 +249,5 @@ class XhtmlWohlgeformtVertragTest {
         } catch (IOException e) {
             throw new UncheckedIOException("Datei " + datei + " nicht lesbar", e);
         }
-    }
-
-    private static Path findeRepoWurzel() {
-        Path kandidat = Paths.get("").toAbsolutePath();
-        while (kandidat != null) {
-            if (Files.isDirectory(kandidat.resolve("plaintext-root-webapp"))
-                    && Files.isRegularFile(kandidat.resolve("pom.xml"))) {
-                return kandidat;
-            }
-            kandidat = kandidat.getParent();
-        }
-        throw new IllegalStateException(
-                "Repo-Wurzel nicht gefunden ab " + Paths.get("").toAbsolutePath());
     }
 }

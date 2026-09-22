@@ -1,7 +1,7 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-package ch.plaintext.boot.integration;
+package ch.plaintext.testsupport;
 
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -26,8 +26,14 @@ import java.util.Locale;
  * alle 214 XHTML-Dateien nachgezaehlt): {@code /includes/…} wird per {@code ui:include}
  * eingebunden, {@code META-INF/tags/…} sind Facelets-Tags, {@code template*.xhtml} sind
  * Rahmenseiten. Keines davon ist ueber eine URL erreichbar.
+ *
+ * <p><b>Card 1298: shared instead of copied.</b> Until 22.09.2026 this class existed five times
+ * (root, app, guild, schuetu, iot), identical apart from the package. It now lives in
+ * {@code plaintext-root-testsupport}, which the consumers pull in with {@code <scope>test</scope>};
+ * their copies are deleted. The Playwright ITs that use it stay in the repositories — they carry
+ * real differences per application.
  */
-final class Seitenliste {
+public final class Seitenliste {
 
     private static final String WURZEL = "META-INF/resources/";
 
@@ -37,7 +43,7 @@ final class Seitenliste {
     }
 
     /** Alle ueber eine URL erreichbaren Views, sortiert, ohne Doppel. */
-    static List<String> alle() {
+    public static List<String> alle() {
         return SEITEN;
     }
 
