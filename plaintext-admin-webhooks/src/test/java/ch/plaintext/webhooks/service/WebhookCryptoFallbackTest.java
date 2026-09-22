@@ -16,10 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * SECURITY (card 376, originally item 8 of collective card 314) — predictable crypto fallback, here
  * for the <b>second</b> affected class.
  *
- * <p>{@code WebhookCrypto} uses the same env key and the same fallback as {@code SecretCrypto}, but
- * is deliberately duplicated (no module references {@code plaintext-admin-secrets} across module
- * boundaries). A fix in only one of the two classes would leave the hole open — which is why this
- * test exists as the counterpart to {@code SecretCryptoFallbackTest}.
+ * <p>{@code WebhookCrypto} uses the same env key and the same fallback as {@code SecretCrypto}.
+ * Since card 1301 both share ONE implementation
+ * ({@code ch.plaintext.boot.plugins.secret.EnvKeyAesGcmCrypto} in plaintext-root-common), so a fix
+ * can no longer land in only one of them. This test keeps the behaviour of this call site pinned
+ * from the outside; the cross-check between the two call sites lives in
+ * {@code KryptoHaertungVertragTest} (plaintext-root-webapp — the only module that sees both).
  *
  * <p>The case here is particularly delicate: a computable key yields readable signing secrets and
  * from those <b>valid signatures</b> for outgoing webhooks.
@@ -49,6 +51,18 @@ class WebhookCryptoFallbackTest {
 
         assertNotEquals("signing-secret", cipher);
         assertEquals("signing-secret", crypto.decrypt(cipher));
+    }
+
+    /**
+     * The drift found in card 1301: {@code SecretCrypto} could report the publicly computable dev
+     * key, this class could not. The merged implementation is the stronger one.
+     */
+    @Test
+    void meldetDenDevFallback() {
+        if (System.getenv("PLAINTEXT_SECRET_KEY") != null) {
+            return; // not meaningful in an environment with a real key
+        }
+        assertTrue(new WebhookCrypto(new MockEnvironment()).isDevFallback());
     }
 
     /** No ECB: thanks to the fresh IV, the same plain text yields two different ciphertexts. */
