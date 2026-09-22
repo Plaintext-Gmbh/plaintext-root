@@ -80,8 +80,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * </pre>
  * Frozen on 23.09.2026: root 0 edges (no allowlist, as for every shared rule), app 14 (all into
  * root's {@code plaintext-root-watch} and {@code plaintext-admin-apitoken}), guild 12 (9 inside
- * guild, 3 into app — card 1297), schuetu, iot and fwtool 0. Cross-checked with {@code jdeps}:
- * the same edges.
+ * guild, 3 into app — card 1297), schuetu 2 (into {@code plaintext-admin-apitoken}), iot and
+ * fwtool 0. Cross-checked with {@code jdeps}: the same edges, plus one in schuetu that ArchUnit
+ * cannot see — a read of a compile-time constant ({@code static final}), which javac inlines;
+ * only a constant-pool entry remains. That is the one kind of source dependency this rule misses.
  *
  * <p>An entry that no longer matches any edge makes the test red as well: the list may only shrink
  * together with the code, otherwise it would permit the edge again the next time somebody
