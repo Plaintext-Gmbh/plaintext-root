@@ -43,18 +43,21 @@ class PlaintextMobileFormLinterTest {
     private static final String RESOURCES_SUFFIX = "src/main/resources/META-INF/resources";
 
     /**
+     * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
+     * the six reactors on 20.09.2026 — schuetu and iot with two roots each.
+     */
+    private static final int MINDESTENS_SCANWURZELN = 2;
+
+    /**
      * Scans every {@code src/main/resources/META-INF/resources} of all reactor modules (from the
-     * repository root) and fails with file + line on every mobile anti-pattern.
-     * Consumer apps without XHTML views of their own (no META-INF/resources directories) have
-     * nothing to lint — the test then passes instead of failing.
+     * repository root) and fails with file + line on every mobile anti-pattern. The scan set
+     * carries a lower bound ({@link ReactorLayout#untergrenze}): a linter that finds nothing to
+     * scan reports "everything in order" and is the worst possible state with a green result.
      */
     @Test
     void keineMobileAntiPatternsInFrameworkXhtml() throws IOException {
         List<Path> resourceRoots = findResourceRoots();
-        if (resourceRoots.isEmpty()) {
-            // No XHTML in the reactor (e.g. a consumer without views of its own) -> nothing to check.
-            return;
-        }
+        ReactorLayout.untergrenze(resourceRoots, MINDESTENS_SCANWURZELN, RESOURCES_SUFFIX);
 
         List<Violation> violations = new ArrayList<>();
         for (Path root : resourceRoots) {
@@ -112,7 +115,8 @@ class PlaintextMobileFormLinterTest {
     /**
      * Walks upwards from the working directory to the repository root and collects every
      * {@code <modul>/src/main/resources/META-INF/resources}. Falls back to our own module
-     * if the root is not found (e.g. an isolated module build).
+     * if the root is not found (e.g. an isolated module build) — that fallback used to make the
+     * test green without a scan and is now caught by {@link ReactorLayout#untergrenze}.
      */
     private static List<Path> findResourceRoots() throws IOException {
         Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath();

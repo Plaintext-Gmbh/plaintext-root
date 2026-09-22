@@ -47,15 +47,19 @@ class PlaintextFaceletsElLinterTest {
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
     /**
+     * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
+     * the six reactors on 20.09.2026 — schuetu and iot with two roots each.
+     */
+    private static final int MINDESTENS_SCANWURZELN = 2;
+
+    /**
      * Scans every {@code src/main/resources} of all reactor modules and fails with file + line on
      * every straight {@code "} inside an inline body EL.
      */
     @Test
     void keinGeradesQuoteInInlineElVonXhtml() {
         List<Path> resourceRoots = ReactorLayout.sourceRoots(RESOURCES_SUFFIX);
-        if (resourceRoots.isEmpty()) {
-            return;
-        }
+        ReactorLayout.untergrenze(resourceRoots, MINDESTENS_SCANWURZELN, RESOURCES_SUFFIX);
         ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
 
         List<String> violations = new ArrayList<>(allowlist.fehler());

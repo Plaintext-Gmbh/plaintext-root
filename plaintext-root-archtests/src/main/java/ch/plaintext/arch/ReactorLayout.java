@@ -9,7 +9,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Path resolution for the shared file linters: where the reactor root is, which modules exist,
@@ -116,6 +120,46 @@ final class ReactorLayout {
         Path p = file.toAbsolutePath().normalize();
         String s = (root != null && p.startsWith(root)) ? root.relativize(p).toString() : p.toString();
         return s.replace('\\', '/');
+    }
+
+    /**
+     * Lower bound for the scan set of a file linter, to be called right after the lookup.
+     *
+     * <p>Every file linter here is a "nothing found" test: it is green when the scan produces no
+     * violation — and just as green when the scan produces nothing at all. {@link #repoRoot()}
+     * returns {@code null} as soon as no {@code pom.xml} carrying {@code <modules>} is found within
+     * eight levels; {@link #sourceRoots(String)} then yields at most the linter's own module
+     * directory, and the rule passes without having looked at the repository. Renaming, nesting or
+     * moving a module is enough for that, and it happens silently. A negative control
+     * ("an empty directory finds nothing") does not cover this — only a lower bound does.
+     *
+     * <p><b>The numbers the callers hand in are measured, not estimated.</b> Counted on 20.09.2026
+     * over the six reactors that run this jar (root / app / guild / schuetu / iot / fwtool):
+     * {@code src/main/resources} 23 / 29 / 7 / 2 / 2 / 5, {@code src/main/java} plus
+     * {@code src/test/java} together 46 / 61 / 16 / 4 / 4 / 7,
+     * {@code src/main/resources/META-INF/resources} 19 / 29 / 6 / 2 / 2 / 5. The bound is the
+     * smallest of the six, because the same jar runs in all of them. A reactor that drops below it
+     * has either really shrunk — then lower the constant deliberately and say why — or the lookup
+     * no longer finds what is there, and that is the case this bound exists for.
+     *
+     * @param roots      what {@link #sourceRoots(String)} or an equivalent lookup returned
+     * @param mindestens smallest number of roots measured across the six reactors
+     * @param suffix     the scanned {@code src/...} suffix, for the message
+     */
+    static void untergrenze(List<Path> roots, int mindestens, String suffix) {
+        Path repoRoot = repoRoot();
+        assertNotNull(repoRoot,
+                "Kein Reactor gefunden: von '" + start() + "' aufwaerts traegt binnen acht Ebenen keine "
+                        + "pom.xml ein <modules>. Der Linter saehe damit hoechstens sein eigenes Modul und "
+                        + "waere gruen, ohne das Repository gelesen zu haben.");
+        assertTrue(roots.size() >= mindestens,
+                () -> "Der Scan findet nur " + roots.size() + " '" + suffix + "'-Wurzeln im Reactor "
+                        + repoRoot + ", festgehalten sind mindestens " + mindestens + ". Eine zu kleine "
+                        + "Scanmenge sieht aus wie ein sauberes Repository und ist meist das Gegenteil: was "
+                        + "der Linter nicht mehr findet, prueft er auch nicht mehr. Entweder ist der Reactor "
+                        + "wirklich geschrumpft — dann die Zahl bewusst senken und begruenden — oder die "
+                        + "Pfadsuche greift daneben. Gefunden: "
+                        + roots.stream().map(ReactorLayout::relativ).sorted().collect(Collectors.joining(", ")));
     }
 
     static boolean shipsTheseLinters(Path moduleDir) {

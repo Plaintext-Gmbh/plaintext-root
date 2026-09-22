@@ -59,6 +59,13 @@ class PlaintextHeaderHygieneTest {
     private static final List<String> JAVA_SUFFIXES = List.of("src/main/java", "src/test/java");
 
     /**
+     * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
+     * the six reactors on 20.09.2026 — schuetu and iot with four roots each (two modules, each with
+     * {@code src/main/java} and {@code src/test/java}).
+     */
+    private static final int MINDESTENS_SCANWURZELN = 4;
+
+    /**
      * {@code Copyright (C) eMad, 2026.} in every spelling (also {@code ©}, without {@code (C)}).
      *
      * <p>Karte 1113 (Sonar {@code java:S5852}): the two {@code \s*} around the optional
@@ -94,9 +101,7 @@ class PlaintextHeaderHygieneTest {
         for (String suffix : JAVA_SUFFIXES) {
             roots.addAll(ReactorLayout.sourceRoots(suffix));
         }
-        if (roots.isEmpty()) {
-            return; // reactor without Java sources at this point -> nothing to check
-        }
+        ReactorLayout.untergrenze(roots, MINDESTENS_SCANWURZELN, String.join(" + ", JAVA_SUFFIXES));
         ArchAllowlist allowlist = ArchAllowlist.fuer(ALLOWLIST_REGEL);
 
         List<String> violations = new ArrayList<>(allowlist.fehler());
