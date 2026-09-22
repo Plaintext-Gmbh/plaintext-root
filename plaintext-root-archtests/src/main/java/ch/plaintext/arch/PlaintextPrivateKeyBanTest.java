@@ -49,6 +49,13 @@ class PlaintextPrivateKeyBanTest {
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
     /**
+     * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
+     * the six reactors on 22.09.2026 — schuetu and iot with two {@code src/main/resources} roots
+     * each (root 23, app 29, guild 7, fwtool 5).
+     */
+    private static final int MINDESTENS_SCANWURZELN = 2;
+
+    /**
      * PEM header lines of private keys. The public part ({@code BEGIN PUBLIC KEY}) is
      * explicitly allowed — it may and should be shipped.
      */
@@ -64,18 +71,12 @@ class PlaintextPrivateKeyBanTest {
     /** A small cap so that the scan does not get stuck on a large binary file. */
     private static final long MAX_SCAN_BYTES = 2L * 1024 * 1024;
 
-    /**
-     * Marker of our own linter source: this module ships the linter and carries the
-     * PEM header lines as string literals — it must not check itself. In a consumer the
-     * linter is present as a jar, where the exemption never applies.
-     */
-    private static final String OWN_SOURCE_MARKER = "ch/plaintext/arch/PlaintextPrivateKeyBanTest.java";
-
     @Test
     void keinPrivaterSchluesselInAusgeliefertenRessourcen() throws IOException {
         List<Path> resourceRoots = findResourceRoots();
+        ReactorLayout.untergrenze(resourceRoots, MINDESTENS_SCANWURZELN, RESOURCES_SUFFIX);
 
-        Path repoRoot = findRepoRoot(Path.of(System.getProperty("user.dir")).toAbsolutePath());
+        Path repoRoot = ReactorLayout.repoRoot();
 
         List<String> violations = new ArrayList<>();
         for (Path root : resourceRoots) {
@@ -134,7 +135,7 @@ class PlaintextPrivateKeyBanTest {
         Files.createDirectories(reactor.resolve("modul-a/target/classes/keys"));
 
         List<Path> roots = new ArrayList<>();
-        collectResourceRoots(reactor, roots, 0);
+        ReactorLayout.collect(reactor, RESOURCES_SUFFIX, roots, 0);
 
         assertTrue(roots.contains(reactor.resolve("modul-a/" + RESOURCES_SUFFIX)),
                 "Modul auf erster Ebene muss gefunden werden: " + roots);
@@ -186,60 +187,16 @@ class PlaintextPrivateKeyBanTest {
      * <b>nested</b> modules (card 350). A module in a subdirectory
      * ({@code gruppe/modul/src/main/resources}) used not to be scanned and was therefore a
      * blind spot: key material placed there ended up in the artifact unnoticed.
+     *
+     * <p><b>Karte 1294, 22.09.2026:</b> the recursion for that used to stand here as an own copy
+     * — depth limit, {@code SKIP_DIRS}, own-module exemption, character for character
+     * {@link ReactorLayout#collect}. Unlike the other four "own path searches" of card
+     * 1274/finding 4 this one was <b>not</b> flat; what was duplicated was the whole recursion,
+     * and with it the risk that a correction to one copy never reaches the other. The behaviour
+     * is unchanged — the nested-module test below now proves it against {@link ReactorLayout}
+     * instead of against a private copy.
      */
-    private static List<Path> findResourceRoots() throws IOException {
-        Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-
-        List<Path> roots = new ArrayList<>();
-        Path own = start.resolve(RESOURCES_SUFFIX);
-        if (Files.isDirectory(own) && !shipsThisLinter(start)) {
-            roots.add(own);
-        }
-
-        Path repoRoot = findRepoRoot(start);
-        if (repoRoot != null) {
-            collectResourceRoots(repoRoot, roots, 0);
-        }
-        return roots;
-    }
-
-    /** Directories that contain no module sources — do not descend into them (runtime + false alarms). */
-    private static final List<String> SKIP_DIRS = List.of("target", "src", ".git", "node_modules", ".mvn", ".idea");
-
-    /** Maximum module depth below the reactor root. */
-    private static final int MAX_MODULE_DEPTH = 5;
-
-    private static void collectResourceRoots(Path dir, List<Path> roots, int depth) throws IOException {
-        if (depth > MAX_MODULE_DEPTH || shipsThisLinter(dir)) {
-            return;
-        }
-        Path resources = dir.resolve(RESOURCES_SUFFIX);
-        if (Files.isDirectory(resources) && !roots.contains(resources)) {
-            roots.add(resources);
-        }
-        try (Stream<Path> children = Files.list(dir)) {
-            for (Path child : children.filter(Files::isDirectory).toList()) {
-                String name = child.getFileName().toString();
-                if (!SKIP_DIRS.contains(name) && !name.startsWith(".")) {
-                    collectResourceRoots(child, roots, depth + 1);
-                }
-            }
-        }
-    }
-
-    private static boolean shipsThisLinter(Path moduleDir) {
-        return Files.isRegularFile(moduleDir.resolve("src/main/java").resolve(OWN_SOURCE_MARKER));
-    }
-
-    private static Path findRepoRoot(Path start) throws IOException {
-        Path dir = start;
-        for (int i = 0; i < 8 && dir != null; i++) {
-            Path pom = dir.resolve("pom.xml");
-            if (Files.isRegularFile(pom) && Files.readString(pom).contains("<modules>")) {
-                return dir;
-            }
-            dir = dir.getParent();
-        }
-        return null;
+    private static List<Path> findResourceRoots() {
+        return ReactorLayout.sourceRoots(RESOURCES_SUFFIX);
     }
 }

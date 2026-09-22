@@ -43,24 +43,21 @@ import static org.junit.jupiter.api.Assertions.fail;
 class PlaintextViewScopedBanTest {
 
     private static final String JAVA_SUFFIX = "src/main/java";
+
+    /**
+     * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
+     * the six reactors on 22.09.2026 — schuetu and iot with two {@code src/main/java} roots each
+     * (root 24, app 31, guild 8, fwtool 5).
+     */
+    private static final int MINDESTENS_SCANWURZELN = 2;
     private static final String IMPORT_TOKEN = "import jakarta.faces.view.ViewScoped";
     private static final String FQ_ANNOTATION = "@jakarta.faces.view.ViewScoped";
     private static final String SHORT_ANNOTATION = "@ViewScoped";
 
-    /**
-     * Marker path of our own linter source. Since this test lives in {@code src/main/java}, it itself
-     * contains the forbidden tokens (e.g. {@code "@ViewScoped"}) as string literals / test fixtures.
-     * The source scanner must therefore NOT scan the module that ships it — otherwise it reports
-     * itself. In consumers the linter is present as a jar (not in {@code src/main/java}), where this
-     * exemption never applies and the complete consumer source code is scanned.
-     */
-    private static final String OWN_SOURCE_MARKER = "ch/plaintext/arch/PlaintextViewScopedBanTest.java";
-
     @Test
     void keineViewScopedNutzungInFrameworkQuelltext() throws IOException {
         List<Path> sourceRoots = findJavaSourceRoots();
-        assertFalse(sourceRoots.isEmpty(),
-                "Keine src/main/java-Verzeichnisse gefunden (cwd=" + Path.of("").toAbsolutePath() + ")");
+        ReactorLayout.untergrenze(sourceRoots, MINDESTENS_SCANWURZELN, JAVA_SUFFIX);
 
         List<String> violations = new ArrayList<>();
         for (Path root : sourceRoots) {
@@ -160,52 +157,20 @@ class PlaintextViewScopedBanTest {
     }
 
     /**
-     * Walks upwards from the working directory to the reactor root and collects every
-     * {@code <modul>/src/main/java}. Falls back to our own module if the root is not found.
+     * All {@code <modul>/src/main/java} of the reactor — from {@link ReactorLayout#sourceRoots},
+     * no longer an own copy.
+     *
+     * <p><b>Karte 1294, 22.09.2026:</b> until then this class carried a <b>flat</b>
+     * {@code Files.list(repoRoot)}. A nested module ({@code gruppe/modul/src/main/java}) was
+     * invisible to it — the linter was green because it did not know the directory, not because
+     * the directory was clean ({@code FlachGegenRekursivTest} shows both in one run).
+     * {@link ReactorLayout#sourceRoots} descends up to five levels, skips
+     * {@code target}/{@code .git}/{@code node_modules} and leaves out the module that ships these
+     * linters — the same exemption this class used to implement itself with an own-source marker
+     * (this test lives in {@code src/main/java} and carries the forbidden tokens as string
+     * literals, so it would otherwise report itself).
      */
-    private static List<Path> findJavaSourceRoots() throws IOException {
-        Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-
-        List<Path> roots = new ArrayList<>();
-        Path own = start.resolve(JAVA_SUFFIX);
-        if (Files.isDirectory(own) && !shipsThisLinter(own)) {
-            roots.add(own);
-        }
-
-        Path repoRoot = findRepoRoot(start);
-        if (repoRoot != null) {
-            try (Stream<Path> modules = Files.list(repoRoot)) {
-                modules.filter(Files::isDirectory)
-                       .map(m -> m.resolve(JAVA_SUFFIX))
-                       .filter(Files::isDirectory)
-                       .filter(p -> !roots.contains(p))
-                       .filter(p -> !shipsThisLinter(p))
-                       .forEach(roots::add);
-            }
-        }
-        return roots;
-    }
-
-    /**
-     * {@code true} if {@code sourceRoot} is the module that ships this linter (it contains our own
-     * source file with the forbidden tokens). Such roots are excluded from the scan so that the
-     * linter does not report itself. Applies only in plaintext-root; in consumers the linter is
-     * present as a jar and no source root contains this file.
-     */
-    private static boolean shipsThisLinter(Path sourceRoot) {
-        return Files.isRegularFile(sourceRoot.resolve(OWN_SOURCE_MARKER));
-    }
-
-    /** Reactor root = first directory upwards with a {@code pom.xml} that contains {@code <modules>}. */
-    private static Path findRepoRoot(Path start) throws IOException {
-        Path dir = start;
-        for (int i = 0; i < 8 && dir != null; i++) {
-            Path pom = dir.resolve("pom.xml");
-            if (Files.isRegularFile(pom) && Files.readString(pom).contains("<modules>")) {
-                return dir;
-            }
-            dir = dir.getParent();
-        }
-        return null;
+    private static List<Path> findJavaSourceRoots() {
+        return ReactorLayout.sourceRoots(JAVA_SUFFIX);
     }
 }

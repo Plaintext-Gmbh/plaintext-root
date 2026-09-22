@@ -35,8 +35,9 @@ import static org.junit.jupiter.api.Assertions.fail;
 class ReactorLayoutUntergrenzeTest {
 
     /**
-     * The seven linters from finding 4 of card 1274. Whoever adds an eighth file linter that scans
-     * {@link ReactorLayout#sourceRoots(String)} belongs in this list.
+     * The seven linters from finding 4 of card 1274, plus the two that card 1294 moved onto
+     * {@link ReactorLayout#sourceRoots(String)} on 22.09.2026. Whoever adds a tenth file linter
+     * that scans {@code sourceRoots} belongs in this list.
      */
     private static final List<String> LINTER_MIT_UNTERGRENZE = List.of(
             "PlaintextFaceletsElLinterTest",
@@ -45,7 +46,10 @@ class ReactorLayoutUntergrenzeTest {
             "PlaintextMobileFormLinterTest",
             "PlaintextI18nSeedTest",
             "PlaintextHeaderHygieneTest",
-            "PlaintextGroessenLeitplankeTest");
+            "PlaintextGroessenLeitplankeTest",
+            // Karte 1294: bis dahin mit eigener Pfadsuche und ohne Untergrenze.
+            "PlaintextViewScopedBanTest",
+            "PlaintextPrivateKeyBanTest");
 
     private static final Path QUELLEN = Path.of("src/main/java/ch/plaintext/arch");
 
@@ -82,7 +86,7 @@ class ReactorLayoutUntergrenzeTest {
     }
 
     @Test
-    @DisplayName("Die sieben Linter rufen die Untergrenze und kehren nicht mehr still zurueck")
+    @DisplayName("Die neun Linter rufen die Untergrenze und kehren nicht mehr still zurueck")
     void jederLinterRuftDieUntergrenze() throws IOException {
         assertTrue(Files.isDirectory(QUELLEN),
                 "Die Linter-Quellen liegen nicht unter " + QUELLEN.toAbsolutePath()

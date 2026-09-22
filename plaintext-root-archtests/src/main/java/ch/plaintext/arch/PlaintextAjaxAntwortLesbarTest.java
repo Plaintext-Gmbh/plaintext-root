@@ -364,12 +364,9 @@ class PlaintextAjaxAntwortLesbarTest {
         return Files.readString(datei, StandardCharsets.UTF_8);
     }
 
-    /** Path relative to the repository root, so that the message looks the same in every consumer. */
+    /** Path relative to the reactor root, so that the message looks the same in every consumer. */
     private static String anzeige(Path datei) {
-        Path wurzel = repoWurzel();
-        return wurzel != null && datei.startsWith(wurzel)
-                ? wurzel.relativize(datei).toString()
-                : datei.toString();
+        return ReactorLayout.relativ(datei);
     }
 
     /**
@@ -382,7 +379,7 @@ class PlaintextAjaxAntwortLesbarTest {
      */
     private static synchronized List<Path> facelets() throws IOException {
         if (FACELETS == null) {
-            Path wurzel = repoWurzel();
+            Path wurzel = ReactorLayout.repoRoot();
             FACELETS = suche(wurzel != null
                     ? wurzel
                     : Path.of(System.getProperty("user.dir")).toAbsolutePath());
@@ -430,23 +427,6 @@ class PlaintextAjaxAntwortLesbarTest {
         return List.copyOf(treffer);
     }
 
-    /** Repository root = first directory upwards that holds a Maven reactor (pom.xml with modules). */
-    private static Path repoWurzel() {
-        Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        for (int i = 0; i < 8 && dir != null; i++, dir = dir.getParent()) {
-            Path pom = dir.resolve("pom.xml");
-            if (Files.isRegularFile(pom)) {
-                try {
-                    if (Files.readString(pom, StandardCharsets.UTF_8).contains("<modules>")) {
-                        return dir;
-                    }
-                } catch (IOException ignored) {
-                    // keep going upwards
-                }
-            }
-        }
-        return null;
-    }
 
     private static int zeileVon(String text, int pos) {
         return (int) text.substring(0, pos).chars().filter(c -> c == '\n').count() + 1;
