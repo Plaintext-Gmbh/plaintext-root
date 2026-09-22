@@ -140,6 +140,16 @@ class McpToolParamVertragTest {
     @DisplayName("Selbstauskunft: der Scan sieht die festgehaltene Zahl Werkzeuge")
     void derScanFindetWerkzeuge() {
         Vertrag vertrag = Vertrag.laden();
+        if (annotation(MCP_TOOL) == null) {
+            // Kein spring-ai am Test-Klassenpfad: dann liefert die Anwendung gar keinen MCP-Server
+            // aus (spring-ai-starter-mcp-server-webmvc ist in root optional). So in fwtool
+            // (gemessen 23.09.2026): die root-Werkzeuge tragen @McpTool im Bytecode, und
+            // PlaintextMcpScopeVertragTest zaehlt sie per Name — ausgeliefert wird aber keines, also
+            // verspricht auch kein Schema etwas. Die Untergrenze gilt fuer ausgelieferte Werkzeuge.
+            System.out.println("McpToolParamVertragTest: " + MCP_TOOL + " nicht am Klassenpfad — kein "
+                    + "MCP-Server in dieser Anwendung, kein Schema zu pruefen.");
+            return;
+        }
         List<Method> werkzeuge = alleWerkzeuge();
         if (!vertrag.vorhanden()) {
             assertTrue(werkzeuge.isEmpty(), "Es sind " + werkzeuge.size() + " MCP-Werkzeuge am Klassenpfad, "
