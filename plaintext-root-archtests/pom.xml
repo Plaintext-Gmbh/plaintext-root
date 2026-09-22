@@ -49,6 +49,15 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Karte 1297: ch.plaintext.PlaintextCron (root-interfaces) wird von
+             PlaintextArchitectureTest benutzt, kam aber nur transitiv ueber plaintext-root-common.
+             Jetzt deklariert — sonst bricht dieses Modul, wenn root-common seine
+             interfaces-Abhaengigkeit verliert, ohne dass jemand archtests angefasst hat. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-interfaces</artifactId>
+        </dependency>
+
         <!-- plaintext-root-common bringt transitiv:
              - ch.plaintext.boot.utils.MobileFormLinter (Scan-Logik des Mobile-Linters)
              - ch.plaintext:plaintext-root-interfaces -> ch.plaintext.PlaintextCron
@@ -59,5 +68,46 @@
             <artifactId>plaintext-root-common</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Das Wurzel-POM als Ressource ins Jar legen: PlaintextZentralerPinTest muss auch in
+                 app/guild/schuetu/iot wissen, WELCHE Abhaengigkeiten root zentral verwaltet. Dort
+                 liegt plaintext-root/pom.xml nicht auf der Platte; ueber den Classpath ist es da.
+
+                 Der mitgelieferte Stand ist automatisch der richtige: das Jar traegt die
+                 root-Version, die der Consumer als Parent gepinnt hat (archtests-Version =
+                 ${plaintext-root.version} = Parent-Version). Verglichen wird also gegen genau das
+                 POM, von dem der Consumer erbt, nicht gegen ein beliebiges root-master.
+
+                 Ziel-Unterverzeichnis, damit es nicht mit META-INF/maven/.../pom.xml des Jars
+                 selbst verwechselt wird. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>zentralpin-wurzel-pom</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/plaintext-zentralpin</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/..</directory>
+                                    <includes>
+                                        <include>pom.xml</include>
+                                    </includes>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

@@ -76,6 +76,13 @@
             <artifactId>plaintext-root-web</artifactId>
         </dependency>
 
+        <!-- Karte 1297: ch.plaintext.boot.menu.MenuItemImpl wird hier benutzt, kam aber nur
+             transitiv ueber plaintext-root-web. Jetzt deklariert. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-menu</artifactId>
+        </dependency>
+
         <!-- Testfabrik des Guards, genutzt von MenuLinkInvariantTest. -->
         <dependency>
             <groupId>ch.plaintext</groupId>
