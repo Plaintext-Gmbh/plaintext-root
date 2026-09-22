@@ -17,6 +17,14 @@
     <description>Reusable JSF/web infrastructure: URL rewriting, menu bean, debug views</description>
 
     <dependencies>
+        <!-- Karte 1297: benutzt (ch.plaintext.MenuRegistry, ch.plaintext.boot.menu.MenuAnnotation),
+             bis 22.09.2026 aber nicht deklariert — es kam transitiv ueber plaintext-root-menu.
+             Damit haette ein Umbau an root-menu dieses Modul mitgerissen, ohne dass jemand es
+             angefasst haette. Was benutzt wird, wird deklariert. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-interfaces</artifactId>
+        </dependency>
         <dependency>
             <groupId>ch.plaintext</groupId>
             <artifactId>plaintext-root-menu</artifactId>

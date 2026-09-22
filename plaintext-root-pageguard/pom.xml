@@ -18,7 +18,13 @@
 
     <dependencies>
         <!-- Der Guard leitet seine Regeln aus den Menuepunkten ab; das ist seine einzige
-             fachliche Abhaengigkeit. -->
+             fachliche Abhaengigkeit.
+             Karte 1297: ch.plaintext.MenuRegistry (root-interfaces) wurde benutzt, aber nicht
+             deklariert — es kam transitiv ueber plaintext-root-menu mit. Jetzt deklariert. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-interfaces</artifactId>
+        </dependency>
         <dependency>
             <groupId>ch.plaintext</groupId>
             <artifactId>plaintext-root-menu</artifactId>
