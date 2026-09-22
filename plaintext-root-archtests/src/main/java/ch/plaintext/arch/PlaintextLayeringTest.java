@@ -81,6 +81,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code boot}) and no side effect of this measure. Until then the finding stands here instead of
  * in a green test.
  *
+ * <p>What does exist since 22.09.2026 is the boundary between <em>Maven modules</em>:
+ * {@link PlaintextModulgrenzenTest} (card 1299) freezes every edge from one specialist module into
+ * another that bypasses an {@code -interfaces} module, and reports every new one. That is not the
+ * cycle rule — the package cycles above stay — but it is the counted list this paragraph missed.
+ *
  * <p><b>Why the scan hangs off the reactor and not off the base package.</b> Unlike
  * {@link PlaintextSessionBeanSerialisierbarTest} (where {@code ch.plaintext} from the jars is
  * wanted), this test imports exclusively the {@code target/classes} of the modules of its
@@ -303,7 +308,10 @@ class PlaintextLayeringTest {
         try (Stream<Path> module = Files.list(repoRoot)) {
             for (Path modul : module.filter(Files::isDirectory).sorted().toList()) {
                 Path klassen = modul.resolve(KLASSEN_SUFFIX);
-                if (klassenverzeichnisse.contains(klassen) || !Files.isDirectory(modul.resolve("target"))) {
+                // The module that ships these rules is not part of the scan (ReactorLayout skips it
+                // for target/classes); without this check its jar slipped in through this fallback.
+                if (klassenverzeichnisse.contains(klassen) || !Files.isDirectory(modul.resolve("target"))
+                        || ReactorLayout.shipsTheseLinters(modul)) {
                     continue;
                 }
                 try (Stream<Path> inhalt = Files.list(modul.resolve("target"))) {
@@ -323,7 +331,7 @@ class PlaintextLayeringTest {
         return jars;
     }
 
-    private static JavaClasses importiereReactorKlassen() {
+    static JavaClasses importiereReactorKlassen() {
         List<Path> roots = new ArrayList<>(ReactorLayout.sourceRoots(KLASSEN_SUFFIX));
         roots.addAll(jarsOhneKlassenverzeichnis(roots));
         JavaClasses alle = new ClassFileImporter()

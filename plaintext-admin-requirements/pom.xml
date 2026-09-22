@@ -110,8 +110,9 @@
                                  plaintext-root-webapp gebaut — im webapp-Lauf eines sauberen Builds
                                  gibt es seine Klassen also noch nicht. Ohne diesen Eintrag bliebe
                                  plaintext-admin-requirements ungeprueft, genau wie zuvor beim
-                                 Session-Bean-Test. -->
-                            <test>PlaintextSessionBeanSerialisierbarTest,PlaintextMcpScopeVertragTest,PlaintextLayeringTest</test>
+                                 Session-Bean-Test. Dasselbe gilt fuer PlaintextModulgrenzenTest
+                                 (Karte 1299): seine Kanten aus diesem Modul sieht nur dieser Lauf. -->
+                            <test>PlaintextSessionBeanSerialisierbarTest,PlaintextMcpScopeVertragTest,PlaintextLayeringTest,PlaintextModulgrenzenTest</test>
                             <failIfNoSpecifiedTests>true</failIfNoSpecifiedTests>
                         </configuration>
                     </execution>
