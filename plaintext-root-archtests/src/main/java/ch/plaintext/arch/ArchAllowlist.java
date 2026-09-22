@@ -47,6 +47,7 @@ final class ArchAllowlist {
 
     private final String regel;
     private final List<Pattern> ziele = new ArrayList<>();
+    private final List<String> roheZiele = new ArrayList<>();
     private final List<String> fehler = new ArrayList<>();
 
     private ArchAllowlist(String regel) {
@@ -97,6 +98,7 @@ final class ArchAllowlist {
             return;
         }
         ziele.add(glob(teile[1].strip()));
+        roheZiele.add(teile[1].strip());
     }
 
     /** {@code **} = any depth, {@code *} = anything within one segment; everything else literal. */
@@ -127,6 +129,22 @@ final class ArchAllowlist {
     /** Format errors of the file (missing justification, incomplete line) — the test reports them as a violation. */
     List<String> fehler() {
         return fehler;
+    }
+
+    /**
+     * Entries of this rule that match none of {@code bestehend} — orphaned exceptions whose
+     * violation is gone. A rule that freezes the current state reports them, so that the list
+     * shrinks together with the code instead of permitting the edge again later.
+     */
+    List<String> unbenutzt(java.util.Collection<String> bestehend) {
+        List<String> ohne = new ArrayList<>();
+        for (int i = 0; i < ziele.size(); i++) {
+            Pattern p = ziele.get(i);
+            if (bestehend.stream().noneMatch(z -> p.matcher(z.replace('\\', '/')).matches())) {
+                ohne.add(roheZiele.get(i));
+            }
+        }
+        return ohne;
     }
 
     int anzahl() {
