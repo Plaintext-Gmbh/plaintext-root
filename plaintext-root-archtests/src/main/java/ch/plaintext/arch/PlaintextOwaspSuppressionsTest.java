@@ -228,7 +228,7 @@ class PlaintextOwaspSuppressionsTest {
     void dieSuppressionDateiLiegtDaWoDiePipelineSieErwartet() throws IOException {
         Path datei = datei();
         assumeTrue(datei != null, "Dieses Repository führt keine quality/owasp-suppressions.xml.");
-        Path wurzel = repoWurzel();
+        Path wurzel = ReactorLayout.repoRoot();
         assertTrue(wurzel != null && datei.equals(wurzel.resolve("quality").resolve("owasp-suppressions.xml")),
                 "Erwartet unter <repo>/quality/owasp-suppressions.xml — die Pipeline übergibt genau "
                         + "diesen Pfad an dependency-check (ci-cd-pipeline.yaml). Gefunden: " + datei);
@@ -237,25 +237,13 @@ class PlaintextOwaspSuppressionsTest {
     // ── Helpers ──────────────────────────────────────────────
 
     /** The suppression file from the reactor root — or {@code null} if the repository keeps none. */
-    private static Path datei() throws IOException {
-        Path wurzel = repoWurzel();
+    private static Path datei() {
+        Path wurzel = ReactorLayout.repoRoot();
         if (wurzel == null) {
             return null;
         }
         Path d = wurzel.resolve("quality").resolve("owasp-suppressions.xml");
         return Files.isRegularFile(d) ? d : null;
-    }
-
-    private static Path repoWurzel() throws IOException {
-        Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        for (int i = 0; i < 8 && dir != null; i++) {
-            Path pom = dir.resolve("pom.xml");
-            if (Files.isRegularFile(pom) && Files.readString(pom).contains("<modules>")) {
-                return dir;
-            }
-            dir = dir.getParent();
-        }
-        return null;
     }
 
     /** The entry for an artifact expression — fails with a clear message if it is missing. */

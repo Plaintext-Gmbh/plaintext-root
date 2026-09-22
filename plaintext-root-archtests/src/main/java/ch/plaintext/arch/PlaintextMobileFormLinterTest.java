@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -113,44 +112,19 @@ class PlaintextMobileFormLinterTest {
     }
 
     /**
-     * Walks upwards from the working directory to the repository root and collects every
-     * {@code <modul>/src/main/resources/META-INF/resources}. Falls back to our own module
-     * if the root is not found (e.g. an isolated module build) — that fallback used to make the
-     * test green without a scan and is now caught by {@link ReactorLayout#untergrenze}.
+     * All {@code <modul>/src/main/resources/META-INF/resources} of the reactor — from
+     * {@link ReactorLayout#sourceRoots}, no longer an own copy.
+     *
+     * <p><b>Karte 1294, 22.09.2026:</b> until then this class carried a <b>flat</b>
+     * {@code Files.list(repoRoot)} plus its own {@code findRepoRoot}. Flat versus recursive is
+     * not a matter of taste: a NESTED module ({@code gruppe/modul/src/main/...}) was invisible to
+     * the flat search, and the linter was then green because it did not know the directory — not
+     * because the directory was clean. Measured on 20.09.2026 both searches returned the same
+     * number in all six repos; that is an accident of today's flat module layout, not
+     * equivalence. The lower bound from card 1274 catches an empty scan set, not a scan set that
+     * is complete-looking but short by one nested module — only {@link ReactorLayout} does that.
      */
-    private static List<Path> findResourceRoots() throws IOException {
-        Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-
-        // Own module resources first (guaranteed to be present, no matter where the build runs from).
-        List<Path> roots = new ArrayList<>();
-        Path own = start.resolve(RESOURCES_SUFFIX);
-        if (Files.isDirectory(own)) {
-            roots.add(own);
-        }
-
-        Path repoRoot = findRepoRoot(start);
-        if (repoRoot != null) {
-            try (Stream<Path> modules = Files.list(repoRoot)) {
-                modules.filter(Files::isDirectory)
-                       .map(m -> m.resolve(RESOURCES_SUFFIX))
-                       .filter(Files::isDirectory)
-                       .filter(p -> !roots.contains(p))
-                       .forEach(roots::add);
-            }
-        }
-        return roots;
-    }
-
-    /** Repository root = first directory upwards that holds a Maven reactor (pom.xml with &lt;modules&gt;). */
-    private static Path findRepoRoot(Path start) throws IOException {
-        Path dir = start;
-        for (int i = 0; i < 8 && dir != null; i++) {
-            Path pom = dir.resolve("pom.xml");
-            if (Files.isRegularFile(pom) && Files.readString(pom).contains("<modules>")) {
-                return dir;
-            }
-            dir = dir.getParent();
-        }
-        return null;
+    private static List<Path> findResourceRoots() {
+        return ReactorLayout.sourceRoots(RESOURCES_SUFFIX);
     }
 }
