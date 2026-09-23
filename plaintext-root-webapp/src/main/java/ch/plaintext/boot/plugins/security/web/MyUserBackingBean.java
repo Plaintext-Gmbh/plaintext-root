@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security.web;
 
+import ch.plaintext.boot.StartpageResolver;
 import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.PlaintextSecurity;
@@ -23,6 +24,7 @@ import ch.plaintext.framework.PrivilegedRoleRules;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.model.SelectItem;
 import jakarta.faces.application.FacesMessage;
+import jakarta.servlet.ServletContext;
 import jakarta.faces.context.FacesContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
@@ -369,6 +371,27 @@ public class MyUserBackingBean implements Serializable {
     }
 
     @Transactional
+    /** Whether the start page differs from the persisted one (a new user counts as changed). */
+    private boolean startseiteGeaendert() {
+        String neu = selected.getStartpage() == null ? "" : selected.getStartpage().trim();
+        if (selected.getId() == null) {
+            return !neu.isEmpty();
+        }
+        String bisher = repo.findById(selected.getId())
+                .map(MyUserEntity::getStartpage)
+                .map(String::trim)
+                .orElse("");
+        return !neu.equals(bisher);
+    }
+
+    /** The servlet context behind the faces context, or {@code null} (then only the form is checked). */
+    private static ServletContext servletContext(FacesContext context) {
+        if (context == null || context.getExternalContext() == null) {
+            return null;
+        }
+        return context.getExternalContext().getContext() instanceof ServletContext sc ? sc : null;
+    }
+
     public void save() {
         FacesContext context = FacesContext.getCurrentInstance();
 
@@ -383,6 +406,23 @@ public class MyUserBackingBean implements Serializable {
             FacesMessages.error("Fehler", "Benutzername muss eine gültige E-Mail-Adresse sein.");
             context.validationFailed();
             return;
+        }
+
+        // Card 1331: a start page that does not exist here must not be saved - it sent the user
+        // into a redirect loop after the login (Index.html instead of index.html).
+        // Only a CHANGED value is checked: an unchanged legacy value (schuetu-prod has three users on
+        // "dashboard.htm", which the resolver already ignores by its form) must not block editing
+        // anything else of that user.
+        String startseitenFehler = startseiteGeaendert()
+                ? StartpageResolver.rejectionReason(selected.getStartpage(), servletContext(context))
+                : null;
+        if (startseitenFehler != null) {
+            FacesMessages.error("Fehler", startseitenFehler);
+            context.validationFailed();
+            return;
+        }
+        if (selected.getStartpage() != null) {
+            selected.setStartpage(selected.getStartpage().trim());
         }
 
         // Check whether the user name already exists (only for new users or on a change)

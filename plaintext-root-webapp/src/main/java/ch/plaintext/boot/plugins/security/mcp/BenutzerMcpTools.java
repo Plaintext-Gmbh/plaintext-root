@@ -6,6 +6,7 @@
  */
 package ch.plaintext.boot.plugins.security.mcp;
 
+import ch.plaintext.boot.StartpageResolver;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.model.UserMandate;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
@@ -16,10 +17,13 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.Data;
+import jakarta.servlet.ServletContext;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -114,6 +118,13 @@ public class BenutzerMcpTools {
 
     private final MyUserRepository userRepository;
     private final UserMandateRepository userMandateRepository;
+
+    /**
+     * Card 1331: to check an imported start page for existence. Optional (setter injection, so that
+     * the constructor stays as it is); without it only the form of the path is checked.
+     */
+    @Setter(onMethod_ = @Autowired(required = false))
+    private ServletContext servletContext;
 
     /**
      * A mapper of its own instead of the bean from {@code JacksonConfig}: the export is a file format with
@@ -247,7 +258,7 @@ public class BenutzerMcpTools {
             }
             MyUserEntity vorhanden = userRepository.findByUsername(login);
             if (vorhanden != null) {
-                if (ergaenzeNamen(vorhanden, s)) {
+                if (ergaenzeNamen(vorhanden, s, b)) {
                     zuSpeichern.add(vorhanden);
                     b.aktualisiert++;
                 } else {
@@ -296,7 +307,7 @@ public class BenutzerMcpTools {
         u.setMustChangePassword(true);
         u.setVorname(leerZuNull(s.getVorname()));
         u.setNachname(leerZuNull(s.getNachname()));
-        u.setStartpage(s.getStartpage() == null ? "" : s.getStartpage());
+        u.setStartpage(startseiteFuerImport(s.getStartpage(), b));
 
         Set<String> rollen = new HashSet<>();
         for (String rolle : s.getRollen() == null ? List.<String>of() : s.getRollen()) {
@@ -324,7 +335,7 @@ public class BenutzerMcpTools {
      *
      * @return {@code true} if something has changed
      */
-    private static boolean ergaenzeNamen(MyUserEntity vorhanden, Satz s) {
+    private boolean ergaenzeNamen(MyUserEntity vorhanden, Satz s, Bericht b) {
         boolean geaendert = false;
         if (istLeer(vorhanden.getVorname()) && !istLeer(s.getVorname())) {
             vorhanden.setVorname(s.getVorname().trim());
@@ -335,10 +346,30 @@ public class BenutzerMcpTools {
             geaendert = true;
         }
         if (istLeer(vorhanden.getStartpage()) && !istLeer(s.getStartpage())) {
-            vorhanden.setStartpage(s.getStartpage().trim());
-            geaendert = true;
+            String startseite = startseiteFuerImport(s.getStartpage(), b);
+            if (!startseite.isEmpty()) {
+                vorhanden.setStartpage(startseite);
+                geaendert = true;
+            }
         }
         return geaendert;
+    }
+
+    /**
+     * Card 1331: a start page from the file is only taken over if it exists in THIS application.
+     * The export may come from another app (other pages), and a start page that does not exist
+     * here sent the user into a redirect loop after the login. Discarded values are counted in
+     * the report.
+     */
+    private String startseiteFuerImport(String startseite, Bericht b) {
+        if (istLeer(startseite)) {
+            return "";
+        }
+        if (StartpageResolver.rejectionReason(startseite, servletContext) != null) {
+            b.verworfeneStartseiten++;
+            return "";
+        }
+        return startseite.trim();
     }
 
     /** The roles without the privileged ones — that is the scope an import may set at all. */
@@ -482,6 +513,7 @@ public class BenutzerMcpTools {
         private int unveraendert;
         private int ungueltig;
         private int verworfeneRollen;
+        private int verworfeneStartseiten;
         private String quellMandat;
         private String zielMandat;
 
@@ -503,6 +535,11 @@ public class BenutzerMcpTools {
                 sb.append(". ").append(verworfeneRollen)
                   .append(" privilegierte Rolle(n) aus der Datei verworfen — root, admin und PROPERTY_* "
                           + "werden nie importiert");
+            }
+            if (verworfeneStartseiten > 0) {
+                sb.append(". ").append(verworfeneStartseiten)
+                  .append(" Startseite(n) verworfen — die Seite gibt es in dieser Anwendung nicht"
+                          + " (Karte 1331)");
             }
             sb.append(". Neue Konten haben kein Passwort und muessen es beim ersten Login setzen");
             if (quellMandat != null && !quellMandat.equalsIgnoreCase(zielMandat)) {

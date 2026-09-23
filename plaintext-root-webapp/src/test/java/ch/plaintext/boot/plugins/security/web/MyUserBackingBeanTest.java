@@ -307,6 +307,81 @@ class MyUserBackingBeanTest {
         verifyNoMoreInteractions(userMandateRepo);
     }
 
+    // ---- Card 1331: a start page that does not exist is not saved ----
+
+    @Test
+    void save_lehntNichtExistierendeStartseiteAb() throws Exception {
+        testUser.setMandat("test_mandat");
+        testUser.setStartpage("Index.html"); // the value of 23.09.2026 (capital I)
+        backingBean.setSelected(testUser);
+        jakarta.servlet.ServletContext servletContext = mock(jakarta.servlet.ServletContext.class);
+        when(facesContext.getExternalContext()).thenReturn(externalContext);
+        when(externalContext.getContext()).thenReturn(servletContext);
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(facesContext).validationFailed();
+    }
+
+    @Test
+    void save_nimmtExistierendeStartseite_positivkontrolle() throws Exception {
+        testUser.setMandat("test_mandat");
+        testUser.setStartpage("auszahlungen.html");
+        backingBean.setSelected(testUser);
+        jakarta.servlet.ServletContext servletContext = mock(jakarta.servlet.ServletContext.class);
+        when(servletContext.getResource("/auszahlungen.xhtml")).thenReturn(new java.net.URL("file:/a"));
+        when(facesContext.getExternalContext()).thenReturn(externalContext);
+        when(externalContext.getContext()).thenReturn(servletContext);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user")));
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+    }
+
+    @Test
+    void save_laesstUnveraenderteAltStartseiteDurch() throws Exception {
+        // schuetu-prod: drei Benutzer auf "dashboard.htm" (Form ungueltig, der Resolver ignoriert sie
+        // schon immer). Wer an so einem Benutzer etwas anderes aendert, darf nicht daran scheitern.
+        testUser.setMandat("test_mandat");
+        testUser.setStartpage("dashboard.htm");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user")));
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setStartpage("dashboard.htm");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+    }
+
     // ---- Card 307, K1: server-side role allowlist (an ADMIN must not make themselves/others ROOT) ----
 
     @Test

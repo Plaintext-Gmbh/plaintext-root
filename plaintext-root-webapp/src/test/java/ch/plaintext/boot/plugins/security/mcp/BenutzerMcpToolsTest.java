@@ -203,6 +203,38 @@ class BenutzerMcpToolsTest {
     }
 
     @Test
+    void importVerwirftStartseiteDieEsHierNichtGibt() throws Exception {
+        // Karte 1331: eine Startseite, die es in dieser Anwendung nicht gibt, fuehrte nach dem Login
+        // in eine Umleitungsschleife. Aus einer Datei (evtl. aus einer anderen App) wird sie verworfen.
+        authAdmin();
+        jakarta.servlet.ServletContext ctx = mock(jakarta.servlet.ServletContext.class);
+        when(ctx.getResource("/auszahlungen.xhtml")).thenReturn(new java.net.URL("file:/a"));
+        tools.setServletContext(ctx);
+        when(userRepository.findByUsername(anyString())).thenReturn(null);
+
+        String bericht = tools.importBenutzer(datei("""
+                {"username":"neu@x.ch","startpage":"Index.html"}"""));
+
+        assertEquals("", einzigerGespeicherter().getStartpage());
+        assertTrue(bericht.contains("1 Startseite(n) verworfen"), bericht);
+    }
+
+    @Test
+    void importUebernimmtExistierendeStartseite_positivkontrolle() throws Exception {
+        authAdmin();
+        jakarta.servlet.ServletContext ctx = mock(jakarta.servlet.ServletContext.class);
+        when(ctx.getResource("/auszahlungen.xhtml")).thenReturn(new java.net.URL("file:/a"));
+        tools.setServletContext(ctx);
+        when(userRepository.findByUsername(anyString())).thenReturn(null);
+
+        String bericht = tools.importBenutzer(datei("""
+                {"username":"neu@x.ch","startpage":"auszahlungen.html"}"""));
+
+        assertEquals("auszahlungen.html", einzigerGespeicherter().getStartpage());
+        assertFalse(bericht.contains("Startseite"), bericht);
+    }
+
+    @Test
     void ungueltigerLoginWirdUebersprungen() {
         authAdmin();
 

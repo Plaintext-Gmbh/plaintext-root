@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot;
 
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +33,26 @@ class IndexTest {
     @Mock
     private HttpServletResponse response;
 
+    /**
+     * Card 1331: {@code /} only redirects to pages that exist. The servlet context of these tests
+     * knows every page EXCEPT the ones the card is about ({@code Index.html}, {@code gibtesnicht.html}).
+     */
+    private final ServletContext servletContext = mock(ServletContext.class, invocation -> {
+        if ("getResource".equals(invocation.getMethod().getName())) {
+            String view = invocation.getArgument(0);
+            return view.equals("/Index.xhtml") || view.equals("/gibtesnicht.xhtml")
+                    ? null : new java.net.URL("file:" + view);
+        }
+        return null;
+    });
+
+    private final HttpServletRequest request = mock(HttpServletRequest.class);
+
+    @BeforeEach
+    void servletContext() {
+        lenient().when(request.getServletContext()).thenReturn(servletContext);
+    }
+
     @InjectMocks
     private Index index;
 
@@ -51,7 +73,7 @@ class IndexTest {
     void getIndex_shouldRedirectToIndexHtml_whenNoStartpage() throws IOException {
         setupAuthentication(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
 
-        index.getIndex(response);
+        index.getIndex(request, response);
 
         verify(response).sendRedirect("index.html");
     }
@@ -63,7 +85,7 @@ class IndexTest {
                 new SimpleGrantedAuthority("PROPERTY_STARTPAGE_dashboard.html")
         ));
 
-        index.getIndex(response);
+        index.getIndex(request, response);
 
         verify(response).sendRedirect("dashboard.html");
     }
@@ -75,7 +97,7 @@ class IndexTest {
                 new SimpleGrantedAuthority("PROPERTY_STARTPAGE_custom.html")
         ));
 
-        index.getIndex(response);
+        index.getIndex(request, response);
 
         verify(response).sendRedirect("custom.html");
     }
@@ -88,9 +110,34 @@ class IndexTest {
                 new SimpleGrantedAuthority("PROPERTY_STARTPAGE_second.html")
         ));
 
-        index.getIndex(response);
+        index.getIndex(request, response);
 
         // With several configured start pages the first one wins (consistent with the login redirect).
         verify(response).sendRedirect("first.html");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"Index.html", "gibtesnicht.html"})
+    void getIndex_nonExistingStartpage_fallsBackToIndex(String startseite) throws IOException {
+        // Card 1331: "Index.html" (capital I) passed the form check and looped / -> /Index.html -> /.
+        setupAuthentication(Arrays.asList(
+                new SimpleGrantedAuthority("ROLE_USER"),
+                new SimpleGrantedAuthority("PROPERTY_STARTPAGE_" + startseite)));
+
+        index.getIndex(request, response);
+
+        verify(response).sendRedirect("index.html");
+    }
+
+    @Test
+    void getIndex_existingIndividualStartpage_isKept() throws IOException {
+        // Positive control of card 1331: a valid, existing individual start page stays.
+        setupAuthentication(Arrays.asList(
+                new SimpleGrantedAuthority("ROLE_USER"),
+                new SimpleGrantedAuthority("PROPERTY_STARTPAGE_auszahlungen.html")));
+
+        index.getIndex(request, response);
+
+        verify(response).sendRedirect("auszahlungen.html");
     }
 }

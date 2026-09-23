@@ -80,7 +80,8 @@ public class PlaintextAuthenticationSuccessHandler implements AuthenticationSucc
 
         // Secured start page: the individual (valid) startpage or the fallback index.html -
         // nobody is locked out of the start page by an empty/invalid value.
-        String page = StartpageResolver.resolve(authentication.getAuthorities());
+        // Card 1331: and it has to exist - a non-existing start page looped via the 404 redirect.
+        String page = StartpageResolver.resolve(authentication.getAuthorities(), request.getServletContext());
         // Card 306: if this user has to change their password (e.g. the root initial password), they are -
         // independently of the configured start page - redirected to the self-service page with the
         // password form. Applies to the direct path as well as to the TOTP two-step path,
