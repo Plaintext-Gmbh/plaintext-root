@@ -1,7 +1,7 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-package ch.plaintext.boot.integration;
+package ch.plaintext.testsupport;
 
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -29,6 +29,12 @@ import java.util.Locale;
  * CI database ran on 18. Daniel on 02.08.2026: "I can live with the risk that the db is not
  * 1:1." If a test deviates because of a version difference, that belongs in the card — not
  * to be tidied away silently.
+ *
+ * <p><b>Card 1298: shared instead of copied.</b> Until 22.09.2026 this class existed five times
+ * (root, app, guild, schuetu, iot), identical apart from the package. It now lives in
+ * {@code plaintext-root-testsupport}, which the consumers pull in with {@code <scope>test</scope>};
+ * their copies are deleted. The Playwright ITs that use it stay in the repositories — they carry
+ * real differences per application.
  */
 public final class EmbeddedPg {
 

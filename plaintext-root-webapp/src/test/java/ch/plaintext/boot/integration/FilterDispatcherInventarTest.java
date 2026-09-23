@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.integration;
 
+import ch.plaintext.testsupport.EmbeddedPg;
+
 import jakarta.servlet.DispatcherType;
 import org.apache.catalina.Context;
 import org.apache.catalina.startup.Tomcat;

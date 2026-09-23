@@ -1,7 +1,7 @@
-/*
- * Copyright (C) plaintext.ch, 2026.
- */
-package ch.plaintext.boot.web;
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+package ch.plaintext.arch;
 
 import org.junit.jupiter.api.Test;
 
@@ -13,12 +13,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -44,11 +46,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * only a WARN line was left, which never reached Graylog. In the wiki Daniel therefore
  * <b>never</b> saw the version history (card 473), and it cost three rounds of diagnosis.
  *
- * <p><b>Why repository-wide.</b> Card 519 counted 34 candidates in this repository, spread
- * across the admin modules and root-webapp. Copying a check into every module is the road on which
- * the next occurrence goes unnoticed (the same reasoning as with
- * {@code AjaxAntwortLesbarTest}, card 502). The word-identical version lives in plaintext-app —
- * deliberately, because both repositories are built separately and rolled back separately.
+ * <p><b>Why repository-wide.</b> Card 519 counted 34 candidates in root and 36 in app, spread
+ * across many modules. Copying a check into every module is the road on which the next occurrence
+ * goes unnoticed (the same reasoning as with {@code PlaintextAjaxAntwortLesbarTest}, card 502).
+ *
+ * <p><b>Card 1298: one version instead of four.</b> Until 22.09.2026 this class lived as a copy in
+ * root, app, guild and schuetu (iot and fwtool did not have it). The code of the four copies was
+ * identical apart from the package and the lower bound of the file search; the lower bound stays
+ * per repository ({@link #MINDESTENS_JE_REACTOR}), everything else is the common version. The
+ * consumers run this class via Surefire {@code <dependenciesToScan>}; their copies are deleted.
  *
  * <p><b>What the test does NOT check:</b> whether the target exists. Only that it is
  * <em>formulated</em> in a way that makes it findable from a table row at all — with a leading colon
@@ -72,6 +78,22 @@ class AjaxZielAufloesbarTest {
      */
     private static final Pattern TRENNER = Pattern.compile("[\\s,]+");
 
+    /**
+     * Lower bound of the Facelets found, per reactor (key = artifactId of the root POM). The numbers
+     * of the four copies (root/app 20, schuetu 40, guild 12); iot and fwtool counted on 22.09.2026
+     * (3 and 6 files under {@code src/main}).
+     */
+    static final Map<String, Integer> MINDESTENS_JE_REACTOR = Map.of(
+            "plaintext-root-parent", 20,
+            "plaintext-parent", 20,
+            "plaintext-guild-parent", 12,
+            "plaintext-schuetu-parent", 40,
+            "plaintext-iot-parent", 3,
+            "plaintext-fwtool-parent", 4);
+
+    /** For an unknown reactor: the smallest measured value. */
+    private static final int MINDESTENS_SONST = 3;
+
     @Test
     void ajaxZieleAusTabellenSindAbsolut() throws IOException {
         List<String> verstoesse = new ArrayList<>();
@@ -83,8 +105,10 @@ class AjaxZielAufloesbarTest {
                         + "  ->  " + fund.ziel());
             }
         }
-        assertTrue(dateien.size() >= 20,
-                "Es wurden nur " + dateien.size() + " Facelets gefunden — vermutlich sucht der Test "
+        int mindestens = ReactorLayout.mindestensFuerDiesenReactor(MINDESTENS_JE_REACTOR, MINDESTENS_SONST);
+        assertTrue(dateien.size() >= mindestens,
+                "Es wurden nur " + dateien.size() + " Facelets gefunden (festgehalten fuer "
+                        + ReactorLayout.reactorArtifactId() + ": " + mindestens + ") — vermutlich sucht der Test "
                         + "an der falschen Stelle (" + repoWurzel() + "). Ein gruener Lauf waere wertlos.");
         assertTrue(verstoesse.isEmpty(),
                 "Diese Ajax-Ziele stehen in einer Datentabelle und sind relativ benannt:\n  "
@@ -251,34 +275,25 @@ class AjaxZielAufloesbarTest {
         return treffer;
     }
 
-    /** All Facelets of the repository (all modules), without build directories. */
+    /**
+     * All Facelets of the reactor (all modules, also nested), without build directories and without
+     * the module that ships this class (see {@link ReactorLayout}).
+     */
     private static List<Path> facelets() throws IOException {
         try (Stream<Path> s = Files.walk(repoWurzel())) {
             return s.filter(p -> p.toString().endsWith(".xhtml"))
                     .filter(p -> p.toString().contains("src" + File.separator + "main"))
                     .filter(p -> !p.toString().contains(File.separator + "target" + File.separator))
+                    .filter(p -> !p.toString().contains(File.separator + "node_modules" + File.separator))
                     .toList();
         }
     }
 
     private static Path repoWurzel() {
-        Path p = Path.of("").toAbsolutePath();
-        for (int i = 0; i < 6 && p != null; i++, p = p.getParent()) {
-            Path pom = p.resolve("pom.xml");
-            if (Files.isRegularFile(pom)) {
-                try {
-                    String t = Files.readString(pom, StandardCharsets.UTF_8);
-                    if (t.contains("<modules>")) {
-                        return p;
-                    }
-                } catch (IOException ignored) {
-                    // keep going upwards
-                }
-            }
-        }
-        throw new IllegalStateException(
-                "Sammel-POM nicht gefunden — der Test weiss nicht, wo das Repository beginnt. "
-                        + "Startverzeichnis war " + Path.of("").toAbsolutePath());
+        Path p = ReactorLayout.repoRoot();
+        assertNotNull(p, "Sammel-POM nicht gefunden — der Test weiss nicht, wo das Repository beginnt. "
+                + "Startverzeichnis war " + ReactorLayout.start());
+        return p;
     }
 
     private static int zeileVon(String text, int pos) {

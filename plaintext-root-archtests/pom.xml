@@ -58,6 +58,25 @@
             <artifactId>plaintext-root-interfaces</artifactId>
         </dependency>
 
+        <!-- Karte 1298: PageGuardZuordnungTest (aus app/guild/schuetu gehoben) benutzt die echte
+             Guard-Logik (PageAccessGuardService, PageGuardProperties) und die echte MenuRegistryImpl,
+             statt sie nachzubilden. Beide Module liegen in jedem Consumer ohnehin am Klassenpfad
+             (ueber plaintext-root-webapp); hier stehen sie, damit die Klasse kompiliert. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-pageguard</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-menu</artifactId>
+        </dependency>
+        <!-- Binder/YamlPropertySourceLoader fuer PageGuardZuordnungTest (kommt auch transitiv ueber
+             pageguard -> spring-boot-starter; deklariert, weil direkt benutzt). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+
         <!-- plaintext-root-common bringt transitiv:
              - ch.plaintext.boot.utils.MobileFormLinter (Scan-Logik des Mobile-Linters)
              - ch.plaintext:plaintext-root-interfaces -> ch.plaintext.PlaintextCron

@@ -333,10 +333,12 @@
              werden soll. Der eingebettete Server laeuft als normaler Prozess im Testlauf.
              Binaries stehen auf PostgreSQL 17 (neuester zonky-Stand), die CI-DB lief auf 18 —
              der Unterschied ist bewusst in Kauf genommen. -->
+        <!-- Seit Karte 1298 kommt embedded-postgres ueber plaintext-root-testsupport, zusammen mit
+             EmbeddedPg und Seitenliste (vorher fuenfmal kopiert: root, app, guild, schuetu, iot). -->
         <dependency>
-            <groupId>io.zonky.test</groupId>
-            <artifactId>embedded-postgres</artifactId>
-            <version>2.2.2</version>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-testsupport</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
 

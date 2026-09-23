@@ -3,6 +3,8 @@
  */
 package ch.plaintext.boot.integration;
 
+import ch.plaintext.testsupport.EmbeddedPg;
+
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.settings.ISettingsService;
