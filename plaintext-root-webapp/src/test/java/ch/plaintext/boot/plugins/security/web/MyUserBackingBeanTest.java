@@ -355,6 +355,33 @@ class MyUserBackingBeanTest {
         verify(facesContext, never()).validationFailed();
     }
 
+    @Test
+    void save_laesstUnveraenderteAltStartseiteDurch() throws Exception {
+        // schuetu-prod: drei Benutzer auf "dashboard.htm" (Form ungueltig, der Resolver ignoriert sie
+        // schon immer). Wer an so einem Benutzer etwas anderes aendert, darf nicht daran scheitern.
+        testUser.setMandat("test_mandat");
+        testUser.setStartpage("dashboard.htm");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user")));
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setStartpage("dashboard.htm");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+    }
+
     // ---- Card 307, K1: server-side role allowlist (an ADMIN must not make themselves/others ROOT) ----
 
     @Test
