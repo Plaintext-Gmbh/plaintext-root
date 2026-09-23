@@ -79,14 +79,14 @@ public class SecretsMcpTools {
         try {
             type = SecretBackendType.valueOf(backend.trim().toUpperCase(Locale.ROOT));
         } catch (RuntimeException e) {
-            return "FEHLER: ungueltiges backend '" + backend + "' — erlaubt: VAULTWARDEN, LOCAL_DB, HASHICORP";
+            return fehler("ungueltiges backend '" + backend + "' — erlaubt: VAULTWARDEN, LOCAL_DB, HASHICORP");
         }
         try {
             secretService.set(name, type, value, note);
             log.info("MCP: set_secret '{}' ({})", name, type);
             return "OK: Secret '" + name + "' gesetzt (" + type + ").";
         } catch (RuntimeException e) {
-            return "FEHLER: " + e.getMessage();
+            return fehler(e.getMessage());
         }
     }
 
@@ -110,7 +110,7 @@ public class SecretsMcpTools {
         try {
             type = SecretBackendType.valueOf(backend.trim().toUpperCase(Locale.ROOT));
         } catch (RuntimeException e) {
-            return "FEHLER: ungueltiges backend '" + backend + "' — erlaubt: VAULTWARDEN, LOCAL_DB, HASHICORP";
+            return fehler("ungueltiges backend '" + backend + "' — erlaubt: VAULTWARDEN, LOCAL_DB, HASHICORP");
         }
         try {
             secretService.setActiveBackend(type, configJson);
@@ -121,7 +121,7 @@ public class SecretsMcpTools {
             return (h.ok() ? "OK: Backend ist jetzt " + type + ". " : "WARNUNG: Backend ist auf "
                     + type + " gesetzt, greift aber nicht. ") + h.detail();
         } catch (RuntimeException e) {
-            return "FEHLER: " + e.getMessage();
+            return fehler(e.getMessage());
         }
     }
 
@@ -162,7 +162,7 @@ public class SecretsMcpTools {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
             log.warn("MCP: {} abgewiesen — nicht authentisiert", werkzeug);
-            return "FEHLER: nicht authentisiert.";
+            return fehler("nicht authentisiert.");
         }
         Set<String> authorities = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -170,12 +170,21 @@ public class SecretsMcpTools {
 
         if (!authorities.contains(SCOPE_ADMIN)) {
             log.warn("MCP: {} abgewiesen — scope=ADMIN fehlt (Aufrufer {})", werkzeug, Log.mail(auth.getName()));
-            return "FEHLER: " + werkzeug + " erfordert einen Aufrufer-Token mit scope=ADMIN.";
+            return fehler(werkzeug + " erfordert einen Aufrufer-Token mit scope=ADMIN.");
         }
         if (SCHREIB_ROLLEN.stream().noneMatch(authorities::contains)) {
             log.warn("MCP: {} abgewiesen — Rolle ADMIN/ROOT fehlt (Aufrufer {})", werkzeug, Log.mail(auth.getName()));
-            return "FEHLER: " + werkzeug + " erfordert die Rolle ADMIN oder ROOT.";
+            return fehler(werkzeug + " erfordert die Rolle ADMIN oder ROOT.");
         }
         return null;
+    }
+
+    /**
+     * Error reply in the one form every tool of this class uses: {@code FEHLER: <text>}. MCP
+     * clients recognise a refused call by that prefix, so it lives in one place (java:S1192,
+     * card 1320).
+     */
+    private static String fehler(String text) {
+        return "FEHLER: " + text;
     }
 }
