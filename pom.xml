@@ -49,7 +49,10 @@
         <archunit.version>1.5.0</archunit.version>
 
         <!-- Interne Module -->
-        <plaintext.version>${project.version}</plaintext.version>
+        <!-- Karte 1325 (23.09.2026): die Maven-Property "plaintext punkt version" (= project.version)
+             ist hier entfernt, 0 Leser. Einzig app benutzt eine gleichnamige Property und definiert
+             sie selbst; die gleichnamige Spring-Property kommt aus application.yml
+             ('@project.version@'), nicht aus dieser pom. -->
         <!-- Fuer die Vererbung an Consumer: deren plaintext-root.version ueberschreibt dies
              und laesst die von root verwaltete interne Modul-depMgmt auf die Root-Version zeigen. -->
         <plaintext-root.version>${project.version}</plaintext-root.version>

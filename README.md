@@ -387,7 +387,6 @@ plaintext-root/
 ├── quality/                            # Quality-gate configuration
 ├── scripts/                            # Analysis helper scripts
 ├── compose.yaml                        # PostgreSQL dev setup
-├── Dockerfile                          # Production container
 ├── LICENSE                             # MPL 2.0
 └── NOTICE                              # Third-party components
 ```
