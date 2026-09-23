@@ -1,0 +1,26 @@
+# Security-Allowlists dieser Anwendung — Vertrag fuer SecurityAllowlistGuardTest (plaintext-root-archtests,
+# Karte 1328). Format: <art> <wert>  # <Begruendung>
+#   permit-all / csrf-ignore  = genau die Eintraege von plaintext.security.permit-all-patterns bzw.
+#                               csrf-ignore-patterns in plaintext-root-webapp/.../application.yml, in
+#                               derselben Reihenfolge, je mit Begruendung
+#   geschuetzt                = Pfad, den KEIN permit-all-Eintrag treffen darf (zusaetzlich zu jeder View)
+#   csrf-pflicht              = Pfad, den KEIN csrf-ignore-Eintrag treffen darf (zusaetzlich zu jeder View)
+#   profil-yaml               = die application-*.yml, die neben application.yml liegen muessen
+#   oeffentliche-view         = View, die ein permit-all treffen darf (Begruendung Pflicht)
+#
+# root setzt beide Listen in der application.yml NICHT: es gelten allein die fest eingebauten Freigaben
+# von PlaintextSecurityConfig (eigene Tests). Profile stehen als on-profile-Dokumente in der
+# application.yml selbst, nicht als application-*.yml — daher keine profil-yaml-Zeile. Der Waechter
+# prueft, dass auch diese Dokumente die Listen nicht setzen.
+
+geschuetzt    /actuator/env
+geschuetzt    /actuator/metrics
+geschuetzt    /actuator/prometheus
+geschuetzt    /api/preferences/save
+geschuetzt    /api/i18n/export
+geschuetzt    /debug/menu-scan
+geschuetzt    /carddav/daniel/addressbooks/default/
+geschuetzt    /.well-known/acme-challenge/token
+
+csrf-pflicht  /api/i18n/import
+csrf-pflicht  /api/preferences/save
