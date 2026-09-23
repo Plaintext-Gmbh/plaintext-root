@@ -14,6 +14,9 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.Response;
+import com.microsoft.playwright.Route;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -185,11 +188,24 @@ class DialogeOeffnenPlaywrightIT {
         });
         // Der eigentliche Detektor: PrimeFaces liefert die Fehlermeldung IN der Teilantwort aus,
         // mit HTTP 200. Ohne diesen Blick in den Rumpf bleibt Karte 1016 unsichtbar.
-        page.onResponse(antwort -> {
-            if (!"POST".equals(antwort.request().method())) {
+        //
+        // requestfinished statt response (Karte 1332): das response-Ereignis kommt mit den KOPFZEILEN,
+        // der Rumpf ist dann oft noch unterwegs. antwort.text() wartet darauf ohne jede Frist — und
+        // weil Playwright alle Ereignisse im Aufruferfaden zustellt, steckt dann der ganze Test fest,
+        // mitten in page.navigate(), dessen eigene 60-s-Frist nicht mehr greift (gemessen: 2 h,
+        // jstack ResponseImpl.body <- lambda$setup). Wird der Seitenwechsel eine laufende
+        // Teilantwort nie fertig laden, kommt ihr Rumpf nie. requestfinished feuert erst, wenn der
+        // Rumpf VOLLSTAENDIG da ist; text() liest dann nur noch den fertigen Puffer. Eine
+        // abgebrochene Anfrage loest requestfailed aus und kommt hier gar nicht an.
+        page.onRequestFinished(anfrage -> {
+            if (!"POST".equals(anfrage.method())) {
                 return;
             }
             try {
+                Response antwort = anfrage.response();
+                if (antwort == null) {
+                    return;
+                }
                 String rumpf = antwort.text();
                 if (rumpf.startsWith("<?xml") && AJAX_FEHLER.matcher(rumpf).find()) {
                     ajaxFehler.add(kurz(rumpf));
@@ -227,6 +243,7 @@ class DialogeOeffnenPlaywrightIT {
             page.navigate(url(pfad), new Page.NavigateOptions()
                     .setWaitUntil(WaitUntilState.DOMCONTENTLOADED).setTimeout(60_000));
         } catch (RuntimeException e) {
+            LOG.info("Dialog-Durchgang {}: Seite nicht geladen ({})", pfad, e.getClass().getSimpleName());
             return; // Ladefehler sind Sache von AllPagesSmokePlaywrightIT, nicht dieses Tests
         }
         warten();
@@ -259,15 +276,33 @@ class DialogeOeffnenPlaywrightIT {
             if (!oeffnetVermutlichEinenDialog(knopf, text)) {
                 continue;
             }
+            // Vor dem Klick lesen: die Ajax-Antwort rendert den Knopf neu (Karte 1332, s. u.).
+            boolean zeigtDialog = ruftShowAuf(knopf);
             jsFehler.clear();
             ajaxFehler.clear();
             try {
                 knopf.click(new Locator.ClickOptions().setTimeout(5_000));
             } catch (RuntimeException e) {
+                LOG.info("Dialog-Durchgang {} Knopf '{}': nicht anklickbar ({})",
+                        pfad, text, e.getClass().getSimpleName());
                 continue; // Knopf nicht anklickbar (verdeckt, deaktiviert) — kein Befund
             }
             GEKLICKTE_KNOEPFE.incrementAndGet();
             warten();
+            if (zeigtDialog) {
+                // Karte 1332: PrimeFaces ruft PF('…').show() erst im oncomplete der Ajax-Antwort,
+                // danach laeuft die Einblend-Animation. warten() endet nach NETWORKIDLE oder 4 s —
+                // ob der Dialog in diesem Moment schon sichtbar ist, war Zufall: root zaehlte bei
+                // identischem Stand einmal 3, einmal 1 offene Dialoge (17 bzw. 12 Klicks) und
+                // wurde rot. Wer .show() im onclick traegt, bekommt deshalb bis zu 5 s, bis ein
+                // Dialog sichtbar ist. Bleibt er aus, ist das kein Befund — dann zaehlt er nicht.
+                try {
+                    page.locator(".ui-dialog:visible").first().waitFor(new Locator.WaitForOptions()
+                            .setState(WaitForSelectorState.VISIBLE).setTimeout(5_000));
+                } catch (RuntimeException e) {
+                    // kein Dialog aufgegangen
+                }
+            }
 
             if (!ajaxFehler.isEmpty()) {
                 funde.add("Knopf '" + text + "': Fehler in der Ajax-Teilantwort -> " + ajaxFehler);
@@ -281,6 +316,10 @@ class DialogeOeffnenPlaywrightIT {
             }
 
             Locator offen = page.locator(".ui-dialog:visible");
+            // Je Klick eine Zeile ins Bauprotokoll: nur so laesst sich ein schwankender Zaehler
+            // spaeter einem Knopf zuordnen statt geraten (Karte 1332).
+            LOG.info("Dialog-Durchgang {} Knopf '{}': show()={}, Dialog offen={}",
+                    pfad, text, zeigtDialog, offen.count() > 0);
             if (offen.count() > 0) {
                 GEOEFFNETE_DIALOGE.incrementAndGet();
                 Locator felder = offen.first().locator("input, select, textarea, .ui-datatable, button");
@@ -353,6 +392,34 @@ class DialogeOeffnenPlaywrightIT {
 
     // ------------------------------------------------------------------------------------------
 
+    /**
+     * Positivkontrolle der VERDRAHTUNG (Karte 1332): der Detektor haengt seit dem Umbau an
+     * {@code requestfinished} statt an {@code response}. Die Kontrolle oben prueft nur das Muster;
+     * diese hier schickt eine echte POST-Anfrage durch den Browser, beantwortet sie mit der
+     * Fehlerantwort aus Karte 1016 und verlangt, dass sie in {@code ajaxFehler} ankommt. Feuert
+     * das Ereignis nicht, waere der ganze Durchgang still blind — und trotzdem gruen.
+     */
+    @Order(4)
+    @Test
+    @DisplayName("Positivkontrolle: eine Fehler-Teilantwort kommt ueber requestfinished im Detektor an")
+    void positivkontrolleDetektorVerdrahtung() {
+        String fehlerantwort = "<?xml version='1.0' encoding='UTF-8'?>\n<partial-response><error>"
+                + "<error-name>class java.lang.IllegalArgumentException</error-name>"
+                + "<error-message><![CDATA[karte1332]]></error-message></error></partial-response>";
+        page.route("**/karte1332-probe", route -> route.fulfill(new Route.FulfillOptions()
+                .setStatus(200).setContentType("text/xml").setBody(fehlerantwort)));
+        try {
+            ajaxFehler.clear();
+            page.evaluate("() => fetch('/karte1332-probe', {method: 'POST', body: 'x'}).then(r => r.text())");
+            warten();
+            assertTrue(ajaxFehler.stream().anyMatch(f -> f.contains("karte1332")),
+                    "Die Fehler-Teilantwort kam nicht im Detektor an — requestfinished ist nicht "
+                            + "verdrahtet, der Durchgang waere blind. ajaxFehler=" + ajaxFehler);
+        } finally {
+            page.unroute("**/karte1332-probe");
+        }
+    }
+
     private void warten() {
         try {
             page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
@@ -380,6 +447,16 @@ class DialogeOeffnenPlaywrightIT {
      * schreibt PrimeFaces das {@code oncomplete} eines Dialog-Oeffners hin) oder wenn seine
      * Beschriftung nach „Neu / Bearbeiten / Erfassen …" aussieht.
      */
+    /** Traegt der Knopf {@code PF('…').show()} im onclick? (Karte 1332) */
+    private static boolean ruftShowAuf(Locator knopf) {
+        try {
+            String onclick = knopf.getAttribute("onclick");
+            return onclick != null && onclick.contains(".show()");
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     private static boolean oeffnetVermutlichEinenDialog(Locator knopf, String beschriftung) {
         try {
             String onclick = knopf.getAttribute("onclick");
