@@ -54,6 +54,7 @@ public class SettingsMcpTools {
     private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
     private static final Set<String> VERWALTER_ROLLEN = Set.of("ROLE_ADMIN", "ROLE_ROOT");
     private static final Set<String> ERLAUBTE_TYPEN = Set.of("STRING", "INTEGER", "BOOLEAN", "DATE", "LIST");
+    private static final String FEHLER_KEIN_SCHLUESSEL = "FEHLER: Bitte einen Schluessel angeben.";
 
     private final ISettingsService settingsService;
 
@@ -86,7 +87,7 @@ public class SettingsMcpTools {
             return e.getMessage();
         }
         if (leer(key)) {
-            return "FEHLER: Bitte einen Schluessel angeben.";
+            return FEHLER_KEIN_SCHLUESSEL;
         }
         String wert = settingsService.getString(key.trim(), a.mandat());
         // Karte 1063: getString faellt auf den globalen Eintrag zurueck. Der Wert GILT damit fuer
@@ -125,7 +126,7 @@ public class SettingsMcpTools {
             return e.getMessage();
         }
         if (leer(key)) {
-            return "FEHLER: Bitte einen Schluessel angeben.";
+            return FEHLER_KEIN_SCHLUESSEL;
         }
         String typ = leer(valueType) ? "STRING" : valueType.trim().toUpperCase(java.util.Locale.ROOT);
         if (!ERLAUBTE_TYPEN.contains(typ)) {
@@ -140,8 +141,8 @@ public class SettingsMcpTools {
         log.info("MCP: set_setting '{}' (mandat={}, user={}, {} -> gesetzt)",
                 key, a.mandat(), a.name(), hatteEigenen ? "geaendert" : "neu");
         return hatteEigenen
-                ? "OK: '" + key.trim() + "' geaendert (vorher war ein Wert gesetzt)."
-                : "OK: '" + key.trim() + "' angelegt.";
+                ? ok(key, "geaendert (vorher war ein Wert gesetzt)")
+                : ok(key, "angelegt");
     }
 
     @McpTool(name = "delete_setting",
@@ -155,7 +156,7 @@ public class SettingsMcpTools {
             return e.getMessage();
         }
         if (leer(key)) {
-            return "FEHLER: Bitte einen Schluessel angeben.";
+            return FEHLER_KEIN_SCHLUESSEL;
         }
         // exists() statt getString(): Der globale Rueckfall aus Karte 1063 haette hier gemeldet,
         // es gebe etwas zu loeschen, waehrend deleteSetting(key, mandat) anschliessend nichts
@@ -167,7 +168,12 @@ public class SettingsMcpTools {
         }
         settingsService.deleteSetting(key.trim(), a.mandat());
         log.info("MCP: delete_setting '{}' (mandat={}, user={})", key, a.mandat(), a.name());
-        return "OK: '" + key.trim() + "' geloescht.";
+        return ok(key, "geloescht");
+    }
+
+    /** Success reply in the one form all three tools share: {@code OK: '<key>' <was>.} */
+    private static String ok(String key, String was) {
+        return "OK: '" + key.trim() + "' " + was + ".";
     }
 
     // ── Rechte ──────────────────────────────────────────────────────────────

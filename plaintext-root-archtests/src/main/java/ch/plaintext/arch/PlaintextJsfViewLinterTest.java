@@ -61,6 +61,9 @@ class PlaintextJsfViewLinterTest {
 
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
+    /** Where a Facelets view lives inside a jar; the self-tests below build their fixtures there. */
+    private static final String JSF_RESSOURCEN = "META-INF/resources";
+
     /**
      * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
      * the six reactors on 20.09.2026 — schuetu and iot with two roots each.
@@ -106,7 +109,7 @@ class PlaintextJsfViewLinterTest {
 
     @Test
     void linterErkenntAlleDreiRegelnUndRespektiertOptOut(@TempDir Path tmp) throws IOException {
-        Path res = Files.createDirectories(tmp.resolve("META-INF/resources"));
+        Path res = Files.createDirectories(tmp.resolve(JSF_RESSOURCEN));
 
         // Violation 1+2: metadata in ui:define AND in h:form (two messages, one file).
         Files.writeString(res.resolve("badForm.xhtml"), """
@@ -189,7 +192,7 @@ class PlaintextJsfViewLinterTest {
 
     @Test
     void linterErkenntSuchausdruckDurchNichtNamingContainer(@TempDir Path tmp) throws IOException {
-        Path res = Files.createDirectories(tmp.resolve("META-INF/resources"));
+        Path res = Files.createDirectories(tmp.resolve(JSF_RESSOURCEN));
 
         // Verstoss: der Ausdruck laeuft durch die ID eines p:dialog — genau der guild-Fall vom 31.08.2026.
         Files.writeString(res.resolve("badDialog.xhtml"), """
@@ -235,7 +238,7 @@ class PlaintextJsfViewLinterTest {
 
     @Test
     void linterErkenntFormOhneId(@TempDir Path tmp) throws IOException {
-        Path res = Files.createDirectories(tmp.resolve("META-INF/resources"));
+        Path res = Files.createDirectories(tmp.resolve(JSF_RESSOURCEN));
 
         // Verstoss: kein id-Attribut ueberhaupt — genau die beiden root-Faelle vom 05.09.2026
         // (entityverwaltung.xhtml, debug.xhtml).

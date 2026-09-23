@@ -54,6 +54,9 @@ import java.util.stream.Collectors;
 public class MyUserInfoBackingBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    /** Client-Id des {@code p:messages} im Passwort-Bereich von {@code myuser.xhtml}. */
+    private static final String PASSWORT_MELDUNGEN = "passwordMessages";
+
     // Feldinjektion, nicht Konstruktorinjektion (Karte 1269). Diese Bohne ist session-scoped und
     // serialisierbar: bei einer Deserialisierung laeuft KEIN Konstruktor. Als `final` gesetzte
     // Dienste blieben danach dauerhaft null, und final liesse sich auch nachtraeglich nicht mehr
@@ -239,7 +242,7 @@ public class MyUserInfoBackingBean implements Serializable {
         HttpServletRequest request = (HttpServletRequest) context.getExternalContext().getRequest();
         boolean sent = magicLinkService.generateAndSend(username, request);
         if (sent) {
-            FacesMessages.info("Erfolg", "Anmelde-Link (Magic-Link) an deine E-Mail-Adresse gesendet.");
+            FacesMessages.info(FacesMessages.TITEL_ERFOLG, "Anmelde-Link (Magic-Link) an deine E-Mail-Adresse gesendet.");
         } else {
             FacesMessages.warn("Warnung", "Magic-Link konnte nicht gesendet werden (Feature deaktiviert oder kein System-Mailkonto konfiguriert).");
         }
@@ -275,41 +278,41 @@ public class MyUserInfoBackingBean implements Serializable {
 
         // Validate input
         if (currentPassword == null || currentPassword.trim().isEmpty()) {
-            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte geben Sie Ihr aktuelles Passwort ein.");
+            FacesMessages.feld(PASSWORT_MELDUNGEN, FacesMessage.SEVERITY_ERROR, FacesMessages.TITEL_FEHLER, "Bitte geben Sie Ihr aktuelles Passwort ein.");
             return;
         }
 
         if (newPassword == null || newPassword.trim().isEmpty()) {
-            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte geben Sie ein neues Passwort ein.");
+            FacesMessages.feld(PASSWORT_MELDUNGEN, FacesMessage.SEVERITY_ERROR, FacesMessages.TITEL_FEHLER, "Bitte geben Sie ein neues Passwort ein.");
             return;
         }
 
         if (confirmPassword == null || confirmPassword.trim().isEmpty()) {
-            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Bitte bestätigen Sie das neue Passwort.");
+            FacesMessages.feld(PASSWORT_MELDUNGEN, FacesMessage.SEVERITY_ERROR, FacesMessages.TITEL_FEHLER, "Bitte bestätigen Sie das neue Passwort.");
             return;
         }
 
         if (!newPassword.equals(confirmPassword)) {
-            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Die neuen Passwörter stimmen nicht überein.");
+            FacesMessages.feld(PASSWORT_MELDUNGEN, FacesMessage.SEVERITY_ERROR, FacesMessages.TITEL_FEHLER, "Die neuen Passwörter stimmen nicht überein.");
             return;
         }
 
         // Get current user
         String username = getUsername();
         if (username == null || "N/A".equals(username)) {
-            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzer konnte nicht ermittelt werden.");
+            FacesMessages.feld(PASSWORT_MELDUNGEN, FacesMessage.SEVERITY_ERROR, FacesMessages.TITEL_FEHLER, "Benutzer konnte nicht ermittelt werden.");
             return;
         }
 
         MyUserEntity user = userRepository.findByUsername(username);
         if (user == null) {
-            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Benutzer nicht gefunden.");
+            FacesMessages.feld(PASSWORT_MELDUNGEN, FacesMessage.SEVERITY_ERROR, FacesMessages.TITEL_FEHLER, "Benutzer nicht gefunden.");
             return;
         }
 
         // Verify current password
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_ERROR, "Fehler", "Das aktuelle Passwort ist nicht korrekt.");
+            FacesMessages.feld(PASSWORT_MELDUNGEN, FacesMessage.SEVERITY_ERROR, FacesMessages.TITEL_FEHLER, "Das aktuelle Passwort ist nicht korrekt.");
             return;
         }
 
@@ -324,7 +327,7 @@ public class MyUserInfoBackingBean implements Serializable {
         newPassword = null;
         confirmPassword = null;
 
-        FacesMessages.feld("passwordMessages", FacesMessage.SEVERITY_INFO, "Erfolg", "Passwort wurde erfolgreich geändert.");
+        FacesMessages.feld(PASSWORT_MELDUNGEN, FacesMessage.SEVERITY_INFO, FacesMessages.TITEL_ERFOLG, "Passwort wurde erfolgreich geändert.");
     }
 
     // ===================================================================================
