@@ -3,10 +3,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security;
 
+import ch.plaintext.arch.StabileApi;
 import ch.plaintext.PlaintextSecurity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+@StabileApi("Mandant und Benutzer des laufenden Aufrufs")
 @Component
 public class PlaintextSecurityHolder {
 

@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.framework;
 
+import ch.plaintext.arch.StabileApi;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -19,6 +20,7 @@ import java.util.Set;
  * @author info@plaintext.ch
  * @since 0.0.1
  */
+@StabileApi("Rollen-SPI: Modul deklariert seine Rollen")
 public interface PlaintextRoleProvider {
 
     /**

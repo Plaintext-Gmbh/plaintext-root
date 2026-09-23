@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.secret;
 
+import ch.plaintext.arch.StabileApi;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -29,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
  * {@code false} when the vault is disabled or on any error, never an exception to
  * the outside.</p>
  */
+@StabileApi("oeffentliche Secret-API fuer Consumer-Apps")
 @Slf4j
 public class VaultwardenSecretService {
 

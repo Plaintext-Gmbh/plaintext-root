@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.framework;
 
+import ch.plaintext.arch.StabileApi;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.security.NullPermission;
 import com.thoughtworks.xstream.security.PrimitiveTypePermission;
@@ -40,6 +41,7 @@ import java.util.Set;
  * {@code null} zurückgegeben — das lässt das betroffene Feld leer, statt den Entity-Ladevorgang
  * hart abzubrechen oder einen erratenen Ersatzwert einzusetzen.
  */
+@StabileApi("Basisklasse der XStream-JPA-Konverter (Karte 1069)")
 @Slf4j
 public class XstreamBaseJPAConverter<T> implements AttributeConverter<T, String> {
 

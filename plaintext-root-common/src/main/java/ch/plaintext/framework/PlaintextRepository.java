@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.framework;
 
+import ch.plaintext.arch.StabileApi;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.NoRepositoryBean;
@@ -14,6 +15,7 @@ import java.util.Set;
  * @author Plaintext GmbH
  * @since 2017
  */
+@StabileApi("Basis-Repository der Entitaeten in app, guild, iot, fwtool")
 @NoRepositoryBean
 public interface PlaintextRepository<T> extends JpaRepository<T, Long> {
 

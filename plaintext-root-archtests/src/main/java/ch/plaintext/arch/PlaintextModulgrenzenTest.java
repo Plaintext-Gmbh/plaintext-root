@@ -284,7 +284,7 @@ class PlaintextModulgrenzenTest {
         return m;
     }
 
-    private static String modulUeberClassLoader(ClassLoader loader, String klasse) {
+    static String modulUeberClassLoader(ClassLoader loader, String klasse) {
         URL url = loader.getResource(klasse.replace('.', '/') + ".class");
         return url == null ? null : modulAusQuelle(url.toString());
     }

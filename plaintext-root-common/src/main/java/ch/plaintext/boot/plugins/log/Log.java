@@ -3,6 +3,8 @@
  */
 package ch.plaintext.boot.plugins.log;
 
+import ch.plaintext.arch.StabileApi;
+
 /**
  * Helper to mask third-party e-mail addresses before they reach a log line (S-08, security/
  * architecture analysis 05.09.2026, card 1104).
@@ -22,6 +24,7 @@ package ch.plaintext.boot.plugins.log;
  * @author info@plaintext.ch
  * @since 2026
  */
+@StabileApi("Logging-Fassade fuer Module")
 public final class Log {
 
     private static final String MASK = "***";
