@@ -30,6 +30,7 @@ import java.lang.annotation.Target;
  * @author info@plaintext.ch
  * @since 2026
  */
+@StabileApi("Ausnahme-Markierung fuer Consumer (Regel keinRohesScheduled)")
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

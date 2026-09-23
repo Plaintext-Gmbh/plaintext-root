@@ -3,6 +3,7 @@
  */
 package ch.plaintext.boot.plugins.jsf;
 
+import ch.plaintext.arch.StabileApi;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 
@@ -22,6 +23,7 @@ import jakarta.faces.context.FacesContext;
  * @author info@plaintext.ch
  * @since 2026
  */
+@StabileApi("Benutzermeldungen aus Backing-Beans")
 public final class FacesMessages {
 
     private FacesMessages() {

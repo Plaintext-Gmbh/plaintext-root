@@ -3,9 +3,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.framework;
 
+import ch.plaintext.arch.StabileApi;
 import java.util.List;
 import java.util.Map;
 
+@StabileApi("Benutzersicht fuer Module")
 public interface PlaintextUser {
 
     String getUsername();

@@ -3,6 +3,7 @@
  */
 package ch.plaintext.boot.plugins.jsf;
 
+import ch.plaintext.arch.StabileApi;
 import jakarta.faces.context.ExternalContext;
 import jakarta.faces.context.FacesContext;
 
@@ -27,6 +28,7 @@ import java.nio.charset.StandardCharsets;
  * @author info@plaintext.ch
  * @since 2026
  */
+@StabileApi("Datei-Download aus JSF-Aktionen (Massnahme 9)")
 public final class JsfDownload {
 
     private static final String OCTET_STREAM = "application/octet-stream";

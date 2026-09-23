@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.mcp;
 
+import ch.plaintext.arch.StabileApi;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -26,6 +27,7 @@ import java.util.Map;
  *       confirmation as soon as the number of children is &gt; 0.</li>
  * </ol>
  */
+@StabileApi("Bestaetigung fuer Massenloeschungen in MCP-Werkzeugen")
 public final class BulkDeleteConfirmation {
 
     /** From this batch size (id list) on, batch tools likewise require a confirmation. */

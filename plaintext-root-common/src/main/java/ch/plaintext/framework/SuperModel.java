@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.framework;
 
+import ch.plaintext.arch.StabileApi;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -23,6 +24,7 @@ import java.util.*;
  * @author Plaintext GmbH
  * @since 2017
  */
+@StabileApi("Basisklasse faktisch jeder Entitaet in allen sechs Repos")
 @Data
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)

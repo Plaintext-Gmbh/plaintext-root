@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.framework;
 
+import ch.plaintext.arch.StabileApi;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import ch.plaintext.settings.ISettingsService;
 import ch.plaintext.settings.SettingsKeys;
@@ -46,6 +47,7 @@ import org.springframework.stereotype.Component;
  * @author Plaintext GmbH
  * @since 2026
  */
+@StabileApi("eigene oeffentliche Adresse der Installation (Karte 1046)")
 @Component
 @Slf4j
 public class EigeneAdresse {

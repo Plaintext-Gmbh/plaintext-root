@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.bus;
 
+import ch.plaintext.arch.StabileApi;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -25,6 +26,7 @@ import java.time.Instant;
  * @author info@plaintext.ch
  * @since 2026
  */
+@StabileApi("Publish-Seite des internen Event-Bus")
 @Service
 @RequiredArgsConstructor
 public class PlaintextEventBus {

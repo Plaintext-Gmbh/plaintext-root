@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.audit;
 
+import ch.plaintext.arch.StabileApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @author info@plaintext.ch
  * @since 2026
  */
+@StabileApi("Audit destruktiver Aktionen, jede App nutzt die Bean direkt")
 @Service
 @RequiredArgsConstructor
 @Slf4j

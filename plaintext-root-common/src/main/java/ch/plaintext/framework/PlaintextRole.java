@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.framework;
 
+import ch.plaintext.arch.StabileApi;
 import java.io.Serializable;
 import java.util.Locale;
 
@@ -25,6 +26,7 @@ import java.util.Locale;
  * @author info@plaintext.ch
  * @since 1.600.0
  */
+@StabileApi("Rollen-SPI: Modul deklariert seine Rollen")
 public record PlaintextRole(String name, String description) implements Serializable {
 
     /** Spring Security prefix of the authority spelling. */
