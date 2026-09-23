@@ -16,6 +16,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Response;
 import com.microsoft.playwright.Route;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import com.microsoft.playwright.options.WaitUntilState;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -242,6 +243,7 @@ class DialogeOeffnenPlaywrightIT {
             page.navigate(url(pfad), new Page.NavigateOptions()
                     .setWaitUntil(WaitUntilState.DOMCONTENTLOADED).setTimeout(60_000));
         } catch (RuntimeException e) {
+            LOG.info("Dialog-Durchgang {}: Seite nicht geladen ({})", pfad, e.getClass().getSimpleName());
             return; // Ladefehler sind Sache von AllPagesSmokePlaywrightIT, nicht dieses Tests
         }
         warten();
@@ -274,15 +276,33 @@ class DialogeOeffnenPlaywrightIT {
             if (!oeffnetVermutlichEinenDialog(knopf, text)) {
                 continue;
             }
+            // Vor dem Klick lesen: die Ajax-Antwort rendert den Knopf neu (Karte 1332, s. u.).
+            boolean zeigtDialog = ruftShowAuf(knopf);
             jsFehler.clear();
             ajaxFehler.clear();
             try {
                 knopf.click(new Locator.ClickOptions().setTimeout(5_000));
             } catch (RuntimeException e) {
+                LOG.info("Dialog-Durchgang {} Knopf '{}': nicht anklickbar ({})",
+                        pfad, text, e.getClass().getSimpleName());
                 continue; // Knopf nicht anklickbar (verdeckt, deaktiviert) — kein Befund
             }
             GEKLICKTE_KNOEPFE.incrementAndGet();
             warten();
+            if (zeigtDialog) {
+                // Karte 1332: PrimeFaces ruft PF('…').show() erst im oncomplete der Ajax-Antwort,
+                // danach laeuft die Einblend-Animation. warten() endet nach NETWORKIDLE oder 4 s —
+                // ob der Dialog in diesem Moment schon sichtbar ist, war Zufall: root zaehlte bei
+                // identischem Stand einmal 3, einmal 1 offene Dialoge (17 bzw. 12 Klicks) und
+                // wurde rot. Wer .show() im onclick traegt, bekommt deshalb bis zu 5 s, bis ein
+                // Dialog sichtbar ist. Bleibt er aus, ist das kein Befund — dann zaehlt er nicht.
+                try {
+                    page.locator(".ui-dialog:visible").first().waitFor(new Locator.WaitForOptions()
+                            .setState(WaitForSelectorState.VISIBLE).setTimeout(5_000));
+                } catch (RuntimeException e) {
+                    // kein Dialog aufgegangen
+                }
+            }
 
             if (!ajaxFehler.isEmpty()) {
                 funde.add("Knopf '" + text + "': Fehler in der Ajax-Teilantwort -> " + ajaxFehler);
@@ -296,6 +316,10 @@ class DialogeOeffnenPlaywrightIT {
             }
 
             Locator offen = page.locator(".ui-dialog:visible");
+            // Je Klick eine Zeile ins Bauprotokoll: nur so laesst sich ein schwankender Zaehler
+            // spaeter einem Knopf zuordnen statt geraten (Karte 1332).
+            LOG.info("Dialog-Durchgang {} Knopf '{}': show()={}, Dialog offen={}",
+                    pfad, text, zeigtDialog, offen.count() > 0);
             if (offen.count() > 0) {
                 GEOEFFNETE_DIALOGE.incrementAndGet();
                 Locator felder = offen.first().locator("input, select, textarea, .ui-datatable, button");
@@ -423,6 +447,16 @@ class DialogeOeffnenPlaywrightIT {
      * schreibt PrimeFaces das {@code oncomplete} eines Dialog-Oeffners hin) oder wenn seine
      * Beschriftung nach „Neu / Bearbeiten / Erfassen …" aussieht.
      */
+    /** Traegt der Knopf {@code PF('…').show()} im onclick? (Karte 1332) */
+    private static boolean ruftShowAuf(Locator knopf) {
+        try {
+            String onclick = knopf.getAttribute("onclick");
+            return onclick != null && onclick.contains(".show()");
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     private static boolean oeffnetVermutlichEinenDialog(Locator knopf, String beschriftung) {
         try {
             String onclick = knopf.getAttribute("onclick");
