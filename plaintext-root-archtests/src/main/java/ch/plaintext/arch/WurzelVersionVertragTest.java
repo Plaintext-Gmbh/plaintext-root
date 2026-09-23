@@ -44,13 +44,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  *       ({@code ${plaintext-root.version}}) oder exakt dieselbe Zahl. Karte 620: root-common
  *       1.534.0 suchte {@code ch.plaintext.store.StoreBacked}, das stehengebliebene interfaces
  *       1.524.0 hatte sie nicht; der Start brach ab. In guild lief der Pin sechsmal davon.</li>
- *   <li><b>{@code plaintext.version}</b> — nie eine ausgeschriebene Zahl, nur eine Ableitung. Welche,
- *       ist <b>fachlich verschieden</b> und wird hier nicht eingeebnet: in app und root meint sie die
- *       eigene Version ({@code ${project.version}}), in iot die von root verwalteten internen
- *       Module ({@code ${plaintext-root.version}}, sonst zeigten plaintext-root-* und plaintext-admin-*
- *       auf iots Version). Die gemeinsame Regel ist: keine zweite Zahl, die beim naechsten Bump von
- *       Hand nachgezogen werden muesste. iots strengere Bindung an genau
- *       {@code ${plaintext-root.version}} haelt {@code IotPlaintextVersionAbleitungTest} in iot fest.</li>
+ *   <li><b>{@code plaintext.version}</b> — nie eine ausgeschriebene Zahl, nur eine Ableitung
+ *       ({@code ${project.version}} oder {@code ${plaintext-root.version}}). Stand 23.09.2026 fuehrt
+ *       nur noch app die Property (eigene Version, von app selbst gelesen); in root, guild und iot
+ *       ist sie als toter Eintrag entfernt (Karten 1302, 1325). Fehlt sie, gibt es nichts zu
+ *       pruefen. Die Regel bleibt, damit sie nicht als zweite Zahl zurueckkommt.</li>
  * </ul>
  *
  * <p><b>In root selbst</b> ist die Wurzel-pom {@code plaintext-root-parent}; sie hat keinen

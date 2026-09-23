@@ -1,31 +1,18 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
-    "TOTER DOCKERFILE (Karte 1302, aus 1274/Befund 10c, 22.09.2026).",
-    "./Dockerfile in diesem Repo wird von niemandem gebaut: plaintext-root traegt den Marker",
-    ".m3-jar-volume (Jar im Volume statt docker build), und in .woodpecker/ wie .github/ steht",
-    "kein einziger `docker build`-Aufruf — deploy.yml:189 sagt es woertlich. Alle",
-    "App-Container laufen auf plaintext-runtime:jre25, dessen Quelle",
-    "plaintext-scripts/runtime/Dockerfile ist (eigene renovate.json, Karte 1138).",
-    "Trotzdem stand hier bis heute KEIN Ausschluss, waehrend app, iot und schuetu einen",
-    "hatten — und zwar fuer eine Datei, die dort am 08.09.2026 geloescht worden war. Die",
-    "Einstellung stand damit genau verkehrt herum: ausgeschlossen war der Pfad in den Repos",
-    "OHNE Dockerfile, gepflegt wurde er im Repo MIT Dockerfile. Sichtbare Folge: der Pin hier",
-    "steht auf eclipse-temurin:26_35-jre-alpine, waehrend real 25.0.3_9 laeuft — eine",
-    "Versionsangabe, die niemand einhaelt und der beim naechsten Mal jemand glaubt",
-    "(Karte 566/828: derselbe Drift-Mechanismus).",
-    "Deshalb hier der Ausschluss und dort die Ruecknahme. Form: ignorePaths und nicht",
-    "packageRule/enabled:false — so ist sie in plaintext-dockercompose entschieden (Karte 1130).",
-    "NEBENWIRKUNG, bewusst in Kauf genommen: ignorePaths ERSETZT Renovates Voreinstellung",
-    "(node_modules, bower_components, Test-Fixtures). Gemessen am 22.09.2026: dieses Repo hat",
-    "kein node_modules und kein bower_components, der Ausschluss kostet also nichts.",
-    "OFFEN, und bewusst nicht im Alleingang entschieden: ob ./Dockerfile hier — wie am",
-    "08.09.2026 in app/iot/schuetu — geloescht wird. Dann faellt diese Ausnahme mit ihm weg.",
-    "In plaintext-fwtool bleibt der Dockerfile (und damit dessen ignorePaths) nach Daniels",
-    "Entscheid vom 08.09.2026 ausdruecklich stehen: 'Rueckweg offen halten'."
-  ],
-  "ignorePaths": [
-    "Dockerfile"
+    "HIER STAND 'ignorePaths': ['Dockerfile'] (Karte 1302, 22.09.2026). Der Eintrag ist am",
+    "23.09.2026 mit Karte 1325 zusammen mit ./Dockerfile entfernt worden (Entscheid worker nach",
+    "Messung) — bewusst mit dieser Notiz statt ersatzlos, damit die Begruendung auffindbar bleibt.",
+    "WARUM: ./Dockerfile wurde seit dem Initial-Commit (30.07.2026) nie geaendert und von niemandem",
+    "gebaut. plaintext-root traegt den Marker .m3-jar-volume (Jar im Volume statt docker build);",
+    "weder .woodpecker/ noch .github/ noch plaintext-scripts noch ein Compose-File referenziert ihn.",
+    "Positivkontrolle derselben Suche: sie findet den echten `docker build` in",
+    "plaintext-scripts/runtime/build-runtime.sh. Wie am 08.09.2026 in app/iot/schuetu.",
+    "NEBENWIRKUNG, die kein Verlust ist: 'ignorePaths' ERSETZTE Renovates Voreinstellung",
+    "(node_modules, bower_components, Test-Fixtures, ...); mit dem Wegfall gilt sie wieder.",
+    "Gepflegt wird das Basis-Image ALLER App-Container dort, wo es wirklich gebaut wird:",
+    "plaintext-scripts/runtime/Dockerfile (eigene renovate.json, Karte 1138)."
   ],
   "extends": [
     "config:recommended"
