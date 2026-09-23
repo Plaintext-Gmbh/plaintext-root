@@ -40,8 +40,23 @@ import java.util.Set;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class PlaintextErrorViewResolver implements ErrorViewResolver {
 
-    /** Target of the redirect. */
-    static final String STARTSEITE = "/";
+    /**
+     * Target of the redirect.
+     *
+     * <p><b>Card 1331 (23.09.2026): {@code /index.html}, no longer {@code /}.</b> {@code /} is not a
+     * page but a redirect to the user's INDIVIDUAL start page. If that one does not exist, its
+     * 404 came back here, was redirected to {@code /}, and {@code /} sent the browser to the
+     * missing page again: {@code / -> /Index.html -> / -> ...} dozens of times per second, until
+     * the browser gave up - Daniel was locked out after every login (startpage {@code Index.html}
+     * instead of {@code index.html}). {@code /index.html} is the fixed default page and itself
+     * excluded below ({@link #AUSGENOMMENE_PFADE}), so this redirect can never chain into a
+     * loop, whatever a user's start page says.</p>
+     *
+     * <p>Why the test user saw a 404 instead: this resolver is only consulted for HTML error
+     * views ({@code Accept: text/html}, i.e. a browser). A {@code curl} without that header gets
+     * the JSON 404 of the {@code BasicErrorController} - roles have nothing to do with it.</p>
+     */
+    static final String STARTSEITE = "/index.html";
 
     /**
      * Paths that must NOT be redirected. A 404 has to stay a 404 there: clients
@@ -62,8 +77,8 @@ public class PlaintextErrorViewResolver implements ErrorViewResolver {
             "/images/");
 
     /**
-     * Paths that read exactly like this and are not redirected. {@code /} and {@code /index.html}
-     * are the redirect target itself — a redirect there would produce an endless loop should
+     * Paths that read exactly like this and are not redirected. {@code /index.html} is the redirect
+     * target itself and {@code /} leads to it — a redirect there would produce an endless loop should
      * the start page return a 404 in turn.
      */
     private static final Set<String> AUSGENOMMENE_PFADE = Set.of(

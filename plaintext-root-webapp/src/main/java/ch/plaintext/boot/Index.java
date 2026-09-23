@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -16,11 +17,13 @@ import java.io.IOException;
 public class Index {
 
     @GetMapping("/")
-    public void getIndex(HttpServletResponse response) throws IOException {
-        // Use the individual start page if it is set validly - otherwise always index.html.
-        // This way no user is locked out of the start page by an empty/invalid startpage value.
+    public void getIndex(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        // Use the individual start page if it is set validly AND exists - otherwise always
+        // index.html. This way no user is locked out of the start page by an empty, invalid or
+        // non-existing startpage value (card 1331: "Index.html" looped / -> /Index.html -> /).
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String redirect = StartpageResolver.resolve(auth == null ? null : auth.getAuthorities());
+        String redirect = StartpageResolver.resolve(auth == null ? null : auth.getAuthorities(),
+                request.getServletContext());
         response.sendRedirect(redirect);
     }
 }
