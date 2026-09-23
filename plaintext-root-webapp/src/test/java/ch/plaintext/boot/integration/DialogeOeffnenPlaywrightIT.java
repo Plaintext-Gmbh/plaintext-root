@@ -14,6 +14,8 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.Response;
+import com.microsoft.playwright.Route;
 import com.microsoft.playwright.options.WaitUntilState;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -185,11 +187,24 @@ class DialogeOeffnenPlaywrightIT {
         });
         // Der eigentliche Detektor: PrimeFaces liefert die Fehlermeldung IN der Teilantwort aus,
         // mit HTTP 200. Ohne diesen Blick in den Rumpf bleibt Karte 1016 unsichtbar.
-        page.onResponse(antwort -> {
-            if (!"POST".equals(antwort.request().method())) {
+        //
+        // requestfinished statt response (Karte 1332): das response-Ereignis kommt mit den KOPFZEILEN,
+        // der Rumpf ist dann oft noch unterwegs. antwort.text() wartet darauf ohne jede Frist — und
+        // weil Playwright alle Ereignisse im Aufruferfaden zustellt, steckt dann der ganze Test fest,
+        // mitten in page.navigate(), dessen eigene 60-s-Frist nicht mehr greift (gemessen: 2 h,
+        // jstack ResponseImpl.body <- lambda$setup). Wird der Seitenwechsel eine laufende
+        // Teilantwort nie fertig laden, kommt ihr Rumpf nie. requestfinished feuert erst, wenn der
+        // Rumpf VOLLSTAENDIG da ist; text() liest dann nur noch den fertigen Puffer. Eine
+        // abgebrochene Anfrage loest requestfailed aus und kommt hier gar nicht an.
+        page.onRequestFinished(anfrage -> {
+            if (!"POST".equals(anfrage.method())) {
                 return;
             }
             try {
+                Response antwort = anfrage.response();
+                if (antwort == null) {
+                    return;
+                }
                 String rumpf = antwort.text();
                 if (rumpf.startsWith("<?xml") && AJAX_FEHLER.matcher(rumpf).find()) {
                     ajaxFehler.add(kurz(rumpf));
@@ -352,6 +367,34 @@ class DialogeOeffnenPlaywrightIT {
     }
 
     // ------------------------------------------------------------------------------------------
+
+    /**
+     * Positivkontrolle der VERDRAHTUNG (Karte 1332): der Detektor haengt seit dem Umbau an
+     * {@code requestfinished} statt an {@code response}. Die Kontrolle oben prueft nur das Muster;
+     * diese hier schickt eine echte POST-Anfrage durch den Browser, beantwortet sie mit der
+     * Fehlerantwort aus Karte 1016 und verlangt, dass sie in {@code ajaxFehler} ankommt. Feuert
+     * das Ereignis nicht, waere der ganze Durchgang still blind — und trotzdem gruen.
+     */
+    @Order(4)
+    @Test
+    @DisplayName("Positivkontrolle: eine Fehler-Teilantwort kommt ueber requestfinished im Detektor an")
+    void positivkontrolleDetektorVerdrahtung() {
+        String fehlerantwort = "<?xml version='1.0' encoding='UTF-8'?>\n<partial-response><error>"
+                + "<error-name>class java.lang.IllegalArgumentException</error-name>"
+                + "<error-message><![CDATA[karte1332]]></error-message></error></partial-response>";
+        page.route("**/karte1332-probe", route -> route.fulfill(new Route.FulfillOptions()
+                .setStatus(200).setContentType("text/xml").setBody(fehlerantwort)));
+        try {
+            ajaxFehler.clear();
+            page.evaluate("() => fetch('/karte1332-probe', {method: 'POST', body: 'x'}).then(r => r.text())");
+            warten();
+            assertTrue(ajaxFehler.stream().anyMatch(f -> f.contains("karte1332")),
+                    "Die Fehler-Teilantwort kam nicht im Detektor an — requestfinished ist nicht "
+                            + "verdrahtet, der Durchgang waere blind. ajaxFehler=" + ajaxFehler);
+        } finally {
+            page.unroute("**/karte1332-probe");
+        }
+    }
 
     private void warten() {
         try {
