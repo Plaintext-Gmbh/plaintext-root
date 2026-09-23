@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -44,9 +45,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Positive control: an individual start page that exists ({@code access-denied.html}, a real
  * root page) is still used after the login and by {@code /}.</p>
+ *
+ * <p><b>Why {@code @DirtiesContext}:</b> every cached Spring context keeps its
+ * connection pool open until the JVM ends. On the first CI run of this test (Woodpecker root #331)
+ * the one additional context was enough for the CI PostgreSQL to answer the NEXT test class
+ * ({@code FlywayMigrationTest}) with "FATAL: sorry, too many clients already". This class needs
+ * its context exactly once, so it closes it afterwards. (A smaller pool is no way out: with
+ * {@code maximum-pool-size=2} the context does not even start — Flyway waits 30 s for a connection.)</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class StartseitenSchleifeChainTest {
 
     @DynamicPropertySource
