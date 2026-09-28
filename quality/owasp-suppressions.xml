@@ -43,6 +43,12 @@
       WICHTIG: version-gepinnt (exakte @-Version) — sobald Boot eine neue Version zieht, greift die
       Suppression NICHT mehr und der neue Stand muss erneut bewertet werden (kein Dauer-Blindflug).
 
+      ENTFERNT 28.09.2026 (Karte 1338): die Suppression fuer micrometer-registry-prometheus@1.17.0
+      (CVE-2026-42154). Spring Boot 4.1.1 zieht micrometer 1.17.1; die exakt gepinnte Suppression
+      griff damit nicht mehr (PlaintextOwaspSuppressionsTest). Genau der hier vorgesehene Fall:
+      der neue Stand wird vom naechsten OWASP-Lauf bewertet. angus-activation 2.0.3 bleibt, Boot
+      4.1.1 hat es nicht angehoben.
+
       ENTFERNT 02.08.2026 (Karte 389): die Suppression fuer tomcat-embed-core@11.0.22 mit ihren
       acht CVEs. Sie war nicht mehr noetig und ausserdem loechrig — sie deckte nur
       tomcat-embed-core ab, waehrend das Schwester-Artefakt tomcat-embed-websocket mit
@@ -55,11 +61,6 @@
         <notes><![CDATA[ Boot-4.1.0-transitiv gepinntes angus-activation 2.0.3; per naechstem Boot-Patch behoben. ]]></notes>
         <packageUrl>pkg:maven/org.eclipse.angus/angus-activation@2.0.3</packageUrl>
         <cve>CVE-2025-7962</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[ Boot-4.1.0-transitiv gepinntes micrometer-registry-prometheus 1.17.0; per naechstem Boot-Patch behoben. ]]></notes>
-        <packageUrl>pkg:maven/io.micrometer/micrometer-registry-prometheus@1.17.0</packageUrl>
-        <cve>CVE-2026-42154</cve>
     </suppress>
 
     <!--
