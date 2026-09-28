@@ -310,7 +310,7 @@ class MyUserBackingBeanTest {
     // ---- Card 1331: a start page that does not exist is not saved ----
 
     @Test
-    void save_lehntNichtExistierendeStartseiteAb() throws java.net.MalformedURLException {
+    void save_lehntNichtExistierendeStartseiteAb() {
         testUser.setMandat("test_mandat");
         testUser.setStartpage("Index.html"); // the value of 23.09.2026 (capital I)
         backingBean.setSelected(testUser);
@@ -356,7 +356,7 @@ class MyUserBackingBeanTest {
     }
 
     @Test
-    void save_laesstUnveraenderteAltStartseiteDurch() throws java.net.MalformedURLException {
+    void save_laesstUnveraenderteAltStartseiteDurch() {
         // schuetu-prod: drei Benutzer auf "dashboard.htm" (Form ungueltig, der Resolver ignoriert sie
         // schon immer). Wer an so einem Benutzer etwas anderes aendert, darf nicht daran scheitern.
         testUser.setMandat("test_mandat");

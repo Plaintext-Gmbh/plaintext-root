@@ -24,6 +24,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -181,15 +183,15 @@ class PlaintextAjaxAntwortLesbarTest {
         assertEquals(1, scriptBloeckeOhneCdata("<script>\n var a = 1;\n</script>").size(),
                 "Ein Block ohne CDATA muss als solcher erkannt werden.");
 
-        assertTrue(parserFehler("// er enthaelt weder '<' noch '&'\n var a = 1;") != null,
+        assertNotNull(parserFehler("// er enthaelt weder '<' noch '&'\n var a = 1;"),
                 "Rohzeichen im Kommentar sind genau der PROD-Fehler aus messenger-chat.xhtml.");
-        assertTrue(parserFehler("if (a < b) {}") != null,
+        assertNotNull(parserFehler("if (a < b) {}"),
                 "Ein rohes < beendet fuer den Parser das script-Element.");
 
-        assertTrue(parserFehler("if (a &amp;&amp; b) { c(); }") == null,
+        assertNull(parserFehler("if (a &amp;&amp; b) { c(); }"),
                 "So steht es in root's topbar.xhtml und ist richtig: der Parser loest die Entity zu "
                         + "&& auf. Eine Suche nach dem Zeichen & wuerde das faelschlich melden.");
-        assertTrue(parserFehler("var t = 'x';") == null, "Harmloses JavaScript darf nicht anschlagen.");
+        assertNull(parserFehler("var t = 'x';"), "Harmloses JavaScript darf nicht anschlagen.");
 
         String mitCdata = "<script>\n //" + CDATA_START + "\n if (a && b) {}\n //" + CDATA_ENDE + "\n</script>";
         assertTrue(scriptBloeckeOhneCdata(mitCdata).isEmpty(),

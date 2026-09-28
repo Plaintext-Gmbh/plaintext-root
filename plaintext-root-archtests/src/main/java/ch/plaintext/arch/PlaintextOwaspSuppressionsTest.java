@@ -21,6 +21,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -165,7 +167,7 @@ class PlaintextOwaspSuppressionsTest {
         Map.Entry<String, String> irgendeins = aufKlassenpfad.entrySet().iterator().next();
 
         String erfundeneVersion = irgendeins.getValue() + "-gibt-es-nicht";
-        assertFalse(erfundeneVersion.equals(irgendeins.getValue()),
+        assertNotEquals(erfundeneVersion, irgendeins.getValue(),
                 "Die konstruierte Version muss sich von der echten unterscheiden.");
         assertTrue(aufKlassenpfad.containsKey(irgendeins.getKey())
                         && !aufKlassenpfad.get(irgendeins.getKey()).equals(erfundeneVersion),
@@ -192,7 +194,7 @@ class PlaintextOwaspSuppressionsTest {
                 </suppress>
                 """;
         List<String[]> gelesen = parse(probe);
-        assertTrue(gelesen.size() == 3,
+        assertEquals(3, gelesen.size(),
                 "Erwartet werden drei Einträge (ein exakter Pin, ein Regex mit fester Version, ein "
                         + "Regex mit offener Version), gelesen: " + gelesen.size()
                         + ". Ändert sich das Dateiformat, fällt es hier auf und nicht erst, wenn "
@@ -217,7 +219,7 @@ class PlaintextOwaspSuppressionsTest {
 
         Map<String, String> klassenpfad = Map.of(
                 "tomcat-embed-core", "11.0.24", "tomcat-embed-websocket", "11.0.24");
-        assertTrue(passendeArtefakte(klassenpfad, festerRegex[1], true).size() == 2,
+        assertEquals(2, passendeArtefakte(klassenpfad, festerRegex[1], true).size(),
                 "Ein Artefakt-Ausdruck mit Metazeichen muss ALLE passenden Artefakte treffen — "
                         + "sonst bliebe genau die halbe Abdeckung unbemerkt, die Karte 420 als "
                         + "'schlimmer als keine' benennt.");
