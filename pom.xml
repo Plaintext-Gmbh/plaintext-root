@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.1</version>
     </parent>
 
     <groupId>ch.plaintext</groupId>
@@ -46,7 +46,7 @@
         <!-- Test Tools -->
         <!-- ArchUnit: Architektur-Regeln (geteiltes Modul plaintext-root-archtests). Nicht vom
              Spring-Boot-Parent verwaltet, daher hier zentral gepinnt. -->
-        <archunit.version>1.5.0</archunit.version>
+        <archunit.version>1.5.1</archunit.version>
 
         <!-- Interne Module -->
         <!-- Karte 1325 (23.09.2026): die Maven-Property "plaintext punkt version" (= project.version)
@@ -59,12 +59,12 @@
 
         <!-- JSF & Primefaces -->
         <primefaces-spring-boot-starter.version>6.1.1</primefaces-spring-boot-starter.version>
-        <primefaces.version>15.0.15</primefaces.version>
+        <primefaces.version>15.0.18</primefaces.version>
         <!-- Mindestens 4.1.13: dort schliesst Mojarra CVE-2026-46581 (Pfad-Traversal/RCE ueber
              ui:include, CVSS 7.5). Nicht zurueckdrehen. Die Kehrseite derselben Haertung —
              Facelet-Verweise brauchen seither einen fuehrenden "/" — haelt der Test
              FaceletPfadInvariantTest (plaintext-root-webapp) fest, dort steht die Begruendung. -->
-        <jakarta.faces.version>4.1.16</jakarta.faces.version>
+        <jakarta.faces.version>4.1.17</jakarta.faces.version>
 
         <!-- Cron & Scheduling -->
         <cron4j.version>2.2.5</cron4j.version>
@@ -74,12 +74,12 @@
 
         <!-- Common Utilities -->
         <xstream.version>1.4.21</xstream.version>
-        <joda-time.version>2.14.3</joda-time.version>
+        <joda-time.version>2.14.4</joda-time.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
         <guava.version>33.7.1-jre</guava.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <commons-io.version>2.22.0</commons-io.version>
-        <lombok.version>1.18.46</lombok.version>
+        <lombok.version>1.18.48</lombok.version>
 
         <!-- Web -->
         <jsoup.version>1.23.2</jsoup.version>
@@ -91,9 +91,9 @@
 
         <!-- Security -->
         <jakarta.enterprise.cdi-api.version>4.1.0</jakarta.enterprise.cdi-api.version>
-        <bcprov-jdk18on.version>1.85.2</bcprov-jdk18on.version>
+        <bcprov-jdk18on.version>1.86</bcprov-jdk18on.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
+        <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
 
         <!-- Reporting -->
 
@@ -149,7 +149,7 @@
         -->
         <jackson-2-bom.version>2.21.6</jackson-2-bom.version>
         <!-- httpcore5: Boot 4.1.0 pinnt erst 5.4.2 -> hochziehen (CVE-2026-54399/54428). -->
-        <httpcore5.version>5.4.3</httpcore5.version>
+        <httpcore5.version>5.4.4</httpcore5.version>
         <!--
           httpclient5: Boot 4.1.0 pinnt 5.6.1 — darin CVE-2026-71290 (CVSS 9.1, unwirksame
           TLS-Hostname-Pruefung im async-Client, betroffen 5.4 bis <5.6.4) und CVE-2026-64607 (5.3).
@@ -165,7 +165,7 @@
           28.08.2026: 11.0.24 -> 11.0.25. Geeicht per NVD-CPE-Abfrage: 11.0.24 traegt 11 CVEs
           (4x CRITICAL bis 9.8, u.a. CVE-2026-65637/65905/65182/68525), 11.0.25 null.
         -->
-        <tomcat.version>11.0.25</tomcat.version>
+        <tomcat.version>11.0.26</tomcat.version>
         <!--
           log4j-api: Boot 4.1.0 pinnt 2.25.4 — darin CVE-2026-49844 (CVSS 5.9, MapMessage-
           JSON-Serialisierung erzeugt ungueltiges JSON bei non-finite Floats), behoben ab 2.25.5.
@@ -236,7 +236,7 @@
             <dependency>
                 <groupId>io.zonky.test.postgres</groupId>
                 <artifactId>embedded-postgres-binaries-bom</artifactId>
-                <version>17.5.0</version>
+                <version>17.11.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
