@@ -46,7 +46,9 @@
       ENTFERNT 28.09.2026 (Karte 1338): die Suppression fuer micrometer-registry-prometheus@1.17.0
       (CVE-2026-42154). Spring Boot 4.1.1 zieht micrometer 1.17.1; die exakt gepinnte Suppression
       griff damit nicht mehr (PlaintextOwaspSuppressionsTest). Genau der hier vorgesehene Fall:
-      der neue Stand wird vom naechsten OWASP-Lauf bewertet. angus-activation 2.0.3 bleibt, Boot
+      der neue Stand wird vom naechsten OWASP-Lauf bewertet. Der Lauf vom 28.09.2026 meldete den
+      Fund an 1.17.1 erneut: ein CPE-Fehltreffer (Prometheus-Server), der alle Repos trifft.
+      Deshalb steht er jetzt ZENTRAL in plaintext-scripts/quality/owasp-suppressions-zentral.xml. angus-activation 2.0.3 bleibt, Boot
       4.1.1 hat es nicht angehoben.
 
       ENTFERNT 02.08.2026 (Karte 389): die Suppression fuer tomcat-embed-core@11.0.22 mit ihren

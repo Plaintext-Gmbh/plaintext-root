@@ -443,7 +443,7 @@ public class TableSettings implements Serializable {
         }
         TableColumnProfile profile = state.getProfiles().get(selectedProfile);
         if (profile == null) {
-            meldung = "Profil '" + selectedProfile + "' gibt es nicht mehr.";
+            meldung = profilMeldung(selectedProfile, "gibt es nicht mehr.");
             selectedProfile = "";
             return;
         }
@@ -453,8 +453,13 @@ public class TableSettings implements Serializable {
         state.setTargetColumnWidth(profile.getTargetColumnWidth());
         state.setActiveProfile(selectedProfile);
         save();
-        meldung = "Profil '" + selectedProfile + "' angewendet.";
+        meldung = profilMeldung(selectedProfile, "angewendet.");
         log.info("[TableSettings:{}] applyProfile | name={}", page, selectedProfile);
+    }
+
+    /** Rueckmeldung zu einem Profil, z. B. {@code Profil 'Kurz' angelegt.} */
+    private static String profilMeldung(String name, String zustand) {
+        return "Profil '" + name + "' " + zustand;
     }
 
     /** Legt ein Profil unter dem im Dialog eingegebenen Namen an. */
@@ -465,7 +470,7 @@ public class TableSettings implements Serializable {
         }
         String name = newProfileName.trim();
         if (state.getProfiles().containsKey(name)) {
-            meldung = "Profil '" + name + "' gibt es schon.";
+            meldung = profilMeldung(name, "gibt es schon.");
             return;
         }
         selectedProfile = name;
@@ -473,7 +478,7 @@ public class TableSettings implements Serializable {
         writeActiveProfile();
         save();
         newProfileName = "";
-        meldung = "Profil '" + name + "' angelegt.";
+        meldung = profilMeldung(name, "angelegt.");
         log.info("[TableSettings:{}] createProfile | name={}", page, name);
     }
 
@@ -485,7 +490,7 @@ public class TableSettings implements Serializable {
         }
         String name = selectedProfile;
         if (state.getProfiles().remove(name) == null) {
-            meldung = "Profil '" + name + "' gibt es nicht mehr.";
+            meldung = profilMeldung(name, "gibt es nicht mehr.");
             return;
         }
         if (name.equals(state.getActiveProfile())) {
@@ -493,7 +498,7 @@ public class TableSettings implements Serializable {
         }
         save();
         ensureProfile();
-        meldung = "Profil '" + name + "' geloescht.";
+        meldung = profilMeldung(name, "geloescht.");
         log.info("[TableSettings:{}] deleteProfile | name={}", page, name);
     }
 

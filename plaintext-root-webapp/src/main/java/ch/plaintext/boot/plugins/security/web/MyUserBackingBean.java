@@ -58,6 +58,9 @@ public class MyUserBackingBean implements Serializable {
     /** Name fragment that marks a tenant role; such roles are hidden from the role menu. */
     private static final String MANDATSROLLE_MARKER = "mandat";
 
+    /** Column key of the tenant column; same text as the role marker, but a different meaning. */
+    private static final String SPALTE_MANDAT = "mandat";
+
     /**
      * SECURITY (card 314, item 7): the central {@link PasswordEncoder} bean instead of a local
      * {@code new BCryptPasswordEncoder()}. The local call would have kept the Spring default cost
@@ -180,7 +183,7 @@ public class MyUserBackingBean implements Serializable {
             new TableColumn("username", "Benutzername", 0),
             new TableColumn("vorname", "Vorname", 0),
             new TableColumn("nachname", "Nachname", 0),
-            new TableColumn("mandat", "Mandat", 0),
+            new TableColumn(SPALTE_MANDAT, "Mandat", 0),
             new TableColumn("startpage", "Startseite", 0),
             new TableColumn("remember", "Remember-Me", 0),
             new TableColumn("impersonate", "Impersonate", 0));
