@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -86,7 +87,7 @@ class WatchLesbarkeitVertragTest {
                 festeGroessen++;
             }
         }
-        assertTrue(festeGroessen == 0,
+        assertEquals(0, festeGroessen,
                 festeGroessen + " Regel(n) setzen eine feste Schriftgroesse unter "
                         + MINDESTGROESSE_PX + "px. Feste px-Werte wachsen beim Anheben von "
                         + "--w-schrift nicht mit und sind deshalb genau die Stellen, die auf der "

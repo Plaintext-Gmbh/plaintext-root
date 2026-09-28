@@ -3,7 +3,6 @@
  */
 package ch.plaintext.watch.config;
 
-import ch.plaintext.apitoken.IApiTokenService;
 import ch.plaintext.watch.web.WatchTokenSitzungFilter;
 import jakarta.servlet.DispatcherType;
 import org.junit.jupiter.api.DisplayName;

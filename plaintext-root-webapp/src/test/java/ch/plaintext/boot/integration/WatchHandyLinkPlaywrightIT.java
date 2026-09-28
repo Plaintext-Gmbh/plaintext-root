@@ -34,6 +34,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -341,7 +342,7 @@ class WatchHandyLinkPlaywrightIT {
             alt = erzeuge(maske);
             neu = erzeuge(maske);
         }
-        assertFalse(alt.equals(neu), "Zweimal derselbe Link — es wurde kein neuer ausgestellt");
+        assertNotEquals(alt, neu, "Zweimal derselbe Link — es wurde kein neuer ausgestellt");
 
         try (BrowserContext mitAltem = frischerKontext()) {
             abgewiesen(mitAltem, alt, "der alte Link nach dem Neugenerieren");
@@ -612,7 +613,7 @@ class WatchHandyLinkPlaywrightIT {
                 // der vollen Seite, obwohl der Benutzer sie abgeschaltet hatte (Karte 1257).
                 p.navigate(url("/watch/home.html"));
                 p.waitForLoadState();
-                assertFalse(kopfzeile(p).equals(UHR_TITEL),
+                assertNotEquals(UHR_TITEL, kopfzeile(p),
                         "Die abgeschaltete Seite zeigt sich weiterhin als '" + UHR_TITEL
                                 + "' — der Schalter verspricht dann etwas, das er nicht haelt.");
                 assertTrue(position(p).isEmpty(),
@@ -825,7 +826,7 @@ class WatchHandyLinkPlaywrightIT {
             }
             maske.waitForTimeout(200);
         }
-        assertFalse(link.equals(vorher),
+        assertNotEquals(vorher, link,
                 "Nach 30 s zeigt die Maske keinen neuen Handy-Link. Wurde der Ajax-Postback "
                         + "verworfen? Meldung der Maske: '" + meldung + "'");
 
