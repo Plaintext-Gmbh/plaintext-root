@@ -24,6 +24,12 @@
              ausgefuehrt in plaintext-root-webapp und in den Consumern. Seine Abdeckung zu messen
              hiesse, Tests mit Tests zu testen; der Wert lag bei 1,7 % und sagte nichts. -->
         <jacoco.skip>true</jacoco.skip>
+        <!-- Fuer SonarQube ebenfalls Testcode (Karte 1338, 28.09.2026): sonst misst das Gate
+             diesen Code als Hauptcode — Testregeln wie java:S5960 ("Assertions im Produktivcode")
+             schlugen 60-mal an, und die Abdeckung auf neuem Code fiel auf 10,2 %, obwohl hier gar
+             kein Hauptcode steht. -->
+        <sonar.sources>pom.xml</sonar.sources>
+        <sonar.tests>src/main/java,src/test/java</sonar.tests>
     </properties>
 
     <dependencies>

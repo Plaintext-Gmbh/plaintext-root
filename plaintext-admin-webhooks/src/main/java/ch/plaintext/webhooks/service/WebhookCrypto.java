@@ -28,6 +28,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class WebhookCrypto extends EnvKeyAesGcmCrypto {
 
+    @org.springframework.beans.factory.annotation.Autowired
     public WebhookCrypto(Environment environment) {
         this(isProduction(environment));
     }

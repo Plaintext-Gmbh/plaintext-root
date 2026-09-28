@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class SecretCrypto extends EnvKeyAesGcmCrypto {
 
+    @org.springframework.beans.factory.annotation.Autowired
     public SecretCrypto(Environment environment) {
         this(isProduction(environment));
     }

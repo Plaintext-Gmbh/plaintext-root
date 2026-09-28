@@ -310,7 +310,7 @@ class MyUserBackingBeanTest {
     // ---- Card 1331: a start page that does not exist is not saved ----
 
     @Test
-    void save_lehntNichtExistierendeStartseiteAb() throws Exception {
+    void save_lehntNichtExistierendeStartseiteAb() throws java.net.MalformedURLException {
         testUser.setMandat("test_mandat");
         testUser.setStartpage("Index.html"); // the value of 23.09.2026 (capital I)
         backingBean.setSelected(testUser);
@@ -333,7 +333,7 @@ class MyUserBackingBeanTest {
         testUser.setStartpage("auszahlungen.html");
         backingBean.setSelected(testUser);
         jakarta.servlet.ServletContext servletContext = mock(jakarta.servlet.ServletContext.class);
-        when(servletContext.getResource("/auszahlungen.xhtml")).thenReturn(new java.net.URL("file:/a"));
+        when(servletContext.getResource("/auszahlungen.xhtml")).thenReturn(java.net.URI.create("file:/a").toURL());
         when(facesContext.getExternalContext()).thenReturn(externalContext);
         when(externalContext.getContext()).thenReturn(servletContext);
         backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user")));
@@ -356,7 +356,7 @@ class MyUserBackingBeanTest {
     }
 
     @Test
-    void save_laesstUnveraenderteAltStartseiteDurch() throws Exception {
+    void save_laesstUnveraenderteAltStartseiteDurch() throws java.net.MalformedURLException {
         // schuetu-prod: drei Benutzer auf "dashboard.htm" (Form ungueltig, der Resolver ignoriert sie
         // schon immer). Wer an so einem Benutzer etwas anderes aendert, darf nicht daran scheitern.
         testUser.setMandat("test_mandat");

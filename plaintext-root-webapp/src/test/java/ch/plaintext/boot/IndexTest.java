@@ -41,7 +41,7 @@ class IndexTest {
         if ("getResource".equals(invocation.getMethod().getName())) {
             String view = invocation.getArgument(0);
             return view.equals("/Index.xhtml") || view.equals("/gibtesnicht.xhtml")
-                    ? null : new java.net.URL("file:" + view);
+                    ? null : java.net.URI.create("file:" + view).toURL();
         }
         return null;
     });
@@ -79,30 +79,6 @@ class IndexTest {
     }
 
     @Test
-    void getIndex_shouldRedirectToStartpage_whenHtmlAuthority() throws IOException {
-        setupAuthentication(Arrays.asList(
-                new SimpleGrantedAuthority("ROLE_USER"),
-                new SimpleGrantedAuthority("PROPERTY_STARTPAGE_dashboard.html")
-        ));
-
-        index.getIndex(request, response);
-
-        verify(response).sendRedirect("dashboard.html");
-    }
-
-    @Test
-    void getIndex_shouldHandleStartpageWithPropertyPrefix() throws IOException {
-        setupAuthentication(Arrays.asList(
-                new SimpleGrantedAuthority("ROLE_USER"),
-                new SimpleGrantedAuthority("PROPERTY_STARTPAGE_custom.html")
-        ));
-
-        index.getIndex(request, response);
-
-        verify(response).sendRedirect("custom.html");
-    }
-
-    @Test
     void getIndex_shouldUseFirstHtmlAuthority() throws IOException {
         setupAuthentication(Arrays.asList(
                 new SimpleGrantedAuthority("ROLE_USER"),
@@ -129,15 +105,19 @@ class IndexTest {
         verify(response).sendRedirect("index.html");
     }
 
-    @Test
-    void getIndex_existingIndividualStartpage_isKept() throws IOException {
-        // Positive control of card 1331: a valid, existing individual start page stays.
+    /**
+     * Eine gesetzte, existierende Startseite wird angesprungen — auch eine individuelle
+     * (Positivkontrolle aus Karte 1331). Vorher drei gleich gebaute Tests (Sonar java:S5976).
+     */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"dashboard.html", "custom.html", "auszahlungen.html"})
+    void getIndex_existingStartpage_isUsed(String startseite) throws IOException {
         setupAuthentication(Arrays.asList(
                 new SimpleGrantedAuthority("ROLE_USER"),
-                new SimpleGrantedAuthority("PROPERTY_STARTPAGE_auszahlungen.html")));
+                new SimpleGrantedAuthority("PROPERTY_STARTPAGE_" + startseite)));
 
         index.getIndex(request, response);
 
-        verify(response).sendRedirect("auszahlungen.html");
+        verify(response).sendRedirect(startseite);
     }
 }

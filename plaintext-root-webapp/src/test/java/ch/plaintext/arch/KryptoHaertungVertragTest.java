@@ -17,6 +17,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -75,7 +76,7 @@ class KryptoHaertungVertragTest {
             try {
                 byte[] k = Base64.getDecoder().decode(b64.trim());
                 raw = k.length == 32 ? k : sha256(k);
-            } catch (RuntimeException e) {
+            } catch (RuntimeException _) {
                 raw = null;
             }
         }
@@ -133,7 +134,7 @@ class KryptoHaertungVertragTest {
         // leerer Klartext: 12 Byte IV + 0 Byte Chiffrat + 16 Byte Tag
         assertEquals(28, a.length);
 
-        assertTrue(!secret.encrypt("gleich").equals(secret.encrypt("gleich")),
+        assertNotEquals(secret.encrypt("gleich"), secret.encrypt("gleich"),
                 "gleicher Klartext muss zwei verschiedene Chiffrate ergeben (frischer IV, kein ECB)");
     }
 

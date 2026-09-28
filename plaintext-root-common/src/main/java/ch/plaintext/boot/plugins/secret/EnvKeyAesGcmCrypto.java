@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Optional;
 
 /**
  * AES-256-GCM encryption/decryption with the key from the env variable
@@ -64,8 +65,9 @@ public abstract class EnvKeyAesGcmCrypto {
      */
     protected EnvKeyAesGcmCrypto(boolean production, String zweck) {
         this.zweck = zweck;
-        byte[] raw = ladeKey();
-        this.devFallback = raw == null;
+        Optional<byte[]> geladen = ladeKey();
+        this.devFallback = geladen.isEmpty();
+        byte[] raw;
         if (devFallback) {
             if (production) {
                 throw new IllegalStateException(ENV_KEY + " ist in PROD Pflicht (base64, 32 Byte). "
@@ -75,6 +77,8 @@ public abstract class EnvKeyAesGcmCrypto {
             log.warn("{} nicht gesetzt — verwende DETERMINISTISCHEN Dev-Fallback-Key. NUR fuer Dev/Test! "
                     + "In PROD {} als base64(32 Byte) per Env setzen.", ENV_KEY, ENV_KEY);
             raw = sha256(("plaintext-dev-fallback-" + System.getenv("HOSTNAME")).getBytes(StandardCharsets.UTF_8));
+        } else {
+            raw = geladen.get();
         }
         this.key = new SecretKeySpec(raw, "AES");
     }
@@ -92,17 +96,18 @@ public abstract class EnvKeyAesGcmCrypto {
         return false;
     }
 
-    private static byte[] ladeKey() {
+    /** Der Schluessel aus {@link #ENV_KEY}; leer = nicht gesetzt oder unlesbar (Dev-Fallback). */
+    private static Optional<byte[]> ladeKey() {
         String b64 = System.getenv(ENV_KEY);
         if (b64 == null || b64.isBlank()) {
-            return null;
+            return Optional.empty();
         }
         try {
             byte[] k = Base64.getDecoder().decode(b64.trim());
-            return k.length == 32 ? k : sha256(k);   // tolerate deviating lengths via SHA-256
-        } catch (RuntimeException e) {
+            return Optional.of(k.length == 32 ? k : sha256(k));   // tolerate deviating lengths via SHA-256
+        } catch (RuntimeException _) {
             log.warn("{} ist kein gueltiges base64 — Dev-Fallback.", ENV_KEY);
-            return null;
+            return Optional.empty();
         }
     }
 

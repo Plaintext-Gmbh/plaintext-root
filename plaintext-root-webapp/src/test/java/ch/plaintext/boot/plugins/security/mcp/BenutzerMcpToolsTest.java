@@ -208,7 +208,7 @@ class BenutzerMcpToolsTest {
         // in eine Umleitungsschleife. Aus einer Datei (evtl. aus einer anderen App) wird sie verworfen.
         authAdmin();
         jakarta.servlet.ServletContext ctx = mock(jakarta.servlet.ServletContext.class);
-        when(ctx.getResource("/auszahlungen.xhtml")).thenReturn(new java.net.URL("file:/a"));
+        when(ctx.getResource("/auszahlungen.xhtml")).thenReturn(java.net.URI.create("file:/a").toURL());
         tools.setServletContext(ctx);
         when(userRepository.findByUsername(anyString())).thenReturn(null);
 
@@ -223,7 +223,7 @@ class BenutzerMcpToolsTest {
     void importUebernimmtExistierendeStartseite_positivkontrolle() throws Exception {
         authAdmin();
         jakarta.servlet.ServletContext ctx = mock(jakarta.servlet.ServletContext.class);
-        when(ctx.getResource("/auszahlungen.xhtml")).thenReturn(new java.net.URL("file:/a"));
+        when(ctx.getResource("/auszahlungen.xhtml")).thenReturn(java.net.URI.create("file:/a").toURL());
         tools.setServletContext(ctx);
         when(userRepository.findByUsername(anyString())).thenReturn(null);
 

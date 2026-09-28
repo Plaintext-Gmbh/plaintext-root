@@ -47,23 +47,28 @@ public final class Seitenliste {
         return SEITEN;
     }
 
+    /**
+     * Der View-Pfad zu einer gefundenen Ressource, oder {@code null}, wenn sie nicht unter
+     * {@link #WURZEL} liegt, ein Include oder ein Template ist.
+     */
+    private static String viewPfad(String url) {
+        int i = url.lastIndexOf(WURZEL);
+        if (i < 0) {
+            return null;
+        }
+        String pfad = "/" + url.substring(i + WURZEL.length());
+        String datei = pfad.substring(pfad.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
+        return pfad.contains("/includes/") || datei.startsWith("template") ? null : pfad;
+    }
+
     private static List<String> ermitteln() {
         List<String> gefunden = new ArrayList<>();
         try {
             Resource[] treffer = new PathMatchingResourcePatternResolver()
                     .getResources("classpath*:" + WURZEL + "**/*.xhtml");
             for (Resource r : treffer) {
-                String url = r.getURL().toString();
-                int i = url.lastIndexOf(WURZEL);
-                if (i < 0) {
-                    continue;
-                }
-                String pfad = "/" + url.substring(i + WURZEL.length());
-                String datei = pfad.substring(pfad.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
-                if (pfad.contains("/includes/") || datei.startsWith("template")) {
-                    continue;
-                }
-                if (!gefunden.contains(pfad)) {
+                String pfad = viewPfad(r.getURL().toString());
+                if (pfad != null && !gefunden.contains(pfad)) {
                     gefunden.add(pfad);
                 }
             }

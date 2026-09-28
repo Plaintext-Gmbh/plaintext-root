@@ -23,6 +23,12 @@
         <!-- Kein Coverage-Gate: src/main/java dieses Moduls IST Testcode (Hilfsklassen fuer die
              Integrationstests der Webapps). Gemessen wird er dort, wo er laeuft. -->
         <jacoco.skip>true</jacoco.skip>
+        <!-- Fuer SonarQube ebenfalls Testcode (Karte 1338, 28.09.2026): sonst misst das Gate
+             diesen Code als Hauptcode — Testregeln wie java:S5960 ("Assertions im Produktivcode")
+             schlugen 60-mal an, und die Abdeckung auf neuem Code fiel auf 10,2 %, obwohl hier gar
+             kein Hauptcode steht. -->
+        <sonar.sources>pom.xml</sonar.sources>
+        <sonar.tests>src/main/java</sonar.tests>
     </properties>
 
     <dependencies>
