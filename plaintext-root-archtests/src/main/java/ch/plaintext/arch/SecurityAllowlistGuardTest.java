@@ -27,6 +27,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -126,7 +127,7 @@ class SecurityAllowlistGuardTest {
         Vertrag v = Vertrag.laden();
         Yaml y = Yaml.laden();
         String b = abweichung(v, y);
-        assertTrue(b == null, b);
+        assertNull(b, b);
     }
 
     @Test

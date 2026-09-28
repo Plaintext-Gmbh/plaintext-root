@@ -15,6 +15,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -85,10 +86,10 @@ class MethodSecurityEnabledTest {
         JavaClasses beispiele = new ClassFileImporter()
                 .importClasses(OhneSchalter.class, MitSchalter.class, KeineStartklasse.class);
         List<JavaClass> startklassen = startklassen(beispiele, Start.class.getName());
-        assertTrue(startklassen.size() == 2, "Genau die zwei Beispiel-Startklassen muessen erkannt werden: "
+        assertEquals(2, startklassen.size(), "Genau die zwei Beispiel-Startklassen muessen erkannt werden: "
                 + startklassen);
         List<String> ohne = ohne(startklassen, Schalter.class.getName());
-        assertTrue(ohne.equals(List.of(OhneSchalter.class.getName())),
+        assertEquals(List.of(OhneSchalter.class.getName()), ohne,
                 "Genau die Startklasse ohne Schalter muss gemeldet werden, gemeldet wurde: " + ohne);
     }
 
