@@ -191,6 +191,12 @@ steps:
       # Skript liest kein __pycache__). quality-gate.py, owasp-dependency-check.sh und
       # spotbugs.sh sind unberuehrt; ci-cd-pipeline.yaml und runtime/ zieht der Analysepfad
       # gar nicht (nachgesehen per git diff --name-only).
+      # KARTE 1338 (28.09.2026): Pin von b99b1721 auf caf32da8 nachgezogen, fuer den zentralen
+      # Eintrag gegen die CPE-Fehlzuordnung cpe:2.3:a:prometheus:prometheus an
+      # micrometer-registry-prometheus@1.17.1 (CVE-2026-42154, betrifft nur den Prometheus-
+      # Server). Dazwischen liegen 6 Commits; im Analysepfad aendert sich ausser
+      # owasp-suppressions-zentral.xml nur die geloeschte quality/__pycache__/*.pyc
+      # (git diff --name-only b99b1721 caf32da8 -- quality/).
       # KARTE 1177 gilt weiter: dieser Pin ist BEWUSST neuer als der in .woodpecker/deploy.yml
       # (dort $HOME/codeplain/plaintext-scripts fuer ./build). Der bleibt absichtlich stehen —
       # dazwischen liegen Release- und Build-Logik (tui-build-logic.sh, rollback, getflywaynr),
@@ -201,7 +207,7 @@ steps:
         mkdir -p .plaintext-scripts &&
         git -C .plaintext-scripts init -q &&
         git -C .plaintext-scripts remote add origin https://github.com/Plaintext-Gmbh/plaintext-scripts.git &&
-        git -C .plaintext-scripts fetch --depth 1 origin b99b1721a5fe97c74ef8d9987760cdc699f11d9e &&
+        git -C .plaintext-scripts fetch --depth 1 origin caf32da856d8e26bb87d650220c3cf3d54465b4a &&
         git -C .plaintext-scripts checkout FETCH_HEAD
 
       # STALE-SCHUTZ, wortgleich aus der GitHub-Pipeline: alte Reports weg, BEVOR gemessen
