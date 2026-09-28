@@ -105,7 +105,7 @@ class StartseitenSchleifeChainTest {
         String ziel = seite.getHeaders().getFirst(HttpHeaders.LOCATION);
         assertNotEquals("/", pfad(ziel), "Ein 404 darf nicht auf / umleiten — / fuehrt zur Startseite zurueck");
         if (seite.getStatusCode().is3xxRedirection()) {
-            assertTrue(pfad(ziel).equals("/index.html"),
+            assertEquals("/index.html", pfad(ziel),
                     "Wenn umgeleitet wird, dann auf die feste Seite /index.html — war: " + ziel);
         } else {
             assertEquals(404, seite.getStatusCode().value());

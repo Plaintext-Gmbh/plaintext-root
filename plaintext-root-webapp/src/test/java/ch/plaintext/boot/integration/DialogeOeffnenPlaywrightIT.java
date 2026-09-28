@@ -442,11 +442,6 @@ class DialogeOeffnenPlaywrightIT {
         }
     }
 
-    /**
-     * Ein Knopf kommt in Frage, wenn sein {@code onclick} ein {@code .show()} enthaelt (so
-     * schreibt PrimeFaces das {@code oncomplete} eines Dialog-Oeffners hin) oder wenn seine
-     * Beschriftung nach „Neu / Bearbeiten / Erfassen …" aussieht.
-     */
     /** Traegt der Knopf {@code PF('…').show()} im onclick? (Karte 1332) */
     private static boolean ruftShowAuf(Locator knopf) {
         try {
@@ -457,6 +452,11 @@ class DialogeOeffnenPlaywrightIT {
         }
     }
 
+    /**
+     * Ein Knopf kommt in Frage, wenn sein {@code onclick} ein {@code .show()} enthaelt (so
+     * schreibt PrimeFaces das {@code oncomplete} eines Dialog-Oeffners hin) oder wenn seine
+     * Beschriftung nach „Neu / Bearbeiten / Erfassen …" aussieht.
+     */
     private static boolean oeffnetVermutlichEinenDialog(Locator knopf, String beschriftung) {
         try {
             String onclick = knopf.getAttribute("onclick");

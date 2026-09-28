@@ -107,8 +107,8 @@ class StartpageResolverTest {
     @Test
     void existsIn_looksUpTheFaceletsViewWithoutQuery() throws Exception {
         jakarta.servlet.ServletContext ctx = org.mockito.Mockito.mock(jakarta.servlet.ServletContext.class);
-        org.mockito.Mockito.when(ctx.getResource("/auszahlungen.xhtml")).thenReturn(new java.net.URL("file:/x"));
-        org.mockito.Mockito.when(ctx.getResource("/admin/uebersicht.xhtml")).thenReturn(new java.net.URL("file:/y"));
+        org.mockito.Mockito.when(ctx.getResource("/auszahlungen.xhtml")).thenReturn(java.net.URI.create("file:/x").toURL());
+        org.mockito.Mockito.when(ctx.getResource("/admin/uebersicht.xhtml")).thenReturn(java.net.URI.create("file:/y").toURL());
         java.util.function.Predicate<String> existiert = StartpageResolver.existsIn(ctx);
         org.junit.jupiter.api.Assertions.assertTrue(existiert.test("auszahlungen.html"));
         org.junit.jupiter.api.Assertions.assertTrue(existiert.test("auszahlungen.html?jahr=2026"));

@@ -82,7 +82,7 @@ public class PlaintextErrorViewResolver implements ErrorViewResolver {
      * the start page return a 404 in turn.
      */
     private static final Set<String> AUSGENOMMENE_PFADE = Set.of(
-            "/", "/index.html", "/error", "/favicon.ico");
+            "/", STARTSEITE, "/error", "/favicon.ico");
 
     @Override
     public ModelAndView resolveErrorView(HttpServletRequest request, HttpStatus status,

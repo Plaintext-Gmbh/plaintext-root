@@ -38,6 +38,9 @@ import java.util.Locale;
  */
 public final class EmbeddedPg {
 
+    /** Benutzer, Passwort und Wartungs-Datenbank des eingebetteten Servers. */
+    private static final String POSTGRES = "postgres";
+
     /**
      * If the CI hands in a database, THAT one is used instead of a server of our own.
      *
@@ -103,10 +106,10 @@ public final class EmbeddedPg {
             user = EXTERNER_USER;
             pw = EXTERNES_PW;
         } else {
-            anlegen(server().getJdbcUrl("postgres", "postgres"), "postgres", "postgres", db);
-            url = server().getJdbcUrl("postgres", db);
-            user = "postgres";
-            pw = "postgres";
+            anlegen(server().getJdbcUrl(POSTGRES, POSTGRES), POSTGRES, POSTGRES, db);
+            url = server().getJdbcUrl(POSTGRES, db);
+            user = POSTGRES;
+            pw = POSTGRES;
         }
         registry.add("spring.datasource.url", () -> url);
         registry.add("spring.datasource.username", () -> user);
