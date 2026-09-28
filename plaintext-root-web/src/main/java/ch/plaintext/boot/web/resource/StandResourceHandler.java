@@ -91,7 +91,7 @@ public class StandResourceHandler extends ResourceHandlerWrapper {
         if (pfad == null || stand == null || stand.isBlank()) {
             return pfad;
         }
-        if (pfad.contains(PARAMETER + "=") || pfad.matches(".*[?&]v=.*")) {
+        if (pfad.contains(PARAMETER + "=") || pfad.contains("?v=") || pfad.contains("&v=")) {
             return pfad;
         }
         return pfad + (pfad.indexOf('?') >= 0 ? '&' : '?') + PARAMETER + '=' + stand;

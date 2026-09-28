@@ -178,7 +178,7 @@ class RessourcenMarkePlaywrightIT {
                             + "— sonst belegt der Unterschied oben etwas anderes als die Marke.");
 
             // Beide Adressen liefern dieselbe Datei — die Marke ist ein Cache-Schluessel, kein
-            // Ausliefer-Schalter. Mojarra liest aus der Anfrage nur ln= und ignoriert den Rest;
+            // Ausliefer-Schalter. Mojarra liest aus der Anfrage nur ln= und ignoriert den Rest,
             // dieser Abruf ist der Beleg dafuer und nicht die Behauptung.
             pruefeAuslieferung(p, adresseVorher, "Abruf 1");
             pruefeAuslieferung(p, adresseNachher, "Abruf 2");

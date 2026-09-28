@@ -31,6 +31,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -473,7 +474,7 @@ class WatchMusterPlaywrightIT {
                         + "dem ein Tipp beim Bean ankommt — und die Methode kommt ueber ein "
                         + "Tag-File-Attribut (action=\"#{aktion}\"). Faellt das aus, sieht der "
                         + "Knopf richtig aus und tut nichts, auf allen sieben Seiten.");
-        assertFalse(vorher.equals(nachher),
+        assertNotEquals(vorher, nachher,
                 "'Zuletzt' stand schon vorher auf demselben Wert — dann belegt der Text nichts.");
     }
 
