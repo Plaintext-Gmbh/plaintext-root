@@ -36,6 +36,38 @@
     </suppress>
 
     <!--
+      FALSE POSITIVE: io.micrometer:micrometer-registry-prometheus (Karte 1338, 28.09.2026)
+
+      OWASP Dependency-Check ordnet die Java-Bibliothek micrometer-registry-prometheus der CPE
+      cpe:/a:prometheus:prometheus zu, also dem Prometheus-SERVER (Go). Dadurch meldet er dessen
+      CVEs gegen das Jar, aktuell CVE-2026-42154 (CVSS 7.5).
+
+      Laut NVD betrifft CVE-2026-42154 den Remote-Read-Endpunkt /api/v1/read des Prometheus-
+      Servers (snappy-Laenge nicht geprueft), behoben in Prometheus 3.5.3/3.11.3. Die CPE-Angaben
+      der NVD nennen nur prometheus:prometheus < 3.5.3 bzw. 3.6.0-3.11.3. micrometer ist ein
+      Client, der Metriken fuer /actuator/prometheus aufbereitet; er hat keinen Remote-Read-
+      Endpunkt und dekomprimiert keine snappy-Anfragen.
+
+      Vorgeschichte: Bis 28.09.2026 stand hier eine auf @1.17.0 gepinnte Suppression mit der
+      Begruendung "per naechstem Boot-Patch behoben". Das war falsch: Boot 4.1.1 zieht 1.17.1, und
+      der Fund blieb (quality-gate.properties aller fuenf Repos: BREACHED). Einen Patch kann es
+      auch nicht geben, weil der Fehler nicht in micrometer liegt; 1.17.1 ist zudem die neueste
+      Version.
+
+      Massnahme: Root-Cause-Suppression der falschen CPE-Zuordnung, nur fuer dieses Paket und nur
+      fuer die Server-CPE, mit offenem Versionsbereich (wie mxparser). Jede andere CPE-Zuordnung
+      des Jars wird weiter gescannt und gemeldet.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            micrometer-registry-prometheus wird faelschlich als Prometheus-Server erkannt; siehe
+            Kommentarblock oben. Root-Cause-Suppression der falschen CPE-Zuordnung (Karte 1338).
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer-registry-prometheus@.*$</packageUrl>
+        <cpe>cpe:/a:prometheus:prometheus</cpe>
+    </suppress>
+
+    <!--
       FRAMEWORK-TRANSITIVE CVEs (Spring Boot 4.1.0): angus-activation und
       micrometer-registry-prometheus. Diese Versionen sind von Spring Boot 4.1.0 zentral gepinnt
       (dependency management) und werden mit dem naechsten Boot-Maintenance-Release gepatcht.
@@ -46,7 +78,8 @@
       ENTFERNT 28.09.2026 (Karte 1338): die Suppression fuer micrometer-registry-prometheus@1.17.0
       (CVE-2026-42154). Spring Boot 4.1.1 zieht micrometer 1.17.1; die exakt gepinnte Suppression
       griff damit nicht mehr (PlaintextOwaspSuppressionsTest). Genau der hier vorgesehene Fall:
-      der neue Stand wird vom naechsten OWASP-Lauf bewertet. angus-activation 2.0.3 bleibt, Boot
+      der neue Stand wird vom naechsten OWASP-Lauf bewertet. Der Lauf vom 28.09.2026 meldete den
+      Fund an 1.17.1 erneut, er ist ein CPE-Fehltreffer, siehe den FALSE-POSITIVE-Block oben. angus-activation 2.0.3 bleibt, Boot
       4.1.1 hat es nicht angehoben.
 
       ENTFERNT 02.08.2026 (Karte 389): die Suppression fuer tomcat-embed-core@11.0.22 mit ihren

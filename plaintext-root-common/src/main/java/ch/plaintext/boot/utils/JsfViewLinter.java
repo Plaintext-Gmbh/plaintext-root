@@ -245,30 +245,39 @@ public final class JsfViewLinter {
         }
         Matcher ziel = AJAX_ZIEL.matcher(content);
         while (ziel.find()) {
-            for (String einzel : ziel.group(2).trim().split("[\\s,]+")) {
-                if (!einzel.contains(":")) {
-                    continue;
-                }
-                String[] stuecke = einzel.split(":");
-                // Everything but the last segment must be a NamingContainer.
-                for (int i = 0; i < stuecke.length - 1; i++) {
-                    String tagName = nichtContainer.get(stuecke[i]);
-                    if (tagName == null) {
-                        continue;
-                    }
-                    int lineNo = lineNumberAt(original, ziel.start());
-                    if (lineContent(original, lineNo).contains(EXEMPT_COMMENT)) {
-                        continue;
-                    }
-                    violations.add(new Violation(file, lineNo, RULE_SUCHAUSDRUCK_DURCH_NICHT_CONTAINER,
-                            ziel.group(1) + "=\"" + einzel + "\" runs through '" + stuecke[i]
-                                    + "', which is a <" + tagName + "> — not a NamingContainer. JSF throws "
-                                    + "IllegalArgumentException: " + stuecke[i] + " while rendering; the dialog "
-                                    + "stays empty and the overlay blocks the page. Fix: drop the intermediate "
-                                    + "segment (\":fm:" + stuecke[stuecke.length - 1] + "\"), or exempt it with <!-- "
-                                    + EXEMPT_COMMENT + " --> on the same line."));
-                }
+            int lineNo = lineNumberAt(original, ziel.start());
+            if (lineContent(original, lineNo).contains(EXEMPT_COMMENT)) {
+                continue;
             }
+            for (String einzel : ziel.group(2).trim().split("[\\s,]+")) {
+                pruefeEinzelausdruck(file, lineNo, ziel.group(1), einzel, nichtContainer, violations);
+            }
+        }
+    }
+
+    /**
+     * One search expression of an Ajax attribute: every segment but the last must be a
+     * NamingContainer. Split off from {@link #pruefeSuchausdruecke} (Sonar java:S3776).
+     */
+    private static void pruefeEinzelausdruck(Path file, int lineNo, String attribut, String einzel,
+                                             java.util.Map<String, String> nichtContainer,
+                                             List<Violation> violations) {
+        if (!einzel.contains(":")) {
+            return;
+        }
+        String[] stuecke = einzel.split(":");
+        for (int i = 0; i < stuecke.length - 1; i++) {
+            String tagName = nichtContainer.get(stuecke[i]);
+            if (tagName == null) {
+                continue;
+            }
+            violations.add(new Violation(file, lineNo, RULE_SUCHAUSDRUCK_DURCH_NICHT_CONTAINER,
+                    attribut + "=\"" + einzel + "\" runs through '" + stuecke[i]
+                            + "', which is a <" + tagName + "> — not a NamingContainer. JSF throws "
+                            + "IllegalArgumentException: " + stuecke[i] + " while rendering; the dialog "
+                            + "stays empty and the overlay blocks the page. Fix: drop the intermediate "
+                            + "segment (\":fm:" + stuecke[stuecke.length - 1] + "\"), or exempt it with <!-- "
+                            + EXEMPT_COMMENT + " --> on the same line."));
         }
     }
 
