@@ -10,19 +10,27 @@ import jakarta.faces.model.SelectItem;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.primefaces.component.api.ColumnAware;
 import org.primefaces.component.api.UIColumn;
+import org.primefaces.component.api.UITable;
 import org.primefaces.event.ColumnResizeEvent;
 import org.primefaces.event.ToggleEvent;
 import org.primefaces.event.data.PageEvent;
+import org.primefaces.event.data.SortEvent;
 import org.primefaces.expression.SearchExpressionUtils;
+import org.primefaces.model.SortMeta;
+import org.primefaces.model.SortOrder;
 import org.primefaces.model.Visibility;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -89,6 +97,16 @@ import java.util.stream.Collectors;
  * ({@link #TableSettings(String, boolean, int)}); ohne Angabe gilt {@value #VORGABE_ZEILEN}.
  * Eine Seite, die die Attribute nicht bindet, merkt von alledem nichts — nur die Checkboxen im
  * Bedienbereich bleiben dann ohne Wirkung.</p>
+ *
+ * <p><b>Sortierung (Karte 1346)</b> ebenso: die Tabelle bindet {@code sortBy} und meldet jedes
+ * Sortieren zurueck. Mehrspaltig (Strg-Klick, PrimeFaces-Vorgabe {@code sortMode="multiple"})
+ * geht mit.</p>
+ *
+ * <pre>{@code
+ * <p:dataTable id="tbl" ...
+ *              sortBy="#{projektBackingBean.anzeige.sortMeta}">
+ *     <p:ajax event="sort" listener="#{projektBackingBean.anzeige.onSort}"/>
+ * }</pre>
  *
  * <p><b>Herkunft der Breiten-Rechnerei.</b> Sie stammt aus einer einzelnen, sehr breiten
  * Projektuebersicht und ist dort teuer erkauft worden; die Begruendungen zu Gesamtbreite,
@@ -580,28 +598,212 @@ public class TableSettings implements Serializable {
      * @param tabelle Suchausdruck der Tabelle; unbekannt oder ohne Faces-Kontext passiert nichts
      */
     void tabelleAngleichen(String tabelle) {
+        UIData data = tabelleFinden(tabelle);
+        if (data != null) {
+            angleichen(data);
+        }
+    }
+
+    /** Die Tabelle zum Suchausdruck; {@code null}, wenn unbekannt oder ohne Faces-Kontext. */
+    private UIData tabelleFinden(String tabelle) {
         FacesContext faces = FacesContext.getCurrentInstance();
         if (faces == null || faces.getViewRoot() == null || tabelle == null || tabelle.isBlank()) {
-            return;
+            return null;
         }
         UIComponent gefunden;
         try {
             gefunden = SearchExpressionUtils.contextlessOptionalResolveComponent(faces, faces.getViewRoot(), tabelle);
         } catch (RuntimeException e) { // NOSONAR - eine Einstellung darf den Ajax-Aufruf nicht abbrechen
             log.debug("[TableSettings:{}] tabelleAngleichen | nicht aufloesbar | tabelle={} | {}", page, tabelle, e.getMessage());
-            return;
+            return null;
         }
         if (gefunden instanceof UIData data) {
-            angleichen(data);
-        } else {
-            log.debug("[TableSettings:{}] tabelleAngleichen | keine Tabelle | tabelle={}", page, tabelle);
+            return data;
         }
+        log.debug("[TableSettings:{}] tabelleAngleichen | keine Tabelle | tabelle={}", page, tabelle);
+        return null;
     }
 
     /** Der Kern von {@link #tabelleAngleichen(String)}, ohne die Suche — testbar ohne Faces. */
     void angleichen(UIData data) {
         data.setFirst(0);
         data.setRows(getRows());
+    }
+
+    // ── Sortierung (Karte 1346) ────────────────────────────────────────────
+
+    /**
+     * Wert fuer {@code sortBy} der Tabelle: die gespeicherte Sortierung als {@link SortMeta}, in
+     * Prioritaetsreihenfolge; {@code null}, solange der Benutzer nie sortiert hat (dann gilt,
+     * was die Seite selbst vorgibt).
+     *
+     * <p><b>Warum hier gefiltert wird.</b> PrimeFaces sucht zu jedem Eintrag die Spalte ueber
+     * das Feld und wirft eine {@code FacesException}, wenn es keine findet — die Seite antwortet
+     * dann mit HTTP 500, bei jedem Aufruf, bis jemand den Stand in der Datenbank loescht. Eine
+     * Spalte mit {@code rendered="false"} findet es nicht. Deshalb gehen nur Eintraege hinaus,
+     * deren Spalte bekannt und sichtbar ist, und — wenn die Tabelle beim Auswerten greifbar ist,
+     * wie beim ersten Aufbau in {@code DataTableRenderer.preRender} — deren Feld eine gerenderte,
+     * sortierbare Spalte der Tabelle wirklich hat. Ein Stand von einer Seite, die ihre Spalten
+     * seither umgebaut hat, sortiert dann eben nicht, statt die Seite zu sperren.</p>
+     *
+     * <p>PrimeFaces liest den Wert nur beim Aufbau der Tabelle, also bei jedem Seitenaufruf,
+     * nicht bei Ajax-Aufrufen. Genau dort wird die gespeicherte Sortierung gebraucht.</p>
+     */
+    public List<SortMeta> getSortMeta() {
+        if (state.getSortBy() == null) {
+            return null; // NOSONAR - null heisst fuer PrimeFaces "keine Vorgabe"
+        }
+        return sortMetaFuer(sortierbareFelderDerTabelle());
+    }
+
+    /**
+     * Der Kern von {@link #getSortMeta()}, mit den Feldern der Tabelle von aussen — testbar ohne Faces.
+     *
+     * @param felder Sortierfelder der gerenderten Spalten, {@code null} = nicht pruefbar
+     */
+    List<SortMeta> sortMetaFuer(Set<String> felder) {
+        List<TableSort> gespeichert = state.getSortBy();
+        if (gespeichert == null) {
+            return null; // NOSONAR - siehe getSortMeta
+        }
+        List<SortMeta> metas = new ArrayList<>();
+        for (TableSort sort : gespeichert) {
+            if (!anwendbar(sort, felder)) {
+                continue;
+            }
+            metas.add(SortMeta.builder()
+                    .field(sort.getField())
+                    .order(sort.isDescending() ? SortOrder.DESCENDING : SortOrder.ASCENDING)
+                    .priority(metas.size())
+                    .build());
+        }
+        return metas;
+    }
+
+    private boolean anwendbar(TableSort sort, Set<String> felder) {
+        if (sort == null || leer(sort.getField()) || leer(sort.getColumn())) {
+            return false;
+        }
+        boolean bekannt = columns.stream().anyMatch(c -> c.getKey().equals(sort.getColumn()));
+        if (!bekannt || !isVisible(sort.getColumn())) {
+            return false;
+        }
+        return felder == null || felder.contains(sort.getField());
+    }
+
+    /**
+     * Die Sortierfelder der gerenderten Spalten der Tabelle, die gerade ausgewertet wird; {@code null},
+     * wenn keine Tabelle greifbar ist (Unit-Test, Aufruf ausserhalb des Aufbaus). Dieselbe
+     * Rechnung wie in {@code UITable.initSortBy}, damit die Filterung genau das durchlaesst, was
+     * PrimeFaces danach auch findet.
+     */
+    private Set<String> sortierbareFelderDerTabelle() {
+        FacesContext faces = FacesContext.getCurrentInstance();
+        if (faces == null) {
+            return null; // NOSONAR - null = "nicht pruefbar", nicht "keine Felder"
+        }
+        try {
+            if (!(UIComponent.getCurrentComponent(faces) instanceof UITable<?> tabelle)) {
+                return null; // NOSONAR - siehe oben
+            }
+            Set<String> felder = new HashSet<>();
+            tabelle.forEachColumn(spalte -> {
+                SortMeta meta = SortMeta.of(faces, tabelle.getVar(), spalte);
+                if (meta != null && meta.getField() != null) {
+                    felder.add(meta.getField());
+                }
+                return true;
+            });
+            return felder;
+        } catch (RuntimeException e) { // NOSONAR - eine Einstellung darf den Seitenaufbau nicht abbrechen
+            log.debug("[TableSettings:{}] sortierbareFelderDerTabelle | nicht ermittelbar | {}", page, e.getMessage());
+            return null; // NOSONAR - siehe oben
+        }
+    }
+
+    /**
+     * Sortieren in der Tabelle ({@code <p:ajax event="sort">}): die aktiven Spalten werden in
+     * ihrer Prioritaet gespeichert. Eine Spalte, die sich keinem Schluessel zuordnen laesst,
+     * faellt weg — sie liesse sich beim naechsten Aufruf nicht auf Sichtbarkeit pruefen.
+     */
+    public void onSort(SortEvent event) {
+        if (event == null || event.getSortBy() == null) {
+            return;
+        }
+        UIComponent quelle = event.getComponent();
+        List<SortMeta> aktiv = event.getSortBy().values().stream()
+                .filter(Objects::nonNull)
+                .filter(m -> m.isActive() && !m.isHeaderRow())
+                .sorted()
+                .toList();
+        List<TableSort> neu = new ArrayList<>();
+        for (SortMeta meta : aktiv) {
+            String key = spalteZu(quelle, meta);
+            if (key == null || leer(meta.getField())) {
+                log.debug("[TableSettings:{}] onSort | nicht zuordenbar | columnKey={} | field={}",
+                        page, meta.getColumnKey(), meta.getField());
+                continue;
+            }
+            neu.add(new TableSort(key, meta.getField(), meta.getOrder() == SortOrder.DESCENDING));
+        }
+        if (neu.equals(state.getSortBy())) {
+            return;
+        }
+        state.setSortBy(neu);
+        persist();
+        log.debug("[TableSettings:{}] onSort | sortBy={}", page, neu);
+    }
+
+    /**
+     * Spaltenschluessel zu einer sortierten Spalte: ueber den Kopftext wie beim Resize, sonst
+     * ueber das Feld, wenn es selbst ein Schluessel der Seite ist (useradmin: {@code username}
+     * mit uebersetztem Kopftext).
+     */
+    String spalteZu(UIComponent quelle, SortMeta meta) {
+        if (quelle instanceof ColumnAware tabelle && meta.getColumnKey() != null) {
+            try {
+                UIColumn spalte = tabelle.findColumn(meta.getColumnKey());
+                String key = spalte == null ? null : keyFromHeader(spalte.getHeaderText());
+                if (key != null) {
+                    return key;
+                }
+            } catch (RuntimeException e) { // NOSONAR - findColumn wirft bei unbekanntem Schluessel
+                log.debug("[TableSettings:{}] spalteZu | {}", page, e.getMessage());
+            }
+        }
+        String field = meta.getField();
+        if (field != null && columns.stream().anyMatch(c -> c.getKey().equals(field))) {
+            return field;
+        }
+        return null;
+    }
+
+    /**
+     * Verwirft die Sortierzuordnung der Tabelle, damit PrimeFaces sie beim naechsten Rendern
+     * neu aus {@link #getSortMeta()} aufbaut — nach einem Profilwechsel, der eine andere
+     * Sortierung mitbringt.
+     */
+    void sortierungAngleichen(UIData data) {
+        if (data instanceof UITable<?> tabelle) {
+            tabelle.setSortByAsMap(null);
+        }
+    }
+
+    private static List<TableSort> kopie(List<TableSort> sortBy) {
+        if (sortBy == null) {
+            return null; // NOSONAR - null bleibt "nie sortiert"
+        }
+        List<TableSort> kopie = new ArrayList<>();
+        for (TableSort sort : sortBy) {
+            if (sort != null) {
+                kopie.add(new TableSort(sort.getColumn(), sort.getField(), sort.isDescending()));
+            }
+        }
+        return kopie;
+    }
+
+    private static boolean leer(String wert) {
+        return wert == null || wert.isBlank();
     }
 
     // ── Profile ─────────────────────────────────────────────────────────────
@@ -634,6 +836,7 @@ public class TableSettings implements Serializable {
         state.setPaginatorTop(profile.getPaginatorTop());
         state.setPaginatorBottom(profile.getPaginatorBottom());
         state.setRowsPerPage(profile.getRowsPerPage());
+        state.setSortBy(kopie(profile.getSortBy()));
         state.setActiveProfile(selectedProfile);
         save();
         meldung = profilMeldung(selectedProfile, "angewendet.");
@@ -649,7 +852,11 @@ public class TableSettings implements Serializable {
      */
     public void profilAnwenden(String tabelle) {
         onProfileSelected();
-        tabelleAngleichen(tabelle);
+        UIData data = tabelleFinden(tabelle);
+        if (data != null) {
+            angleichen(data);
+            sortierungAngleichen(data);
+        }
     }
 
     /** Rueckmeldung zu einem Profil, z. B. {@code Profil 'Kurz' angelegt.} */
@@ -733,6 +940,7 @@ public class TableSettings implements Serializable {
         profile.setPaginatorTop(state.getPaginatorTop());
         profile.setPaginatorBottom(state.getPaginatorBottom());
         profile.setRowsPerPage(state.getRowsPerPage());
+        profile.setSortBy(kopie(state.getSortBy()));
         state.getProfiles().put(name, profile);
     }
 

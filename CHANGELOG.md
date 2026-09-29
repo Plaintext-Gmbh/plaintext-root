@@ -25,6 +25,19 @@ exhaustive.
   user starts from their own record (or the defaults). The old record stays in the table.
 
 ### Added
+- **Table sorting stored per person** (Karte 1346). `TableState` and every profile carry a new
+  field `sortBy` (list of `TableSort{column, field, descending}` in priority order; `null` = the
+  page default, i.e. the behaviour so far). Multi-column sorting (`sortMode="multiple"`, the
+  PrimeFaces 15 default) is kept with its priority. It takes effect when the page binds
+  `sortBy="#{…anzeige.sortMeta}"` and `<p:ajax event="sort" listener="#{…anzeige.onSort}"/>` on
+  its `p:dataTable` — like widths, visibility and paginator. Columns are mapped by header text
+  (like resize), falling back to the sort field when it is itself a column key. Only entries whose
+  column is visible and whose field the rendered table really has are handed to PrimeFaces, which
+  otherwise throws `FacesException: No column with field …` (HTTP 500) on every page load.
+  Applying a profile resets the table's sort map so the profile's sorting shows at once.
+  `useradmin.xhtml` binds it (new `TabellenSortierungZweiBenutzerPlaywrightIT`).
+  **Consumer impact:** none without the two bindings; older roots ignore the new field.
+
 - **`pt:tableSettings`: paginator top/bottom, rows per page, one handle per column header**
   (Karte 1336). Two checkboxes switch the paginator above and below the table; "Zeilen pro Seite"
   offers 20 to 3000 (new: 250, 1000, 2000, 3000 plus the page default). Both are stored in
