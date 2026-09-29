@@ -3,6 +3,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
 
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +39,16 @@ class TrennerBreiteTest {
         prefs.setUniqueId("ada");
         ReflectionTestUtils.setField(bean, "storage", storage);
         ReflectionTestUtils.setField(bean, "prefs", prefs);
+        // Karte 1336: das Bean gleicht seine Einstellungen bei jedem Zugriff mit dem angemeldeten
+        // Benutzer ab. Ohne eigenen Kontext erbte dieser Test den Benutzer, den eine andere
+        // Testklasse im selben Thread stehen liess, und laedt dann dessen (leere) Einstellungen.
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("ada", "x", List.of()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test

@@ -37,43 +37,77 @@
     font-weight: bold;
 }
 
-/* Setzen-Knopf im Spaltenkopf - schmal, damit er neben Titel, Sortierpfeil und Ziehgriff
-   ueberhaupt noch Platz hat. */
+.pt-tablesettings-paginator {
+    margin-bottom: 10px;
+}
+
+/* EIN Viereck im Spaltenkopf (Karte 1336). Bis dahin standen dort zwei kleine: der Zieh-Anfasser
+   (als zwei Striche gemalt, 18 px am rechten Rand) und daneben der eigene Setzen-Knopf. Jetzt ist
+   der PrimeFaces-Anfasser selbst das Viereck - ziehen aendert die Breite, ein Klick setzt die
+   Spalte auf die eingestellte Breite (table-settings.js). Der Rueckfall-Knopf fuer Tabellen ohne
+   Anfasser sieht genauso aus.
+
+   Lage: oben rechts auf der Hoehe des Titels. "top" steht bewusst NICHT hier - PrimeFaces setzt
+   nach jedem Ziehen top:0px inline; der Abstand nach oben kommt deshalb aus margin-top. */
+.pt-tablesettings-breiten thead th {
+    position: relative;
+    /* Karte 1336, Abstand Strich/Eingabe: das Theme hat an den Kopfzellen keine senkrechten
+       Raender, nur 1rem Innenabstand - die Striche des alten Anfassers lagen damit 2 bis 3 px
+       neben dem Filterfeld. Rechts Platz fuer das Viereck (4 + 20 px) plus 8 px Luft; Titel und
+       Filterfeld enden jetzt dort. content-box im Theme: die gespeicherten Breiten bleiben die
+       Inhaltsbreiten, an ihnen aendert sich nichts. */
+    padding-right: 32px !important;
+}
+
+.pt-tablesettings-breiten thead th .ui-column-resizer,
 .ui-datatable thead th .pt-tablesettings-setzen {
-    float: right;
-    width: 13px;
+    position: absolute;
+    right: 4px;
+    width: 20px;
     height: 20px;
-    margin: 0 1px 0 0;
-    cursor: pointer;
-    text-align: center;
-    font-size: 10px;
-    line-height: 20px;
-    color: var(--pt-tablesettings-hint, #94a3b8);
-    user-select: none;
-}
-
-.ui-datatable thead th .pt-tablesettings-setzen:hover {
-    color: var(--pt-tablesettings-akzent, #2563eb);
-    background: var(--pt-tablesettings-akzent-bg, #dbeafe);
-}
-
-/* Der Anfasser zum Spaltenziehen ist im Theme unsichtbar - man muss ihn erraten. Zwei Striche
-   genuegen, damit sichtbar wird, dass hier gezogen werden kann. */
-.ui-datatable thead th .ui-column-resizer {
-    width: 18px;
+    margin: 0.75rem 0 0 0;
+    padding: 0;
+    float: none;
+    box-sizing: border-box;
+    border: 1px solid var(--pt-tablesettings-rand, #94a3b8);
+    border-radius: 3px;
+    background: var(--pt-tablesettings-bg, #f8fafc);
     cursor: col-resize;
-    background:
-        linear-gradient(to right, transparent 4px, #94a3b8 4px, #94a3b8 5px,
-                        transparent 5px, transparent 8px, #94a3b8 8px,
-                        #94a3b8 9px, transparent 9px);
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 18px 65%;
+    user-select: none;
+    z-index: 1;
 }
 
-.ui-datatable thead th .ui-column-resizer:hover {
-    background-color: var(--pt-tablesettings-akzent-bg, #dbeafe);
-    outline: 1px solid var(--pt-tablesettings-akzent-hell, #60a5fa);
+.pt-tablesettings-breiten thead th .ui-column-resizer {
+    top: 0;
+}
+
+.ui-datatable thead th .pt-tablesettings-setzen {
+    top: 0;
+    cursor: pointer;
+}
+
+/* Das Zeichen im Viereck: Pfeil in beide Richtungen - "hier geht es um die Breite". Als
+   ::after, weil PrimeFaces den Anfasser mit einem &nbsp; als Inhalt anlegt. */
+.pt-tablesettings-breiten thead th .ui-column-resizer::after,
+.ui-datatable thead th .pt-tablesettings-setzen::after {
+    content: "\2194";
+    position: absolute;
+    inset: 0;
+    text-align: center;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--pt-tablesettings-hint, #64748b);
+}
+
+.pt-tablesettings-breiten thead th .ui-column-resizer:hover,
+.ui-datatable thead th .pt-tablesettings-setzen:hover {
+    background: var(--pt-tablesettings-akzent-bg, #dbeafe);
+    border-color: var(--pt-tablesettings-akzent-hell, #60a5fa);
+}
+
+.pt-tablesettings-breiten thead th .ui-column-resizer:hover::after,
+.ui-datatable thead th .pt-tablesettings-setzen:hover::after {
+    color: var(--pt-tablesettings-akzent, #2563eb);
 }
 
 /* Unter dem Umbruch (derselbe Wert wie in mobile-responsive.css) gelten gespeicherte
@@ -91,6 +125,11 @@
     .pt-tablesettings-breiten thead th,
     .pt-tablesettings-breiten tbody td {
         width: auto !important;
+    }
+
+    /* Ohne Viereck braucht der Kopf auch keinen Platz dafuer. */
+    .pt-tablesettings-breiten thead th {
+        padding-right: 1rem !important;
     }
 
     .pt-tablesettings-breiten thead th .ui-column-resizer,

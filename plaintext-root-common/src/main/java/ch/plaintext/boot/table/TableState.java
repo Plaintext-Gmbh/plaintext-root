@@ -74,4 +74,18 @@ public class TableState implements Serializable {
 
     /** Zuletzt angewendetes Profil — nur fuer die Vorauswahl im Feld. */
     private String activeProfile = "";
+
+    /**
+     * Paginator oberhalb der Tabelle (Karte 1336). {@code null} heisst "nie verstellt" und ergibt
+     * das Verhalten vor diesem Feld: PrimeFaces zeigt den Paginator oben <i>und</i> unten.
+     * Deshalb {@code Boolean} und nicht {@code boolean} — ein gespeicherter Altstand ohne das Feld
+     * darf nicht auf "aus" fallen.
+     */
+    private Boolean paginatorTop;
+
+    /** Paginator unterhalb der Tabelle; {@code null} wie bei {@link #paginatorTop}: an. */
+    private Boolean paginatorBottom;
+
+    /** Zeilen pro Seite; {@code null} = Vorgabe der Seite (Karte 1336). */
+    private Integer rowsPerPage;
 }
