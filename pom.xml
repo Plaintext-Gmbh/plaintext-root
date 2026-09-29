@@ -135,7 +135,7 @@
         -->
         <spring-security.version>7.1.1</spring-security.version>
         <!-- Jackson 3: Boot 4.1.0 pinnt bereits 3.1.4 (CVE-2026-54512 gefixt); explizit als Sicherheitsnetz. -->
-        <jackson-bom.version>3.1.4</jackson-bom.version>
+        <jackson-bom.version>3.2.3</jackson-bom.version>
         <!--
           Jackson 2 (Karte 931): Boot 4.1.0 pinnt 2.21.4, darin CVE-2026-54515 (CVSS 5.3) —
           @JsonIgnoreProperties je Property wird in BeanDeserializerBase.createContextual()
@@ -147,7 +147,7 @@
           Beide Linien laufen NEBENEINANDER im Fat-Jar (jackson-databind-2.21.6 UND -3.1.4);
           verschwindet eine davon nach der Aenderung, ist mehr passiert als beabsichtigt.
         -->
-        <jackson-2-bom.version>2.21.6</jackson-2-bom.version>
+        <jackson-2-bom.version>2.22.3</jackson-2-bom.version>
         <!-- httpcore5: Boot 4.1.0 pinnt erst 5.4.2 -> hochziehen (CVE-2026-54399/54428). -->
         <httpcore5.version>5.4.4</httpcore5.version>
         <!--
@@ -170,12 +170,12 @@
           log4j-api: Boot 4.1.0 pinnt 2.25.4 — darin CVE-2026-49844 (CVSS 5.9, MapMessage-
           JSON-Serialisierung erzeugt ungueltiges JSON bei non-finite Floats), behoben ab 2.25.5.
         -->
-        <log4j2.version>2.25.5</log4j2.version>
+        <log4j2.version>2.26.1</log4j2.version>
         <!--
           pgjdbc: Boot 4.1.0 pinnt 42.7.11 — darin CVE-2026-54291 (CVSS 5.9, channelBinding=require
           faellt still von SCRAM-SHA-256-PLUS auf plain zurueck), behoben ab 42.7.12.
         -->
-        <postgresql.version>42.7.12</postgresql.version>
+        <postgresql.version>42.7.13</postgresql.version>
         <!--
           swagger-ui: springdoc 3.0.3 zieht 5.32.2, darin gebuendelt DOMPurify 3.3.2 mit
           CVE-2026-65898 (CVSS 7.2) und 12 weiteren DOMPurify-CVEs. Ab swagger-ui 5.32.11
