@@ -135,7 +135,7 @@
         -->
         <spring-security.version>7.1.1</spring-security.version>
         <!-- Jackson 3: Boot 4.1.0 pinnt bereits 3.1.4 (CVE-2026-54512 gefixt); explizit als Sicherheitsnetz. -->
-        <jackson-bom.version>3.1.4</jackson-bom.version>
+        <jackson-bom.version>3.2.3</jackson-bom.version>
         <!--
           Jackson 2 (Karte 931): Boot 4.1.0 pinnt 2.21.4, darin CVE-2026-54515 (CVSS 5.3) —
           @JsonIgnoreProperties je Property wird in BeanDeserializerBase.createContextual()
