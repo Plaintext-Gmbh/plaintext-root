@@ -8,6 +8,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -88,4 +89,10 @@ public class TableState implements Serializable {
 
     /** Zeilen pro Seite; {@code null} = Vorgabe der Seite (Karte 1336). */
     private Integer rowsPerPage;
+
+    /**
+     * Sortierung (Karte 1346), in Prioritaetsreihenfolge. {@code null} heisst "nie sortiert" und
+     * ergibt die Vorgabe der Seite; eine leere Liste heisst "ausdruecklich unsortiert".
+     */
+    private List<TableSort> sortBy;
 }

@@ -134,8 +134,15 @@
                          rowKey="#{obj.id}"
                          value="#{myUserBackingBean.users}"
                          filteredValue="#{myUserBackingBean.gefilterteUsers}"
+                         sortBy="#{myUserBackingBean.anzeige.sortMeta}"
                          rowIndexVar="ri">
 
+                <!--
+                    Karte 1346: the sorting belongs to the person like the column selection. sortBy
+                    is read when the table is built (every page load); the sort event stores each
+                    change. Within one session multiViewState keeps the last sorting anyway.
+                -->
+                <p:ajax event="sort" listener="#{myUserBackingBean.anzeige.onSort}"/>
                 <p:ajax event="rowSelect" listener="#{myUserBackingBean.select()}" update="fm"/>
                 <p:ajax event="rowUnselect" listener="#{myUserBackingBean.clearSelection()}" update="fm"/>
 

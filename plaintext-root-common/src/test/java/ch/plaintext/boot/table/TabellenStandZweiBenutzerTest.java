@@ -12,6 +12,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.primefaces.component.api.UIColumn;
+import org.primefaces.component.datatable.DataTable;
+import org.primefaces.event.data.SortEvent;
+import org.primefaces.model.SortMeta;
+import org.primefaces.model.SortOrder;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -19,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -145,6 +151,111 @@ class TabellenStandZweiBenutzerTest {
         assertThat(aNeu.getPaginatorPosition()).isEqualTo("both");
         assertThat(aNeu.isPaginator()).isTrue();
         assertThat(aNeu.getRows()).isEqualTo(200);
+    }
+
+    /**
+     * Karte 1346: die Sortierung geht denselben Weg — A sortiert mehrspaltig, B sieht die Vorgabe
+     * (keine Sortierung), A findet nach neuer Session die Sortierung wieder, als {@link SortMeta}
+     * fuer das {@code sortBy} der Tabelle.
+     */
+    @Test
+    @DisplayName("Sortierung: A sortiert, B sieht die Vorgabe, A nach neuer Session wieder sortiert")
+    void sortierungZweiBenutzer() {
+        TableSettings a = sitzung("anna@guild42.ch");
+        assertThat(a.getSortMeta()).isNull();                                  // Ausgangslage: Vorgabe
+        a.onSort(sortiert(meta("fm:tbl:c-typ", "typName", SortOrder.DESCENDING, 0),
+                meta("fm:tbl:c-name", "displayName", SortOrder.ASCENDING, 1),
+                meta("fm:tbl:c-nr", "mitgliedsnummer", SortOrder.UNSORTED, SortMeta.MIN_PRIORITY)));
+
+        // Positivkontrolle an der Ablage: die Sortierung steht im JSON von A.
+        assertThat(ablage.json("anna@guild42.ch")).contains("\"sortBy\"").contains("typName").contains("displayName");
+
+        TableSettings b = sitzung("bruno@guild42.ch");
+        assertThat(b.getSortMeta()).isNull();
+        assertThat(ablage.json("bruno@guild42.ch")).doesNotContain("typName");
+
+        TableSettings aNeu = sitzung("anna@guild42.ch");
+        assertThat(aNeu).isNotSameAs(a);
+        assertThat(aNeu.getState().getSortBy()).containsExactly(
+                new TableSort("typ", "typName", true),
+                new TableSort("name", "displayName", false));
+        List<SortMeta> metas = aNeu.getSortMeta();
+        assertThat(metas).extracting(SortMeta::getField).containsExactly("typName", "displayName");
+        assertThat(metas).extracting(SortMeta::getOrder).containsExactly(SortOrder.DESCENDING, SortOrder.ASCENDING);
+        assertThat(metas).extracting(SortMeta::getPriority).containsExactly(0, 1);
+    }
+
+    @Test
+    @DisplayName("Ein Stand von vor Karte 1346 (ohne sortBy) ergibt keine Sortierung, der Rest bleibt")
+    void altstandOhneSortierung() {
+        TableSettings a = sitzung("anna@guild42.ch");
+        a.setVisibleColumns(List.of("nr", "name"));
+        a.persist();
+        a.onSort(sortiert(meta("fm:tbl:c-name", "displayName", SortOrder.ASCENDING, 0)));
+
+        String neu = ablage.json("anna@guild42.ch");
+        String alt = neu.replaceAll(",\"sortBy\":\\[\"java\\.util\\.ArrayList\",\\[[^\\]]*\\]\\]", "");
+        assertThat(neu).contains("\"sortBy\"");                               // Positivkontrolle
+        assertThat(alt).doesNotContain("sortBy").doesNotContain("displayName");
+        ablage.setzeJson("anna@guild42.ch", alt);
+
+        TableSettings aNeu = sitzung("anna@guild42.ch");
+        assertThat(aNeu.getVisibleColumns()).containsExactly("nr", "name");     // der Rest ist noch da
+        assertThat(aNeu.getSortMeta()).isNull();
+    }
+
+    /**
+     * Die Gegenrichtung (Rollback auf root 1.730.0): eine aeltere Version kennt weder das Feld
+     * {@code sortBy} noch die Klasse {@link TableSort}. Nachgestellt mit einem Feld, dessen Klasse
+     * es wirklich nicht gibt — der Stand muss trotzdem lesbar bleiben, sonst verloere jeder
+     * Benutzer, der einmal sortiert hat, beim Rollback alle Einstellungen.
+     */
+    @Test
+    @DisplayName("Rollback: ein unbekanntes Feld mit unbekannter Klasse (wie sortBy fuer 1.730.0) bricht den Stand nicht")
+    void rollbackUnbekannteKlasse() {
+        TableSettings a = sitzung("anna@guild42.ch");
+        a.setVisibleColumns(List.of("nr", "name"));
+        a.persist();
+        a.onSort(sortiert(meta("fm:tbl:c-name", "displayName", SortOrder.ASCENDING, 0)));
+
+        String neu = ablage.json("anna@guild42.ch");
+        String zukunft = neu.replace("\"sortBy\":", "\"sortByZukunft\":")
+                .replace("ch.plaintext.boot.table.TableSort", "ch.plaintext.boot.table.GibtEsNicht");
+        assertThat(zukunft).contains("GibtEsNicht").doesNotContain("\"sortBy\":");   // Positivkontrolle
+        ablage.setzeJson("anna@guild42.ch", zukunft);
+
+        TableSettings aNeu = sitzung("anna@guild42.ch");
+        assertThat(aNeu.getVisibleColumns()).containsExactly("nr", "name");
+        assertThat(aNeu.getSortMeta()).isNull();
+    }
+
+    /** Die Tabelle der Seite: zu jeder Spalten-Id die Spalte mit ihrem Kopftext. */
+    private static DataTable tabelle() {
+        DataTable tabelle = mock(DataTable.class);
+        for (TableColumn spalte : SPALTEN) {
+            UIColumn column = mock(UIColumn.class);
+            when(column.getHeaderText()).thenReturn(spalte.getLabel());
+            when(tabelle.findColumn("fm:tbl:c-" + spalte.getKey())).thenReturn(column);
+        }
+        return tabelle;
+    }
+
+    private static SortMeta meta(String columnKey, String field, SortOrder order, int priority) {
+        SortMeta meta = SortMeta.builder().field(field).order(order).priority(priority).build();
+        ReflectionTestUtils.setField(meta, "columnKey", columnKey);
+        return meta;
+    }
+
+    private static SortEvent sortiert(SortMeta... metas) {
+        Map<String, SortMeta> map = new LinkedHashMap<>();
+        for (SortMeta meta : metas) {
+            map.put(meta.getColumnKey(), meta);
+        }
+        SortEvent event = mock(SortEvent.class);
+        DataTable tabelle = tabelle();
+        when(event.getSortBy()).thenReturn(map);
+        when(event.getComponent()).thenReturn(tabelle);
+        return event;
     }
 
     /**

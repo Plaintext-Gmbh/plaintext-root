@@ -8,6 +8,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -47,4 +48,7 @@ public class TableColumnProfile implements Serializable {
     private Boolean paginatorBottom;
 
     private Integer rowsPerPage;
+
+    /** Sortierung (Karte 1346); ein Profil aus der Zeit davor hat {@code null} = Vorgabe der Seite. */
+    private List<TableSort> sortBy;
 }
