@@ -42,6 +42,9 @@ class UserPreferencesBackingBeanExtendedTest {
 
     @BeforeEach
     void setUp() {
+        // Karte 1336: das Bean gleicht seine Einstellungen mit dem angemeldeten Benutzer ab — ein
+        // Kontext, den eine andere Testklasse im selben Thread stehen liess, darf hier nicht mitspielen.
+        SecurityContextHolder.clearContext();
         prefs = new UserPreference();
         prefs.setUniqueId("test@example.com");
         ReflectionTestUtils.setField(bean, "prefs", prefs);

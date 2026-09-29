@@ -12,7 +12,30 @@ exhaustive.
 
 ## [Unreleased]
 
+### Fixed
+- **User preferences belonged to `anonymousUser` instead of the person** (Karte 1336, 29 September
+  2026). `UserPreferencesBackingBean` is session-scoped and was created on the login page already
+  (`#{i18n.t(...)}` asks it for the language), i.e. for `anonymousUser`; the session survives the
+  login (`ChangeSessionIdAuthenticationStrategy`), so every user who came through the login page
+  wrote theme, language and table states into the one shared record `anonymousUser`. The bean
+  now checks the signed-in name on every access and loads that person's record when it changes;
+  without a sign-in it keeps an in-memory state that is never saved. Found by the new
+  `TabellenstandZweiBenutzerPlaywrightIT` (two users, useradmin column selection).
+  **Consumer impact:** settings stored so far under `anonymousUser` are no longer read; every
+  user starts from their own record (or the defaults). The old record stays in the table.
+
 ### Added
+- **`pt:tableSettings`: paginator top/bottom, rows per page, one handle per column header**
+  (Karte 1336). Two checkboxes switch the paginator above and below the table; "Zeilen pro Seite"
+  offers 20 to 3000 (new: 250, 1000, 2000, 3000 plus the page default). Both are stored in
+  `TableState` and in every profile (`paginatorTop`, `paginatorBottom`, `rowsPerPage`; `null` =
+  previous behaviour). They take effect when the page binds `paginator`, `paginatorPosition`,
+  `rows`, `rowsPerPageTemplate` and `<p:ajax event="page">` to the `TableSettings` object — the
+  same way as widths and visibility; the page default comes from the new constructor
+  `TableSettings(page, mitBreiten, vorgabeZeilen)`. In the column header the drag handle and the
+  separate ↔ button are merged into one square: drag = free width, click = set width. Header
+  cells get 32 px right padding, so title and filter field no longer touch the handle.
+
 - **Seven guards lifted from the consumers into `plaintext-root-archtests`, plus a new module
   `plaintext-root-testsupport`** (Karte 1298, 23 September 2026). `QualityGateTest`,
   `WurzelVersionVertragTest`, `XhtmlWohlgeformtVertragTest`, `AjaxZielAufloesbarTest`,

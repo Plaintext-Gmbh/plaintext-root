@@ -17,7 +17,9 @@
 #  pattern measured at 390px — spacing above the delete button, hint inside the
 #  button, category and duration inside the stop button, each with its
 #  counter-check at the state before) and RessourcenMarkePlaywrightIT (card 1311:
-#  two fetches of watch.css with a release in between — the address must differ).
+#  two fetches of watch.css with a release in between — the address must differ)
+#  and TabellenstandZweiBenutzerPlaywrightIT (card 1336: a column hidden by user A
+#  stays hidden for A in a new session and does not reach user B).
 #  All of them bring up the complete Spring
 #  application on a random port and drive it with Chromium.
 #  Node and the Playwright NPM world do NOT appear in it; the browser binding
@@ -225,7 +227,7 @@ steps:
       - >-
         mvn -B -pl plaintext-root-webapp -Dmaven.build.cache.enabled=false
         failsafe:integration-test failsafe:verify
-        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,WatchHandyLinkPlaywrightIT,WatchMusterPlaywrightIT,RessourcenMarkePlaywrightIT
+        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,WatchHandyLinkPlaywrightIT,WatchMusterPlaywrightIT,RessourcenMarkePlaywrightIT,TabellenstandZweiBenutzerPlaywrightIT
 
   berichte-bei-fehlschlag:
     image: mcr.microsoft.com/playwright/java:v1.60.0-noble

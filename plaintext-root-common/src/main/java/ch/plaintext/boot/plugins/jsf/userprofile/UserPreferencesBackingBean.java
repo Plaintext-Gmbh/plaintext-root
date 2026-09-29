@@ -17,6 +17,7 @@ import org.primefaces.PrimeFaces;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
@@ -56,6 +57,9 @@ import java.util.List;
 @SuppressWarnings("java:S6813") // begruendet im Klassenkommentar oben (Karte 1273) — nicht umbauen
 public class UserPreferencesBackingBean implements Serializable {
 
+    /** Name, den Spring Security einem nicht angemeldeten Aufruf gibt. */
+    static final String ANONYM = "anonymousUser";
+
     private static final String LAYOUT_MENU = "layout-menu";
     private static final String LAYOUT_TOPBAR = "layout-topbar";
     private static final String LAYOUT_HORIZONTAL = "layout-horizontal";
@@ -76,8 +80,74 @@ public class UserPreferencesBackingBean implements Serializable {
 
     @PostConstruct
     public void init() {
+        laden(angemeldeterBenutzer());
+
+        componentThemes.add(new ComponentTheme("Blue", "blue", "#2196F3"));
+        componentThemes.add(new ComponentTheme("Green", "green", "#4CAF50"));
+        componentThemes.add(new ComponentTheme("Orange", "orange", "#FF9800"));
+        componentThemes.add(new ComponentTheme("Turquoise", "turquoise", "#00BCD4"));
+        componentThemes.add(new ComponentTheme("Avocado", "avocado", "#AEC523"));
+        componentThemes.add(new ComponentTheme("Purple", "purple", "#7B1FA2"));
+        componentThemes.add(new ComponentTheme("Red", "red", "#F44336"));
+        componentThemes.add(new ComponentTheme("Yellow", "yellow", "#FFC107"));
+        componentThemes.add(new ComponentTheme("Lime", "lime", "#8BC34A"));
+        componentThemes.add(new ComponentTheme("Crimson", "crimson", "#B71C1C"));
+    }
+
+    /**
+     * Name des angemeldeten Benutzers, oder {@code null} fuer "niemand" — kein Kontext, nicht
+     * authentisiert oder anonym ({@code anonymousUser}).
+     */
+    static String angemeldeterBenutzer() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        String name = auth.getName();
+        return name == null || name.isBlank() || ANONYM.equals(name) ? null : name;
+    }
+
+    /**
+     * Karte 1336: die Einstellungen <b>des gerade angemeldeten Benutzers</b> — bei jedem Zugriff
+     * abgeglichen.
+     *
+     * <p><b>Warum das noetig ist.</b> Dieses Bean lebt in der Session, und die Session ueberlebt
+     * die Anmeldung: Spring Security wechselt nur die Session-Id und nimmt alle Attribute mit
+     * ({@code ChangeSessionIdAuthenticationStrategy}). Die Anmeldeseite ruft aber schon
+     * {@code #{i18n.t(...)}} auf, und {@code I18nEL} fragt dieses Bean nach der Sprache — es
+     * entstand also VOR der Anmeldung, fuer {@code anonymousUser}, und blieb danach so. Jede
+     * Einstellung jedes Benutzers, der ueber die Anmeldeseite kam — Theme, Sprache,
+     * Tabellenstaende —, landete im selben Datensatz {@code anonymousUser} und galt damit fuer
+     * alle. Gefunden am 29.09.2026 vom Zwei-Benutzer-Durchgang
+     * ({@code TabellenstandZweiBenutzerPlaywrightIT}): in der Ablage stand nach dem Einrichten
+     * durch A genau ein Datensatz, {@code anonymousUser}.</p>
+     *
+     * <p>Wechselt der angemeldete Name (Anmeldung, Impersonate), werden die Einstellungen des
+     * neuen Benutzers geladen. Ohne Anmeldung bleibt es bei einem Stand nur im Speicher, der nie
+     * gespeichert wird (siehe {@link #save()}).</p>
+     */
+    private UserPreference prefs() {
+        String benutzer = angemeldeterBenutzer();
+        if (benutzer != null && storage != null
+                && (prefs == null || !benutzer.equals(prefs.getUniqueId()))) {
+            log.info("PREFS-WECHSEL von {} auf {}",
+                    prefs == null || prefs.getUniqueId() == null ? "anonym" : Log.mail(prefs.getUniqueId()),
+                    Log.mail(benutzer));
+            laden(benutzer);
+        }
+        return prefs;
+    }
+
+    /**
+     * Laedt die Einstellungen von {@code username}; {@code null} ergibt einen anonymen Stand nur
+     * im Speicher — ohne Datensatz, damit nie wieder ein gemeinsamer {@code anonymousUser}
+     * entsteht.
+     */
+    private void laden(String username) {
+        if (username == null) {
+            prefs = new UserPreference();
+            return;
+        }
         prefs = storage.findByUniqueId(username);
 
         // Load theme from cookie if available (for seamless login experience)
@@ -144,17 +214,6 @@ public class UserPreferencesBackingBean implements Serializable {
             prefs.setUniqueId(username);
             save();
         }
-
-        componentThemes.add(new ComponentTheme("Blue", "blue", "#2196F3"));
-        componentThemes.add(new ComponentTheme("Green", "green", "#4CAF50"));
-        componentThemes.add(new ComponentTheme("Orange", "orange", "#FF9800"));
-        componentThemes.add(new ComponentTheme("Turquoise", "turquoise", "#00BCD4"));
-        componentThemes.add(new ComponentTheme("Avocado", "avocado", "#AEC523"));
-        componentThemes.add(new ComponentTheme("Purple", "purple", "#7B1FA2"));
-        componentThemes.add(new ComponentTheme("Red", "red", "#F44336"));
-        componentThemes.add(new ComponentTheme("Yellow", "yellow", "#FFC107"));
-        componentThemes.add(new ComponentTheme("Lime", "lime", "#8BC34A"));
-        componentThemes.add(new ComponentTheme("Crimson", "crimson", "#B71C1C"));
     }
 
     /**
@@ -190,12 +249,12 @@ public class UserPreferencesBackingBean implements Serializable {
      * @param spalten the visible column keys; {@code null} is treated as empty
      */
     public void merkeTabellenSpalten(String tabelle, List<String> spalten) {
-        if (prefs == null || tabelle == null || tabelle.isBlank()) {
+        if (prefs() == null || tabelle == null || tabelle.isBlank()) {
             log.debug("Spaltenauswahl nicht gespeichert (Tabelle '{}', Einstellungen geladen: {})",
                     tabelle, prefs != null);
             return;
         }
-        prefs.getTabellenSpalten().put(tabelle,
+        prefs().getTabellenSpalten().put(tabelle,
                 spalten == null ? new ArrayList<>() : new ArrayList<>(spalten));
         save();
     }
@@ -211,11 +270,11 @@ public class UserPreferencesBackingBean implements Serializable {
      * @return the stored column keys or {@code null}
      */
     public List<String> tabellenSpalten(String tabelle) {
-        if (prefs == null || tabelle == null) {
+        if (prefs() == null || tabelle == null) {
             // After a session has been restored, the transient field is empty.
             return null;
         }
-        return prefs.getTabellenSpalten().get(tabelle);
+        return prefs().getTabellenSpalten().get(tabelle);
     }
 
     /**
@@ -231,15 +290,15 @@ public class UserPreferencesBackingBean implements Serializable {
      * @param stand      the state to remember; {@code null} removes the entry
      */
     public void merkeTabellenStand(String schluessel, TableState stand) {
-        if (prefs == null || schluessel == null || schluessel.isBlank()) {
+        if (prefs() == null || schluessel == null || schluessel.isBlank()) {
             log.debug("Tabellenstand nicht gespeichert (Schluessel '{}', Einstellungen geladen: {})",
                     schluessel, prefs != null);
             return;
         }
         if (stand == null) {
-            prefs.getTabellenStaende().remove(schluessel);
+            prefs().getTabellenStaende().remove(schluessel);
         } else {
-            prefs.getTabellenStaende().put(schluessel, stand);
+            prefs().getTabellenStaende().put(schluessel, stand);
         }
         save();
     }
@@ -257,19 +316,19 @@ public class UserPreferencesBackingBean implements Serializable {
      * @return the stored state or {@code null}
      */
     public TableState tabellenStand(String schluessel) {
-        if (prefs == null || schluessel == null) {
+        if (prefs() == null || schluessel == null) {
             // After a session has been restored, the transient field is empty.
             return null;
         }
-        return prefs.getTabellenStaende().get(schluessel);
+        return prefs().getTabellenStaende().get(schluessel);
     }
 
     public void merkeTrennerBreite(String bereich, int breite) {
         int wert = breite <= 0 ? 0 : Math.clamp(breite, MIN_TRENNER_PX, MAX_TRENNER_PX);
         if ("wiki".equals(bereich)) {
-            prefs.setWikiTreeWidth(wert);
+            prefs().setWikiTreeWidth(wert);
         } else if ("mail".equals(bereich)) {
-            prefs.setMailListWidth(wert);
+            prefs().setMailListWidth(wert);
         } else {
             log.debug("Unbekannter Trenner-Bereich '{}' — ignoriert", bereich);
             return;
@@ -295,16 +354,16 @@ public class UserPreferencesBackingBean implements Serializable {
      *         settings are loaded — for the page both mean "use your own default"
      */
     public int trennerBreite(String bereich) {
-        if (prefs == null) {
+        if (prefs() == null) {
             // After a session has been restored the transient field is empty: better the
             // layout default than an exception thrown out of an attribute.
             return 0;
         }
         if ("wiki".equals(bereich)) {
-            return prefs.getWikiTreeWidth();
+            return prefs().getWikiTreeWidth();
         }
         if ("mail".equals(bereich)) {
-            return prefs.getMailListWidth();
+            return prefs().getMailListWidth();
         }
         log.debug("Unbekannter Trenner-Bereich '{}' — Vorgabe", bereich);
         return 0;
@@ -321,13 +380,20 @@ public class UserPreferencesBackingBean implements Serializable {
      * No longer synchronized — uses JPA @Version for concurrency control.
      */
     public void save() {
+        UserPreference aktuell = prefs();
+        if (aktuell == null || aktuell.getUniqueId() == null) {
+            // Ohne Anmeldung (Anmeldeseite) wird nichts gespeichert — ein Datensatz
+            // "anonymousUser" waere der gemeinsame Stand aller, siehe prefs().
+            log.debug("Einstellungen ohne angemeldeten Benutzer - nicht gespeichert");
+            return;
+        }
         try {
-            storage.save(prefs);
+            storage.save(aktuell);
         } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
             log.debug("Optimistic lock conflict on preferences save, retrying...");
             try {
                 // Reload and re-apply
-                UserPreference fresh = storage.findByUniqueId(prefs.getUniqueId());
+                UserPreference fresh = storage.findByUniqueId(aktuell.getUniqueId());
                 if (fresh != null) {
                     prefs = fresh;
                 }
@@ -349,29 +415,29 @@ public class UserPreferencesBackingBean implements Serializable {
                                    String topbarTheme, String menuTheme, String inputStyle,
                                    String menuStatic, String customColor) {
         if (componentTheme != null && !componentTheme.isEmpty()) {
-            prefs.setComponentTheme(componentTheme);
+            prefs().setComponentTheme(componentTheme);
         }
         if (darkMode != null && !darkMode.isEmpty()) {
-            prefs.setDarkMode(darkMode);
+            prefs().setDarkMode(darkMode);
         }
         if (menuMode != null && !menuMode.isEmpty()) {
-            prefs.setMenuMode(menuMode);
+            prefs().setMenuMode(menuMode);
         }
         if (topbarTheme != null && !topbarTheme.isEmpty()) {
-            prefs.setTopbarTheme(topbarTheme);
+            prefs().setTopbarTheme(topbarTheme);
         }
         if (menuTheme != null && !menuTheme.isEmpty()) {
-            prefs.setMenuTheme(menuTheme);
+            prefs().setMenuTheme(menuTheme);
         }
         if (inputStyle != null && !inputStyle.isEmpty()) {
-            prefs.setInputStyle(inputStyle);
+            prefs().setInputStyle(inputStyle);
         }
         if (menuStatic != null && !menuStatic.isEmpty()) {
-            prefs.setMenuStatic(Boolean.parseBoolean(menuStatic));
+            prefs().setMenuStatic(Boolean.parseBoolean(menuStatic));
         }
         if (customColor != null) {
             // Allow empty string to clear custom color
-            prefs.setCustomColor(customColor.isEmpty() ? null : customColor);
+            prefs().setCustomColor(customColor.isEmpty() ? null : customColor);
         }
         log.debug("✅ Session bean updated via REST API");
     }
@@ -379,11 +445,11 @@ public class UserPreferencesBackingBean implements Serializable {
     // ==================== Custom Color ====================
 
     public String getCustomColor() {
-        return prefs.getCustomColor();
+        return prefs().getCustomColor();
     }
 
     public void setCustomColor(String customColor) {
-        prefs.setCustomColor(customColor);
+        prefs().setCustomColor(customColor);
         save();
     }
 
@@ -393,7 +459,7 @@ public class UserPreferencesBackingBean implements Serializable {
      * Returns predefined themes filtered by the user's hidden colors set.
      */
     public List<ComponentTheme> getVisibleComponentThemes() {
-        java.util.Set<String> hidden = prefs.getHiddenColors();
+        java.util.Set<String> hidden = prefs().getHiddenColors();
         if (hidden == null || hidden.isEmpty()) {
             return componentThemes;
         }
@@ -410,70 +476,70 @@ public class UserPreferencesBackingBean implements Serializable {
      * Returns the user's custom named colors.
      */
     public List<UserPreference.NamedColor> getCustomColors() {
-        return prefs.getCustomColors();
+        return prefs().getCustomColors();
     }
 
     /**
      * Returns the set of hidden predefined color names.
      */
     public java.util.Set<String> getHiddenColors() {
-        return prefs.getHiddenColors();
+        return prefs().getHiddenColors();
     }
 
     /**
      * Returns true if any predefined colors are hidden.
      */
     public boolean isHasHiddenColors() {
-        java.util.Set<String> hidden = prefs.getHiddenColors();
+        java.util.Set<String> hidden = prefs().getHiddenColors();
         return hidden != null && !hidden.isEmpty();
     }
 
     // ==================== Delegating Getters ====================
 
     public String getDarkMode() {
-        return prefs.getDarkMode();
+        return prefs().getDarkMode();
     }
 
     public String getDarkMode2() {
-        return prefs.getDarkMode();
+        return prefs().getDarkMode();
     }
 
     public boolean isLightLogo() {
-        return prefs.isLightLogo();
+        return prefs().isLightLogo();
     }
 
     public String getComponentTheme() {
-        return prefs.getComponentTheme();
+        return prefs().getComponentTheme();
     }
 
     public String getMenuTheme() {
-        return prefs.getMenuTheme();
+        return prefs().getMenuTheme();
     }
 
     public String getTopbarTheme() {
-        return prefs.getTopbarTheme();
+        return prefs().getTopbarTheme();
     }
 
     public String getMenuMode() {
-        return prefs.getMenuMode();
+        return prefs().getMenuMode();
     }
 
     public String getInputStyle() {
-        return prefs.getInputStyle();
+        return prefs().getInputStyle();
     }
 
     public boolean isMenuStatic() {
-        return prefs.isMenuStatic();
+        return prefs().isMenuStatic();
     }
 
     // ==================== Language ====================
 
     public String getLanguage() {
-        return prefs.getLanguage();
+        return prefs().getLanguage();
     }
 
     public void setLanguage(String language) {
-        prefs.setLanguage(language);
+        prefs().setLanguage(language);
         save();
     }
 
@@ -484,21 +550,21 @@ public class UserPreferencesBackingBean implements Serializable {
         // darkMode is, among other things, taken unchecked from a theme cookie; a deviating value
         // (e.g. "auto"/empty) otherwise produced 'css/layout-<value>.css' -> RES_NOT_FOUND -> the browser
         // discards the stylesheet (strict MIME, application/json) and the layout/the cards break.
-        return "dark".equalsIgnoreCase(prefs.getDarkMode()) ? "layout-dark" : "layout-light";
+        return "dark".equalsIgnoreCase(prefs().getDarkMode()) ? "layout-dark" : "layout-light";
     }
 
     public String getTheme() {
-        return prefs.getComponentTheme() + '-' + prefs.getDarkMode();
+        return prefs().getComponentTheme() + '-' + prefs().getDarkMode();
     }
 
     public String getInputStyleClass() {
-        return prefs.getInputStyle().equals("filled") ? "ui-input-filled" : "";
+        return prefs().getInputStyle().equals("filled") ? "ui-input-filled" : "";
     }
 
     public String getMenuStaticClass() {
         // Only apply layout-static for sidebar mode
         // For horizontal/slim, layout-static doesn't make sense and causes flickering
-        if ("layout-sidebar".equals(prefs.getMenuMode()) && prefs.isMenuStatic()) {
+        if ("layout-sidebar".equals(prefs().getMenuMode()) && prefs().isMenuStatic()) {
             return "layout-static";
         }
         return "";
@@ -507,10 +573,10 @@ public class UserPreferencesBackingBean implements Serializable {
     // ==================== Setters with PrimeFaces Integration ====================
 
     public void setDarkMode2(String darkMode) {
-        prefs.setDarkMode(darkMode);
-        prefs.setMenuTheme(darkMode);
-        prefs.setTopbarTheme(darkMode);
-        prefs.setLightLogo(!darkMode.equals("light"));
+        prefs().setDarkMode(darkMode);
+        prefs().setMenuTheme(darkMode);
+        prefs().setTopbarTheme(darkMode);
+        prefs().setLightLogo(!darkMode.equals("light"));
         // Update data-theme attribute on HTML element to prevent flash
         PrimeFaces.current().executeScript("document.documentElement.setAttribute('data-theme', '" + darkMode + "')");
         // Save theme to cookie for consistent login experience
@@ -519,7 +585,7 @@ public class UserPreferencesBackingBean implements Serializable {
     }
 
     public void toggleDarkMode() {
-        String newTheme = "light".equals(prefs.getDarkMode()) ? "dark" : "light";
+        String newTheme = "light".equals(prefs().getDarkMode()) ? "dark" : "light";
         setDarkMode2(newTheme);
     }
 
@@ -601,57 +667,57 @@ public class UserPreferencesBackingBean implements Serializable {
     }
 
     public void setComponentTheme(String componentTheme) {
-        prefs.setComponentTheme(componentTheme);
+        prefs().setComponentTheme(componentTheme);
         save();
     }
 
     public void setMenuTheme(String menuTheme) {
-        prefs.setMenuTheme(menuTheme);
+        prefs().setMenuTheme(menuTheme);
         PrimeFaces.current().executeScript("Plaintext.Configurator.changeSectionTheme('" + menuTheme + "' , '" + LAYOUT_MENU + "')");
         save();
     }
 
     public void setTopbarTheme(String topbarTheme) {
-        prefs.setTopbarTheme(topbarTheme);
-        prefs.setLightLogo(!topbarTheme.equals("light"));
+        prefs().setTopbarTheme(topbarTheme);
+        prefs().setLightLogo(!topbarTheme.equals("light"));
 
         PrimeFaces.current().executeScript("Plaintext.Configurator.changeSectionTheme('" + topbarTheme + "' , '" + LAYOUT_TOPBAR + "')");
-        if (LAYOUT_HORIZONTAL.equals(prefs.getMenuMode())) {
+        if (LAYOUT_HORIZONTAL.equals(prefs().getMenuMode())) {
             PrimeFaces.current().executeScript("Plaintext.Configurator.changeSectionTheme('" + topbarTheme + "' , '" + LAYOUT_MENU + "')");
         }
         save();
     }
 
     public void setMenuMode(String menuMode) {
-        prefs.setMenuMode(menuMode);
+        prefs().setMenuMode(menuMode);
         if (LAYOUT_HORIZONTAL.equals(menuMode)) {
-            prefs.setMenuTheme(prefs.getTopbarTheme());
-            PrimeFaces.current().executeScript("Plaintext.Configurator.changeSectionTheme('" + prefs.getMenuTheme() + "' , '" + LAYOUT_MENU + "')");
+            prefs().setMenuTheme(prefs().getTopbarTheme());
+            PrimeFaces.current().executeScript("Plaintext.Configurator.changeSectionTheme('" + prefs().getMenuTheme() + "' , '" + LAYOUT_MENU + "')");
         }
         PrimeFaces.current().executeScript("Plaintext.Configurator.changeMenuMode('" + menuMode + "')");
         save();
     }
 
     public void setInputStyle(String inputStyle) {
-        prefs.setInputStyle(inputStyle);
+        prefs().setInputStyle(inputStyle);
         PrimeFaces.current().executeScript("Plaintext.Configurator.updateInputStyle('" + inputStyle + "')");
         save();
     }
 
     public void setMenuStatic(boolean menuStatic) {
-        prefs.setMenuStatic(menuStatic);
+        prefs().setMenuStatic(menuStatic);
         save();
     }
 
     public void toggleMenuStatic() {
-        prefs.setMenuStatic(!prefs.isMenuStatic());
+        prefs().setMenuStatic(!prefs().isMenuStatic());
         save();
     }
 
     public void onMenuTypeChange() {
-        if (LAYOUT_HORIZONTAL.equals(prefs.getMenuMode())) {
-            prefs.setMenuTheme(prefs.getTopbarTheme());
-            PrimeFaces.current().executeScript("Plaintext.Configurator.changeSectionTheme('" + prefs.getMenuTheme() + "' , '" + LAYOUT_MENU + "')");
+        if (LAYOUT_HORIZONTAL.equals(prefs().getMenuMode())) {
+            prefs().setMenuTheme(prefs().getTopbarTheme());
+            PrimeFaces.current().executeScript("Plaintext.Configurator.changeSectionTheme('" + prefs().getMenuTheme() + "' , '" + LAYOUT_MENU + "')");
         }
         save();
     }
