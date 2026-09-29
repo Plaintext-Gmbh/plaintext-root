@@ -7,7 +7,8 @@
                 xmlns:a="jakarta.faces.passthrough"
                 xmlns:p="http://primefaces.org/ui">
     <!--
-      pt:tableSettings — der Bedienbereich einer Tabelle: Profile, Spaltenwahl, Spaltenbreiten.
+      pt:tableSettings — der Bedienbereich einer Tabelle: Profile, Spaltenwahl, Spaltenbreiten,
+      Paginator oben/unten und Zeilen pro Seite (Karte 1336).
 
       WARUM ALS TAG UND NICHT ALS KOPIERVORLAGE:
       Diese Bedienung ist rund 300 Zeilen Markup, davon die Haelfte Ajax-Verdrahtung. Wer sie
@@ -43,6 +44,14 @@
                       (@widgetVar(...), @form und aehnliche PrimeFaces-Suchausdruecke).
         legend        Beschriftung des Bereichs; Vorgabe "Anzeige".
         spalten       Spalten im Kaestchen-Raster; Vorgabe 4.
+
+      PAGINATOR UND SEITENGROESSE (Karte 1336) wirken nur, wenn die Seite ihre Tabelle daran
+      bindet — derselbe Weg wie bei Breite (style/tableStyle) und Sichtbarkeit (rendered):
+        paginator="#{x.anzeige.paginator}" paginatorPosition="#{x.anzeige.paginatorPosition}"
+        rows="#{x.anzeige.rows}" rowsPerPageTemplate="#{x.anzeige.rowsPerPageTemplate}"
+        <p:ajax event="page" listener="#{x.anzeige.onPage}"/>
+      Die Vorgabe der Zeilen pro Seite gibt die Seite im Konstruktor mit:
+      new TableSettings("seite", true, 200).
 
       Der RUMPF des Tags wird als zusaetzliche Schnellschalter neben "Alle" und "Standard"
       gerendert — dort gehoeren seitenspezifische Knoepfe hin ("Nur Pflichtspalten", ...).
@@ -82,13 +91,44 @@
              Sichern-Knopf waere eine zusaetzliche Handlung fuer etwas, das niemand bewusst
              verwerfen will. -->
         <h:panelGroup layout="block" styleClass="pt-tablesettings-block">
+            <!-- Karte 1336: Paginator oben und unten einzeln abschaltbar, Zeilen pro Seite.
+                 Zuoberst, weil es die Einstellung ist, die man beim Blaettern sucht. Der Listener
+                 bekommt den Suchausdruck der Tabelle mit: er gleicht die Komponente selbst an
+                 (TableSettings.tabelleAngleichen - warum, steht dort). -->
+            <h:panelGroup layout="block" id="#{ptSettingsId}-paginator" styleClass="pt-tablesettings-paginator">
+                <h:outputText value="Paginator:" styleClass="pt-tablesettings-label"/>
+                <p:selectBooleanCheckbox id="#{ptSettingsId}-paginatorOben" value="#{anzeige.paginatorOben}"
+                                         itemLabel="oben" style="margin-right:12px;">
+                    <p:ajax process="@this" listener="#{anzeige.onPaginatorChange(tabelle)}"
+                            update="#{tabelle} #{ptSettingsId}-paginator"/>
+                </p:selectBooleanCheckbox>
+                <p:selectBooleanCheckbox id="#{ptSettingsId}-paginatorUnten" value="#{anzeige.paginatorUnten}"
+                                         itemLabel="unten" style="margin-right:18px;">
+                    <p:ajax process="@this" listener="#{anzeige.onPaginatorChange(tabelle)}"
+                            update="#{tabelle} #{ptSettingsId}-paginator"/>
+                </p:selectBooleanCheckbox>
+
+                <h:outputText value="Zeilen pro Seite:" styleClass="pt-tablesettings-label"/>
+                <p:selectOneMenu id="#{ptSettingsId}-seitengroesse" value="#{anzeige.seitengroesse}"
+                                 disabled="#{not anzeige.paginator}"
+                                 style="min-width:90px;">
+                    <f:selectItems value="#{anzeige.seitengroessen}"/>
+                    <p:ajax event="change" process="@this"
+                            listener="#{anzeige.onSeitengroesseChange(tabelle)}"
+                            update="#{tabelle}"/>
+                </p:selectOneMenu>
+                <h:outputText value="Ohne Paginator zeigt die Tabelle alle Zeilen."
+                              rendered="#{not anzeige.paginator}"
+                              styleClass="pt-tablesettings-hint"/>
+            </h:panelGroup>
+
             <h:outputText value="Profil:" styleClass="pt-tablesettings-label"/>
 
             <p:selectOneMenu id="#{ptSettingsId}-profileSelect" value="#{anzeige.selectedProfile}"
                              style="margin-right:6px; min-width:200px;">
                 <f:selectItems value="#{anzeige.profileNames}"/>
                 <p:ajax event="change" process="@this"
-                        listener="#{anzeige.onProfileSelected()}"
+                        listener="#{anzeige.profilAnwenden(tabelle)}"
                         update="#{tabelle} #{ptSettingsId}-cols #{ptSettingsId}-meldung"/>
             </p:selectOneMenu>
 
@@ -151,9 +191,9 @@
                               styleClass="pt-tablesettings-hint"/>
             </h:panelGroup>
 
-            <!-- Zweite Breite: auf diesen Wert setzt der kleine Knopf im Spaltenkopf eine einzelne
-                 Spalte. Von Hand ziehen trifft nie zweimal denselben Pixelwert — untereinander
-                 stehende Tabellen sahen deshalb nie gleich aus. -->
+            <!-- Zweite Breite: auf diesen Wert setzt ein Klick auf das Viereck im Spaltenkopf eine
+                 einzelne Spalte. Von Hand ziehen trifft nie zweimal denselben Pixelwert —
+                 untereinander stehende Tabellen sahen deshalb nie gleich aus. -->
             <h:panelGroup layout="block" style="margin-top:8px;" styleClass="pt-tablesettings-breitenblock"
                           rendered="#{anzeige.mitBreiten}">
                 <h:outputText value="Spaltenbreite:" styleClass="pt-tablesettings-label"/>
@@ -162,12 +202,12 @@
                                minValue="44" maxValue="4000"
                                styleClass="pt-tablesettings-zielbreite"
                                style="width:120px; margin-right:6px;"
-                               title="Breite, auf die der Knopf im Spaltenkopf eine Spalte setzt">
+                               title="Breite, auf die ein Klick auf das Viereck im Spaltenkopf eine Spalte setzt">
                     <p:ajax event="change" process="@this"
                             listener="#{anzeige.onZielSpaltenBreiteChange()}"
                             update="#{tabelle}"/>
                 </p:inputNumber>
-                <h:outputText value="Der Knopf im Spaltenkopf setzt eine Spalte auf diesen Wert."
+                <h:outputText value="Viereck im Spaltenkopf: ziehen stellt die Breite frei ein, klicken setzt die Spalte auf diesen Wert."
                               styleClass="pt-tablesettings-hint"/>
             </h:panelGroup>
         </h:panelGroup>
@@ -217,7 +257,8 @@
         </f:facet>
     </p:dialog>
 
-    <!-- Setzen-Knopf in jedem Spaltenkopf: setzt die Spalte auf die eingestellte Spaltenbreite.
+    <!-- Das Viereck in jedem Spaltenkopf (Karte 1336: eines statt zwei): ziehen aendert die Breite
+         (PrimeFaces-Anfasser), ein Klick setzt die Spalte auf die eingestellte Spaltenbreite.
          Der Server rendert die Tabelle danach mit den neuen Breiten — kein clientseitiges
          Nachrechnen noetig, p:dataTable kann resizeMode="expand" von Haus aus.
 

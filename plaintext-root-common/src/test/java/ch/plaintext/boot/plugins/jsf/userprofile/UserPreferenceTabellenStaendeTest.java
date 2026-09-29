@@ -52,10 +52,14 @@ class UserPreferenceTabellenStaendeTest {
         stand.setTargetColumnWidth(140);
         stand.setColsExpanded(true);
         stand.setActiveProfile("Breit");
+        stand.setPaginatorTop(false);          // Karte 1336
+        stand.setRowsPerPage(1000);
         TableColumnProfile profil = new TableColumnProfile();
         profil.getColumnWidths().put("nr", "88px");
         profil.getColumnVisible().put("typ", false);
         profil.setTotalWidth(1200);
+        profil.setPaginatorBottom(false);
+        profil.setRowsPerPage(3000);
         stand.getProfiles().put("Breit", profil);
 
         UserPreference pref = new UserPreference();
@@ -84,6 +88,13 @@ class UserPreferenceTabellenStaendeTest {
         assertThat(geladen.getProfiles()).containsKey("Breit");
         assertThat(geladen.getProfiles().get("Breit").getColumnWidths()).containsEntry("nr", "88px");
         assertThat(geladen.getProfiles().get("Breit").getTotalWidth()).isEqualTo(1200);
+        // Karte 1336: Paginator und Seitengroesse, am Stand und im Profil; nie gesetzt bleibt null.
+        assertThat(geladen.getPaginatorTop()).isFalse();
+        assertThat(geladen.getPaginatorBottom()).isNull();
+        assertThat(geladen.getRowsPerPage()).isEqualTo(1000);
+        assertThat(geladen.getProfiles().get("Breit").getPaginatorBottom()).isFalse();
+        assertThat(geladen.getProfiles().get("Breit").getPaginatorTop()).isNull();
+        assertThat(geladen.getProfiles().get("Breit").getRowsPerPage()).isEqualTo(3000);
     }
 
     /**

@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.table;
 
+import jakarta.faces.component.UIComponent;
+import jakarta.faces.component.UIData;
 import jakarta.faces.context.FacesContext;
 import jakarta.faces.model.SelectItem;
 import lombok.Getter;
@@ -11,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.primefaces.component.api.UIColumn;
 import org.primefaces.event.ColumnResizeEvent;
 import org.primefaces.event.ToggleEvent;
+import org.primefaces.event.data.PageEvent;
+import org.primefaces.expression.SearchExpressionUtils;
 import org.primefaces.model.Visibility;
 
 import java.io.Serializable;
@@ -19,6 +23,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /**
  * Die Anzeige-Steuerung einer Tabelle: Spaltenwahl, Spaltenbreiten und benannte Profile —
@@ -66,6 +72,24 @@ import java.util.Map;
  * Bedienbereich, {@link #widthStyle(String)} liefert leer, und die Tabelle rendert im
  * Auto-Layout. Die Spaltenwahl und die Profile bleiben.</p>
  *
+ * <p><b>Paginator und Seitengroesse (Karte 1336)</b> wirken auf demselben Weg wie Breite und
+ * Sichtbarkeit: die Seite bindet vier Attribute ihrer Tabelle an dieses Objekt und meldet das
+ * Blaettern zurueck.</p>
+ *
+ * <pre>{@code
+ * <p:dataTable id="tbl" ...
+ *              paginator="#{projektBackingBean.anzeige.paginator}"
+ *              paginatorPosition="#{projektBackingBean.anzeige.paginatorPosition}"
+ *              rows="#{projektBackingBean.anzeige.rows}"
+ *              rowsPerPageTemplate="#{projektBackingBean.anzeige.rowsPerPageTemplate}">
+ *     <p:ajax event="page" listener="#{projektBackingBean.anzeige.onPage}"/>
+ * }</pre>
+ *
+ * <p>Die Vorgabe der Seite fuer die Zeilen pro Seite kommt ueber den Konstruktor
+ * ({@link #TableSettings(String, boolean, int)}); ohne Angabe gilt {@value #VORGABE_ZEILEN}.
+ * Eine Seite, die die Attribute nicht bindet, merkt von alledem nichts — nur die Checkboxen im
+ * Bedienbereich bleiben dann ohne Wirkung.</p>
+ *
  * <p><b>Herkunft der Breiten-Rechnerei.</b> Sie stammt aus einer einzelnen, sehr breiten
  * Projektuebersicht und ist dort teuer erkauft worden; die Begruendungen zu Gesamtbreite,
  * Zielbreite und proportionalem Umrechnen stehen bei den jeweiligen Methoden. Wer sie liest,
@@ -88,6 +112,18 @@ public class TableSettings implements Serializable {
     /** Unter dieser Gesamtbreite ist die Tabelle nicht mehr bedienbar. */
     private static final int MIN_GESAMT_PX = 200;
 
+    /** Zeilen pro Seite, wenn die Seite keine eigene Vorgabe nennt — dieselbe wie {@code pt:table}. */
+    public static final int VORGABE_ZEILEN = 20;
+
+    /**
+     * Auswahl der Zeilen pro Seite (Karte 1336): die Werte, die member.xhtml bis dahin fest
+     * anbot (20 bis 500), dazu 250, 1000, 2000 und 3000. Die Vorgabe der Seite und ein
+     * gespeicherter Wert kommen immer dazu, auch wenn sie hier fehlen — sonst zeigte das
+     * Auswahlfeld einen Wert, den es nicht anbietet.
+     */
+    public static final List<Integer> SEITENGROESSEN =
+            List.of(20, 50, 100, 200, 250, 300, 500, 1000, 2000, 3000);
+
     /** Seitenschluessel, unter dem der Stand gespeichert wird. */
     @Getter
     private final String page;
@@ -95,6 +131,10 @@ public class TableSettings implements Serializable {
     /** Bietet die Seite Spaltenbreiten an (resizableColumns + Breitenfelder)? */
     @Getter
     private final boolean mitBreiten;
+
+    /** Zeilen pro Seite, solange der Benutzer nichts verstellt hat. */
+    @Getter
+    private final int vorgabeZeilen;
 
     /**
      * Transient wie die Services in den Backing-Beans: nach einer Session-Deserialisierung bleibt
@@ -124,8 +164,18 @@ public class TableSettings implements Serializable {
     private String meldung = "";
 
     public TableSettings(String page, boolean mitBreiten) {
+        this(page, mitBreiten, VORGABE_ZEILEN);
+    }
+
+    /**
+     * @param vorgabeZeilen Zeilen pro Seite ohne Benutzereinstellung, z.B. {@code 200} fuer eine
+     *                      Seite, die bisher {@code rows="200"} fest stehen hatte; Werte unter 1
+     *                      ergeben {@value #VORGABE_ZEILEN}
+     */
+    public TableSettings(String page, boolean mitBreiten, int vorgabeZeilen) {
         this.page = page;
         this.mitBreiten = mitBreiten;
+        this.vorgabeZeilen = vorgabeZeilen > 0 ? vorgabeZeilen : VORGABE_ZEILEN;
     }
 
     /**
@@ -424,6 +474,136 @@ public class TableSettings implements Serializable {
         meldung = "Spaltenbreiten zurueckgesetzt.";
     }
 
+    // ── Paginator und Seitengroesse (Karte 1336) ───────────────────────────
+
+    /** Paginator oberhalb der Tabelle; ohne Einstellung an (PrimeFaces-Vorgabe "both"). */
+    public boolean isPaginatorOben() {
+        return !Boolean.FALSE.equals(state.getPaginatorTop());
+    }
+
+    public void setPaginatorOben(boolean oben) {
+        state.setPaginatorTop(oben);
+    }
+
+    /** Paginator unterhalb der Tabelle; ohne Einstellung an. */
+    public boolean isPaginatorUnten() {
+        return !Boolean.FALSE.equals(state.getPaginatorBottom());
+    }
+
+    public void setPaginatorUnten(boolean unten) {
+        state.setPaginatorBottom(unten);
+    }
+
+    /** Wert fuer {@code paginator} der Tabelle: aus nur, wenn oben UND unten abgewaehlt sind. */
+    public boolean isPaginator() {
+        return isPaginatorOben() || isPaginatorUnten();
+    }
+
+    /** Wert fuer {@code paginatorPosition} der Tabelle: {@code both}, {@code top} oder {@code bottom}. */
+    public String getPaginatorPosition() {
+        if (isPaginatorOben() && isPaginatorUnten()) {
+            return "both";
+        }
+        return isPaginatorOben() ? "top" : "bottom";
+    }
+
+    /** Die eingestellten Zeilen pro Seite — Wert des Auswahlfelds im Bedienbereich. */
+    public Integer getSeitengroesse() {
+        Integer gespeichert = state.getRowsPerPage();
+        return gespeichert != null && gespeichert > 0 ? gespeichert : vorgabeZeilen;
+    }
+
+    /** Unbrauchbare Werte fallen auf die Vorgabe der Seite zurueck, statt das Formular aufzuhalten. */
+    public void setSeitengroesse(Integer zeilen) {
+        state.setRowsPerPage(zeilen != null && zeilen > 0 ? zeilen : null);
+    }
+
+    /**
+     * Wert fuer {@code rows} der Tabelle. Ohne Paginator {@code 0} = alle Zeilen: eine Tabelle
+     * mit {@code paginator="false"} und {@code rows="200"} zeigte sonst stumm nur die ersten 200
+     * Zeilen — ohne ein Bedienelement, mit dem man an die restlichen kaeme.
+     */
+    public int getRows() {
+        return isPaginator() ? getSeitengroesse() : 0;
+    }
+
+    /** Auswahl fuer das Feld im Bedienbereich, aufsteigend und ohne Doppelte. */
+    public List<Integer> getSeitengroessen() {
+        TreeSet<Integer> werte = new TreeSet<>(SEITENGROESSEN);
+        werte.add(vorgabeZeilen);
+        werte.add(getSeitengroesse());
+        return new ArrayList<>(werte);
+    }
+
+    /** Wert fuer {@code rowsPerPageTemplate} der Tabelle, z.B. {@code "20,50,100,..."}. */
+    public String getRowsPerPageTemplate() {
+        return getSeitengroessen().stream().map(String::valueOf).collect(Collectors.joining(","));
+    }
+
+    /**
+     * Blaettern in der Tabelle ({@code <p:ajax event="page">}): eine im Paginator gewaehlte
+     * Seitengroesse wird gespeichert wie jede andere Einstellung. Das reine Umblaettern
+     * aendert nichts und schreibt deshalb auch nichts.
+     */
+    public void onPage(PageEvent event) {
+        Integer zeilen = event == null ? null : event.getRowsPerPage();
+        if (zeilen == null || zeilen <= 0 || zeilen.equals(getSeitengroesse())) {
+            return;
+        }
+        state.setRowsPerPage(zeilen);
+        persist();
+        log.debug("[TableSettings:{}] onPage | rowsPerPage={}", page, zeilen);
+    }
+
+    /** Checkbox oben/unten geaendert: speichern und die Tabelle angleichen. */
+    public void onPaginatorChange(String tabelle) {
+        persist();
+        tabelleAngleichen(tabelle);
+    }
+
+    /** Seitengroesse im Bedienbereich geaendert: speichern und die Tabelle angleichen. */
+    public void onSeitengroesseChange(String tabelle) {
+        persist();
+        tabelleAngleichen(tabelle);
+    }
+
+    /**
+     * Schreibt Seitengroesse und Startzeile direkt in die Tabellenkomponente.
+     *
+     * <p><b>Warum die Bindung {@code rows="#{anzeige.rows}"} allein nicht reicht.</b> Sobald der
+     * Benutzer im Paginator selbst eine Seitengroesse waehlt, setzt PrimeFaces sie als lokalen
+     * Wert an der Komponente ({@code DataTable.updatePaginationData}). Ein lokaler Wert geht vor
+     * dem Ausdruck — jede spaetere Aenderung ueber den Bedienbereich liefe ins Leere, bis die
+     * Seite neu geladen wird. Und ohne Paginator muss die Tabelle bei Zeile 0 anfangen, sonst
+     * fehlen die Zeilen der bisher aufgeschlagenen Seiten.</p>
+     *
+     * @param tabelle Suchausdruck der Tabelle; unbekannt oder ohne Faces-Kontext passiert nichts
+     */
+    void tabelleAngleichen(String tabelle) {
+        FacesContext faces = FacesContext.getCurrentInstance();
+        if (faces == null || faces.getViewRoot() == null || tabelle == null || tabelle.isBlank()) {
+            return;
+        }
+        UIComponent gefunden;
+        try {
+            gefunden = SearchExpressionUtils.contextlessOptionalResolveComponent(faces, faces.getViewRoot(), tabelle);
+        } catch (RuntimeException e) { // NOSONAR - eine Einstellung darf den Ajax-Aufruf nicht abbrechen
+            log.debug("[TableSettings:{}] tabelleAngleichen | nicht aufloesbar | tabelle={} | {}", page, tabelle, e.getMessage());
+            return;
+        }
+        if (gefunden instanceof UIData data) {
+            angleichen(data);
+        } else {
+            log.debug("[TableSettings:{}] tabelleAngleichen | keine Tabelle | tabelle={}", page, tabelle);
+        }
+    }
+
+    /** Der Kern von {@link #tabelleAngleichen(String)}, ohne die Suche — testbar ohne Faces. */
+    void angleichen(UIData data) {
+        data.setFirst(0);
+        data.setRows(getRows());
+    }
+
     // ── Profile ─────────────────────────────────────────────────────────────
 
     public List<String> getProfileNames() {
@@ -451,10 +631,25 @@ public class TableSettings implements Serializable {
         state.setColumnVisible(new LinkedHashMap<>(profile.getColumnVisible()));
         state.setTotalWidth(profile.getTotalWidth());
         state.setTargetColumnWidth(profile.getTargetColumnWidth());
+        state.setPaginatorTop(profile.getPaginatorTop());
+        state.setPaginatorBottom(profile.getPaginatorBottom());
+        state.setRowsPerPage(profile.getRowsPerPage());
         state.setActiveProfile(selectedProfile);
         save();
         meldung = profilMeldung(selectedProfile, "angewendet.");
         log.info("[TableSettings:{}] applyProfile | name={}", page, selectedProfile);
+    }
+
+    /**
+     * Wie {@link #onProfileSelected()}, gleicht danach aber die Tabelle an: ein Profil kann eine
+     * andere Seitengroesse oder einen abgeschalteten Paginator mitbringen, siehe
+     * {@link #tabelleAngleichen(String)}.
+     *
+     * @param tabelle Suchausdruck der Tabelle, wie ihn das Tag bekommt (z.B. {@code ":fm:tbl"})
+     */
+    public void profilAnwenden(String tabelle) {
+        onProfileSelected();
+        tabelleAngleichen(tabelle);
     }
 
     /** Rueckmeldung zu einem Profil, z. B. {@code Profil 'Kurz' angelegt.} */
@@ -535,6 +730,9 @@ public class TableSettings implements Serializable {
         profile.setColumnVisible(new LinkedHashMap<>(state.getColumnVisible()));
         profile.setTotalWidth(state.getTotalWidth());
         profile.setTargetColumnWidth(state.getTargetColumnWidth());
+        profile.setPaginatorTop(state.getPaginatorTop());
+        profile.setPaginatorBottom(state.getPaginatorBottom());
+        profile.setRowsPerPage(state.getRowsPerPage());
         state.getProfiles().put(name, profile);
     }
 
