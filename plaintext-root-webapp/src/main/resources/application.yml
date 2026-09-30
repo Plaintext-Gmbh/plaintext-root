@@ -39,7 +39,9 @@ logging:
   level:
     root: WARN
     ch.plaintext: DEBUG
-    org.springframework.security: DEBUG
+    # SECURITY (card 1357): no DEBUG here. FilterChainProxy logs every request line including
+    # query parameters, e.g. /nosec/watch?t=<JWT>, and the CI logs of this public repo are public.
+    org.springframework.security: INFO
 
 server:
   forward-headers-strategy: FRAMEWORK
