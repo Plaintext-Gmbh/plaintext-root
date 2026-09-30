@@ -81,4 +81,12 @@ public class ApiTokenRevocationLookupJdbc implements ApiTokenRevocationLookup {
         jdbc.update("UPDATE api_token SET last_used_at = ?, use_count = use_count + 1, updated_at = ?"
                 + " WHERE id = ?", jetzt, jetzt, id);
     }
+
+    @Override
+    public boolean isUserDeleted(long userId) {
+        // Card 1359: same short-lived JDBC access as above, in the auth path of every request.
+        Integer treffer = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM my_user_entity WHERE id = ?", Integer.class, userId);
+        return treffer == null || treffer == 0;
+    }
 }
