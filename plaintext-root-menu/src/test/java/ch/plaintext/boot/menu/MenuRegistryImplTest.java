@@ -216,4 +216,37 @@ class MenuRegistryImplTest {
     void shouldImplementMenuRegistryInterface() {
         assertInstanceOf(MenuRegistry.class, menuRegistry);
     }
+
+    /**
+     * Card 1348: {@code getAllMenuItems()} threw a ClassCastException on every call with a real
+     * {@link MenuItemImpl} (the class did not implement {@link MenuRegistry.MenuItem}). The
+     * navigation search and the search visibility filter both went through this method.
+     */
+    @Nested
+    class GetAllMenuItems {
+
+        @Test
+        void liefertEchteMenuItemsOhneClassCastException() {
+            MenuItemImpl item = createItem("Rollenzuteilung", "Admin");
+            item.setCommand("rollenzuteilung.html");
+            item.setIcon("pi pi-users");
+            when(applicationContext.getBeansOfType(MenuItemImpl.class)).thenReturn(Map.of("r", item));
+
+            List<MenuRegistry.MenuItem> items = assertDoesNotThrow(() -> menuRegistry.getAllMenuItems());
+
+            assertEquals(1, items.size());
+            MenuRegistry.MenuItem mi = items.get(0);
+            assertSame(item, mi);
+            assertEquals("Rollenzuteilung", mi.getTitle());
+            assertEquals("Admin", mi.getParent());
+            assertEquals("Admin | Rollenzuteilung", mi.getFullTitle());
+            assertEquals("rollenzuteilung.html", mi.getLink());
+            assertEquals("pi pi-users", mi.getIcon());
+        }
+
+        @Test
+        void fullTitleOhneParentIstDerTitel() {
+            assertEquals("Home", createItem("Home", "").getFullTitle());
+        }
+    }
 }

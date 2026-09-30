@@ -21,7 +21,9 @@
 #  and TabellenstandZweiBenutzerPlaywrightIT (card 1336: a column hidden by user A
 #  stays hidden for A in a new session and does not reach user B) and
 #  TabellenSortierungZweiBenutzerPlaywrightIT (card 1346: the same for the sorting,
-#  plus a stale stored sort field that must not turn the page into an HTTP 500).
+#  plus a stale stored sort field that must not turn the page into an HTTP 500)
+#  and GlobaleSucheMenuPlaywrightIT (card 1348: the topbar search finds menu
+#  entries with typos, click/Enter navigates, a page without the right never shows).
 #  All of them bring up the complete Spring
 #  application on a random port and drive it with Chromium.
 #  Node and the Playwright NPM world do NOT appear in it; the browser binding
@@ -229,7 +231,7 @@ steps:
       - >-
         mvn -B -pl plaintext-root-webapp -Dmaven.build.cache.enabled=false
         failsafe:integration-test failsafe:verify
-        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,WatchHandyLinkPlaywrightIT,WatchMusterPlaywrightIT,RessourcenMarkePlaywrightIT,TabellenstandZweiBenutzerPlaywrightIT,TabellenSortierungZweiBenutzerPlaywrightIT
+        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,WatchHandyLinkPlaywrightIT,WatchMusterPlaywrightIT,RessourcenMarkePlaywrightIT,TabellenstandZweiBenutzerPlaywrightIT,TabellenSortierungZweiBenutzerPlaywrightIT,GlobaleSucheMenuPlaywrightIT
 
   berichte-bei-fehlschlag:
     image: mcr.microsoft.com/playwright/java:v1.60.0-noble

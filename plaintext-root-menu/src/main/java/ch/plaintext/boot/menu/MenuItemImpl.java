@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.menu;
 
+import ch.plaintext.MenuRegistry;
 import ch.plaintext.MenuVisibilityProvider;
 import ch.plaintext.modules.ModuleEnablementProvider;
 import lombok.Data;
@@ -24,7 +25,7 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Slf4j
-public class MenuItemImpl extends AbstractMenuItem {
+public class MenuItemImpl extends AbstractMenuItem implements MenuRegistry.MenuItem {
 
     public static final String ROOT_MENU_TITLE = "Root";
     public static final String ROLE_ROOT = "ROLE_ROOT";
@@ -357,6 +358,22 @@ public class MenuItemImpl extends AbstractMenuItem {
      */
     public boolean isRootBranchExemptFromMandate() {
         return isUnderRootMenu() && securityProvider != null && securityProvider.hasRole(ROLE_ROOT);
+    }
+
+    /**
+     * {@link MenuRegistry.MenuItem} view of {@link #buildFullTitle()}.
+     * <p>
+     * Card 1348: until then this class did NOT implement {@link MenuRegistry.MenuItem}, although
+     * {@link MenuRegistryImpl#getAllMenuItems()} cast every bean to it. Every call ended in a
+     * {@code ClassCastException} — the navigation search in the topbar never returned a single
+     * menu entry, and the {@code SearchService} silently switched its module visibility filter
+     * off (fail-open). Unit tests could not see it, they mock {@code MenuItem}.
+     *
+     * @return "Parent | Title", or just the title for a top-level menu
+     */
+    @Override
+    public String getFullTitle() {
+        return buildFullTitle();
     }
 
     /**
