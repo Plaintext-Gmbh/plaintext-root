@@ -141,7 +141,7 @@ services:
 
 steps:
   browser-smoke:
-    image: mcr.microsoft.com/playwright/java:v1.60.0-noble
+    image: mcr.microsoft.com/playwright/java:v1.63.0-noble
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plaintext_root
       SPRING_DATASOURCE_USERNAME: plaintext
@@ -232,7 +232,7 @@ steps:
         -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,WatchHandyLinkPlaywrightIT,WatchMusterPlaywrightIT,RessourcenMarkePlaywrightIT,TabellenstandZweiBenutzerPlaywrightIT,TabellenSortierungZweiBenutzerPlaywrightIT
 
   berichte-bei-fehlschlag:
-    image: mcr.microsoft.com/playwright/java:v1.60.0-noble
+    image: mcr.microsoft.com/playwright/java:v1.63.0-noble
     # Substitute for `actions/upload-artifact` with `if: failure()`. Woodpecker has
     # no artifact storage — the reports therefore go into the step log instead of
     # a download. That is the honest substitute, not an equivalent feature
