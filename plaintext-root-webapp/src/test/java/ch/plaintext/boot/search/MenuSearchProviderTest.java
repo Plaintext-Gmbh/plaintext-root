@@ -186,4 +186,85 @@ class MenuSearchProviderTest {
         assertTrue(hits.get(0).getScore() > hits.get(1).getScore()
                 || hits.stream().anyMatch(h -> h.getTitle().equals("Rechnungen") && h.getScore() == 80));
     }
+
+    // ------------------------------------------------------------------ card 1348: fuzzy
+
+    private static MenuSearchProvider provider(MenuRegistry.MenuItem... items) {
+        MenuRegistry registry = mock(MenuRegistry.class);
+        when(registry.getAllMenuItems()).thenReturn(List.of(items));
+        return new MenuSearchProvider(registry);
+    }
+
+    @Test
+    void tippfehlerFindetMenuepunkt() {
+        MenuSearchProvider p = provider(
+                item("Wanderreisen", "Freizeit", "wanderreisen.html", true),
+                item("Kontakte", "Stammdaten", "kontakte.html", true));
+
+        List<SearchHit> hits = p.search("wandereise", 10);
+        assertEquals(1, hits.size(), "'wandereise' (ein r zu wenig) => genau Wanderreisen");
+        assertEquals("wanderreisen.html", hits.get(0).getLink());
+        assertTrue(hits.get(0).getScore() < 60, "Fuzzy-Treffer liegt unter jedem woertlichen Titeltreffer");
+
+        assertEquals(1, p.search("wanderreisn", 10).size(), "ausgelassener Buchstabe am Ende");
+        assertEquals(1, p.search("wandrereisen", 10).size(), "vertauschte Nachbarn");
+        assertEquals(1, p.search("kontkate", 10).size(), "vertauschte Nachbarn, kurzes Wort");
+    }
+
+    @Test
+    void umlauteUndGrossschreibungWerdenAngeglichen() {
+        MenuSearchProvider p = provider(item("Menü-Diagnose", "Root", "menudiagnose.html", true));
+        assertEquals(1, p.search("menudiagnose", 10).size(), "ue ohne Umlaut, Bindestrich weg");
+        assertEquals(1, p.search("MENÜ diag", 10).size());
+    }
+
+    @Test
+    void leerOderUnsinnLiefertNichts() {
+        MenuSearchProvider p = provider(
+                item("Wanderreisen", "Freizeit", "wanderreisen.html", true),
+                item("Kontakte", "Stammdaten", "kontakte.html", true));
+        assertTrue(p.search("", 10).isEmpty());
+        assertTrue(p.search("   ", 10).isEmpty());
+        assertTrue(p.search("--", 10).isEmpty(), "nur Satzzeichen => nach Normalisierung leer");
+        assertTrue(p.search("qxqxqx", 10).isEmpty(), "Unsinn => keine Fuzzy-Treffer");
+        assertTrue(p.search("zzy", 10).isEmpty(), "kurze Woerter muessen woertlich passen");
+        // Positive control for the line above: the same length, literally contained, does hit.
+        assertEquals(1, p.search("kon", 10).size());
+    }
+
+    @Test
+    void unsichtbarerMenuepunktAuchNichtFuzzy() {
+        MenuSearchProvider p = provider(
+                item("Menüsteuerung", "Root", "mandatemenu.html", false),
+                item("Menü-Diagnose", "Root", "menudiagnose.html", true));
+
+        List<SearchHit> hits = p.search("menusteurung", 10);
+        assertTrue(hits.stream().noneMatch(h -> h.getLink().equals("mandatemenu.html")),
+                "ohne Recht nie, auch nicht per Tippfehler: " + hits);
+        // Positive control: the same item switched visible is found by exactly this query.
+        MenuSearchProvider sichtbar = provider(item("Menüsteuerung", "Root", "mandatemenu.html", true));
+        assertEquals(1, sichtbar.search("menusteurung", 10).size());
+    }
+
+    @Test
+    void woertlicherTrefferVorFuzzyTreffer() {
+        MenuSearchProvider p = provider(
+                item("Reisen", "Freizeit", "reisen.html", true),
+                item("Rechnungen", "Fakturierung", "rechnungen.html", true));
+        List<SearchHit> hits = p.search("reisen", 10);
+        assertEquals("reisen.html", hits.get(0).getLink());
+        assertEquals(100, hits.get(0).getScore());
+    }
+
+    @Test
+    void sortiertVorDemDeckel() {
+        MenuRegistry.MenuItem[] viele = new MenuRegistry.MenuItem[20];
+        for (int i = 0; i < 19; i++) {
+            viele[i] = item("Kontaktliste " + i, "Stammdaten", "k" + i + ".html", true);
+        }
+        viele[19] = item("Kontakte", "Stammdaten", "kontakte.html", true);
+        List<SearchHit> hits = provider(viele).search("kontakte", 2);
+        assertEquals(6, hits.size());
+        assertEquals("kontakte.html", hits.get(0).getLink(), "der exakte Treffer ueberlebt den Deckel");
+    }
 }

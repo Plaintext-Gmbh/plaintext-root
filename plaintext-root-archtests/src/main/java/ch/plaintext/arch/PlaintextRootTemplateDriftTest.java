@@ -175,7 +175,7 @@ class PlaintextRootTemplateDriftTest {
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/config.js",
                 "7cb8a6d7fea237eee2d5ad0f7183a8e3fcb2829d4dd064cdd8962cc14f2192b3");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/global-search.js",
-                "039fd4f0c3af9a29cf580a185ab2b0c6ec932c60c7ae9cf7df6d80b21baf3cef");
+                "020d5379125f0285ca9220f638f29c5ae92837a87f1dafae11ff30469671e4d3");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/menu.js",
                 "d062e2ff0861dd4af1d41302d7c602f44b9b83faf328f68b33e26262314bc8d7");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/primefaces-fixes.js",

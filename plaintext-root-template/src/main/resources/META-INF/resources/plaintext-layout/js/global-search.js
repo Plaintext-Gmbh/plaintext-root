@@ -140,7 +140,9 @@
         if (ev.key === 'ArrowDown') { ev.preventDefault(); setActive(activeIndex + 1); }
         else if (ev.key === 'ArrowUp') { ev.preventDefault(); setActive(activeIndex - 1); }
         else if (ev.key === 'Enter') {
-            if (activeIndex >= 0 && items[activeIndex]) { ev.preventDefault(); items[activeIndex].click(); }
+            // Karte 1348: Enter ohne markierten Treffer oeffnet den ersten (den besten) Treffer.
+            var ziel = activeIndex >= 0 ? items[activeIndex] : items[0];
+            if (ziel) { ev.preventDefault(); ziel.click(); }
         } else if (ev.key === 'Escape') {
             input.blur(); close();
         }

@@ -47,11 +47,9 @@ public class MenuRegistryImpl implements MenuRegistry {
     public List<MenuItem> getAllMenuItems() {
         Map<String, MenuItemImpl> menuBeans = applicationContext.getBeansOfType(MenuItemImpl.class);
 
-        // Return MenuItemImpl directly - it implements MenuItem interface
-        // Cast each item to MenuItem
-        return menuBeans.values().stream()
-            .map(item -> (MenuItem) item)
-            .collect(Collectors.toList());
+        // MenuItemImpl implements MenuItem (since card 1348 for real - before, this cast threw a
+        // ClassCastException on every call).
+        return new ArrayList<>(menuBeans.values());
     }
 
     /**

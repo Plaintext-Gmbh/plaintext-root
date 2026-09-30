@@ -9,11 +9,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
  * Root's own {@link SearchProvider}: makes every <b>visible</b> menu page findable by its title
- * ("jump to page X"). Pulls the targets straight from {@link MenuRegistry#getAllMenuItems()} and
+ * ("jump to page X"), tolerant of typos since card 1348 ({@link FuzzyText}). Pulls the targets straight from {@link MenuRegistry#getAllMenuItems()} and
  * uses their {@code link} as a deep link - exactly the pattern the concept prescribes.
  * <p>
  * Cross-cutting (not bound to a single module menu), hence {@link #isMenuScoped()}
@@ -48,7 +49,10 @@ public class MenuSearchProvider implements SearchProvider {
 
     @Override
     public List<SearchHit> search(String query, int limit) {
-        String needle = query.toLowerCase();
+        String needle = FuzzyText.normalize(query);
+        if (needle.isEmpty()) {
+            return List.of();
+        }
 
         List<MenuRegistry.MenuItem> items;
         try {
@@ -66,13 +70,14 @@ public class MenuSearchProvider implements SearchProvider {
             SearchHit hit = toHit(item, needle);
             if (hit != null) {
                 hits.add(hit);
-                if (hits.size() >= limit * 3L) {
-                    // coarse cap before sorting/capping in the SearchService
-                    break;
-                }
             }
         }
-        return hits;
+        // Best first, then a coarse cap; the SearchService caps per group once more. Sorting
+        // before the cap matters since card 1348: with fuzzy hits in the list, the first items
+        // in menu order are no longer necessarily the best ones.
+        hits.sort(Comparator.comparingInt(SearchHit::getScore).reversed());
+        long cap = limit * 3L;
+        return hits.size() > cap ? new ArrayList<>(hits.subList(0, (int) cap)) : hits;
     }
 
     /**
@@ -84,6 +89,7 @@ public class MenuSearchProvider implements SearchProvider {
             return null;
         }
         // Enforce visibility ourselves: only menus that the user/tenant is allowed to see.
+        // Checked BEFORE any matching, so a fuzzy hit can never surface a hidden page either.
         if (!isOnSafe(item)) {
             return null;
         }
@@ -100,27 +106,32 @@ public class MenuSearchProvider implements SearchProvider {
     }
 
     /**
-     * Score against the full visible menu path ({@code parent + " " + title}).
+     * Score against the full visible menu path ({@code parent + " " + title}), both sides
+     * {@link FuzzyText#normalize(String) normalised} (case, umlauts, punctuation).
      * <p>
-     * <b>Single token:</b> weighted as before — exact title &gt; title prefix &gt; contained title
-     * &gt; hit in the parent.
+     * <b>Literal tiers (unchanged):</b> single token — exact title (100) &gt; title prefix (80)
+     * &gt; contained in the title (60) &gt; contained in the parent (30). Several tokens — EVERY
+     * token has to occur somewhere in the path (50, 60 when one sits in the title); this way
+     * {@code "roo sett"} finds "Root | Settings".
      * <p>
-     * <b>Several tokens</b> (separated by spaces, "parts"): EVERY token has to occur as a substring
-     * somewhere in the path — this way {@code "roo sett"}, for example, finds the entry "Root | Settings"
-     * ({@code roo}→Root, {@code sett}→Settings). If a token is missing, there is no hit.
+     * <b>Fuzzy tier (card 1348), only when no literal tier matched:</b> every token has to match
+     * the title or the parent approximately ({@link FuzzyText#fuzzyErrors(String, String)}, spaces
+     * removed, the allowed number of errors grows with the token length). A title hit scores
+     * {@code 45 - 10 * errors}, a pure parent hit {@code 15 - 5 * errors}, at least 1 — always below
+     * the literal tiers of the same kind. "wandereise" thus finds "Wanderreisen".
      *
-     * @param needle query, already lower-cased
+     * @param needle query, already normalised and not empty
      * @return score &gt; 0 on a hit, otherwise 0
      */
     private int matchScore(String title, String parent, String needle) {
-        String t = title.toLowerCase();
-        String path = (parent != null && !parent.isBlank()) ? parent.toLowerCase() + " " + t : t;
-        String q = needle.trim();
-        if (q.isEmpty()) {
-            return 0;
-        }
-        String[] tokens = q.split("\\s+");
+        String t = FuzzyText.normalize(title);
+        String p = FuzzyText.normalize(parent);
+        String[] tokens = needle.split(" ");
+        int literal = literalScore(t, p, tokens);
+        return literal > 0 ? literal : fuzzyScore(t, p, tokens);
+    }
 
+    private static int literalScore(String t, String p, String[] tokens) {
         if (tokens.length == 1) {
             String n = tokens[0];
             if (t.equals(n)) {
@@ -132,13 +143,14 @@ public class MenuSearchProvider implements SearchProvider {
             if (t.contains(n)) {
                 return 60;
             }
-            if (parent != null && parent.toLowerCase().contains(n)) {
+            if (p.contains(n)) {
                 return 30;
             }
             return 0;
         }
 
         // Multiple tokens: ALL parts have to occur in the path (parent + title).
+        String path = p.isEmpty() ? t : p + " " + t;
         boolean titleHit = false;
         for (String tok : tokens) {
             if (!path.contains(tok)) {
@@ -150,6 +162,27 @@ public class MenuSearchProvider implements SearchProvider {
         }
         // Slightly higher when at least one part sits in the title itself (not only in the parent).
         return 50 + (titleHit ? 10 : 0);
+    }
+
+    private static int fuzzyScore(String t, String p, String[] tokens) {
+        String tc = FuzzyText.compact(t);
+        String pc = FuzzyText.compact(p);
+        int errors = 0;
+        boolean titleHit = false;
+        for (String tok : tokens) {
+            int inTitle = FuzzyText.fuzzyErrors(tok, tc);
+            int inParent = FuzzyText.fuzzyErrors(tok, pc);
+            if (inTitle < 0 && inParent < 0) {
+                return 0;
+            }
+            if (inTitle >= 0 && (inParent < 0 || inTitle <= inParent)) {
+                titleHit = true;
+                errors += inTitle;
+            } else {
+                errors += inParent;
+            }
+        }
+        return titleHit ? Math.max(1, 45 - 10 * errors) : Math.max(1, 15 - 5 * errors);
     }
 
     private boolean isOnSafe(MenuRegistry.MenuItem item) {
