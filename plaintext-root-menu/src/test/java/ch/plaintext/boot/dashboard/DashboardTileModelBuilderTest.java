@@ -187,4 +187,49 @@ class DashboardTileModelBuilderTest {
 
         assertEquals(1, result.size(), "Fehlerhafter Provider darf das Dashboard nicht abbrechen");
     }
+    /**
+     * Karte 1351: ausgeblendete Kacheln werden nicht angereichert (keine Abfrage fuer eine
+     * Kachel, die niemand sieht) — sie bleiben aber in der Liste, denn das Praedikat entscheidet
+     * ueber die Arbeit, nie ueber die Rechte.
+     */
+    @Test
+    void shouldSkipEnrichmentForRejectedIdsButKeepTheTile() {
+        TileItemImpl sichtbar = tile("a", "A", 1, "a.html");
+        TileItemImpl versteckt = tile("b", "B", 2, "b.html");
+        when(applicationContext.getBeansOfType(TileItemImpl.class))
+            .thenReturn(Map.of("t1", sichtbar, "t2", versteckt));
+
+        java.util.List<String> angereichert = new java.util.ArrayList<>();
+        DashboardTileDataProvider pa = provider("a", angereichert);
+        DashboardTileDataProvider pb = provider("b", angereichert);
+        when(applicationContext.getBeansOfType(DashboardTileDataProvider.class))
+            .thenReturn(Map.of("pa", pa, "pb", pb));
+
+        List<DashboardTileData> result = builder.buildTiles(id -> !"b".equals(id));
+
+        assertEquals(List.of("a", "b"), result.stream().map(DashboardTileData::getId).toList());
+        assertEquals(List.of("a"), angereichert, "nur a darf angereichert werden");
+        assertEquals("Status a", result.get(0).getStatusText());
+        assertNull(result.get(1).getStatusText());
+
+        // Positivkontrolle: ohne Praedikat laufen beide Provider.
+        angereichert.clear();
+        builder.buildTiles();
+        assertEquals(2, angereichert.size());
+    }
+
+    private static DashboardTileDataProvider provider(String id, java.util.List<String> protokoll) {
+        return new DashboardTileDataProvider() {
+            @Override
+            public String tileId() {
+                return id;
+            }
+
+            @Override
+            public void enrich(DashboardTileData tile) {
+                protokoll.add(id);
+                tile.setStatusText("Status " + id);
+            }
+        };
+    }
 }

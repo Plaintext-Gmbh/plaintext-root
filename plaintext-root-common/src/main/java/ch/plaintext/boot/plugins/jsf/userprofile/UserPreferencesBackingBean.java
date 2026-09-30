@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
 import ch.plaintext.boot.plugins.log.Log;
+import ch.plaintext.boot.startseite.StartseitenLayout;
 import ch.plaintext.boot.table.TableState;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.context.ExternalContext;
@@ -321,6 +322,40 @@ public class UserPreferencesBackingBean implements Serializable {
             return null;
         }
         return prefs().getTabellenStaende().get(schluessel);
+    }
+
+    /**
+     * Karte 1351: remember the start page arrangement — built like
+     * {@link #merkeTabellenStand(String, TableState)}: setting and saving belong together.
+     *
+     * @param schluessel the tenant (empty string without one)
+     * @param layout     the arrangement; {@code null} removes it ("Standard wiederherstellen")
+     */
+    public void merkeStartseite(String schluessel, StartseitenLayout layout) {
+        if (prefs() == null || schluessel == null) {
+            log.debug("Startseite nicht gespeichert (Schluessel '{}', Einstellungen geladen: {})",
+                    schluessel, prefs != null);
+            return;
+        }
+        if (layout == null) {
+            prefs().getStartseiten().remove(schluessel);
+        } else {
+            prefs().getStartseiten().put(schluessel, layout);
+        }
+        save();
+    }
+
+    /**
+     * The remembered start page arrangement of the tenant, or {@code null} for "never set up".
+     *
+     * @param schluessel the tenant (empty string without one)
+     * @return the stored arrangement or {@code null}
+     */
+    public StartseitenLayout startseite(String schluessel) {
+        if (prefs() == null || schluessel == null) {
+            return null;
+        }
+        return prefs().getStartseiten().get(schluessel);
     }
 
     public void merkeTrennerBreite(String bereich, int breite) {

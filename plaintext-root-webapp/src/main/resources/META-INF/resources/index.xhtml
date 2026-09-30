@@ -9,11 +9,108 @@
 
     <ui:define name="content">
         <style>
+            /* Karte 1351: two columns; a half tile takes one, a full tile the whole row. */
             .dashboard-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 1.5rem;
                 margin-top: 0.5rem;
+            }
+
+            .dashboard-zelle {
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+            }
+
+            .dashboard-zelle > .dashboard-tile.ui-card {
+                flex: 1 1 auto;
+                height: auto;
+            }
+
+            .dashboard-zelle.dashboard-voll {
+                grid-column: 1 / -1;
+            }
+
+            /* On the phone every tile takes the whole row, half or not. */
+            @media (max-width: 768px) {
+                .dashboard-grid {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+            }
+
+            .dashboard-kopf {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+                flex-wrap: wrap;
+            }
+
+            .dashboard-werkzeug {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                align-items: center;
+            }
+
+            .dashboard-hinweis {
+                color: var(--pt-text-color-secondary);
+                font-size: 0.9rem;
+                margin: 0.25rem 0 0.5rem 0;
+            }
+
+            .dashboard-bearbeiten .dashboard-zelle {
+                outline: 2px dashed var(--pt-surface-border);
+                outline-offset: 4px;
+                border-radius: 8px;
+            }
+
+            .dashboard-bearbeiten .dashboard-tile.ui-card:hover {
+                transform: none;
+            }
+
+            .dashboard-zelle.dashboard-ausgeblendet .dashboard-tile {
+                opacity: 0.45;
+            }
+
+            .dashboard-zelle.dashboard-zieht {
+                opacity: 0.4;
+            }
+
+            .dashboard-zelle.dashboard-ziel {
+                outline-color: var(--pt-primary-color);
+            }
+
+            .dashboard-edit {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.5rem 0.9rem;
+                padding: 0.4rem 0.2rem 0.6rem 0.2rem;
+                font-size: 0.9rem;
+            }
+
+            .dashboard-griff {
+                cursor: grab;
+                font-size: 1.1rem;
+                color: var(--pt-text-color-secondary);
+            }
+
+            .dashboard-pfeil {
+                border: 1px solid var(--pt-surface-border);
+                background: var(--pt-surface-0);
+                color: var(--pt-text-color);
+                border-radius: 6px;
+                padding: 0.2rem 0.45rem;
+                cursor: pointer;
+            }
+
+            .dashboard-edit label {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.3rem;
+                cursor: pointer;
             }
 
             .dashboard-tile.ui-card {
@@ -127,62 +224,140 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <h2 style="margin-bottom: 0.25rem;">
-                <i class="pi pi-th-large" style="margin-right: 0.5rem;"></i>Dashboard
-            </h2>
+            <div class="dashboard-kopf">
+                <h2 style="margin-bottom: 0.25rem;">
+                    <i class="pi pi-th-large" style="margin-right: 0.5rem;"></i>Dashboard
+                </h2>
 
-            <h:panelGroup layout="block" styleClass="dashboard-empty" rendered="#{empty dashboardBean.tiles}">
+                <h:panelGroup layout="block" styleClass="dashboard-werkzeug"
+                              rendered="#{not dashboardBean.bearbeiten and dashboardBean.kachelnVorhanden}">
+                    <p:commandButton id="anpassen" value="Anpassen" icon="pi pi-pencil"
+                                     styleClass="ui-button-flat"
+                                     action="#{dashboardBean.anpassen()}" process="@this" update="@form"/>
+                </h:panelGroup>
+
+                <h:panelGroup layout="block" styleClass="dashboard-werkzeug" rendered="#{dashboardBean.bearbeiten}">
+                    <p:commandButton id="speichern" value="Speichern" icon="pi pi-check"
+                                     styleClass="ui-button-success"
+                                     action="#{dashboardBean.speichern()}" process="@form"
+                                     update="@form :globalMessagesForm:globalGrowl"/>
+                    <p:commandButton id="abbrechen" value="Abbrechen" icon="pi pi-times"
+                                     styleClass="ui-button-secondary"
+                                     action="#{dashboardBean.abbrechen()}" process="@this" update="@form"/>
+                    <p:commandButton id="standard" value="Standard wiederherstellen" icon="pi pi-replay"
+                                     styleClass="ui-button-outlined"
+                                     action="#{dashboardBean.standardWiederherstellen()}" process="@this"
+                                     update="@form :globalMessagesForm:globalGrowl">
+                        <p:confirm header="Standard wiederherstellen?"
+                                   message="Alle Kacheln werden wieder eingeblendet, in der Standardreihenfolge und halb breit."
+                                   icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+                </h:panelGroup>
+            </div>
+
+            <h:panelGroup layout="block" styleClass="dashboard-hinweis" rendered="#{dashboardBean.bearbeiten}">
+                Kacheln am Griff ziehen oder mit den Pfeilen verschieben. Ausgeblendete Kacheln erscheinen
+                blass und nur hier. Erst „Speichern“ übernimmt die Änderungen.
+            </h:panelGroup>
+
+            <h:inputHidden id="anordnung" value="#{dashboardBean.anordnung}"/>
+
+            <h:panelGroup layout="block" styleClass="dashboard-empty"
+                          rendered="#{not dashboardBean.kachelnVorhanden}">
                 <i class="pi pi-inbox" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
                 Keine Module verfügbar.
             </h:panelGroup>
 
-            <div class="dashboard-grid">
+            <h:panelGroup layout="block" styleClass="dashboard-empty"
+                          rendered="#{dashboardBean.kachelnVorhanden and empty dashboardBean.tiles}">
+                Alle Kacheln sind ausgeblendet. Über „Anpassen“ lassen sie sich wieder einblenden.
+            </h:panelGroup>
+
+            <div class="dashboard-grid#{dashboardBean.bearbeiten ? ' dashboard-bearbeiten' : ''}"
+                 id="dashboard-grid" data-bearbeiten="#{dashboardBean.bearbeiten}">
                 <ui:repeat value="#{dashboardBean.tiles}" var="tile">
-                    <p:card styleClass="dashboard-tile">
+                    <div class="dashboard-zelle #{tile.halfWidth ? 'dashboard-halb' : 'dashboard-voll'}#{tile.hidden ? ' dashboard-ausgeblendet' : ''}"
+                         data-kachel="#{tile.id}"
+                         data-sichtbar="#{tile.hidden ? '0' : '1'}"
+                         data-halb="#{tile.halfWidth ? '1' : '0'}"
+                         draggable="#{dashboardBean.bearbeiten ? 'true' : 'false'}">
 
-                        <h:graphicImage value="#{tile.image}" styleClass="dashboard-tile-image"
-                                        rendered="#{not empty tile.image}"/>
-
-                        <div class="dashboard-tile-head">
-                            <h:panelGroup rendered="#{not empty tile.icon}">
-                                <i class="#{tile.icon} dashboard-tile-icon"></i>
-                            </h:panelGroup>
-                            <span class="dashboard-tile-title">#{tile.title}</span>
-                        </div>
-
-                        <h:panelGroup layout="block" styleClass="dashboard-status"
-                                      rendered="#{not empty tile.statusText}">
-                            <span class="dashboard-status-dot"
-                                  style="background: #{empty tile.safeStatusColor ? '#888888' : tile.safeStatusColor};"></span>
-                            <span>#{tile.statusText}</span>
+                        <h:panelGroup layout="block" styleClass="dashboard-edit" rendered="#{dashboardBean.bearbeiten}">
+                            <i class="pi pi-bars dashboard-griff" title="Ziehen zum Verschieben"></i>
+                            <button type="button" class="dashboard-pfeil" data-aktion="hoch"
+                                    title="Nach vorne" aria-label="Nach vorne">
+                                <i class="pi pi-arrow-up"></i>
+                            </button>
+                            <button type="button" class="dashboard-pfeil" data-aktion="runter"
+                                    title="Nach hinten" aria-label="Nach hinten">
+                                <i class="pi pi-arrow-down"></i>
+                            </button>
+                            <label>
+                                <ui:fragment rendered="#{not tile.hidden}">
+                                    <input type="checkbox" class="dashboard-schalter-sichtbar" checked="checked"/>
+                                </ui:fragment>
+                                <ui:fragment rendered="#{tile.hidden}">
+                                    <input type="checkbox" class="dashboard-schalter-sichtbar"/>
+                                </ui:fragment>
+                                Sichtbar
+                            </label>
+                            <label>
+                                <ui:fragment rendered="#{tile.halfWidth}">
+                                    <input type="checkbox" class="dashboard-schalter-halb" checked="checked"/>
+                                </ui:fragment>
+                                <ui:fragment rendered="#{not tile.halfWidth}">
+                                    <input type="checkbox" class="dashboard-schalter-halb"/>
+                                </ui:fragment>
+                                Halbe Breite
+                            </label>
                         </h:panelGroup>
 
-                        <h:panelGroup layout="block" styleClass="dashboard-info"
-                                      rendered="#{not empty tile.infoText}">
-                            <h:outputText value="#{tile.infoText}"/>
-                        </h:panelGroup>
+                        <p:card styleClass="dashboard-tile">
 
-                        <div class="dashboard-footer">
-                            <ui:repeat value="#{tile.actions}" var="action">
-                                <a href="#{empty action.safeLink ? '#' : action.safeLink}" class="dashboard-action">
-                                    <h:panelGroup rendered="#{not empty action.icon}">
-                                        <i class="#{action.icon}"></i>
-                                    </h:panelGroup>
-                                    <span>#{action.label}</span>
-                                </a>
-                            </ui:repeat>
+                            <h:graphicImage value="#{tile.image}" styleClass="dashboard-tile-image"
+                                            rendered="#{not empty tile.image}"/>
 
-                            <h:panelGroup rendered="#{tile.dropdown != null and not empty tile.dropdown.options}">
-                                <select class="dashboard-dropdown">
-                                    <option value="">#{empty tile.dropdown.label ? 'Auswählen…' : tile.dropdown.label}</option>
-                                    <ui:repeat value="#{tile.dropdown.options}" var="opt">
-                                        <option value="#{empty opt.safeLink ? '' : opt.safeLink}">#{opt.label}</option>
-                                    </ui:repeat>
-                                </select>
+                            <div class="dashboard-tile-head">
+                                <h:panelGroup rendered="#{not empty tile.icon}">
+                                    <i class="#{tile.icon} dashboard-tile-icon"></i>
+                                </h:panelGroup>
+                                <span class="dashboard-tile-title">#{tile.title}</span>
+                            </div>
+
+                            <h:panelGroup layout="block" styleClass="dashboard-status"
+                                          rendered="#{not empty tile.statusText}">
+                                <span class="dashboard-status-dot"
+                                      style="background: #{empty tile.safeStatusColor ? '#888888' : tile.safeStatusColor};"></span>
+                                <span>#{tile.statusText}</span>
                             </h:panelGroup>
-                        </div>
 
-                    </p:card>
+                            <h:panelGroup layout="block" styleClass="dashboard-info"
+                                          rendered="#{not empty tile.infoText}">
+                                <h:outputText value="#{tile.infoText}"/>
+                            </h:panelGroup>
+
+                            <div class="dashboard-footer">
+                                <ui:repeat value="#{tile.actions}" var="action">
+                                    <a href="#{empty action.safeLink ? '#' : action.safeLink}" class="dashboard-action">
+                                        <h:panelGroup rendered="#{not empty action.icon}">
+                                            <i class="#{action.icon}"></i>
+                                        </h:panelGroup>
+                                        <span>#{action.label}</span>
+                                    </a>
+                                </ui:repeat>
+
+                                <h:panelGroup rendered="#{tile.dropdown != null and not empty tile.dropdown.options}">
+                                    <select class="dashboard-dropdown">
+                                        <option value="">#{empty tile.dropdown.label ? 'Auswählen…' : tile.dropdown.label}</option>
+                                        <ui:repeat value="#{tile.dropdown.options}" var="opt">
+                                            <option value="#{empty opt.safeLink ? '' : opt.safeLink}">#{opt.label}</option>
+                                        </ui:repeat>
+                                    </select>
+                                </h:panelGroup>
+                            </div>
+
+                        </p:card>
+                    </div>
                 </ui:repeat>
             </div>
         </h:form>
