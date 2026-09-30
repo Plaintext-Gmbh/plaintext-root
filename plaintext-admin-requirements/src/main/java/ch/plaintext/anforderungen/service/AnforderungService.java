@@ -50,8 +50,20 @@ public class AnforderungService {
         return repository.findByErsteller(username);
     }
 
+    /**
+     * Loads a requirement of the <b>current tenant</b> (card 1360, HB1).
+     *
+     * <p>Until 30.09.2026 this was a plain {@code findById}: the detail pages
+     * ({@code anforderungdetail.xhtml?id=}, {@code claudesummary.xhtml?id=}) showed and edited any
+     * requirement whose id was typed into the address bar, including those of other tenants. A
+     * foreign id now yields {@link Optional#empty()} — the page shows "not found", exactly like an
+     * id that does not exist, so the answer does not reveal whether the id is taken elsewhere.
+     */
     public Optional<Anforderung> findById(Long id) {
-        return repository.findById(id);
+        if (id == null) {
+            return Optional.empty();
+        }
+        return repository.findByIdAndMandat(id, getCurrentMandat());
     }
 
     @Transactional
@@ -65,10 +77,13 @@ public class AnforderungService {
         return repository.save(anforderung);
     }
 
+    /** Deletes a requirement of the current tenant; a foreign or unknown id is ignored (card 1360, HB1). */
     @Transactional
     public void delete(Long id) {
-        repository.deleteById(id);
-        log.info("Deleted anforderung: id={}", id);
+        findById(id).ifPresentOrElse(a -> {
+            repository.delete(a);
+            log.info("Deleted anforderung: id={}", id);
+        }, () -> log.warn("Anforderung {} nicht geloescht: nicht im eigenen Mandanten", id));
     }
 
     public long countByStatus(String mandat, String status) {

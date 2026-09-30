@@ -22,4 +22,7 @@ public interface HowtoRepository extends JpaRepository<Howto, Long> {
     Optional<Howto> findByMandatAndName(String mandat, String name);
 
     List<Howto> findByMandat(String mandat);
+
+    /** Card 1360 (HB1): by-id access only within the tenant — the plain findById crosses tenants. */
+    Optional<Howto> findByIdAndMandat(Long id, String mandat);
 }

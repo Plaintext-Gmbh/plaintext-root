@@ -55,6 +55,28 @@ class PlaintextDefaultsEnvironmentPostProcessorTest {
                 .isEqualTo("false");
     }
 
+    /**
+     * Karte 1360 (HB3): ohne diesen Schluessel schrieb PrimeFaces (csp=true) auf den Faces-Seiten
+     * nur {@code script-src 'self' 'nonce-…'}. PrimeFaces haengt die Nonce an das ENDE der Policy
+     * (CspPhaseListener.initCsp), script-src muss deshalb zuletzt stehen.
+     */
+    @Test
+    @DisplayName("Faces-CSP: base-uri, object-src, frame-ancestors gesetzt, script-src zuletzt")
+    void facesCspPolicy() {
+        MockEnvironment environment = new MockEnvironment();
+
+        processor.postProcessEnvironment(environment, new SpringApplication());
+
+        String policy = environment.getProperty("joinfaces.primefaces.csp-policy");
+        assertThat(policy).isNotNull();
+        assertThat(policy).contains("base-uri 'self'", "object-src 'none'", "frame-ancestors 'self'");
+        assertThat(policy).as("PrimeFaces haengt ' nonce-…' ans Ende — script-src muss zuletzt stehen")
+                .endsWith("script-src 'self'");
+        // Bewusst nicht: default-src (Kartenquellen der Apps) und form-action (Logout-Weiterleitung
+        // zum IdP). Wer das aendert, braucht einen Seitendurchgang UND einen Logout-Test im Browser.
+        assertThat(policy).doesNotContain("default-src", "form-action", "unsafe-inline");
+    }
+
     @Test
     @DisplayName("Eine Anwendung kann jeden Wert weiterhin ueberschreiben")
     void anwendungGewinnt() {

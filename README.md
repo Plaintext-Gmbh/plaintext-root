@@ -423,7 +423,8 @@ This project is licensed under the [Mozilla Public License 2.0](LICENSE).
 
 The Java source files carry the MPL 2.0 header (a handful of recent test files do
 not yet — the license applies to them all the same). Third-party files that are
-checked into this repository (PrimeFlex, PrimeIcons, marked.js — all MIT) and
+checked into this repository (PrimeFlex, PrimeIcons, marked.js — all MIT; DOMPurify —
+Apache-2.0 or MPL-2.0) and
 the notable licenses among the Maven dependencies are listed in
 [NOTICE](NOTICE).
 

@@ -25,4 +25,7 @@ public interface AnforderungRepository extends JpaRepository<Anforderung, Long> 
     List<Anforderung> findByErsteller(String username);
 
     long countByMandatAndStatus(String mandat, String status);
+
+    /** Card 1360 (HB1): by-id access only within the tenant — the plain findById crosses tenants. */
+    Optional<Anforderung> findByIdAndMandat(Long id, String mandat);
 }

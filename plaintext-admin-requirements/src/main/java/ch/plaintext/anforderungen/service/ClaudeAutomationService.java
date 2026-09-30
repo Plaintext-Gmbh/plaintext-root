@@ -178,6 +178,31 @@ public class ClaudeAutomationService {
     }
 
     /**
+     * Tenant isolation for the prompt-number endpoints (card 1360, HB1): {@code ack}, {@code status}
+     * and {@code summary} address a prompt by its number, not by the requirement — until 30.09.2026
+     * without any tenant check, so one tenant's automation token could acknowledge another tenant's
+     * prompt or append a summary to its requirement.
+     *
+     * @return {@code true} only if the prompt exists and belongs to the token's tenant
+     */
+    public boolean promptGehoertZuToken(String promptNumber, String token) {
+        String tokenMandat = getMandatFromToken(token).orElse(null);
+        if (tokenMandat == null || promptNumber == null) {
+            return false;
+        }
+        return claudePromptRepository.findByPromptNumber(promptNumber)
+                .map(p -> tokenMandat.equals(p.getMandat()))
+                .orElse(false);
+    }
+
+    /** All active howtos of the token's tenant (REST {@code /howtos}, card 1360 HB1). */
+    public List<Howto> getActiveHowtosForToken(String token) {
+        return getMandatFromToken(token)
+                .map(howtoRepository::findByMandatAndActiveTrue)
+                .orElse(List.of());
+    }
+
+    /**
      * Get current mandat from security context
      */
     private String getCurrentMandat() {
@@ -216,7 +241,10 @@ public class ClaudeAutomationService {
             return "";
         }
 
-        Optional<ConstraintTemplate> template = constraintTemplateRepository.findById(anforderung.getConstraintTemplateId());
+        // Card 1360 (HB1): the template must belong to the requirement's tenant; the id is a
+        // free number on the requirement and would otherwise pull in another tenant's template.
+        Optional<ConstraintTemplate> template = constraintTemplateRepository.findById(anforderung.getConstraintTemplateId())
+                .filter(t -> java.util.Objects.equals(t.getMandat(), anforderung.getMandat()));
         return template.map(ConstraintTemplate::getConstraintsContent).orElse("");
     }
 
@@ -290,7 +318,11 @@ public class ClaudeAutomationService {
                     .map(Long::valueOf)
                     .toList();
 
-            return howtoRepository.findAllById(ids);
+            // Card 1360 (HB1): howto_ids is a free comma list - only the requirement's own tenant
+            // counts, otherwise a foreign howto ends up in the prompt text and in the REST answer.
+            return howtoRepository.findAllById(ids).stream()
+                    .filter(h -> java.util.Objects.equals(h.getMandat(), anforderung.getMandat()))
+                    .toList();
         } catch (Exception e) {
             log.error("Error loading howtos for anforderung {}: {}", anforderung.getId(), e.getMessage());
             return List.of();
@@ -298,10 +330,13 @@ public class ClaudeAutomationService {
     }
 
     /**
-     * Get howtos by anforderung ID (for REST endpoint)
+     * Get howtos by anforderung ID (for REST endpoint). Card 1360 (HB1): only if the requirement
+     * belongs to the token's tenant - like the neighbouring by-id endpoints; a foreign id yields an
+     * empty list, the same answer as an unknown id.
      */
-    public List<Howto> getHowtosForAnforderung(Long anforderungId) {
-        Optional<Anforderung> anfOpt = anforderungRepository.findById(anforderungId);
+    public List<Howto> getHowtosForAnforderung(Long anforderungId, String token) {
+        Optional<Anforderung> anfOpt = anforderungRepository.findById(anforderungId)
+                .filter(a -> anforderungGehoertZuToken(a, token));
         return anfOpt.map(this::getHowtosForAnforderung).orElse(List.of());
     }
 
@@ -386,6 +421,10 @@ public class ClaudeAutomationService {
         }
 
         ClaudePrompt prompt = opt.get();
+        if (!promptGehoertZuToken(promptNumber, token)) {
+            log.warn("Cross-tenant access denied: acknowledgePrompt für Prompt {} passt nicht zum Token-Mandanten", promptNumber);
+            return false;
+        }
         prompt.setStatus("ACKNOWLEDGED");
         prompt.setAcknowledgedDate(LocalDateTime.now());
         claudePromptRepository.save(prompt);
@@ -643,6 +682,10 @@ public class ClaudeAutomationService {
         }
 
         Anforderung anf = anfOpt.get();
+        if (!anforderungGehoertZuToken(anf, token)) {
+            log.warn("Cross-tenant access denied: saveSummary für Prompt {} passt nicht zum Token-Mandanten", promptNumber);
+            return false;
+        }
 
         // Create timestamped summary entry
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));

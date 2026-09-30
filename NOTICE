@@ -21,14 +21,22 @@ unmodified (or with only path adjustments for JSF resource loading).
    Copyright (c) 2011-2025, Christopher Jeffrey
    https://github.com/markedjs/marked
 
-2) PrimeFlex
+2) DOMPurify
+   File:    plaintext-admin-requirements/src/main/resources/META-INF/
+            resources/js/purify.min.js
+   Version: 3.4.16 (npm dompurify-3.4.16.tgz, integrity sha512-sqo+pNp3qRhC...)
+   License: Apache-2.0 OR MPL-2.0 (dual licensed)
+   Copyright (c) Cure53 and other contributors
+   https://github.com/cure53/DOMPurify
+
+3) PrimeFlex
    File:    plaintext-root-template/src/main/resources/META-INF/
             resources/plaintext-layout/css/primeflex.min.css
    License: MIT
    Copyright (c) 2018-2024 PrimeTek
    https://github.com/primefaces/primeflex
 
-3) PrimeIcons
+4) PrimeIcons
    Files:   plaintext-root-template/src/main/resources/META-INF/
             resources/plaintext-layout/css/primeicons.css
             plaintext-root-template/src/main/resources/META-INF/

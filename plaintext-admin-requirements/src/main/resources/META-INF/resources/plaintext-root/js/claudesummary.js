@@ -21,6 +21,24 @@ function renderErrorMessage(target, text) {
     target.replaceChildren(p);
 }
 
+// Card 1360 (HB4): only sanitised HTML reaches innerHTML. DOMPurify is loaded locally before this
+// file (claudesummary.xhtml). If it is missing, fail closed: show the markdown source as plain text
+// instead of rendering unfiltered HTML.
+function renderSanitisedHtml(target, html, fallbackText) {
+    if (typeof DOMPurify === 'undefined' || typeof DOMPurify.sanitize !== 'function') {
+        console.warn('DOMPurify not loaded - showing the summary as plain text');
+        var pre = document.createElement('pre');
+        pre.textContent = fallbackText;
+        target.replaceChildren(pre);
+        return;
+    }
+    target.innerHTML = DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        FORBID_TAGS: ['form', 'input', 'button', 'select', 'textarea', 'style'],
+        FORBID_ATTR: ['style', 'formaction']
+    });
+}
+
 function renderMarkdown() {
     console.log('renderMarkdown() called');
 
@@ -60,13 +78,13 @@ function renderMarkdown() {
                 return;
             }
 
-            // Render markdown to HTML. The markdown comes from our own
-            // backend (admin-only requirements summary), so trusted —
-            // we still avoid string-concatenation of user-controlled
-            // values into innerHTML (see renderErrorMessage below).
+            // Render markdown to HTML and sanitise it before it goes into innerHTML (card 1360,
+            // HB4). The markdown is NOT trusted: every automation token of the tenant writes it
+            // (POST /nosec/api/claude/summary), and marked passes raw HTML through unchanged -
+            // <form>, <a href="javascript:...">, <img onerror=...> and the like.
             var html = marked.parse ? marked.parse(markdownContent) : marked(markdownContent);
             console.log('Rendered HTML length:', html.length);
-            markdownContentElement.innerHTML = html;
+            renderSanitisedHtml(markdownContentElement, html, markdownContent);
             console.log('Markdown rendered successfully');
         } catch (e) {
             console.error('Error rendering markdown:', e);

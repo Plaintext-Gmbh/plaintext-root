@@ -6,7 +6,6 @@ package ch.plaintext.anforderungen.rest;
 import ch.plaintext.anforderungen.entity.Anforderung;
 import ch.plaintext.anforderungen.entity.ClaudePrompt;
 import ch.plaintext.anforderungen.entity.Howto;
-import ch.plaintext.anforderungen.repository.HowtoRepository;
 import ch.plaintext.anforderungen.service.ClaudeAutomationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,9 +35,6 @@ public class ClaudeAutomationController {
 
     @Autowired
     private ClaudeAutomationService service;
-
-    @Autowired
-    private HowtoRepository howtoRepository;
 
     /**
      * Acknowledge a prompt - called by Claude Code via curl
@@ -86,12 +82,19 @@ public class ClaudeAutomationController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        StatusResponse response = new StatusResponse();
+        response.setPromptNumber(promptNumber);
+
+        // Card 1360 (HB1): a prompt of another tenant looks exactly like an unknown one.
+        if (!service.promptGehoertZuToken(promptNumber, token)) {
+            response.setStatus("NOT_FOUND");
+            return ResponseEntity.ok(response);
+        }
+
         String status = service.getPromptStatus(promptNumber);
         boolean acknowledged = service.isPromptAcknowledged(promptNumber);
         boolean timedOut = service.isPromptTimedOut(promptNumber);
 
-        StatusResponse response = new StatusResponse();
-        response.setPromptNumber(promptNumber);
         response.setStatus(status);
         response.setAcknowledged(acknowledged);
         response.setTimedOut(timedOut);
@@ -413,14 +416,15 @@ public class ClaudeAutomationController {
      * Get all active howtos
      * curl http://localhost:8080/nosec/api/claude/howtos?token=xxx
      */
-    @Operation(summary = "Liste aller aktiven Howtos", description = "Gibt alle aktiven How-To Anleitungen zurück")
+    @Operation(summary = "Liste aller aktiven Howtos", description = "Gibt die aktiven How-To Anleitungen des Token-Mandanten zurück")
     @GetMapping("/howtos")
     public ResponseEntity<?> getAllHowtos(@RequestParam String token) {
         if (!service.validateToken(token)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid token"));
         }
 
-        java.util.List<Howto> howtos = howtoRepository.findByActiveTrue();
+        // Card 1360 (HB1): only the token tenant's howtos - findByActiveTrue returned all tenants'.
+        java.util.List<Howto> howtos = service.getActiveHowtosForToken(token);
         return ResponseEntity.ok(howtos);
     }
 
@@ -438,7 +442,7 @@ public class ClaudeAutomationController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid token"));
         }
 
-        java.util.List<Howto> howtos = service.getHowtosForAnforderung(id);
+        java.util.List<Howto> howtos = service.getHowtosForAnforderung(id, token);
         return ResponseEntity.ok(howtos);
     }
 }

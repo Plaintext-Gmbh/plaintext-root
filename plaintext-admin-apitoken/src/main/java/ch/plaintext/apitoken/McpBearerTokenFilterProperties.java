@@ -21,7 +21,7 @@ import java.util.List;
  *   mcp:
  *     bearer-filter:
  *       enabled: true                # Default false — the filter is only registered on demand
- *       validation: DATABASE         # JWT (default, without DB revocation) or DATABASE
+ *       validation: DATABASE         # DATABASE (default since card 1360) or JWT (no DB revocation)
  *       url-patterns:                # Default: /mcp/*
  *         - /mcp/*
  *         - /api/turnier/*
@@ -41,8 +41,16 @@ public class McpBearerTokenFilterProperties {
     /** Servlet URL patterns the filter applies to. Empty => default {@code /mcp/*}. */
     private List<String> urlPatterns = new ArrayList<>(List.of("/mcp/*"));
 
-    /** Validation strategy, see {@link Validation}. */
-    private Validation validation = Validation.JWT;
+    /**
+     * Validation strategy, see {@link Validation}.
+     *
+     * <p><b>Default {@code DATABASE} since card 1360 (HB5, secure by default).</b> Under {@code JWT}
+     * only {@code invalidated} counts as a revocation, a revoked or deleted token stays valid until
+     * it expires, and on a DB error the jti check lets the token through (fail-open). app, guild,
+     * iot and schuetu have set {@code DATABASE} explicitly for a long time; an app that forgets the
+     * line now gets the safe variant instead of the historical workaround.</p>
+     */
+    private Validation validation = Validation.DATABASE;
 
     /** Filter order of the {@code FilterRegistrationBean} (default 1, as in all previous copies). */
     private int order = 1;

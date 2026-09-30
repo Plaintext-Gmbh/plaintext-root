@@ -6,7 +6,6 @@ package ch.plaintext.anforderungen.rest;
 import ch.plaintext.anforderungen.entity.Anforderung;
 import ch.plaintext.anforderungen.entity.ClaudePrompt;
 import ch.plaintext.anforderungen.entity.Howto;
-import ch.plaintext.anforderungen.repository.HowtoRepository;
 import ch.plaintext.anforderungen.service.ClaudeAutomationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,9 +27,6 @@ class ClaudeAutomationControllerTest {
 
     @Mock
     private ClaudeAutomationService service;
-
-    @Mock
-    private HowtoRepository howtoRepository;
 
     @InjectMocks
     private ClaudeAutomationController controller;
@@ -75,6 +71,7 @@ class ClaudeAutomationControllerTest {
     @Test
     void getPromptStatusReturns200WithDetails() {
         when(service.validateToken("token")).thenReturn(true);
+        when(service.promptGehoertZuToken("00001", "token")).thenReturn(true);
         when(service.getPromptStatus("00001")).thenReturn("ACKNOWLEDGED");
         when(service.isPromptAcknowledged("00001")).thenReturn(true);
         when(service.isPromptTimedOut("00001")).thenReturn(false);
@@ -86,6 +83,21 @@ class ClaudeAutomationControllerTest {
         assertThat(response.getBody().getStatus()).isEqualTo("ACKNOWLEDGED");
         assertThat(response.getBody().isAcknowledged()).isTrue();
         assertThat(response.getBody().isTimedOut()).isFalse();
+    }
+
+    /** Karte 1360 (HB1): der Status eines fremden Prompts sieht aus wie der eines unbekannten. */
+    @Test
+    void getPromptStatusVerraetFremdenPromptNicht() {
+        when(service.validateToken("token")).thenReturn(true);
+        when(service.promptGehoertZuToken("00009", "token")).thenReturn(false);
+
+        ResponseEntity<ClaudeAutomationController.StatusResponse> response =
+                controller.getPromptStatus("00009", "token");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getStatus()).isEqualTo("NOT_FOUND");
+        assertThat(response.getBody().isAcknowledged()).isFalse();
+        verify(service, never()).getPromptStatus("00009");
     }
 
     // --- hasWork ---
@@ -332,11 +344,12 @@ class ClaudeAutomationControllerTest {
         when(service.validateToken("token")).thenReturn(true);
         Howto h = new Howto();
         h.setName("test");
-        when(howtoRepository.findByActiveTrue()).thenReturn(List.of(h));
+        when(service.getActiveHowtosForToken("token")).thenReturn(List.of(h));
 
         ResponseEntity<?> response = controller.getAllHowtos("token");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(List.of(h));
     }
 
     // --- getHowtosForAnforderung ---
@@ -353,7 +366,7 @@ class ClaudeAutomationControllerTest {
     @Test
     void getHowtosForAnforderungReturns200() {
         when(service.validateToken("token")).thenReturn(true);
-        when(service.getHowtosForAnforderung(1L)).thenReturn(List.of());
+        when(service.getHowtosForAnforderung(1L, "token")).thenReturn(List.of());
 
         ResponseEntity<?> response = controller.getHowtosForAnforderung(1L, "token");
 

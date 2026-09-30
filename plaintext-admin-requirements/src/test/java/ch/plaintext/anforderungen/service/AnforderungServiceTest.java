@@ -133,16 +133,35 @@ class AnforderungServiceTest {
     void findByIdReturnsAnforderung() {
         Anforderung a = new Anforderung();
         a.setId(1L);
-        when(repository.findById(1L)).thenReturn(Optional.of(a));
+        when(security.getMandat()).thenReturn("mandatA");
+        when(repository.findByIdAndMandat(1L, "mandatA")).thenReturn(Optional.of(a));
 
         assertThat(service.findById(1L)).isPresent();
     }
 
     @Test
     void findByIdReturnsEmpty() {
-        when(repository.findById(999L)).thenReturn(Optional.empty());
+        when(security.getMandat()).thenReturn("mandatA");
+        when(repository.findByIdAndMandat(999L, "mandatA")).thenReturn(Optional.empty());
 
         assertThat(service.findById(999L)).isEmpty();
+    }
+
+    /**
+     * Karte 1360 (HB1): die Detailseiten {@code anforderungdetail.xhtml?id=} und
+     * {@code claudesummary.xhtml?id=} laden ueber findById. Eine Anforderung eines anderen
+     * Mandanten darf dort nicht erscheinen - auch wenn sie unter dieser Id existiert.
+     */
+    @Test
+    void findByIdLiefertKeineFremdeAnforderung() {
+        Anforderung fremd = new Anforderung();
+        fremd.setId(5L);
+        fremd.setMandat("mandatB");
+        lenient().when(repository.findById(5L)).thenReturn(Optional.of(fremd));
+        when(security.getMandat()).thenReturn("mandatA");
+        when(repository.findByIdAndMandat(5L, "mandatA")).thenReturn(Optional.empty());
+
+        assertThat(service.findById(5L)).isEmpty();
     }
 
     // --- save ---
@@ -224,8 +243,25 @@ class AnforderungServiceTest {
 
     @Test
     void deleteCallsRepository() {
+        Anforderung eigen = new Anforderung();
+        eigen.setId(1L);
+        when(security.getMandat()).thenReturn("mandatA");
+        when(repository.findByIdAndMandat(1L, "mandatA")).thenReturn(Optional.of(eigen));
+
         service.delete(1L);
-        verify(repository).deleteById(1L);
+
+        verify(repository).delete(eigen);
+    }
+
+    @Test
+    void deleteLaesstFremdeAnforderungStehen() {
+        when(security.getMandat()).thenReturn("mandatA");
+        when(repository.findByIdAndMandat(5L, "mandatA")).thenReturn(Optional.empty());
+
+        service.delete(5L);
+
+        verify(repository, never()).delete(any(Anforderung.class));
+        verify(repository, never()).deleteById(any());
     }
 
     // --- countByStatus ---

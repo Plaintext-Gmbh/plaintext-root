@@ -12,6 +12,27 @@ exhaustive.
 
 ## [Unreleased]
 
+### Security
+- **Security audit part B hardenings** (Karte 1360, 30 September 2026).
+  - Requirements module: every by-id path is tenant-scoped (`anforderungdetail`/`claudesummary`/
+    `howtodetail` `?id=`, REST `/nosec/api/claude/howtos`, `/anforderung/{id}/howtos`, `ack`,
+    `ack/{nr}/status`, `summary`, howto and constraint-template lookups in the prompt context). A
+    foreign id reads as "not found".
+  - MCP `set_secret` with backend `VAULTWARDEN` and `set_secret_backend` now require the role
+    **ROOT** (the vault belongs to the whole instance; the HashiCorp URL is called from the
+    container). LOCAL_DB/HASHICORP secrets stay available to ADMIN. **Consumer impact:** none for
+    instances whose admins also hold `root`; an ADMIN-only token gets `FEHLER: … erfordert die Rolle ROOT`.
+  - Faces pages: `plaintext-defaults.yml` sets `joinfaces.primefaces.csp-policy` to
+    `base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self'` (PrimeFaces
+    appends the nonce). Deliberately without `default-src`/`form-action` — see the comment there.
+  - Claude summary: rendered markdown goes through DOMPurify 3.4.16 (local) before `innerHTML`;
+    without DOMPurify the page shows plain text.
+  - `plaintext.mcp.bearer-filter.validation` defaults to `DATABASE` (was `JWT`). API JWTs carry
+    `iss` (`plaintext.jwt.issuer`, else `plaintext.baseurl`); a token with a foreign `iss` is
+    rejected, tokens without `iss` stay valid.
+  - Removed the unused `CardDavHttpFirewall` (a `DefaultHttpFirewall`), the entity editor no longer
+    logs field values at DEBUG, ADR 0002 corrected (there is no Hibernate tenant filter).
+
 ### Fixed
 - **User preferences belonged to `anonymousUser` instead of the person** (Karte 1336, 29 September
   2026). `UserPreferencesBackingBean` is session-scoped and was created on the login page already

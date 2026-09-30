@@ -190,7 +190,9 @@ public abstract class AbstractEntityBackingBean implements Serializable {
         for (FieldMetadata field : selectedEntityType.getEditableFields()) {
             Object value = entityService.getFieldValue(selectedEntity, field.getFieldName());
             fieldValues.put(field.getFieldName(), value);
-            log.debug("Initialized field {} with value: {}", field.getFieldName(), value);
+            // Card 1360 (HB7): field NAME only - the ROOT editor also shows password hashes and TOTP
+            // secrets, and a value in the log outlives the editing session.
+            log.debug("Initialized field {}", field.getFieldName());
         }
     }
 
@@ -212,7 +214,7 @@ public abstract class AbstractEntityBackingBean implements Serializable {
             for (FieldMetadata field : selectedEntityType.getEditableFields()) {
                 Object value = fieldValues.get(field.getFieldName());
                 entityService.setFieldValue(selectedEntity, field.getFieldName(), value);
-                log.debug("Set field {} to value: {}", field.getFieldName(), value);
+                log.debug("Set field {}", field.getFieldName());
             }
 
             vorSpeichern(selectedEntity);

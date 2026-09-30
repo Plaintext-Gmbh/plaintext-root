@@ -4,6 +4,7 @@
 package ch.plaintext.anforderungen.web;
 
 import ch.plaintext.boot.plugins.jsf.FacesMessages;
+import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.anforderungen.entity.Howto;
 import ch.plaintext.anforderungen.repository.HowtoRepository;
 import jakarta.faces.application.FacesMessage;
@@ -56,6 +57,8 @@ public class HowtoDetailBackingBean implements Serializable {
     // Das ist die Hausregel; java:S6813 gilt hier bewusst nicht.
     @Autowired
     private transient HowtoRepository howtoRepository;
+    @Autowired
+    private transient PlaintextSecurity security;
 
     @Getter @Setter
     private Long howtoId;
@@ -93,7 +96,10 @@ public class HowtoDetailBackingBean implements Serializable {
     private void loadHowto() {
         if (howtoId != null) {
             try {
-                howto = howtoRepository.findById(howtoId).orElse(null);
+                // Card 1360 (HB1): only within the own tenant. A foreign id reads as "not found" -
+                // this page has write methods (name, text, active), so a plain findById let an
+                // admin of one tenant edit another tenant's howto via ?id=.
+                howto = howtoRepository.findByIdAndMandat(howtoId, security.getMandat()).orElse(null);
                 if (howto == null) {
                     log.warn("Howto not found: {}", howtoId);
                     addMessage("Howto nicht gefunden", FacesMessage.SEVERITY_ERROR);

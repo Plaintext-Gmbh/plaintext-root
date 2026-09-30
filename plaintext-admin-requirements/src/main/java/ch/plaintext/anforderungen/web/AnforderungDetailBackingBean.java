@@ -184,7 +184,8 @@ public class AnforderungDetailBackingBean implements Serializable {
 
     private void loadAvailableHowtos() {
         try {
-            availableHowtos = howtoRepository.findByActiveTrue();
+            // Card 1360 (HB1): only the tenant's own howtos - findByActiveTrue listed every tenant's.
+            availableHowtos = howtoRepository.findByMandatAndActiveTrue(security.getMandat());
             log.info("Loaded {} active howtos", availableHowtos.size());
         } catch (Exception e) {
             log.error("Error loading howtos", e);

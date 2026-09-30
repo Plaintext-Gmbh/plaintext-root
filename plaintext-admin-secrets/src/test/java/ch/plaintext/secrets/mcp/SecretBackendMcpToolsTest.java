@@ -88,12 +88,29 @@ class SecretBackendMcpToolsTest {
         assertTrue(tools.setSecret("x", "LOCAL_DB", "v", null).contains("set_secret"));
     }
 
+    /**
+     * Karte 1360 (HB2): configJson traegt eine frei waehlbare HashiCorp-URL, und der Live-Test ruft
+     * sie sofort aus dem Container auf (SSRF). Umstellen ist Instanz-Verwaltung — nur ROOT.
+     */
+    @Test
+    @DisplayName("ADMIN ohne ROOT darf das Backend nicht umstellen (SSRF ueber die HashiCorp-URL)")
+    void adminOhneRootDarfBackendNichtUmstellen() {
+        authMit("SCOPE_ADMIN", "ROLE_ADMIN");
+
+        String antwort = tools.setSecretBackend("HASHICORP", "{\"url\":\"http://192.168.1.1:80\"}");
+
+        verify(service, never()).setActiveBackend(any(), any());
+        verify(service, never()).health();
+        assertTrue(antwort.startsWith("FEHLER"), antwort);
+        assertTrue(antwort.contains("ROOT"), antwort);
+    }
+
     // ── Fachlich ────────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("mit ADMIN-Scope UND ADMIN-Rolle wird umgestellt und der Live-Test mitgeliefert")
+    @DisplayName("mit ADMIN-Scope UND ROOT-Rolle wird umgestellt und der Live-Test mitgeliefert")
     void stelltUmUndPrueftGleich() {
-        authMit("SCOPE_ADMIN", "ROLE_ADMIN");
+        authMit("SCOPE_ADMIN", "ROLE_ROOT");
         when(service.health()).thenReturn(SecretHealth.up("HashiCorp-Vault erreichbar (mount=secret)."));
 
         String antwort = tools.setSecretBackend("HASHICORP", "{\"url\":\"http://openbao:8200\"}");
@@ -121,7 +138,7 @@ class SecretBackendMcpToolsTest {
     @Test
     @DisplayName("unbekanntes Backend wird abgewiesen, ohne etwas zu aendern")
     void unbekanntesBackend() {
-        authMit("SCOPE_ADMIN", "ROLE_ADMIN");
+        authMit("SCOPE_ADMIN", "ROLE_ROOT");
 
         String antwort = tools.setSecretBackend("OPENBAO", null);
 

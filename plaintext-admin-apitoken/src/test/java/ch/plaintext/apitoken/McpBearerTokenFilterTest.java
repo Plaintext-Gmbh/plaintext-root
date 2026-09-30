@@ -529,6 +529,31 @@ class McpBearerTokenFilterTest {
         assertNotNull(registration.getFilter());
     }
 
+    /**
+     * Karte 1360 (HB5, secure by default): ohne ausdrueckliche Einstellung validiert der Filter
+     * gegen die Datenbank (Widerruf, geloeschte Tokens), nicht nur die JWT-Signatur.
+     */
+    @Test
+    void registrierung_ohneEinstellung_validiertGegenDieDatenbank() throws Exception {
+        McpBearerTokenFilterProperties props = new McpBearerTokenFilterProperties();
+        assertEquals(McpBearerTokenFilterProperties.Validation.DATABASE, props.getValidation());
+
+        JwtTokenService jwt = mock(JwtTokenService.class);
+        IApiTokenService db = mock(IApiTokenService.class);
+        when(db.validateToken("t0k3n")).thenReturn(Optional.empty());
+        FilterRegistrationBean<McpBearerTokenFilter> registration = new McpBearerTokenFilterConfig()
+                .mcpBearerTokenFilterRegistration(props, jwt, db, mock(McpUserRoles.class),
+                        mock(ObjectProvider.class), mock(ObjectProvider.class));
+
+        HttpServletResponse response = responseWithWriter(new StringWriter());
+        FilterChain chain = mock(FilterChain.class);
+        registration.getFilter().doFilter(requestWithAuth("Bearer t0k3n"), response, chain);
+
+        verify(db).validateToken("t0k3n");
+        verify(jwt, never()).validateToken(any());
+        verify(chain, never()).doFilter(any(), any());
+    }
+
     @Test
     void registrierung_zusaetzlichePatterns_wieSchuetuTurnierApi() {
         McpBearerTokenFilterProperties props = new McpBearerTokenFilterProperties();
