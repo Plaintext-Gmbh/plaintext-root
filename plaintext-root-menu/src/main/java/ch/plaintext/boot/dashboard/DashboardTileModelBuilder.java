@@ -14,6 +14,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 /**
  * Builds the list of {@link DashboardTileData} to be displayed from all visible, registered
@@ -54,6 +55,21 @@ public class DashboardTileModelBuilder implements SmartInitializingSingleton {
      * @return list of the tiles to be displayed (never {@code null})
      */
     public List<DashboardTileData> buildTiles() {
+        return buildTiles(id -> true);
+    }
+
+    /**
+     * Karte 1351: like {@link #buildTiles()}, but only the tiles accepted by {@code anreichern}
+     * go through their {@link DashboardTileDataProvider}. The start page passes the tiles the user
+     * has hidden: they are not rendered outside the edit mode, and every provider costs a query.
+     * Visibility (roles, module role, tenant menu) is checked for every tile regardless — the
+     * predicate decides about the work, never about the rights.
+     *
+     * @param anreichern accepts the tile ids to enrich; {@code null} enriches all
+     * @return list of the tiles to be displayed (never {@code null})
+     */
+    public List<DashboardTileData> buildTiles(Predicate<String> anreichern) {
+        Predicate<String> auswahl = anreichern == null ? id -> true : anreichern;
         // Fallback (e.g. in a unit test without a container lifecycle): resolve lazily if needed.
         if (cachedTiles == null) {
             resolveBeans();
@@ -74,7 +90,7 @@ public class DashboardTileModelBuilder implements SmartInitializingSingleton {
             DashboardTileData tile = toData(item);
 
             DashboardTileDataProvider provider = cachedProviders.get(item.getId());
-            if (provider != null) {
+            if (provider != null && auswahl.test(item.getId())) {
                 try {
                     provider.enrich(tile);
                 } catch (Exception e) {

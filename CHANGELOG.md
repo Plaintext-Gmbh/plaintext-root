@@ -25,6 +25,17 @@ exhaustive.
   user starts from their own record (or the defaults). The old record stays in the table.
 
 ### Added
+- **Start page edit mode** (Karte 1351). A button "Anpassen" on `index.xhtml` opens an edit mode:
+  hide and show tiles, order them by drag and drop (HTML5, in `js/dashboard.js`, no inline
+  handlers) or with arrow buttons (touch, keyboard), switch each tile between half and full row,
+  "Speichern", "Abbrechen", "Standard wiederherstellen". Stored per person and tenant in the new
+  `UserPreference.startseiten` (JSON, same store as the table states — no migration).
+  Rights are unchanged: the arrangement only orders what `TileItemImpl.isOn()` permits; a stored
+  or submitted id without the right is dropped. Hidden tiles are not enriched
+  (`DashboardTileModelBuilder.buildTiles(Predicate)`). New `DashboardTileData.hidden/halfWidth`.
+  **Consumer impact:** the grid is now two columns (half tile = one column) instead of
+  `auto-fill minmax(300px)`, i.e. two tiles per row by default instead of three or four; below
+  768 px one per row. Every tile starts half-width and visible; new tiles are appended.
 - **Table sorting stored per person** (Karte 1346). `TableState` and every profile carry a new
   field `sortBy` (list of `TableSort{column, field, descending}` in priority order; `null` = the
   page default, i.e. the behaviour so far). Multi-column sorting (`sortMode="multiple"`, the

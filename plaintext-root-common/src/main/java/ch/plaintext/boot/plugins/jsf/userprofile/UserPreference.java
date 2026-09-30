@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
 import ch.plaintext.boot.plugins.objstore.SimpleStorable;
+import ch.plaintext.boot.startseite.StartseitenLayout;
 import ch.plaintext.boot.table.TableState;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
@@ -109,6 +110,26 @@ public class UserPreference implements SimpleStorable<UserPreference>, Serializa
             tabellenStaende = new HashMap<>();
         }
         return tabellenStaende;
+    }
+
+    /**
+     * Karte 1351: how this user arranged the start page — visible tiles, order, half or full
+     * width ({@link StartseitenLayout}). Written and read through
+     * {@code UserPreferencesBackingBean.merkeStartseite/startseite}.
+     *
+     * <p>The key is the <b>tenant</b> (empty string without one), for the same reason as in
+     * {@link #tabellenStaende}: a user working in two tenants sees different modules in each, and
+     * an arrangement made for one must not reshuffle the other. A missing entry means "never set
+     * up" — the start page shows every permitted tile in its default order.
+     */
+    private Map<String, StartseitenLayout> startseiten = new HashMap<>();
+
+    /** Null-safe getter, same reason as {@link #getTabellenSpalten()}. */
+    public Map<String, StartseitenLayout> getStartseiten() {
+        if (startseiten == null) {
+            startseiten = new HashMap<>();
+        }
+        return startseiten;
     }
 
     /**

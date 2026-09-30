@@ -72,6 +72,19 @@ public class DashboardTileData implements Serializable {
     private int order;
 
     /**
+     * Karte 1351: the user has hidden this tile on their start page. Outside the edit mode such a
+     * tile is not rendered at all; inside it is shown dimmed so it can be brought back.
+     */
+    private boolean hidden;
+
+    /**
+     * Karte 1351: the tile takes half a row (two tiles side by side) instead of the whole row.
+     * Default {@code true} — that comes closest to the start page before the edit mode, which put
+     * several tiles next to each other. On narrow screens every tile takes the whole row anyway.
+     */
+    private boolean halfWidth = true;
+
+    /**
      * Returns {@link #statusColor} only if it is a literal CSS color (hex or a named color),
      * otherwise {@code null}. This protects the value rendered into the {@code style} attribute
      * against CSS injection, should a provider accidentally supply something other than a literal
