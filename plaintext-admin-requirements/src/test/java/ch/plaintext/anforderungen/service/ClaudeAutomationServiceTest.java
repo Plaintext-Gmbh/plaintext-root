@@ -397,7 +397,130 @@ class ClaudeAutomationServiceTest {
     void getHowtosForAnforderungByIdReturnsEmptyWhenNotFound() {
         when(anforderungRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThat(service.getHowtosForAnforderung(999L)).isEmpty();
+        assertThat(service.getHowtosForAnforderung(999L, "token")).isEmpty();
+    }
+
+    // --- Karte 1360 (HB1): Mandantentrennung der Token- und Howto-Pfade ---
+
+    private void tokenFuerMandant(String token, String mandat) {
+        AnforderungApiSettings settings = new AnforderungApiSettings();
+        settings.setApiToken(token);
+        settings.setMandat(mandat);
+        lenient().when(apiSettingsRepository.findByApiToken(token)).thenReturn(Optional.of(settings));
+    }
+
+    private static Howto howto(long id, String mandat) {
+        Howto h = new Howto();
+        h.setId(id);
+        h.setMandat(mandat);
+        h.setName("howto-" + id);
+        h.setText("text-" + id);
+        return h;
+    }
+
+    @Test
+    void getHowtosForAnforderungLaesstFremdeHowtosWeg() {
+        Anforderung anf = new Anforderung();
+        anf.setMandat("mandatA");
+        anf.setHowtoIds("1,2");
+        when(howtoRepository.findAllById(List.of(1L, 2L)))
+                .thenReturn(List.of(howto(1, "mandatA"), howto(2, "mandatB")));
+
+        assertThat(service.getHowtosForAnforderung(anf)).extracting(Howto::getId).containsExactly(1L);
+    }
+
+    @Test
+    void getHowtosForAnforderungByIdVerweigertFremdenMandanten() {
+        tokenFuerMandant("tokenA", "mandatA");
+        Anforderung fremd = new Anforderung();
+        fremd.setId(7L);
+        fremd.setMandat("mandatB");
+        fremd.setHowtoIds("2");
+        when(anforderungRepository.findById(7L)).thenReturn(Optional.of(fremd));
+
+        assertThat(service.getHowtosForAnforderung(7L, "tokenA")).isEmpty();
+        verify(howtoRepository, never()).findAllById(any());
+    }
+
+    @Test
+    void getHowtosForAnforderungByIdLiefertEigeneHowtos() {
+        tokenFuerMandant("tokenA", "mandatA");
+        Anforderung eigen = new Anforderung();
+        eigen.setId(7L);
+        eigen.setMandat("mandatA");
+        eigen.setHowtoIds("1");
+        when(anforderungRepository.findById(7L)).thenReturn(Optional.of(eigen));
+        when(howtoRepository.findAllById(List.of(1L))).thenReturn(List.of(howto(1, "mandatA")));
+
+        assertThat(service.getHowtosForAnforderung(7L, "tokenA")).hasSize(1);
+    }
+
+    @Test
+    void getActiveHowtosForTokenNimmtDenTokenMandanten() {
+        tokenFuerMandant("tokenA", "mandatA");
+        when(howtoRepository.findByMandatAndActiveTrue("mandatA")).thenReturn(List.of(howto(1, "mandatA")));
+
+        assertThat(service.getActiveHowtosForToken("tokenA")).hasSize(1);
+        verify(howtoRepository, never()).findByActiveTrue();
+    }
+
+    @Test
+    void getConstraintTemplateContentIgnoriertFremdeVorlage() {
+        Anforderung anf = new Anforderung();
+        anf.setMandat("mandatA");
+        anf.setConstraintTemplateId(3L);
+        ConstraintTemplate fremd = new ConstraintTemplate();
+        fremd.setMandat("mandatB");
+        fremd.setConstraintsContent("geheim");
+        when(constraintTemplateRepository.findById(3L)).thenReturn(Optional.of(fremd));
+
+        assertThat(service.getConstraintTemplateContent(anf)).isEmpty();
+    }
+
+    @Test
+    void acknowledgePromptVerweigertFremdenPrompt() {
+        tokenFuerMandant("tokenA", "mandatA");
+        ClaudePrompt fremd = new ClaudePrompt();
+        fremd.setPromptNumber("00009");
+        fremd.setMandat("mandatB");
+        fremd.setAnforderungId(9L);
+        when(claudePromptRepository.findByPromptNumber("00009")).thenReturn(Optional.of(fremd));
+
+        assertThat(service.acknowledgePrompt("00009", "tokenA")).isFalse();
+        assertThat(fremd.getStatus()).isNotEqualTo("ACKNOWLEDGED");
+        verify(claudePromptRepository, never()).save(any());
+    }
+
+    @Test
+    void saveSummaryVerweigertFremdeAnforderung() {
+        tokenFuerMandant("tokenA", "mandatA");
+        ClaudePrompt prompt = new ClaudePrompt();
+        prompt.setAnforderungId(9L);
+        when(claudePromptRepository.findByPromptNumber("00009")).thenReturn(Optional.of(prompt));
+        Anforderung fremd = new Anforderung();
+        fremd.setId(9L);
+        fremd.setMandat("mandatB");
+        when(anforderungRepository.findById(9L)).thenReturn(Optional.of(fremd));
+
+        assertThat(service.saveSummary("00009", "eingeschleust", "tokenA")).isFalse();
+        assertThat(fremd.getClaudeSummary()).isNull();
+        verify(anforderungRepository, never()).save(any());
+    }
+
+    @Test
+    void promptGehoertZuTokenNurImEigenenMandanten() {
+        tokenFuerMandant("tokenA", "mandatA");
+        ClaudePrompt eigen = new ClaudePrompt();
+        eigen.setMandat("mandatA");
+        ClaudePrompt fremd = new ClaudePrompt();
+        fremd.setMandat("mandatB");
+        when(claudePromptRepository.findByPromptNumber("00001")).thenReturn(Optional.of(eigen));
+        when(claudePromptRepository.findByPromptNumber("00002")).thenReturn(Optional.of(fremd));
+        when(claudePromptRepository.findByPromptNumber("00003")).thenReturn(Optional.empty());
+
+        assertThat(service.promptGehoertZuToken("00001", "tokenA")).isTrue();
+        assertThat(service.promptGehoertZuToken("00002", "tokenA")).isFalse();
+        assertThat(service.promptGehoertZuToken("00003", "tokenA")).isFalse();
     }
 
     // --- createFullContext ---
@@ -574,9 +697,11 @@ class ClaudeAutomationServiceTest {
         settings.setApiToken("token");
         when(apiSettingsRepository.findByApiToken("token")).thenReturn(Optional.of(settings));
 
+        settings.setMandat("mandatA");
         ClaudePrompt prompt = new ClaudePrompt();
         prompt.setPromptNumber("00001");
         prompt.setAnforderungId(1L);
+        prompt.setMandat("mandatA");
         when(claudePromptRepository.findByPromptNumber("00001")).thenReturn(Optional.of(prompt));
         when(claudePromptRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -851,12 +976,14 @@ class ClaudeAutomationServiceTest {
         settings.setApiToken("token");
         when(apiSettingsRepository.findByApiToken("token")).thenReturn(Optional.of(settings));
 
+        settings.setMandat("mandatA");
         ClaudePrompt prompt = new ClaudePrompt();
         prompt.setAnforderungId(1L);
         when(claudePromptRepository.findByPromptNumber("00001")).thenReturn(Optional.of(prompt));
 
         Anforderung anf = new Anforderung();
         anf.setId(1L);
+        anf.setMandat("mandatA");
         anf.setClaudeSummary(null);
         when(anforderungRepository.findById(1L)).thenReturn(Optional.of(anf));
         when(anforderungRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -874,12 +1001,14 @@ class ClaudeAutomationServiceTest {
         settings.setApiToken("token");
         when(apiSettingsRepository.findByApiToken("token")).thenReturn(Optional.of(settings));
 
+        settings.setMandat("mandatA");
         ClaudePrompt prompt = new ClaudePrompt();
         prompt.setAnforderungId(1L);
         when(claudePromptRepository.findByPromptNumber("00002")).thenReturn(Optional.of(prompt));
 
         Anforderung anf = new Anforderung();
         anf.setId(1L);
+        anf.setMandat("mandatA");
         anf.setClaudeSummary("### Previous summary\nOld content\n\n");
         when(anforderungRepository.findById(1L)).thenReturn(Optional.of(anf));
         when(anforderungRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

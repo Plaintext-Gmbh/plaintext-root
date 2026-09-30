@@ -293,6 +293,70 @@ class JwtTokenServiceTest {
                 "Ohne subject kann die Gegenstelle den Aussteller nicht zuordnen");
     }
 
+    /**
+     * Karte 1360 (HB5): API-Tokens tragen das iss der Instanz, und ein Token mit dem iss einer
+     * ANDEREN Instanz (gleicher Signaturschluessel, z. B. INT gegen PROD) wird abgewiesen.
+     */
+    @Test
+    void apiToken_traegtIssUndFremdesIssWirdAbgewiesen() {
+        JwtTokenService prod = serviceWithoutVault();
+        prod.issuer = "https://app.plaintext.ch";
+        prod.init();
+        JwtTokenService intInstanz = serviceWithoutVault();
+        intInstanz.issuer = "https://app-int.plaintext.ch";
+        intInstanz.init();
+        gleicherSchluessel(prod, intInstanz);
+
+        String prodToken = prod.generateToken(7L, "plaintext", "u@x.ch", "cli", 30, "READ");
+        assertEquals("https://app.plaintext.ch", claimsOf(prod, prodToken).getIssuer());
+
+        assertTrue(prod.validateToken(prodToken).isPresent(), "eigenes iss muss gelten");
+        assertTrue(intInstanz.validateToken(prodToken).isEmpty(),
+                "gleicher Schluessel, aber iss einer anderen Instanz: abweisen");
+    }
+
+    /** Karte 1360 (HB5): bestehende Tokens ohne iss bleiben gueltig — sonst waeren alle tot. */
+    @Test
+    void apiToken_ohneIssBleibtGueltig() {
+        JwtTokenService altAussteller = serviceWithoutVault();
+        altAussteller.issuer = "";
+        altAussteller.init();
+        String altToken = altAussteller.generateToken(7L, "plaintext", "u@x.ch", "cli", 30, "READ");
+        assertEquals(null, claimsOf(altAussteller, altToken).getIssuer());
+
+        JwtTokenService neu = serviceWithoutVault();
+        neu.issuer = "https://app.plaintext.ch";
+        neu.init();
+        gleicherSchluessel(altAussteller, neu);
+        assertTrue(neu.validateToken(altToken).isPresent());
+    }
+
+    /**
+     * Ohne Schluessel im Classpath erzeugt jede Instanz ein fluechtiges Paar. Fuer die iss-Tests
+     * muessen beide denselben Schluessel haben (wie INT und PROD) — sonst scheitert die Pruefung
+     * schon an der Signatur, und der Test belegt nichts ueber iss.
+     */
+    private static void gleicherSchluessel(JwtTokenService von, JwtTokenService nach) {
+        org.springframework.test.util.ReflectionTestUtils.setField(nach, "privateKey",
+                org.springframework.test.util.ReflectionTestUtils.getField(von, "privateKey"));
+        org.springframework.test.util.ReflectionTestUtils.setField(nach, "publicKeys",
+                org.springframework.test.util.ReflectionTestUtils.getField(von, "publicKeys"));
+    }
+
+    @Test
+    void issuerPasst_regeln() {
+        JwtTokenService ohneIssuer = serviceWithoutVault();
+        ohneIssuer.issuer = "";
+        assertTrue(ohneIssuer.issuerPasst(null));
+        assertFalse(ohneIssuer.issuerPasst("https://irgendwo.example"),
+                "eine Instanz ohne issuer stellt nie ein iss aus — jedes iss ist fremd");
+
+        JwtTokenService mit = serviceWithoutVault();
+        mit.issuer = " https://app.plaintext.ch ";
+        assertTrue(mit.issuerPasst("https://app.plaintext.ch"));
+        assertFalse(mit.issuerPasst("https://app.plaintext.ch.evil.example"));
+    }
+
     @Test
     void serviceToken_issuerWirdGesetztWennKonfiguriert() {
         JwtTokenService service = serviceWithoutVault();

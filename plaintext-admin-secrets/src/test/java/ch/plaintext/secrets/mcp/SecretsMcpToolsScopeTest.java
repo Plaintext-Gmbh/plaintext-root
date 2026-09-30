@@ -111,6 +111,32 @@ class SecretsMcpToolsScopeTest {
         assertTrue(antwort.startsWith("OK"), "Antwort war: " + antwort);
     }
 
+    /**
+     * Card 1360 (HB2): Vaultwarden is the vault of the whole instance and the item is found by name
+     * (exact, else substring). A tenant admin must not rotate items there — only ROOT.
+     */
+    @Test
+    void adminOhneRoot_darfNichtInVaultwardenSchreiben() {
+        authMit("SCOPE_READ", "SCOPE_WRITE", "SCOPE_ADMIN", "ROLE_ADMIN");
+
+        String antwort = tools.setSecret("SonarQube - NAS", "VAULTWARDEN", "neu", null);
+
+        verify(service, never()).set(any(), any(), any(), any());
+        assertTrue(antwort.startsWith("FEHLER"), "Antwort war: " + antwort);
+        assertTrue(antwort.contains("ROOT"), "Antwort war: " + antwort);
+    }
+
+    /** Cross-check to the test above: ROOT may still write to Vaultwarden. */
+    @Test
+    void root_darfInVaultwardenSchreiben() {
+        authMit("SCOPE_ADMIN", "ROLE_ADMIN", "ROLE_ROOT");
+
+        String antwort = tools.setSecret("app/token", "VAULTWARDEN", "neu", null);
+
+        verify(service).set(eq("app/token"), eq(SecretBackendType.VAULTWARDEN), eq("neu"), eq(null));
+        assertTrue(antwort.startsWith("OK"), "Antwort war: " + antwort);
+    }
+
     /** ROOT is the second permitted route — otherwise the fix would lock out the root user. */
     @Test
     void adminScopeMitRootRolle_darfSchreiben() {

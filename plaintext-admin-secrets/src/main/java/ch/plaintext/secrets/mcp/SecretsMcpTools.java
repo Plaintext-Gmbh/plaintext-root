@@ -53,6 +53,7 @@ public class SecretsMcpTools {
 
     private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
     private static final Set<String> SCHREIB_ROLLEN = Set.of("ROLE_ADMIN", "ROLE_ROOT");
+    private static final String ROLE_ROOT = "ROLE_ROOT";
 
     private final SecretService secretService;
 
@@ -61,7 +62,8 @@ public class SecretsMcpTools {
             + "backend = VAULTWARDEN (write to the shared vault), LOCAL_DB (AES-encrypted in this app's DB) "
             + "or HASHICORP (configured HashiCorp Vault). note = optional free-text comment. "
             + "The entry's creation timestamp is recorded automatically. "
-            + "Requires a caller token with scope=ADMIN and the role ADMIN or ROOT.")
+            + "Requires a caller token with scope=ADMIN and the role ADMIN or ROOT; "
+            + "backend VAULTWARDEN requires the role ROOT.")
     public String setSecret(
             @McpToolParam(description = "Secret name / key") String name,
             @McpToolParam(description = "Backend: VAULTWARDEN, LOCAL_DB or HASHICORP") String backend,
@@ -81,6 +83,16 @@ public class SecretsMcpTools {
         } catch (RuntimeException e) {
             return fehler("ungueltiges backend '" + backend + "' — erlaubt: VAULTWARDEN, LOCAL_DB, HASHICORP");
         }
+        // Card 1360 (HB2): Vaultwarden is the vault of the whole INSTANCE, not of the tenant. The
+        // item is looked up by name (exact, else substring) and its password overwritten — without
+        // this check any tenant admin could rotate every item the instance account can see (and
+        // bind a foreign item to a secret_entry of their own, whose value resolve() then hands to
+        // technical consumers). The UI (/secrets) is ROOT-only anyway; the MCP path now matches it.
+        if (type == SecretBackendType.VAULTWARDEN && !hatRolle(ROLE_ROOT)) {
+            log.warn("MCP: set_secret '{}' (VAULTWARDEN) abgewiesen — Rolle ROOT fehlt", name);
+            return fehler("set_secret mit backend VAULTWARDEN erfordert die Rolle ROOT "
+                    + "(der Tresor gehoert der ganzen Instanz). LOCAL_DB oder HASHICORP verwenden.");
+        }
         try {
             secretService.set(name, type, value, note);
             log.info("MCP: set_secret '{}' ({})", name, type);
@@ -96,7 +108,7 @@ public class SecretsMcpTools {
             + "HASHICORP {\"url\":\"...\",\"token\":\"...\",\"mount\":\"secret\"} — er wird "
             + "verschluesselt abgelegt und NIE zurueckgegeben. Das aktive Backend ist nur die "
             + "Vorgabe fuer NEU angelegte Secrets; bestehende Eintraege bleiben, wo sie sind. "
-            + "Erfordert einen Aufrufer-Token mit scope=ADMIN sowie die Rolle ADMIN oder ROOT.")
+            + "Erfordert einen Aufrufer-Token mit scope=ADMIN sowie die Rolle ROOT.")
     public String setSecretBackend(
             @McpToolParam(description = "Ziel-Backend: VAULTWARDEN, LOCAL_DB oder HASHICORP") String backend,
             @McpToolParam(required = false, description = "Zugangsdaten als JSON; bei LOCAL_DB "
@@ -105,6 +117,14 @@ public class SecretsMcpTools {
         String verweigert = autorisierungPruefen("set_secret_backend");
         if (verweigert != null) {
             return verweigert;
+        }
+        // Card 1360 (HB2): configJson carries a freely chosen HashiCorp URL, and the health check
+        // below calls it at once from inside the container (SSRF into the LAN for any tenant
+        // admin). Switching the backend is instance administration — the UI (/secrets) has been
+        // ROOT-only all along.
+        if (!hatRolle(ROLE_ROOT)) {
+            log.warn("MCP: set_secret_backend abgewiesen — Rolle ROOT fehlt");
+            return fehler("set_secret_backend erfordert die Rolle ROOT.");
         }
         SecretBackendType type;
         try {
@@ -177,6 +197,14 @@ public class SecretsMcpTools {
             return fehler(werkzeug + " erfordert die Rolle ADMIN oder ROOT.");
         }
         return null;
+    }
+
+    /** Does the (already authorised) caller carry the given authority? */
+    private static boolean hatRolle(String rolle) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(rolle::equals);
     }
 
     /**

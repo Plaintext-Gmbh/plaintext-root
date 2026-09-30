@@ -378,6 +378,13 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
         if (scope != null && !scope.isBlank()) {
             builder.claim(CLAIM_SCOPE, scope);
         }
+        // Card 1360 (HB5): API tokens carry the instance's iss (same value as the machine
+        // credentials, card 804), and validateToken rejects a token whose iss names another
+        // instance. INT and PROD share the signing key and the "prod" profile — without iss a token
+        // of one would be cryptographically valid on the other (card 347).
+        if (issuer != null && !issuer.isBlank()) {
+            builder.issuer(issuer.trim());
+        }
 
         String token = builder.signWith(privateKey, Jwts.SIG.RS256).compact();
 
@@ -499,6 +506,15 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
                 return Optional.empty();
             }
 
+            // Card 1360 (HB5): a token that names an issuer must name THIS instance. Tokens without
+            // iss (everything issued before root 1.738) stay valid — otherwise every token in use
+            // would die with the rollout. They age out by themselves (max. 90 days).
+            if (!issuerPasst(claims.getIssuer())) {
+                log.warn("JWT abgewiesen: iss='{}' ist nicht diese Instanz (erwartet '{}', jti={})",
+                        claims.getIssuer(), issuer == null ? "" : issuer.trim(), claims.getId());
+                return Optional.empty();
+            }
+
             Long userId = claims.get(CLAIM_USER_ID, Long.class);
             String mandat = claims.get(CLAIM_MANDAT, String.class);
             String email = claims.get(CLAIM_EMAIL, String.class);
@@ -531,6 +547,20 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
             log.warn("JWT token validation failed: {}", e.getMessage());
             return Optional.empty();
         }
+    }
+
+    /**
+     * Card 1360 (HB5): does the {@code iss} claim of an API token fit this instance?
+     *
+     * <p>No claim: accepted (legacy tokens). A claim: only if it equals the configured issuer; an
+     * instance without a configured issuer never issues one, so any claim is foreign there.
+     * Package-private for tests.
+     */
+    boolean issuerPasst(String tokenIssuer) {
+        if (tokenIssuer == null || tokenIssuer.isBlank()) {
+            return true;
+        }
+        return issuer != null && !issuer.isBlank() && issuer.trim().equals(tokenIssuer.trim());
     }
 
     /**

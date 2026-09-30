@@ -39,3 +39,25 @@ springdoc:
   api-docs:
     enabled: ${SPRINGDOC_ENABLED:false}
   show-actuator: false
+
+# SECURITY (card 1360, HB3): Content-Security-Policy of the FACES pages.
+#
+# With joinfaces.primefaces.csp=true (app, guild, iot, schuetu) PrimeFaces writes its OWN header on
+# every Faces page and thereby replaces the policy from PlaintextSecurityConfig.cspPolicy. Without
+# this key it only wrote "script-src 'self' 'nonce-…'" (measured 30.09.2026 on app, guild and iot
+# /login.html) — no base-uri, object-src or frame-ancestors.
+#
+# PrimeFaces appends " 'nonce-…';" to the END of this string (CspPhaseListener.initCsp, PF 15.0.18),
+# so script-src MUST stay the last directive. script-src itself is unchanged from what PrimeFaces set
+# on its own.
+#
+# Deliberately NOT the full root policy:
+#   default-src 'self'  would also restrict img/connect/font/frame — map sources of the apps that are
+#                       missing from the root policy (e.g. basemap.nationalmap.gov, data.geopf.fr,
+#                       www.ign.es, tile.waymarkedtrails.org in plaintext-app) would stop loading.
+#   form-action 'self'  Chromium applies it to redirects after a form POST as well; the logout
+#                       (POST /logout -> 302 to the IdP end-session endpoint) would be blocked.
+# Only has an effect where joinfaces.primefaces.csp=true; an app can override it in application.yml.
+joinfaces:
+  primefaces:
+    csp-policy: "base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self'"

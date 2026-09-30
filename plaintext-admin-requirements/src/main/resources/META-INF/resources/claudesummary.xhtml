@@ -9,6 +9,9 @@
 
     <!-- Marked.js for Markdown rendering (local) -->
     <script src="#{request.contextPath}/js/marked.min.js"></script>
+    <!-- DOMPurify (local, card 1360 HB4): the rendered markdown is sanitised before it goes into
+         innerHTML - the summary text is written by any automation token (POST /nosec/api/claude/summary). -->
+    <script src="#{request.contextPath}/js/purify.min.js"></script>
 
     <!-- GitHub Markdown CSS (local) -->
     <link rel="stylesheet" href="#{request.contextPath}/css/github-markdown-light.min.css"/>
