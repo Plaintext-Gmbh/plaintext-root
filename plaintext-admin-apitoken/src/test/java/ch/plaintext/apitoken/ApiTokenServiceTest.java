@@ -120,6 +120,44 @@ class ApiTokenServiceTest {
     }
 
     /**
+     * Card 1359: a token must not outlive its owner. Positive control is
+     * {@link #gueltigerTokenGibtResultUndAktualisiertLastUsed()} — the same token with an existing user.
+     */
+    @Test
+    void tokenEinesGeloeschtenBenutzersGibtEmpty() {
+        when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.of(storedToken()));
+        when(lookup.isUserDeleted(7L)).thenReturn(true);
+
+        assertTrue(service.validateToken(TOKEN).isEmpty());
+        verify(lookup).isUserDeleted(7L);
+        verify(lookup, never()).markUsed(anyLong());
+    }
+
+    /** Card 1359: the user check fails CLOSED — the database has just answered the hash lookup. */
+    @Test
+    void fehlerBeiDerBenutzerpruefungWeistAb() {
+        when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.of(storedToken()));
+        when(lookup.isUserDeleted(7L))
+                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("DB weg"));
+
+        assertTrue(service.validateToken(TOKEN).isEmpty());
+        verify(lookup, never()).markUsed(anyLong());
+    }
+
+    /** Card 1359: without a user id there is no owner to check — rejected. */
+    @Test
+    void tokenOhneUserIdGibtEmpty() {
+        when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(
+                new JwtValidationResult(null, "plaintext", "u@x.ch", "cli", Instant.now().plusSeconds(3600), null, null)));
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.of(storedToken()));
+
+        assertTrue(service.validateToken(TOKEN).isEmpty());
+        verify(lookup, never()).isUserDeleted(anyLong());
+    }
+
+    /**
      * The usage statistic is explicitly <b>best effort</b> (card 659): if the counter update fails,
      * the access stays valid. Otherwise a blocked write access to
      * {@code api_token} would reject every bearer call — an outage caused by a statistics row.

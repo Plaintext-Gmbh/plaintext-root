@@ -8,6 +8,8 @@ import ch.plaintext.testsupport.EmbeddedPg;
 import ch.plaintext.apitoken.ApiToken;
 import ch.plaintext.apitoken.ApiTokenRepository;
 import ch.plaintext.apitoken.ApiTokenRevocationLookup;
+import ch.plaintext.boot.plugins.security.model.MyUserEntity;
+import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -61,6 +63,9 @@ class ApiTokenRevocationVertragIT {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private MyUserRepository userRepository;
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
@@ -256,5 +261,25 @@ class ApiTokenRevocationVertragIT {
                 : LocalDateTime.now().plusDays(30));
         repository.saveAndFlush(t);
         return hash;
+    }
+
+    /**
+     * Card 1359: the owner check reads the real table {@code my_user_entity}. Positive control: an
+     * existing user counts as present; after deleting the row (hard delete, as
+     * {@code MyUserBackingBean.delete()} does) it counts as deleted; an id never issued as well.
+     */
+    @Test
+    void benutzerpruefungLiestDieEchteBenutzertabelle() {
+        MyUserEntity u = new MyUserEntity();
+        u.setUsername("karte1359-" + System.nanoTime() + "@test.ch");
+        u = userRepository.saveAndFlush(u);
+        long id = u.getId();
+
+        assertFalse(lookup.isUserDeleted(id), "bestehender Benutzer darf nicht als geloescht gelten");
+
+        userRepository.delete(u);
+        userRepository.flush();
+        assertTrue(lookup.isUserDeleted(id), "nach dem Loeschen muss der Benutzer als geloescht gelten");
+        assertTrue(lookup.isUserDeleted(Long.MAX_VALUE), "nie vergebene Id gilt als geloescht");
     }
 }

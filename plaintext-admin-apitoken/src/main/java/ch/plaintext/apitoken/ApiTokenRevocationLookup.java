@@ -76,6 +76,22 @@ public interface ApiTokenRevocationLookup {
     void markUsed(long id);
 
     /**
+     * Card 1359: has the owner of a token been deleted? Users are hard-deleted
+     * ({@code MyUserBackingBean.delete()} removes the row), so "no row in {@code my_user_entity}"
+     * means the account no longer exists — and its tokens must stop working with it.
+     *
+     * @param userId {@code user_id} of the token (the {@code sub} claim)
+     * <p>Default {@code false} only so that hand-written test stubs (here and in the consuming
+     * apps) keep compiling; the one production implementation {@link ApiTokenRevocationLookupJdbc}
+     * overrides it.</p>
+     *
+     * @return {@code true} only if no user with this id exists
+     */
+    default boolean isUserDeleted(long userId) {
+        return false;
+    }
+
+    /**
      * The fields of a token that are read for the access decision.
      *
      * @param id          primary key, for {@link #markUsed(long)}
