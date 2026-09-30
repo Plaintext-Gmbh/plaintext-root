@@ -80,6 +80,11 @@ import java.util.Set;
  * production can restore the old behaviour for a limited time via
  * {@code plaintext.mcp.bearer-filter.legacy-scope-admin=true}.</p>
  *
+ * <p><b>Scope cap (cards 1363/1365):</b> the claim is no longer taken on its own. The effective
+ * scope is min(claim, what the owner's <em>current</em> roles allow), see
+ * {@link ApiTokenScopeDeckel}: by default WRITE/ADMIN only for the roles ADMIN/ROOT, everybody else
+ * READ. An owner without any role permitted to use tokens (app setting {@code lese-rollen}) gets 403.</p>
+ *
  * <p><b>Revocation:</b> If the token carries a {@code jti} claim AND a {@link JtiRevocationChecker}
  * is available (optional collaborator, see {@link McpBearerTokenFilterConfig}), a request with a
  * revoked token is rejected with 401 just like an invalid token. Without a checker (default) or
@@ -122,6 +127,14 @@ public class McpBearerTokenFilter implements Filter {
      */
     @Setter
     private boolean legacyScopeAdmin = false;
+
+    /**
+     * Caps the claim by the owner's current roles (cards 1363/1365). Default = the secure rule
+     * (WRITE/ADMIN only for ADMIN/ROOT); {@link McpBearerTokenFilterConfig} sets the app's
+     * configured instance. As a setter for the same reason as {@link #legacyScopeAdmin}.
+     */
+    @Setter
+    private ApiTokenScopeDeckel scopeDeckel = new ApiTokenScopeDeckel();
 
     /**
      * @param tokenValidator    validation strategy for the raw bearer token (without prefix)
@@ -227,6 +240,29 @@ public class McpBearerTokenFilter implements Filter {
             return;
         }
 
+        // Real roles of the user, loaded once: they feed the role authorities below AND cap the
+        // scope (cards 1363/1365). A failing lookup yields no roles and thereby at most READ.
+        Set<String> userRoles = mcpUserRoles.rolesForUser(validation.userId());
+        if (userRoles == null) {
+            userRoles = Set.of();
+        }
+
+        // SECURITY (cards 1363/1365, HD7): the scope in the claim was chosen by the user; it must
+        // not replace the role. Effective scope = min(claim, what the CURRENT roles allow) —
+        // existing tokens of non-admins drop to READ on their next request, without revocation.
+        String claim = scopeClaimOderFallback(validation.scope());
+        Optional<String> gedeckelt = scopeDeckel.deckeln(claim, userRoles, validation.tokenName());
+        if (gedeckelt.isEmpty()) {
+            log.warn("MCP request rejected: userId={} (mandat={}) has no role that may use API tokens here",
+                    validation.userId(), validation.mandat());
+            forbidden(httpResponse);
+            return;
+        }
+        if (ApiTokenScopeDeckel.stufe(gedeckelt.get()) < ApiTokenScopeDeckel.stufe(claim)) {
+            log.info("MCP token scope capped: userId={} token='{}' claim={} -> {} (roles do not allow more)",
+                    validation.userId(), validation.tokenName(), claim, gedeckelt.get());
+        }
+
         Set<GrantedAuthority> authorities = new LinkedHashSet<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
         authorities.add(new SimpleGrantedAuthority("PROPERTY_MYUSERID_" + validation.userId()));
@@ -234,9 +270,9 @@ public class McpBearerTokenFilter implements Filter {
         // Unambiguous second copy of the same value — see TOKEN_MANDAT_PREFIX. It is the only
         // tenant authority that is guaranteed to occur exactly once.
         authorities.add(new SimpleGrantedAuthority(TOKEN_MANDAT_PREFIX + validation.mandat()));
-        addScopeAuthorities(authorities, validation.scope());
+        addScopeAuthorities(authorities, gedeckelt.get());
         // Real roles of the user (ROOT/ADMIN/PROPERTY_MANDAT_* etc.) — so that getAllowedMandate() is correct.
-        for (String role : mcpUserRoles.rolesForUser(validation.userId())) {
+        for (String role : userRoles) {
             if (role == null || role.isBlank()) {
                 continue;
             }
@@ -386,8 +422,7 @@ public class McpBearerTokenFilter implements Filter {
      * (see {@link McpBearerTokenFilterProperties#isLegacyScopeAdmin()}).</p>
      */
     private void addScopeAuthorities(Set<GrantedAuthority> authorities, String scope) {
-        String fallback = legacyScopeAdmin ? "ADMIN" : "READ";
-        String effective = (scope == null || scope.isBlank()) ? fallback : scope.trim().toUpperCase();
+        String effective = scopeClaimOderFallback(scope);
         authorities.add(new SimpleGrantedAuthority("SCOPE_READ"));
         if (effective.equals("WRITE") || effective.equals("EINTRAGEN") || effective.equals("ADMIN")) {
             authorities.add(new SimpleGrantedAuthority("SCOPE_WRITE"));
@@ -396,6 +431,15 @@ public class McpBearerTokenFilter implements Filter {
         if (effective.equals("ADMIN")) {
             authorities.add(new SimpleGrantedAuthority("SCOPE_ADMIN"));
         }
+    }
+
+    /**
+     * The claim, or the fallback for a missing/empty claim (READ; ADMIN with
+     * {@code legacy-scope-admin}, card 312), upper case.
+     */
+    private String scopeClaimOderFallback(String scope) {
+        String fallback = legacyScopeAdmin ? "ADMIN" : "READ";
+        return (scope == null || scope.isBlank()) ? fallback : scope.trim().toUpperCase();
     }
 
     /**

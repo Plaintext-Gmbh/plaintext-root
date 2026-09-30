@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -93,6 +94,16 @@ class McpBearerTokenFilterTest {
         HttpServletResponse response = mock(HttpServletResponse.class);
         when(response.getWriter()).thenReturn(new PrintWriter(sink));
         return response;
+    }
+
+    /**
+     * Roles of an administrator. Since cards 1363/1365 the filter caps the claim by the roles;
+     * a test about the scope LADDER (WRITE, ADMIN) therefore needs an owner who may hold it.
+     */
+    private static McpUserRoles adminRollen() {
+        McpUserRoles roles = mock(McpUserRoles.class);
+        when(roles.rolesForUser(any())).thenReturn(Set.of("admin", "user"));
+        return roles;
     }
 
     private static boolean hasAuthority(Authentication auth, String authority) {
@@ -305,7 +316,7 @@ class McpBearerTokenFilterTest {
     @Test
     void scopeWrite_bekommtReadUndWrite_keinAdmin() throws Exception {
         JwtTokenService jwt = jwtValidating("tok", 1L, "default", "u@x.ch", "WRITE", "jti-2a");
-        Authentication auth = runAndCaptureAuth(jwtFilter(jwt, mock(McpUserRoles.class)), "Bearer tok");
+        Authentication auth = runAndCaptureAuth(jwtFilter(jwt, adminRollen()), "Bearer tok");
 
         assertTrue(hasAuthority(auth, "SCOPE_READ"));
         assertTrue(hasAuthority(auth, "SCOPE_WRITE"));
@@ -321,9 +332,9 @@ class McpBearerTokenFilterTest {
     @Test
     void altnameEintragenUndNeunameWrite_vergebenDieselbenAuthorities() throws Exception {
         JwtTokenService alt = jwtValidating("tok", 1L, "default", "u@x.ch", "EINTRAGEN", "jti-2");
-        Authentication mitAltname = runAndCaptureAuth(jwtFilter(alt, mock(McpUserRoles.class)), "Bearer tok");
+        Authentication mitAltname = runAndCaptureAuth(jwtFilter(alt, adminRollen()), "Bearer tok");
         JwtTokenService neu = jwtValidating("tok", 1L, "default", "u@x.ch", "WRITE", "jti-2b");
-        Authentication mitNeuname = runAndCaptureAuth(jwtFilter(neu, mock(McpUserRoles.class)), "Bearer tok");
+        Authentication mitNeuname = runAndCaptureAuth(jwtFilter(neu, adminRollen()), "Bearer tok");
 
         for (String erwartet : new String[] {"SCOPE_READ", "SCOPE_WRITE", "SCOPE_EINTRAGEN"}) {
             assertTrue(hasAuthority(mitAltname, erwartet), "EINTRAGEN muss " + erwartet + " vergeben");
@@ -336,7 +347,7 @@ class McpBearerTokenFilterTest {
     @Test
     void scopeAdmin_bekommtAlleDrei() throws Exception {
         JwtTokenService jwt = jwtValidating("tok", 1L, "default", "u@x.ch", "ADMIN", "jti-3");
-        Authentication auth = runAndCaptureAuth(jwtFilter(jwt, mock(McpUserRoles.class)), "Bearer tok");
+        Authentication auth = runAndCaptureAuth(jwtFilter(jwt, adminRollen()), "Bearer tok");
 
         assertTrue(hasAuthority(auth, "SCOPE_READ"));
         assertTrue(hasAuthority(auth, "SCOPE_WRITE"));
@@ -369,7 +380,7 @@ class McpBearerTokenFilterTest {
     @Test
     void fehlenderScopeClaim_mitLegacyFlag_giltWeiterhinAlsAdmin() throws Exception {
         JwtTokenService jwt = jwtValidating("tok", 1L, "default", "u@x.ch", null, null);
-        McpBearerTokenFilter filter = jwtFilter(jwt, mock(McpUserRoles.class));
+        McpBearerTokenFilter filter = jwtFilter(jwt, adminRollen());
         filter.setLegacyScopeAdmin(true);
 
         Authentication auth = runAndCaptureAuth(filter, "Bearer tok");
@@ -473,7 +484,7 @@ class McpBearerTokenFilterTest {
         AtomicReference<Authentication> waehrendKette = new AtomicReference<>();
         FilterChain chain = (rq, rs) -> waehrendKette.set(SecurityContextHolder.getContext().getAuthentication());
 
-        McpBearerTokenFilter.withRevocationCheck(apiTokenService, mock(McpUserRoles.class))
+        McpBearerTokenFilter.withRevocationCheck(apiTokenService, adminRollen())
                 .doFilter(request, response, chain);
 
         Authentication auth = waehrendKette.get();
@@ -509,7 +520,8 @@ class McpBearerTokenFilterTest {
 
         FilterRegistrationBean<McpBearerTokenFilter> registration = new McpBearerTokenFilterConfig()
                 .mcpBearerTokenFilterRegistration(props, mock(JwtTokenService.class),
-                        mock(IApiTokenService.class), mock(McpUserRoles.class), mock(ObjectProvider.class));
+                        mock(IApiTokenService.class), mock(McpUserRoles.class), mock(ObjectProvider.class),
+                        mock(ObjectProvider.class));
 
         assertEquals(List.of("/mcp/*"), List.copyOf(registration.getUrlPatterns()),
                 "Default-Registrierung greift NUR auf /mcp/* — andere Pfade passieren unangetastet");
@@ -525,7 +537,8 @@ class McpBearerTokenFilterTest {
 
         FilterRegistrationBean<McpBearerTokenFilter> registration = new McpBearerTokenFilterConfig()
                 .mcpBearerTokenFilterRegistration(props, mock(JwtTokenService.class),
-                        mock(IApiTokenService.class), mock(McpUserRoles.class), mock(ObjectProvider.class));
+                        mock(IApiTokenService.class), mock(McpUserRoles.class), mock(ObjectProvider.class),
+                        mock(ObjectProvider.class));
 
         assertEquals(List.of("/mcp/*", "/api/turnier/*"), List.copyOf(registration.getUrlPatterns()));
     }
@@ -538,7 +551,8 @@ class McpBearerTokenFilterTest {
 
         FilterRegistrationBean<McpBearerTokenFilter> registration = new McpBearerTokenFilterConfig()
                 .mcpBearerTokenFilterRegistration(props, mock(JwtTokenService.class),
-                        mock(IApiTokenService.class), mock(McpUserRoles.class), mock(ObjectProvider.class));
+                        mock(IApiTokenService.class), mock(McpUserRoles.class), mock(ObjectProvider.class),
+                        mock(ObjectProvider.class));
 
         assertEquals(List.of("/mcp/*"), List.copyOf(registration.getUrlPatterns()));
     }
