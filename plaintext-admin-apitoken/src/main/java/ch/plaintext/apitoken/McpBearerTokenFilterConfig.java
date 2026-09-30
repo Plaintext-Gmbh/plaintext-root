@@ -41,7 +41,8 @@ public class McpBearerTokenFilterConfig {
             JwtTokenService jwtTokenService,
             IApiTokenService apiTokenService,
             McpUserRoles mcpUserRoles,
-            ObjectProvider<JtiRevocationChecker> revocationCheckerProvider) {
+            ObjectProvider<JtiRevocationChecker> revocationCheckerProvider,
+            ObjectProvider<ApiTokenScopeDeckel> scopeDeckelProvider) {
 
         // Optional: only present if the app (e.g. schuetu) registers its own blocklist bean.
         // Without such a bean = no token counts as revoked, 100% behaviourally identical to the previous filter.
@@ -61,6 +62,13 @@ public class McpBearerTokenFilterConfig {
         // Legacy behaviour for scope-less tokens (card 312): default false = fail-closed to READ.
         filter.setLegacyScopeAdmin(properties.isLegacyScopeAdmin());
 
+        // Scope cap by role (cards 1363/1365): the app's configured instance; without one the
+        // filter keeps its secure default (WRITE/ADMIN only for ADMIN/ROOT).
+        ApiTokenScopeDeckel scopeDeckel = scopeDeckelProvider.getIfAvailable();
+        if (scopeDeckel != null) {
+            filter.setScopeDeckel(scopeDeckel);
+        }
+
         // NEVER pass an empty pattern list on to the registration: a FilterRegistrationBean without
         // patterns maps to /* and would put the WHOLE app behind bearer auth.
         List<String> patterns = properties.getUrlPatterns();
@@ -73,6 +81,14 @@ public class McpBearerTokenFilterConfig {
         registration.setOrder(properties.getOrder());
         log.info("Zentraler McpBearerTokenFilter registriert: validation={}, patterns={}, order={}",
                 properties.getValidation(), patterns, properties.getOrder());
+        ApiTokenScopeDeckel wirksam = scopeDeckel != null ? scopeDeckel : new ApiTokenScopeDeckel();
+        log.info("MCP: Scope-Deckel enabled={} lese-rollen={} schreib-rollen={} admin-rollen={} service-tokens={}",
+                wirksam.isEnabled(), wirksam.getLeseRollen(), wirksam.getSchreibRollen(),
+                wirksam.getAdminRollen(), wirksam.getServiceTokenSchreibRollen());
+        if (!wirksam.isEnabled()) {
+            log.warn("MCP: scope-deckel.enabled=false — der Token-Scope wird NICHT durch die Rollen begrenzt "
+                    + "(Notschalter, Karte 1363).");
+        }
         if (properties.isLegacyScopeAdmin()) {
             log.warn("MCP: legacy-scope-admin=true — Tokens OHNE scope-Claim gelten weiterhin als ADMIN "
                     + "(Uebergangsmodus, Karte 312). Tokens mit explizitem Scope neu ausstellen und Flag entfernen.");

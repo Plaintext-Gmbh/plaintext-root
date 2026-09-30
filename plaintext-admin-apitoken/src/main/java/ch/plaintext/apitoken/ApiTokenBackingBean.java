@@ -61,6 +61,10 @@ public class ApiTokenBackingBean implements Serializable {
     @Autowired
     private transient ApiTokenService apiTokenService;
 
+    /** Caps the selectable scope by the user's roles (cards 1363/1365). */
+    @Autowired
+    private transient ApiTokenScopeDeckel scopeDeckel;
+
     @Getter
     private List<TokenDisplay> tokens = new ArrayList<>();
 
@@ -99,9 +103,15 @@ public class ApiTokenBackingBean implements Serializable {
      * <p>As with {@code EINTRAGEN}, the value is merely no longer <em>offered</em>. Existing
      * tokens with {@code scope=SESSION} remain valid and behave unchanged like
      * {@code READ} tokens; there is no migration and nobody is locked out.</p>
+     *
+     * <p><b>Capped by role since cards 1363/1365:</b> only the levels the user's roles allow
+     * ({@link ApiTokenScopeDeckel}, default WRITE/ADMIN only for ADMIN/ROOT). Before, every
+     * user chose freely, and the scope replaced the role in the apps. Empty = the app does not
+     * allow this user any token ({@code lese-rollen}).</p>
      */
-    @Getter
-    private final List<String> verfuegbareScopes = List.of("READ", "WRITE", "ADMIN");
+    public List<String> getVerfuegbareScopes() {
+        return scopeDeckel.waehlbareScopes(eigeneRollen());
+    }
 
     @Getter
     private int minValidityDays = JwtTokenService.MIN_VALIDITY_DAYS;
@@ -195,6 +205,21 @@ public class ApiTokenBackingBean implements Serializable {
             return;
         }
 
+        // Cards 1363/1365: the scope must not exceed what the user's roles allow. The select only
+        // offers those levels; this check covers a manipulated postback.
+        List<String> erlaubt = getVerfuegbareScopes();
+        if (erlaubt.isEmpty()) {
+            addError("Für Ihre Rollen sind in dieser Anwendung keine API-Tokens freigegeben.");
+            return;
+        }
+        String verlangt = newTokenScope == null ? "" : newTokenScope.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!erlaubt.contains(verlangt)) {
+            log.warn("API token scope {} refused for user {}: roles allow only {}", newTokenScope, userId, erlaubt);
+            addError("Zugriff " + newTokenScope + " ist für Ihre Rollen nicht erlaubt (möglich: "
+                    + String.join(", ", erlaubt) + ").");
+            return;
+        }
+
         try {
             String jwt = apiTokenService.createToken(userId, mandat, newTokenName.trim(), PlaintextSecurityHolder.getUser(), newTokenValidityDays, newTokenScope);
             this.newlyCreatedToken = jwt;
@@ -284,6 +309,18 @@ public class ApiTokenBackingBean implements Serializable {
 
     public boolean hasNewlyCreatedToken() {
         return newlyCreatedToken != null;
+    }
+
+    /** Roles of the logged-in user as authority names ({@code ROLE_ADMIN}, ...). */
+    private static List<String> eigeneRollen() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getAuthorities() == null) {
+            return List.of();
+        }
+        return auth.getAuthorities().stream()
+                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                .toList();
     }
 
     private void addInfo(String message) {
