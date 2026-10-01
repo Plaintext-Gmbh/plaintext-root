@@ -134,10 +134,13 @@ public class MobilSeitenController {
         }
         String kontext = request.getContextPath();
         String inhalt = inhalt(seite, request, frage);
+        // Einmal je Anfrage (Karte 1387): Position und Weiter brauchen denselben Umlauf, und jede
+        // Berechnung fragt die Zugriffsregel jeder Seite beim Seitenwaechter.
+        List<WatchPage> umlauf = registry.verfuegbare();
         MobilHtml.Rahmen rahmen = new MobilHtml.Rahmen(
                 seite.title(),
-                position(seite),
-                registry.naechste(seite.id()).map(p -> kontext + adresse(p)).orElse(null),
+                position(seite, umlauf),
+                registry.naechste(seite.id(), umlauf).map(p -> kontext + adresse(p)).orElse(null),
                 registry.uebersicht().map(p -> kontext + adresse(p)).orElse(null),
                 kontext + dateien.adresse("watch.css"),
                 kontext + dateien.adresse("mobil.js"),
@@ -278,8 +281,7 @@ public class MobilSeitenController {
         return Map.copyOf(felder);
     }
 
-    private String position(WatchPage seite) {
-        List<WatchPage> umlauf = registry.verfuegbare();
+    private static String position(WatchPage seite, List<WatchPage> umlauf) {
         for (int i = 0; i < umlauf.size(); i++) {
             if (umlauf.get(i).id().equals(seite.id())) {
                 return (i + 1) + "/" + umlauf.size();
