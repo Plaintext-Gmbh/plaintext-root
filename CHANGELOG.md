@@ -12,6 +12,22 @@ exhaustive.
 
 ## [Unreleased]
 
+### Changed
+- **All watch pages of root on the mobile framework** (Karte 1387, Daniel 01.10.2026: «bitte alles
+  umstellen»). `WatchHomePage` (tiles from `WatchWidget`) and `WatchTestPage` (page switches plus a
+  gallery of the building blocks) implement `MobilWatchPage`; `home.xhtml`, `elemente.xhtml`,
+  `WatchHomeBean`, `WatchUebersichtBean` and `WatchElementeBean` are gone. New blocks in
+  `MobilSeite`, each once: `Kacheln`, `Aktion` (large button with a running time that keeps counting
+  in the browser and small side buttons), `Schalter`, chosen state of a `Knopf`, `Eintrag` with
+  leading column, line below and editable fields (`Aenderung`/`Feld`, saved on change, handed to
+  `MobilWatchPage.handle(aktion, wert, felder)` as `f-<name>` only). `MobilAltadressenFilter`
+  redirects the old `/watch/<id>.html|.xhtml` of every migrated page to `/watch/m/<id>`.
+  `mobil.js` stays under 5 KB. **Consumer impact:** the root pages move to `/watch/m/home` and
+  `/watch/m/elemente` (old addresses redirect); the page-guard aliases `watch/home` and
+  `watch/elemente` are removed. The Facelet frame (`frame.xhtml`, `WatchFrameBean`, `w:aktion`)
+  stays for modules that still ship a Facelet watch page (guild with an older
+  `plaintext-z-kalenderhost`). A module page without editable fields needs no change.
+
 ### Added
 - **Mobile framework for watch/phone pages** (Karte 1355, prototype). A module describes a page
   (`MobilWatchPage.beschreibe()`: figure, buttons, list, note) and handles its actions

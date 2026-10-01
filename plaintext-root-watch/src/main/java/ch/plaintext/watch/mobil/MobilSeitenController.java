@@ -101,6 +101,12 @@ public class MobilSeitenController {
 
     static final String FEHLGESCHLAGEN = "Hat nicht geklappt.";
 
+    /** At most this many fields per action reach the page (card 1387). */
+    public static final int FELDER_MAX = 10;
+
+    /** A field longer than this is cut — a time is five characters, a note fits in two hundred. */
+    public static final int FELD_LAENGE_MAX = 200;
+
     private final WatchPageRegistry registry;
     private final WatchStateService zustand;
     private final MobilDateien dateien;
@@ -161,7 +167,7 @@ public class MobilSeitenController {
 
         MobilAntwort antwort;
         try {
-            antwort = seite.handle(aktion, wert);
+            antwort = seite.handle(aktion, wert, felder(request));
             if (antwort == null) {
                 antwort = MobilAntwort.ok(null);
             }
@@ -242,11 +248,34 @@ public class MobilSeitenController {
             beschreibung = seite.beschreibe();
         } catch (RuntimeException e) {
             // Eine Seite, die ihre Daten nicht lesen kann, zeigt das in Worten statt einer
-            // Fehlerseite — dieselbe Haltung wie WatchHomeBean bei einer kaputten Kachel.
+            // Fehlerseite — dieselbe Haltung wie WatchHomePage bei einer kaputten Kachel.
             log.warn("Mobil: Seite {} nicht beschreibbar: {}", seite.id(), e.toString());
             beschreibung = MobilSeite.neu().hinweis("Die Daten sind gerade nicht lesbar.").bauen();
         }
         return MobilHtml.inhalt(beschreibung, formular);
+    }
+
+    /**
+     * The fields of the form: only parameters named {@code f-<name>} with a name a
+     * {@link MobilSeite.Feld} may have, at most {@link #FELDER_MAX}, each cut to
+     * {@link #FELD_LAENGE_MAX}. Never the CSRF token, never {@code wert}.
+     */
+    static Map<String, String> felder(HttpServletRequest request) {
+        Map<String, String> felder = new LinkedHashMap<>();
+        for (Map.Entry<String, String[]> p : request.getParameterMap().entrySet()) {
+            String name = p.getKey();
+            if (felder.size() >= FELDER_MAX || !name.startsWith(MobilHtml.FELD_PRAEFIX)) {
+                continue;
+            }
+            String kurz = name.substring(MobilHtml.FELD_PRAEFIX.length());
+            String[] werte = p.getValue();
+            if (!MobilSeite.Feld.NAME.matcher(kurz).matches() || werte == null || werte.length == 0) {
+                continue;
+            }
+            String w = werte[0] == null ? "" : werte[0];
+            felder.put(kurz, w.length() > FELD_LAENGE_MAX ? w.substring(0, FELD_LAENGE_MAX) : w);
+        }
+        return Map.copyOf(felder);
     }
 
     private String position(WatchPage seite) {

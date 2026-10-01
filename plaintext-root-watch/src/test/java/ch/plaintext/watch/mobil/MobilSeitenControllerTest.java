@@ -46,6 +46,7 @@ class MobilSeitenControllerTest {
         final String id;
         final boolean erlaubt;
         final List<String> aufrufe = new ArrayList<>();
+        Map<String, String> felder;
         RuntimeException wirft;
 
         ZaehlSeite(String id, boolean erlaubt) {
@@ -86,6 +87,12 @@ class MobilSeitenControllerTest {
             }
             aufrufe.add(aktion + ":" + wert);
             return MobilAntwort.ok("gezählt");
+        }
+
+        @Override
+        public MobilAntwort handle(String aktion, String wert, Map<String, String> felder) {
+            this.felder = felder;
+            return handle(aktion, wert);
         }
     }
 
@@ -212,6 +219,35 @@ class MobilSeitenControllerTest {
         // Der Inhalt ist NACH der Aktion beschrieben: der Stand ist schon 1.
         assertThat((String) json.get("inhalt")).contains("<div class=\"w-value\">1</div>");
         assertThat(zaehler.aufrufe).containsExactly("plus:1");
+    }
+
+    @Test
+    @DisplayName("1387: Felder kommen nur als f-<name> an — nie _csrf, nie wert, Anzahl und Laenge begrenzt")
+    void felder() {
+        MockHttpServletRequest r = anfrage(true);
+        r.addParameter("_csrf", "tok-1");
+        r.addParameter("wert", "5");
+        r.addParameter("f-von", "08:15");
+        r.addParameter("f-bis", "09:00");
+        r.addParameter("f-Gross", "x");           // Name, den kein Feld haben darf
+        r.addParameter("f-", "x");
+        r.addParameter("von", "07:00");           // ohne Praefix
+        r.addParameter("f-text", "a".repeat(500));
+        controller.aktion("zaehler", "plus", "5", r);
+
+        assertThat(zaehler.felder).containsOnlyKeys("von", "bis", "text")
+                .containsEntry("von", "08:15").containsEntry("bis", "09:00");
+        assertThat(zaehler.felder.get("text")).hasSize(MobilSeitenController.FELD_LAENGE_MAX);
+
+        MockHttpServletRequest viele = anfrage(true);
+        for (int i = 0; i < 30; i++) {
+            viele.addParameter("f-f" + i, "x");
+        }
+        controller.aktion("zaehler", "plus", "5", viele);
+        assertThat(zaehler.felder).hasSize(MobilSeitenController.FELDER_MAX);
+
+        // Positivkontrolle der Vorgabe: eine Seite ohne Felder bekommt die Aktion wie bisher.
+        assertThat(zaehler.aufrufe).containsExactly("plus:5", "plus:5");
     }
 
     @Test

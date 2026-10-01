@@ -12,7 +12,7 @@ import java.util.List;
  *
  * <h2>Why a hundred lines of Java and not a template engine</h2>
  *
- * <p>The vocabulary is closed — four blocks and a frame. A template engine would bring a
+ * <p>The vocabulary is closed — a handful of blocks and a frame. A template engine would bring a
  * second syntax, a resolver, a cache and a jar of a megabyte into every application that
  * carries {@code plaintext-root-watch}, for markup that fits on one screen. What a template
  * engine gives for free, escaping, happens here in exactly one method ({@link #e(String)}),
@@ -63,6 +63,13 @@ public final class MobilHtml {
 
     /** The id of the status line. */
     public static final String MELDUNG_ID = "m-meldung";
+
+    /**
+     * Prefix of the request parameter of a field ({@link MobilSeite.Feld}). The controller hands
+     * only parameters with this prefix to the page — never the CSRF token or anything else that
+     * happens to be in the request.
+     */
+    public static final String FELD_PRAEFIX = "f-";
 
     private MobilHtml() {
     }
@@ -125,6 +132,9 @@ public final class MobilHtml {
                 case MobilSeite.Liste l -> zaehler = liste(b, l, f, zaehler);
                 case MobilSeite.Hinweis h -> b.append("<div class=\"w-card\"><div class=\"w-note\">")
                         .append(e(h.text())).append("</div></div>");
+                case MobilSeite.Kacheln k -> kacheln(b, k);
+                case MobilSeite.Aktion a -> aktion(b, a, f);
+                case MobilSeite.Schalter s -> schalter(b, s, f);
             }
         }
         return b.toString();
@@ -152,14 +162,103 @@ public final class MobilHtml {
                 .append(e(f.aktionsBasis() + liste.get(0).aktion())).append("\">");
         csrf(b, f);
         for (MobilSeite.Knopf knopf : liste) {
-            b.append("<button type=\"submit\" class=\"w-chip\" formaction=\"")
-                    .append(e(f.aktionsBasis() + knopf.aktion())).append('"');
-            if (knopf.wert() != null) {
-                b.append(" name=\"wert\" value=\"").append(e(knopf.wert())).append('"');
+            b.append("<button type=\"submit\" class=\"w-chip").append(knopf.gewaehlt() ? " w-chip-an" : "")
+                    .append("\" formaction=\"").append(e(f.aktionsBasis() + knopf.aktion())).append('"');
+            if (knopf.gewaehlt()) {
+                b.append(" aria-pressed=\"true\"");
             }
+            wertAttribut(b, knopf.wert());
             b.append('>').append(e(knopf.beschriftung())).append("</button>");
         }
         b.append("</form></div>");
+    }
+
+    private static void wertAttribut(StringBuilder b, String wert) {
+        if (wert != null) {
+            b.append(" name=\"wert\" value=\"").append(e(wert)).append('"');
+        }
+    }
+
+    private static void kacheln(StringBuilder b, MobilSeite.Kacheln k) {
+        b.append("<div class=\"w-card\">");
+        if (k.kacheln().isEmpty()) {
+            b.append("<div class=\"w-note\">").append(e(k.leerText())).append("</div></div>");
+            return;
+        }
+        // Wie home.xhtml bis Karte 1387: ab drei Kacheln drei nebeneinander, sonst zwei.
+        b.append("<div class=\"w-widgets").append(k.kacheln().size() >= 3 ? " w-3" : "").append("\">");
+        for (MobilSeite.Kachel kachel : k.kacheln()) {
+            b.append("<div class=\"w-widget\"><div class=\"w-value\">").append(e(kachel.wert()))
+                    .append("</div><div class=\"w-label\">").append(e(kachel.label())).append("</div></div>");
+        }
+        b.append("</div></div>");
+    }
+
+    /**
+     * The large acting button. A real {@code <button>} this time: unlike the
+     * {@code <input type="submit">} of {@code h:commandButton} it can carry three lines, so the
+     * transparent overlay of {@code w:aktion} is not needed — what one sees is the button.
+     */
+    private static void aktion(StringBuilder b, MobilSeite.Aktion a, Formular f) {
+        String farbe = switch (a.farbe()) {
+            case GO -> " w-aktion-go";
+            case STOP -> " w-aktion-stop";
+            case NEUTRAL -> "";
+        };
+        b.append("<div class=\"w-card\"><form method=\"post\" data-mobil action=\"")
+                .append(e(f.aktionsBasis() + a.knopf().aktion())).append("\">");
+        csrf(b, f);
+        b.append("<button type=\"submit\" class=\"w-aktion").append(farbe).append('"');
+        wertAttribut(b, a.knopf().wert());
+        b.append('>');
+        if (a.oben() != null && !a.oben().isBlank()) {
+            b.append("<span class=\"w-aktion-oben\">").append(e(a.oben())).append("</span>");
+        }
+        if (a.laeuftSekunden() != null) {
+            // Die laufende Zeit zaehlt im Browser weiter (mobil.js). Uebergeben wird die Dauer und
+            // nicht der Startzeitpunkt: die Uhr des Telefons darf falsch gehen, ohne dass die
+            // Anzeige es tut.
+            b.append("<span class=\"w-aktion-gross\" data-laeuft=\"").append(Math.max(0, a.laeuftSekunden()))
+                    .append("\">").append(e(MobilSeite.dauer(a.laeuftSekunden()))).append("</span>");
+        } else if (a.gross() != null && !a.gross().isBlank()) {
+            b.append("<span class=\"w-aktion-gross\">").append(e(a.gross())).append("</span>");
+        }
+        b.append("<span class=\"w-aktion-wort\">").append(e(a.knopf().beschriftung())).append("</span>")
+                .append("</button></form>");
+        if (!a.neben().isEmpty()) {
+            // Die Nebenhandlung (−1) bleibt ein eigener, kleiner Knopf UNTER dem grossen — die
+            // Korrektur eines Fehlgriffs ist nicht die Handlung der Seite (Karte 1312).
+            b.append("<form class=\"w-row\" method=\"post\" data-mobil action=\"")
+                    .append(e(f.aktionsBasis() + a.neben().get(0).aktion())).append("\">");
+            csrf(b, f);
+            for (MobilSeite.Knopf k : a.neben()) {
+                b.append("<button type=\"submit\" class=\"w-btn\" formaction=\"")
+                        .append(e(f.aktionsBasis() + k.aktion())).append('"');
+                wertAttribut(b, k.wert());
+                b.append('>').append(e(k.beschriftung())).append("</button>");
+            }
+            b.append("</form>");
+        }
+        b.append("</div>");
+    }
+
+    private static void schalter(StringBuilder b, MobilSeite.Schalter s, Formular f) {
+        b.append("<div class=\"w-card\"><div class=\"w-label\">").append(e(s.label())).append("</div>");
+        for (MobilSeite.SchalterZeile z : s.zeilen()) {
+            b.append("<form class=\"w-row\" method=\"post\" data-mobil action=\"")
+                    .append(e(f.aktionsBasis() + z.aktion())).append("\">");
+            csrf(b, f);
+            b.append("<span class=\"w-value w-sm\">").append(e(z.titel())).append("</span>")
+                    .append("<button type=\"submit\" class=\"w-btn ").append(z.an() ? "w-btn-go" : "w-btn-stop")
+                    .append("\" aria-pressed=\"").append(z.an()).append("\" aria-label=\"")
+                    .append(e(z.titel())).append(z.an() ? " ist an" : " ist aus").append('"');
+            wertAttribut(b, z.wert());
+            b.append('>').append(z.an() ? "an" : "aus").append("</button></form>");
+        }
+        if (s.hinweis() != null && !s.hinweis().isBlank()) {
+            b.append("<div class=\"w-note\">").append(e(s.hinweis())).append("</div>");
+        }
+        b.append("</div>");
     }
 
     private static int liste(StringBuilder b, MobilSeite.Liste l, Formular f, int zaehler) {
@@ -173,11 +272,17 @@ public final class MobilHtml {
             boolean loeschbar = eintrag.loeschAktion() != null && eintrag.schluessel() != null;
             boolean gefragt = loeschbar && eintrag.schluessel().equals(f.frage());
             b.append("<div class=\"w-entry\">");
+            if (eintrag.aenderung() != null && eintrag.schluessel() != null) {
+                felder(b, eintrag, f);
+            }
             // Die Zeile ist ein GET-Formular auf die Seite selbst: ohne JavaScript fuehrt das ×
             // auf dieselbe Seite mit offener Rueckfrage (?frage=…), mit JavaScript klappt
             // mobil.js die Rueckfrage an Ort und Stelle auf, ganz ohne Anfrage.
-            b.append("<form class=\"w-row\" method=\"get\" action=\"").append(e(f.seitenAdresse())).append("\">")
-                    .append("<span class=\"w-entry-label\">").append(e(eintrag.text())).append("</span>");
+            b.append("<form class=\"w-row\" method=\"get\" action=\"").append(e(f.seitenAdresse())).append("\">");
+            if (eintrag.vorne() != null) {
+                b.append("<span class=\"w-entry-total\">").append(e(eintrag.vorne())).append("</span>");
+            }
+            b.append("<span class=\"w-entry-label\">").append(e(eintrag.text())).append("</span>");
             if (eintrag.rechts() != null) {
                 b.append("<span class=\"w-entry-total\">").append(e(eintrag.rechts())).append("</span>");
             }
@@ -187,6 +292,9 @@ public final class MobilHtml {
                         .append("\" aria-label=\"Löschen\" aria-controls=\"").append(frageId).append("\">×</button>");
             }
             b.append("</form>");
+            if (eintrag.unter() != null && !eintrag.unter().isBlank()) {
+                b.append("<div class=\"w-hint\">").append(e(eintrag.unter())).append("</div>");
+            }
             if (loeschbar) {
                 b.append("<div class=\"w-confirm\" id=\"").append(frageId).append('"')
                         .append(gefragt ? "" : " hidden").append("><div class=\"w-confirm-text\">Löschen?</div>")
@@ -203,6 +311,33 @@ public final class MobilHtml {
         }
         b.append("</div>");
         return n;
+    }
+
+    /**
+     * The editable fields of an entry: one POST form that {@code mobil.js} sends on every change
+     * ({@code data-mobil-auto}). Without JavaScript the OK button inside {@code noscript} sends it.
+     */
+    private static void felder(StringBuilder b, MobilSeite.Eintrag eintrag, Formular f) {
+        MobilSeite.Aenderung a = eintrag.aenderung();
+        b.append("<form class=\"w-row\" method=\"post\" data-mobil data-mobil-auto action=\"")
+                .append(e(f.aktionsBasis() + a.aktion())).append("\">");
+        csrf(b, f);
+        b.append("<input type=\"hidden\" name=\"wert\" value=\"").append(e(eintrag.schluessel())).append("\">");
+        MobilSeite.Feld vorher = null;
+        for (MobilSeite.Feld feld : a.felder()) {
+            boolean bereich = vorher != null && vorher.art() == feld.art() && feld.art() != MobilSeite.FeldArt.TEXT;
+            if (bereich) {
+                // von – bis: zwei Zeitfelder derselben Art sind ein Bereich.
+                b.append("<span class=\"w-dash\">–</span>");
+            }
+            b.append("<input class=\"w-field").append(feld.art() == MobilSeite.FeldArt.TEXT ? "" : " w-time")
+                    .append("\" type=\"").append(feld.art().typ()).append("\" name=\"").append(FELD_PRAEFIX)
+                    .append(feld.name()).append("\" value=\"").append(e(feld.wert())).append("\" aria-label=\"")
+                    .append(e(feld.beschriftung())).append("\">");
+            vorher = feld;
+        }
+        b.append("<noscript><button type=\"submit\" class=\"w-btn w-btn-small\">OK</button></noscript>")
+                .append("</form>");
     }
 
     private static void csrf(StringBuilder b, Formular f) {

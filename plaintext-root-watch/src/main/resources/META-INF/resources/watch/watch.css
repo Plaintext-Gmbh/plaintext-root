@@ -515,3 +515,9 @@ a.w-btn { display: flex; align-items: center; justify-content: center; }
 
 /* Waehrend eine Aktion laeuft: sichtbar gedaempft, damit niemand ein zweites Mal tippt. */
 form[aria-busy="true"] { opacity: .6; }
+
+/* Karte 1387: der grosse Knopf ist hier ein echtes <button> mit drei Zeilen (oben, Zahl, Wort)
+   statt eines durchsichtigen <input> ueber einem Kasten. Schrift und Zeiger erbt ein button
+   nicht von selbst; ohne diese Zeile stuende die Zahl in der Systemschrift des Browsers. */
+button.w-aktion { font: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; }
+button.w-aktion:focus-visible { outline: 3px solid var(--w-ink); outline-offset: 2px; }

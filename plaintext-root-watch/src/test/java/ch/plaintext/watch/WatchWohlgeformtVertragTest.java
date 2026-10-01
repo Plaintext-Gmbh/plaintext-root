@@ -103,7 +103,9 @@ class WatchWohlgeformtVertragTest {
                 "Der Parser nimmt einen Kommentar mit zwei Bindestrichen an — dann belegt ein "
                         + "gruener Lauf unten nichts.");
 
-        assertTrue(dateien.size() >= 4,
+        // Karte 1387: 3 statt 4 — home.xhtml und elemente.xhtml sind weg (Mobil-Framework), es
+        // bleiben frame.xhtml, watch-ui/aktion.xhtml und watch-einstellungen.xhtml.
+        assertTrue(dateien.size() >= 3,
                 "Nur " + dateien.size() + " Dateien gefunden — das Muster passt nicht mehr.");
 
         List<String> fehler = new ArrayList<>();

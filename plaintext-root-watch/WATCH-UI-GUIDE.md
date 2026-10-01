@@ -266,7 +266,7 @@ anyone else's data (card 1195).
 
 ---
 
-## 7. Mobil-Framework: eine Seite ohne Facelet (Karte 1355, Prototyp)
+## 7. Mobil-Framework: eine Seite ohne Facelet (Karten 1355 und 1387)
 
 Seit Karte 1355 kann eine Watch-Seite statt einer `.xhtml` eine **Beschreibung** liefern. Das
 Framework zeichnet daraus schlankes HTML mit denselben `w-`Klassen und fuehrt jede Aktion per
@@ -305,7 +305,7 @@ Facelet-Seiten.
 
 | Frage | Antwort |
 |---|---|
-| Wer sieht die Seite? | `WatchPageRegistry.sichtbar()` — Rollen UND eigener Schalter, fuer Anzeigen und fuer Aktionen. Sonst 404. |
+| Wer sieht die Seite? | `available()` (Rollen, fail-closed), fuer Anzeigen und fuer Aktionen. Sonst 404. Der eigene Schalter nimmt die Seite nur aus dem Umlauf (Nachbesserung 1355). |
 | Anmeldung? | Alles liegt unter `/watch/`: ohne Anmeldung die Anmeldeseite, mit Handy-Link durch `WatchTokenSitzungFilter` (Token bei JEDER Anfrage geprueft). |
 | CSRF? | Jede Aktion ist ein POST mit dem `_csrf`-Feld der Sitzung; Spring Security prueft es. |
 | CSP? | Kein Inline-Skript, kein `on…`, kein `style`-Attribut (`MobilHtmlTest`). |
@@ -316,6 +316,37 @@ Facelet-Seiten.
 aus der Anfrage, und ein `wert`, der eine Id ist, wird im Dienst gegen den Benutzer geprueft
 (Karte 1195).
 
-**Was es (noch) nicht gibt:** eigene Bausteine ueber Wert/Knoepfe/Liste/Hinweis hinaus,
-Eingabefelder, Service Worker/Offline-Puffer. Das ist der Umfang des Prototyps; der Entscheid
-ueber die Migration der uebrigen Seiten steht in Karte 1355.
+### Seit Karte 1387: alle Watch-Seiten, die Bausteine
+
+Daniel, 01.10.2026: «Das neue design für die watch passt gut bitte alles umstellen». Seither sind
+home, elemente (root) und zeit, kalorien, challenge, kalender, alkohol (app) Seiten dieses
+Frameworks. Was sie brauchten, steht einmal in `MobilSeite`:
+
+| Baustein | Builder | Wofuer | Beispiel |
+|---|---|---|---|
+| `Wert` | `.wert(label, wert, hinweis)` | eine Zahl mit Beschriftung | Gramm heute |
+| `Kacheln` | `.kacheln(liste, leerText)` | Kachelreihe, ab drei Kacheln drei Spalten | home (WatchWidget) |
+| `Aktion` | `.aktion(new Aktion(knopf, oben, gross, farbe, laeuftSekunden, neben))` | der grosse Knopf: oben, Zahl und Wort IM Knopf; `laeuftSekunden` zaehlt im Browser weiter (H:mm); kleine Nebenknoepfe darunter | zeit Start/Stop, challenge +1/−1 |
+| `Knoepfe` | `.knoepfe(label, knoepfe)` | Chipreihe; `Knopf(..., gewaehlt)` markiert die Auswahl | Label der Zeit, Schnellgerichte |
+| `Liste` | `.liste(label, leerText, eintraege)` | Eintraege; `Eintrag` mit `vorne`, `unter`, Loeschen mit Rueckfrage und `Aenderung` (Felder) | zeit von–bis, kalender, kalorien |
+| `Schalter` | `.schalter(label, zeilen, hinweis)` | an/aus je Zeile, ein Tipp schreibt | Seiten-Schalter der Uebersicht |
+| `Hinweis` | `.hinweis(text)` | eine Zeile Erklaerung | |
+
+**Felder** (`Aenderung` mit `Feld(name, ZEIT|DATUM|TEXT, wert, beschriftung)`): ein POST-Formular
+je Eintrag, das `mobil.js` bei jeder Aenderung schickt (ohne JavaScript mit OK-Knopf). Die Seite
+bekommt sie in `handle(aktion, wert, felder)` — nur Parameter `f-<name>`, hoechstens 10, je
+hoechstens 200 Zeichen, unvertraut wie `wert`. Wer keine Felder hat, schreibt nur
+`handle(aktion, wert)`.
+
+**Alte Adressen:** `MobilAltadressenFilter` leitet `/watch/<id>.html` und `.xhtml` einer
+umgestellten Seite auf `/watch/m/<id>` um (302, ein POST 303), vor dem `.html`-Rewrite. Das Ziel
+kommt aus der Registry, nie aus der Anfrage; Anmeldung und Handy-Link-Pruefung laufen auf dem
+Ziel. Welche Adresse frueher galt, sagt `MobilWatchPage.frueheresView()` (Vorgabe
+`/watch/<id>.xhtml`).
+
+**Der Facelet-Rahmen bleibt vorerst** (`frame.xhtml`, `WatchFrameBean`, `watch.js`, `w:aktion`):
+nur fuer Module, die noch eine Facelet-Watch-Seite tragen — guild bindet `plaintext-z-kalenderhost`
+einer app-Version vor Karte 1387 ein. Neue Seiten schreibt niemand mehr als Facelet. Entfernt wird
+der Rahmen, wenn kein Abnehmer mehr eine Facelet-Watch-Seite hat.
+
+**Was es nicht gibt:** Service Worker/Offline-Puffer, optimistische Anzeige (offen in Karte 1355).

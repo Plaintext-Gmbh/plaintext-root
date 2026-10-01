@@ -1,13 +1,10 @@
 /*
  * Copyright (C) plaintext.ch, 2026.
  *
- * Mobil-Framework (Karte 1355), das einzige Skript der Seiten unter /watch/m/. Es nimmt jeder
- * Aktion das Neuladen ab: Formulare mit data-mobil gehen per fetch, die JSON-Antwort bringt
- * den neuen Inhalt und die Statuszeile. Es rendert nichts (das HTML kommt fertig aus MobilHtml)
- * und ist nicht noetig: ohne Skript sind es echte POST-Formulare, der Server antwortet mit 303.
- * CSP: kein Inline-Skript, kein eval; alles haengt an data-Attributen und Ereignissen auf
- * document, damit es auch nach dem Austausch des Inhalts greift. Begruendungen und Grenzen:
- * WATCH-UI-GUIDE.md, Abschnitt 7.
+ * Mobil-Framework (Karten 1355/1387), das einzige Skript unter /watch/m/. Formulare mit
+ * data-mobil gehen per fetch, die JSON-Antwort bringt Inhalt und Statuszeile. Ohne Skript
+ * bleiben es echte POST-Formulare (303). CSP: kein Inline-Skript, kein eval; alles haengt an
+ * data-Attributen und Ereignissen auf document. Siehe WATCH-UI-GUIDE.md, Abschnitt 7.
  */
 (function () {
     'use strict';
@@ -20,29 +17,34 @@
 
     function melde(text, fehler) {
         var m = el('m-meldung');
-        if (!m) {
-            return;
-        }
+        if (!m) { return; }
         m.textContent = text || '';
         m.hidden = !text;
         m.classList.toggle('w-card-warn', !!fehler);
     }
 
-    // ── Aktionen ohne Neuladen ───────────────────────────────────────────────
-    document.addEventListener('submit', function (e) {
-        var form = e.target;
-        if (!form.hasAttribute || !form.hasAttribute('data-mobil') || !window.fetch) {
-            return;   // ohne fetch bleibt es ein gewoehnliches Formular
+    // ── Laufende Zeit (data-laeuft = Sekunden beim Zeichnen): zaehlt ab dem Eintreffen
+    // weiter, nicht ab der Uhr des Telefons — die darf falsch gehen.
+    function ticke() {
+        var l = document.querySelectorAll('[data-laeuft]');
+        for (var i = 0; i < l.length; i++) {
+            var e = l[i];
+            e.t0 = e.t0 || Date.now();
+            var s = Number(e.getAttribute('data-laeuft')) + Math.floor((Date.now() - e.t0) / 1000);
+            var m = Math.floor(s / 60);
+            var t = Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2);
+            if (e.textContent !== t) { e.textContent = t; }   // nur echte Aenderungen
         }
-        e.preventDefault();
-        if (form.getAttribute('aria-busy') === 'true') {
-            return;   // Doppeltipp: die erste Aktion laeuft noch
-        }
-        var knopf = e.submitter;
+    }
+    window.setInterval(ticke, 15000);
+    // Gesperrtes Telefon friert die Seite ein: beim Zurueckkommen sofort neu rechnen.
+    document.addEventListener('visibilitychange', ticke);
+
+    // ── Aktionen ohne Neuladen
+    function sende(form, knopf) {
+        if (form.getAttribute('aria-busy') === 'true') { return; }   // Doppeltipp
         var daten = new URLSearchParams(new FormData(form));
-        if (knopf && knopf.name) {
-            daten.append(knopf.name, knopf.value);
-        }
+        if (knopf && knopf.name) { daten.append(knopf.name, knopf.value); }
         var ziel = (knopf && knopf.getAttribute('formaction')) || form.getAttribute('action');
         form.setAttribute('aria-busy', 'true');
         fetch(ziel, {
@@ -51,66 +53,70 @@
             credentials: 'same-origin',
             headers: {'Accept': 'application/json'}
         }).then(function (r) {
-            var typ = r.headers.get('content-type') || '';
-            if (!r.ok || typ.indexOf('json') < 0) {
-                // Abgelaufene Sitzung (Anmeldeseite), widerrufener Link (Sperrseite), CSRF:
-                // die Seite selbst soll zeigen, was los ist — also neu laden statt raten.
+            if (!r.ok || (r.headers.get('content-type') || '').indexOf('json') < 0) {
+                // Abgelaufene Sitzung, widerrufener Link, CSRF: die Seite soll zeigen, was los ist.
                 window.location.reload();
                 return null;
             }
             return r.json();
         }).then(function (a) {
-            if (!a) {
-                return;
-            }
+            if (!a) { return; }
             el('m-inhalt').innerHTML = a.inhalt;
             melde(a.meldung, !a.ok);
+            ticke();
         }).catch(function () {
             melde('Keine Verbindung. Nochmals tippen.', true);
         }).then(function () {
             form.removeAttribute('aria-busy');
         });
+    }
+
+    function mobil(form) {
+        return form && form.hasAttribute && form.hasAttribute('data-mobil') && window.fetch;
+    }
+
+    document.addEventListener('submit', function (e) {
+        if (mobil(e.target)) {
+            e.preventDefault();
+            sende(e.target, e.submitter);
+        }
     });
 
-    // ── Rueckfrage beim Loeschen: aufklappen und zuklappen ohne Anfrage ───────
+    // Felder (data-mobil-auto) speichern bei jeder Aenderung, ohne Knopf.
+    document.addEventListener('change', function (e) {
+        var form = e.target.form;
+        if (mobil(form) && form.hasAttribute('data-mobil-auto')) {
+            sende(form, null);
+        }
+    });
+
+    // ── Rueckfrage beim Loeschen: auf- und zuklappen ohne Anfrage
     document.addEventListener('click', function (e) {
         var t = e.target.closest ? e.target.closest('[data-frage],[data-zu]') : null;
-        if (!t) {
-            return;
-        }
-        var id = t.getAttribute('data-frage') || t.getAttribute('data-zu');
-        var frage = el(id);
-        if (!frage) {
-            return;
-        }
+        var frage = t ? el(t.getAttribute('data-frage') || t.getAttribute('data-zu')) : null;
+        if (!frage) { return; }
         e.preventDefault();
         frage.hidden = t.hasAttribute('data-zu') ? true : !frage.hidden;
     });
 
-    // ── Langer Druck auf den Vorwaerts-Knopf: zur Uebersicht ──────────────────
+    // ── Langer Druck auf den Vorwaerts-Knopf: zur Uebersicht
     var uhr = null;
     var lang = false;
 
     function abbrechen() {
-        if (uhr !== null) {
-            window.clearTimeout(uhr);
-            uhr = null;
-        }
+        window.clearTimeout(uhr);
+        uhr = null;
     }
 
     document.addEventListener('pointerdown', function (e) {
         var k = e.target.closest ? e.target.closest('[data-lang-ziel]') : null;
         lang = false;
         abbrechen();
-        if (!k) {
-            return;
-        }
+        if (!k) { return; }
         uhr = window.setTimeout(function () {
             uhr = null;
             lang = true;
-            if (navigator.vibrate) {
-                navigator.vibrate(15);
-            }
+            if (navigator.vibrate) { navigator.vibrate(15); }
             window.location.assign(k.getAttribute('data-lang-ziel'));
         }, SCHWELLE_MS);
     });

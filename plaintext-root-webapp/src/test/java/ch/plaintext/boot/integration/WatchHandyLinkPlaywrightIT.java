@@ -171,11 +171,18 @@ class WatchHandyLinkPlaywrightIT {
      */
     private static final String ZWEITE_TITEL = "Seiten";
 
-    /** Adresse ebendieser zweiten Seite. */
-    private static final String ZWEITE_ADRESSE = "/watch/elemente.html";
+    /**
+     * Adresse ebendieser zweiten Seite. Seit Karte 1387 eine Seite des Mobil-Frameworks; die
+     * alte Adresse {@code /watch/elemente.html} leitet dorthin um ({@link #alteAdressenFuehrenAufDieNeuen()}).
+     */
+    private static final String ZWEITE_ADRESSE = "/watch/m/elemente";
 
-    /** Adresse der ersten Seite im Umlauf — der Rueckfall, wenn nichts gemerkt ist. */
-    private static final String ERSTE_ADRESSE = "/watch/home.html";
+    /** Adresse der ersten Seite im Umlauf — der Rueckfall, wenn nichts gemerkt ist (Karte 1387: /watch/m/). */
+    private static final String ERSTE_ADRESSE = "/watch/m/home";
+
+    /** Die Adressen vor Karte 1387 — auf Home-Bildschirmen und in Lesezeichen leben sie weiter. */
+    private static final String ERSTE_ALT = "/watch/home.html";
+    private static final String ZWEITE_ALT = "/watch/elemente.html";
 
     /** Fehlerbild im HTML — dieselbe enge Fassung wie in {@code AllPagesSmokePlaywrightIT}. */
     private static final Pattern AUSNAHME_IM_HTML = Pattern.compile(
@@ -294,7 +301,7 @@ class WatchHandyLinkPlaywrightIT {
     void ohneTokenZeigtDieselbeAdresseDasLogin() {
         try (BrowserContext telefon = frischerKontext()) {
             Page p = telefon.newPage();
-            p.navigate(url("/watch/home.html"));
+            p.navigate(url(ERSTE_ADRESSE));
             p.waitForLoadState();
 
             assertTrue(p.url().contains("login"),
@@ -383,7 +390,7 @@ class WatchHandyLinkPlaywrightIT {
             // Und danach traegt die Sitzung weiter: die Einsperrung sperrt den Weg hinaus, nicht
             // die Sitzung. Ohne diese Zeile waere der Test auch gruen, wenn jede Anfrage 403
             // bekaeme.
-            p.navigate(url("/watch/home.html"));
+            p.navigate(url(ERSTE_ADRESSE));
             p.waitForLoadState();
             uhrIstDa(p, "nach den beiden abgewiesenen Ausfluegen");
         }
@@ -485,7 +492,7 @@ class WatchHandyLinkPlaywrightIT {
                             + "/logout ist ein gepruefter POST.");
 
             // ---- Haelfte 1: die Sitzung ist wirklich weg, nicht nur die Anzeige.
-            p.navigate(url("/watch/home.html"));
+            p.navigate(url(ERSTE_ADRESSE));
             p.waitForLoadState();
             assertTrue(p.url().contains("login"),
                     "Nach dem Abmelden traegt die Uhr weiter (" + p.url() + ") — dann hat der "
@@ -578,7 +585,7 @@ class WatchHandyLinkPlaywrightIT {
             schalteAb(maske);
 
             // Dieselbe offene Sitzung, dieselbe Adresse — nur ein Tippen spaeter.
-            Response antwort = p.navigate(url("/watch/home.html"));
+            Response antwort = p.navigate(url(ERSTE_ADRESSE));
             p.waitForLoadState();
             assertNotNull(antwort, "keine Antwort auf die Uhr nach dem Widerruf");
             assertEquals(403, antwort.status(),
@@ -592,9 +599,16 @@ class WatchHandyLinkPlaywrightIT {
 
     // ================================================================= Seitenauswahl
 
+    /**
+     * Seit der Nachbesserung zu Karte 1355 (01.10.2026) gilt fuer die Seiten des Mobil-Frameworks:
+     * der eigene Schalter nimmt eine Seite aus dem Umlauf, er ist keine Zugriffsregel. Daniel
+     * hatte "alkohol" abgeschaltet und bekam auf {@code /watch/m/alkohol} eine 404. Bis Karte 1387
+     * stand hier das Gegenteil (die Facelet-Fassung leitete eine abgeschaltete Seite weg); mit
+     * home und elemente im Mobil-Framework misst der Test jetzt die Regel, die gilt.
+     */
     @Test
-    @DisplayName("eine abgeschaltete Seite ist ueber den Link nicht erreichbar, auch nicht direkt")
-    void abgeschalteteSeiteIstUeberDenLinkNichtErreichbar() {
+    @DisplayName("eine abgeschaltete Seite faellt aus dem Umlauf, bleibt direkt aufgerufen aber erreichbar")
+    void abgeschalteteSeiteFaelltAusDemUmlauf() {
         String link;
         try (BrowserContext admin = angemeldeterKontext()) {
             link = erzeuge(einstellungen(admin));
@@ -605,28 +619,71 @@ class WatchHandyLinkPlaywrightIT {
             p.navigate(link);
             p.waitForLoadState();
             uhrIstDa(p, "vor dem Abschalten der Seite");
+            assertEquals("1/1", position(p), "Positivkontrolle: eingeschaltet zaehlt die Seite im Umlauf");
 
             try {
                 schalteSeite(p, UHR_TITEL, false);
 
-                // Direktaufruf der View-Id: frueher antwortete /watch/elemente.html mit 200 und
-                // der vollen Seite, obwohl der Benutzer sie abgeschaltet hatte (Karte 1257).
-                p.navigate(url("/watch/home.html"));
+                p.navigate(url(ERSTE_ADRESSE));
                 p.waitForLoadState();
-                assertNotEquals(UHR_TITEL, kopfzeile(p),
-                        "Die abgeschaltete Seite zeigt sich weiterhin als '" + UHR_TITEL
-                                + "' — der Schalter verspricht dann etwas, das er nicht haelt.");
+                assertEquals(UHR_TITEL, kopfzeile(p),
+                        "Die abgeschaltete Seite ist direkt aufgerufen nicht mehr da — der Schalter "
+                                + "ist aber keine Zugriffsregel (Nachbesserung Karte 1355).");
                 assertTrue(position(p).isEmpty(),
                         "Die abgeschaltete Seite zaehlt noch im Umlauf mit: '" + position(p) + "'");
             } finally {
                 schalteSeite(p, UHR_TITEL, true);
             }
 
-            // Die positive Haelfte: eingeschaltet ist dieselbe Adresse wieder die Uhr. Ohne sie
-            // waere der Test auch gruen, wenn die Uhr grundsaetzlich leer bliebe.
-            p.navigate(url("/watch/home.html"));
+            p.navigate(url(ERSTE_ADRESSE));
             p.waitForLoadState();
             uhrIstDa(p, "nach dem Wiedereinschalten der Seite");
+            assertEquals("1/1", position(p), "Nach dem Wiedereinschalten zaehlt die Seite wieder");
+        }
+    }
+
+    /**
+     * Karte 1387: die Adressen vor dem Umstieg ({@code /watch/home.html},
+     * {@code /watch/elemente.html}) fuehren auf die neuen Seiten — fuer eine Sitzung aus dem
+     * Handy-Link genauso wie fuer eine angemeldete. Gegenprobe: dieselbe alte Adresse in einem
+     * Browser ohne Sitzung endet auf der Anmeldung, die Umleitung oeffnet also nichts.
+     */
+    @Test
+    @DisplayName("alte Facelet-Adressen fuehren auf die neuen Seiten, ohne die Anmeldung zu umgehen")
+    void alteAdressenFuehrenAufDieNeuen() {
+        String link;
+        try (BrowserContext admin = angemeldeterKontext()) {
+            link = erzeuge(einstellungen(admin));
+        }
+
+        try (BrowserContext telefon = frischerKontext()) {
+            Page p = telefon.newPage();
+            p.navigate(link);
+            p.waitForLoadState();
+            uhrIstDa(p, "vor der Probe auf die alten Adressen");
+
+            try {
+                Response zweite = p.navigate(url(ZWEITE_ALT));
+                p.waitForLoadState();
+                assertNotNull(zweite, "keine Antwort auf " + ZWEITE_ALT);
+                assertEquals(200, zweite.status(), ZWEITE_ALT + " antwortete mit HTTP " + zweite.status());
+                assertTrue(p.url().endsWith(ZWEITE_ADRESSE), ZWEITE_ALT + " landete auf " + p.url());
+                assertEquals(ZWEITE_TITEL, kopfzeile(p), "Seitenauszug: " + auszug(p));
+            } finally {
+                p.navigate(url(ERSTE_ALT));
+                p.waitForLoadState();
+            }
+            uhrIstDa(p, "ueber die alte Adresse " + ERSTE_ALT);
+        }
+
+        try (BrowserContext fremd = frischerKontext()) {
+            Page p = fremd.newPage();
+            p.navigate(url(ERSTE_ALT));
+            p.waitForLoadState();
+            assertTrue(p.url().contains("login"),
+                    "Die alte Adresse oeffnet ohne Sitzung " + p.url() + " — die Umleitung darf nur "
+                            + "umleiten, nicht anmelden.");
+            assertEquals(0, p.locator(".w-wrap").count(), "Uhr ohne Anmeldung sichtbar");
         }
     }
 
@@ -857,29 +914,31 @@ class WatchHandyLinkPlaywrightIT {
      * Einstellungsmaske steht (Karte 1260: ein Mechanismus, zwei Bedienstellen).
      */
     private void schalteSeite(Page p, String titel, boolean an) {
-        p.navigate(url("/watch/elemente.html"));
+        p.navigate(url(ZWEITE_ADRESSE));
         p.waitForLoadState();
         Locator knopf = schalterKnopf(p, titel);
-        if ("an".equals(knopf.inputValue()) == an) {
+        if ("an".equals(knopf.innerText().trim()) == an) {
             return;
         }
         knopf.click();
-        p.waitForLoadState();
+        // Seit Karte 1387 ein fetch ohne Seitenwechsel: warten, bis der neue Inhalt steht.
+        p.waitForFunction("() => !document.querySelector('form[aria-busy=\"true\"]')");
+        p.waitForTimeout(200);
 
-        // Den neuen Zustand aus einem FRISCHEN Aufruf lesen und nicht aus der Antwort des
-        // Postbacks: nur so belegt die Zusicherung, dass der Schalter in der Datenbank steht
-        // und nicht bloss in der gerade gerenderten Ansicht.
-        p.navigate(url("/watch/elemente.html"));
+        // Den neuen Zustand aus einem FRISCHEN Aufruf lesen und nicht aus der Antwort der
+        // Aktion: nur so belegt die Zusicherung, dass der Schalter in der Datenbank steht
+        // und nicht bloss in der gerade gezeichneten Ansicht.
+        p.navigate(url(ZWEITE_ADRESSE));
         p.waitForLoadState();
-        assertEquals(an ? "an" : "aus", schalterKnopf(p, titel).inputValue(),
+        assertEquals(an ? "an" : "aus", schalterKnopf(p, titel).innerText().trim(),
                 "Der Schalter fuer '" + titel + "' hat nicht umgeschaltet");
     }
 
     private Locator schalterKnopf(Page p, String titel) {
-        Locator zeile = p.locator("#ue .w-row").filter(new Locator.FilterOptions().setHasText(titel));
+        Locator zeile = p.locator("form.w-row").filter(new Locator.FilterOptions().setHasText(titel));
         assertEquals(1, zeile.count(),
                 "Auf der Uebersicht der Uhr steht keine eindeutige Zeile fuer '" + titel + "'");
-        return zeile.locator("input[type=submit], button");
+        return zeile.locator("button[aria-pressed]");
     }
 
     /**
@@ -949,9 +1008,12 @@ class WatchHandyLinkPlaywrightIT {
         // mit dem durchsichtigen .w-aktion-flaeche darueber. Gesucht ist die TREFFERFLAECHE,
         // also das Eingabefeld: es allein belegt, dass der Knopf bedienbar ist. Wie er
         // aussieht, misst WatchMusterPlaywrightIT bei 390px.
-        assertTrue(p.locator("#nav .w-aktion-flaeche").count() >= 1,
-                "Die Navigation der Uhr fehlt (" + wo + ") — im Formular #nav steht kein "
-                        + "einziger .w-aktion-flaeche. Seitenauszug: " + auszug(p));
+        //
+        // Karte 1387: home ist eine Seite des Mobil-Frameworks, der Vorwaerts-Knopf ein Link
+        // (.w-nav a.w-aktion) mit dem Ziel des langen Drucks.
+        assertTrue(p.locator(".w-nav a.w-aktion[href]").count() >= 1,
+                "Die Navigation der Uhr fehlt (" + wo + ") — kein Vorwaerts-Knopf "
+                        + "(.w-nav a.w-aktion). Seitenauszug: " + auszug(p));
         assertFalse(AUSNAHME_IM_HTML.matcher(p.content()).find(),
                 "Serverfehler im HTML der Uhr (" + wo + "): " + auszug(p));
     }

@@ -89,6 +89,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MobilSeitePlaywrightIT {
 
     private static final String BENUTZER = "pw-mobil";
+    /** Ein Benutzer ohne die Rollen der Watch-Einstellungen (USER/ADMIN/ROOT), Karte 1387. */
+    private static final String GAST = "pw-mobil-gast";
     private static final String PASSWORT = "Playwright-2026!";
 
     private static final String SEITE = "/watch/m/zaehler";
@@ -273,6 +275,77 @@ class MobilSeitePlaywrightIT {
         }
     }
 
+    @Test
+    @DisplayName("Karte 1387: home und elemente laden mit hoechstens 3 Anfragen, ohne Konsolenfehler und CSP-Verletzung")
+    void rootSeitenLadenSauber() {
+        for (String seite : List.of("/watch/m/home", "/watch/m/elemente")) {
+            try (BrowserContext ctx = angemeldeterKontext()) {
+                Page p = ctx.newPage();
+                List<String> fehler = konsolenfehler(p);
+                List<String> anfragen = new ArrayList<>();
+                p.onRequest(r -> {
+                    if (!r.url().endsWith("/favicon.ico")) {
+                        anfragen.add(r.url());
+                    }
+                });
+                Response r = p.navigate(url(seite));
+                p.waitForLoadState();
+                assertNotNull(r);
+                assertEquals(200, r.status(), "HTTP " + r.status() + " auf " + seite);
+                assertEquals(1, p.locator(".w-wrap").count(), seite + ": keine Uhr");
+                assertTrue(anfragen.size() <= 3, seite + ": mehr als 3 Anfragen: " + anfragen);
+                assertEquals(0, p.locator("script[src*='primefaces'], script[src*='jquery']").count(),
+                        seite + ": PrimeFaces/jQuery geladen");
+                String csp = r.headers().get("content-security-policy");
+                assertFalse(csp == null || csp.contains("unsafe"), seite + ": CSP " + csp);
+                p.waitForTimeout(300);
+                assertEquals(List.of(), fehler, "Konsolenfehler auf " + seite);
+                assertEquals(List.of(), p.evaluate("() => window.__csp"), "CSP-Verletzungen auf " + seite);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Karte 1387: ein geaendertes Zeitfeld speichert per fetch beim Aendern — Felder kommen bei der Seite an")
+    void feldSpeichertBeimAendern() {
+        try (BrowserContext ctx = angemeldeterKontext()) {
+            Page p = ctx.newPage();
+            List<String> fehler = konsolenfehler(p);
+            p.navigate(url("/watch/m/elemente"));
+            p.waitForLoadState();
+            p.evaluate("() => { window.__marke = 1387; }");
+            assertEquals(0, p.locator("noscript button:visible").count(), "Mit JavaScript gibt es keinen OK-Knopf");
+
+            p.locator("input[name='f-von']").fill("08:30");
+            p.locator("input[name='f-von']").dispatchEvent("change");
+            p.waitForFunction("() => document.getElementById('m-meldung').textContent.includes('Übernommen')");
+
+            assertEquals("Übernommen: 08:30–09:45", p.locator("#m-meldung").innerText().trim(),
+                    "Die Seite hat die Felder nicht so bekommen, wie sie im Formular standen");
+            assertEquals(1387, ((Number) p.evaluate("() => window.__marke")).intValue(),
+                    "Die Seite wurde neu geladen statt per fetch aktualisiert");
+            assertEquals(List.of(), fehler, "Konsolenfehler nach der Aenderung");
+        }
+    }
+
+    @Test
+    @DisplayName("Karte 1387: ohne JavaScript traegt das Zeitfeld einen OK-Knopf, und der speichert")
+    void feldOhneJavaScript() {
+        try (BrowserContext ctx = angemeldeterKontext(false)) {
+            Page p = ctx.newPage();
+            p.navigate(url("/watch/m/elemente"));
+            p.waitForLoadState();
+            p.locator("input[name='f-bis']").fill("10:00");
+            Locator ok = p.locator("form[data-mobil-auto] button[type=submit]");
+            assertEquals(1, ok.count(), "Ohne JavaScript fehlt der OK-Knopf im Formular der Felder: "
+                    + p.locator("main").innerHTML());
+            ok.click();
+            p.waitForLoadState();
+            assertTrue(p.url().endsWith("/watch/m/elemente"), "Nicht auf die Seite zurueck: " + p.url());
+            assertEquals("Übernommen: 08:00–10:00", p.locator("#m-meldung").innerText().trim());
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════ Aktionen
 
     @Test
@@ -366,6 +439,38 @@ class MobilSeitePlaywrightIT {
             assertEquals(200, mit.status(), "POST mit CSRF: HTTP " + mit.status());
             assertTrue(mit.text().contains("\"ok\":true"), "Antwort: " + mit.text());
             assertEquals(vorher + 1, stand());
+        }
+    }
+
+    @Test
+    @DisplayName("Karte 1387: ohne die Rollen der Watch-Einstellungen sind home und elemente 404 — auch fuer den Schalter")
+    void rootSeitenFolgenDenRollen() {
+        if (userRepository.findByUsername(GAST) == null) {
+            MyUserEntity u = new MyUserEntity();
+            u.setUsername(GAST);
+            u.setPassword(passwordEncoder.encode(PASSWORT));
+            u.addRole("GAST");
+            u.setMandat("default");
+            userRepository.save(u);
+        }
+        try (BrowserContext ctx = angemeldeterKontext(true, GAST)) {
+            Page p = ctx.newPage();
+            for (String seite : List.of("/watch/m/home", "/watch/m/elemente", "/watch/home.html")) {
+                Response r = p.navigate(url(seite));
+                assertEquals(404, r.status(), seite + " antwortet einem Benutzer ohne die Rollen mit " + r.status());
+                assertEquals(0, p.locator(".w-wrap").count(), seite + ": Uhr sichtbar");
+            }
+            // Ein gueltiges CSRF-Token derselben Sitzung — von der Testseite, die allen offen steht.
+            p.navigate(url(SEITE));
+            String token = p.locator("input[name=_csrf]").first().inputValue();
+            APIResponse post = ctx.request().post(url("/watch/m/elemente/schalte"), RequestOptions.create()
+                    .setForm(FormData.create().set("wert", "zaehler").set("_csrf", token)).setMaxRedirects(0));
+            assertEquals(404, post.status(), "Der Schalter wirkt ohne die Rollen: HTTP " + post.status());
+        }
+        // Positivkontrolle: derselbe Aufruf mit den Rollen zeigt die Seite.
+        try (BrowserContext ctx = angemeldeterKontext()) {
+            Page p = ctx.newPage();
+            assertEquals(200, p.navigate(url("/watch/m/elemente")).status());
         }
     }
 
@@ -469,6 +574,10 @@ class MobilSeitePlaywrightIT {
     }
 
     private BrowserContext angemeldeterKontext(boolean javaScript) {
+        return angemeldeterKontext(javaScript, BENUTZER);
+    }
+
+    private BrowserContext angemeldeterKontext(boolean javaScript, String benutzer) {
         BrowserContext ctx = browser.newContext(new Browser.NewContextOptions()
                 .setViewportSize(390, 844).setIsMobile(true).setHasTouch(true)
                 .setJavaScriptEnabled(javaScript)
@@ -479,7 +588,7 @@ class MobilSeitePlaywrightIT {
             Page p = anmeldung.newPage();
             p.navigate(url("/login.html"));
             p.waitForSelector("#username");
-            p.fill("#username", BENUTZER);
+            p.fill("#username", benutzer);
             p.fill("#password", PASSWORT);
             p.locator("#password").press("Enter");
             p.waitForLoadState();

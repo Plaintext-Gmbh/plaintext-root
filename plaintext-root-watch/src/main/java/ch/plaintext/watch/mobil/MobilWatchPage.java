@@ -5,6 +5,8 @@ package ch.plaintext.watch.mobil;
 
 import ch.plaintext.watch.page.WatchPage;
 
+import java.util.Map;
+
 /**
  * A watch page that is not a Facelet but a description (Karte 1355).
  *
@@ -29,9 +31,9 @@ import ch.plaintext.watch.page.WatchPage;
  * <h2>What the framework guarantees, so that a module does not have to</h2>
  *
  * <ul>
- *   <li>Neither method is called unless {@code WatchPageRegistry.sichtbar(this)} says yes —
- *       for showing <em>and</em> for acting. A page that is switched off or barred by role
- *       answers 404.</li>
+ *   <li>Neither method is called unless {@link #available()} says yes — for showing
+ *       <em>and</em> for acting, fail-closed. A page barred by role answers 404. The user's own
+ *       switch only takes a page out of the rotation (card 1355 follow-up).</li>
  *   <li>Every action is a {@code POST} with the CSRF token of the session. Spring Security
  *       checks it before this interface is reached.</li>
  *   <li>Everything a description contains is HTML-escaped.</li>
@@ -71,4 +73,33 @@ public interface MobilWatchPage extends WatchPage {
      * @return what to tell the user
      */
     MobilAntwort handle(String aktion, String wert);
+
+    /**
+     * Runs one action that carries fields (card 1387): the from/to of a time entry changed in
+     * place ({@link MobilSeite.Aenderung}).
+     *
+     * <p>The default ignores the fields, so a page without editable fields implements only
+     * {@link #handle(String, String)}. A page that has some overrides this one.</p>
+     *
+     * @param felder the fields of the form by their name (without the {@code f-} prefix); never
+     *               {@code null}; untrusted like {@code wert}. Only parameters with the prefix are
+     *               in it, at most {@value MobilSeitenController#FELDER_MAX}, each at most
+     *               {@value MobilSeitenController#FELD_LAENGE_MAX} characters.
+     */
+    default MobilAntwort handle(String aktion, String wert, Map<String, String> felder) {
+        return handle(aktion, wert);
+    }
+
+    /**
+     * The Facelet this page was before it moved onto the framework (card 1387), or {@code null}
+     * when it never was one.
+     *
+     * <p>Addresses of it — {@code .html} as the navigation handed them out, {@code .xhtml} as a
+     * view id — are redirected to {@link #view()} by {@link MobilAltadressenFilter}, so that
+     * bookmarks, icons on a home screen and old links keep working. The default is the
+     * convention every watch page followed: {@code /watch/<id>.xhtml}.</p>
+     */
+    default String frueheresView() {
+        return "/watch/" + id() + ".xhtml";
+    }
 }
