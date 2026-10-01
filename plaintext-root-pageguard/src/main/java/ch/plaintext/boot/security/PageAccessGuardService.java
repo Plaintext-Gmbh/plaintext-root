@@ -104,13 +104,11 @@ public class PageAccessGuardService {
             "mandatemenudetail", "mandatemenu",
             "anforderungdetail", "anforderungen",
             "claudesummary", "anforderungen",
-            "howtodetail", "howtos",
-            // The watch views (card 1245). They are reached from the watch navigation, never
-            // from the menu, so they carry no menu entry of their own and would stand without an
-            // access rule: open to every signed-in user in mode REPORT, closed to everyone in
-            // STRICT. They inherit the rule of the module's own menu entry instead.
-            "watch/home", "watch-einstellungen",
-            "watch/elemente", "watch-einstellungen"
+            "howtodetail", "howtos"
+            // Until card 1387 the two watch views of root stood here ("watch/home",
+            // "watch/elemente" -> "watch-einstellungen", card 1245). They are no Facelets any
+            // more but pages of the mobile framework under /watch/m/, which the guard does not
+            // see (no view extension); their access rule is WatchPage.available().
     );
 
     /** Protection against cycles in the menu hierarchy. */

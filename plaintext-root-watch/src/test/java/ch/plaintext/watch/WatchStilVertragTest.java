@@ -111,9 +111,12 @@ class WatchStilVertragTest {
         assertFalse(dateien.isEmpty(), "Keine .xhtml unter " + wurzel.toAbsolutePath());
         assertTrue(definiert.size() >= 10, "Nur " + definiert.size() + " Klassen im Stylesheet erkannt — "
                 + "das Muster passt nicht mehr auf das Format von watch.css");
-        assertTrue(definiert.contains("w-btn") && genutzt.contains("w-btn"),
-                "Positivkontrolle fehlgeschlagen: w-btn muesste auf beiden Seiten vorkommen "
-                        + "(definiert=" + definiert.contains("w-btn") + ", genutzt=" + genutzt.contains("w-btn") + ")");
+        // Karte 1387: w-aktion statt w-btn. Seit home und elemente Seiten des Mobil-Frameworks sind,
+        // bleiben hier nur der Rahmen und w:aktion (fuer Module, die noch Facelets tragen), und
+        // die benutzen w-btn nicht mehr. Die Klassen der Mobil-Seiten haelt MobilHtmlTest.
+        assertTrue(definiert.contains("w-aktion") && genutzt.contains("w-aktion"),
+                "Positivkontrolle fehlgeschlagen: w-aktion muesste auf beiden Seiten vorkommen "
+                        + "(definiert=" + definiert.contains("w-aktion") + ", genutzt=" + genutzt.contains("w-aktion") + ")");
 
         Set<String> fehlend = new TreeSet<>(genutzt);
         fehlend.removeAll(definiert);

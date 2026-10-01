@@ -10,6 +10,7 @@ import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import org.junit.jupiter.api.AfterAll;
@@ -31,6 +32,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -60,13 +62,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p><b>Warum die Gegenproben hier stehen und nicht daneben.</b> „Der Text liegt im Knopf" ist
  * wertlos, solange nicht gezeigt ist, dass dieselbe Messung ein „liegt nicht im Knopf"
  * ueberhaupt findet. Jede der drei Aussagen hat darum ihre Kontrolle, die den Stand DAVOR per
- * {@code addStyleTag} wiederherstellt und verlangt, dass die Messung dann das Gegenteil meldet.
+ * ein angehaengtes Stylesheet ({@code stil}) wiederherstellt und verlangt, dass die Messung dann das Gegenteil meldet.
  *
  * <p><b>Was hier NICHT gemessen wird.</b> Die fuenf Watch-Seiten in plaintext-app (zeit,
  * kalorien, alkohol, challenge, kalender). Sie laufen gegen ein <i>released</i> root-Jar; ihre
  * Messung gehoert in den zweiten Schritt nach Release und Versionsbump. Die Punkte 1 und 2
  * brauchen dort keine Aenderung — sie stecken in {@code watch.css} und {@code frame.xhtml} und
  * kommen mit dem Bump von selbst mit. Punkt 3 kostet je Seite eine Zeile: {@code <w:aktion .../>}.
+ *
+ * <p><b>Karte 1387.</b> home und elemente sind Seiten des Mobil-Frameworks. Die drei Aussagen
+ * gelten unveraendert und werden jetzt dort gemessen: der Vorwaerts-Knopf ist ein Link
+ * ({@code a.w-aktion}), der grosse Knopf ein echtes {@code <button class="w-aktion">} mit drei
+ * Zeilen statt eines durchsichtigen Eingabefelds ueber einem Kasten. Die Messung liest beide
+ * Bauarten; die Gegenprobe zu Punkt 3 schiebt fuer die neue Bauart Kategorie und Zahl ueber den
+ * Knopf hinaus, statt das Eingabefeld aus der Deckung zu holen. Dazu kommt die laufende Zeit,
+ * die {@code mobil.js} ohne Anfrage weiterzaehlt.</p>
  *
  * @author info@plaintext.ch
  * @since 2026
@@ -100,11 +110,11 @@ class WatchMusterPlaywrightIT {
     /** Die Zahl im Knopf: --w-aktion-gross = 2.2rem von 26px = 57px. */
     private static final double MINDESTSCHRIFT_ZAHL = 45.0;
 
-    /** Die zwei Watch-Seiten, die es in root gibt. Beide binden denselben Rahmen ein. */
-    private static final List<String> SEITEN = List.of("/watch/home.html", "/watch/elemente.html");
+    /** Die zwei Watch-Seiten, die es in root gibt — seit Karte 1387 im Mobil-Framework. */
+    private static final List<String> SEITEN = List.of("/watch/m/home", "/watch/m/elemente");
 
     /** Die Galerieseite — nur sie zeigt Eintragszeile und handelnden Knopf. */
-    private static final String GALERIE = "/watch/elemente.html";
+    private static final String GALERIE = "/watch/m/elemente";
 
     /** Punkt 1, Stand davor: es gab keine Regel fuer zwei gestapelte Zeilen. */
     private static final String STAND_DAVOR_ZEILEN = """
@@ -127,6 +137,12 @@ class WatchMusterPlaywrightIT {
      * Flaeche um sie herum. Das Eingabefeld faellt damit aus der Deckung zurueck in den Fluss.
      */
     private static final String STAND_DAVOR_AKTION = """
+            .w-aktion-oben, .w-aktion-gross {
+              position: absolute !important;
+              bottom: 100% !important;
+              left: 0 !important;
+              margin-bottom: 8px !important;
+            }
             .w-aktion-flaeche {
               position: static !important;
               inset: auto !important;
@@ -154,6 +170,11 @@ class WatchMusterPlaywrightIT {
               // sie ab, Zeichen und Hinweis liegen darin.
               let kasten = document.querySelector('.w-nav .w-aktion');
               let feld = kasten ? kasten.querySelector('.w-aktion-flaeche') : null;
+              // Karte 1387: im Mobil-Framework ist der Kasten selbst der Link — er IST die
+              // Trefferflaeche, es liegt nichts darueber.
+              if (!feld && kasten && (kasten.tagName === 'A' || kasten.tagName === 'BUTTON')) {
+                feld = kasten;
+              }
               let wort = kasten ? kasten.querySelector('.w-aktion-wort') : null;
               let hinweis = kasten ? kasten.querySelector('.w-aktion-hinweis') : null;
 
@@ -224,7 +245,9 @@ class WatchMusterPlaywrightIT {
                 const gross = kasten.querySelector('.w-aktion-gross');
                 const oben = kasten.querySelector('.w-aktion-oben');
                 if (!gross || !oben) { return; }
-                const feld = kasten.querySelector('.w-aktion-flaeche');
+                // Karte 1387: ein <button class="w-aktion"> ist selbst die Trefferflaeche.
+                const feld = kasten.querySelector('.w-aktion-flaeche')
+                    || (kasten.tagName === 'BUTTON' ? kasten : null);
                 if (!feld) { return; }
                 const f = feld.getBoundingClientRect();
                 aus.push({
@@ -351,7 +374,7 @@ class WatchMusterPlaywrightIT {
             oeffne(seite);
             Rechteck vorher = rechteck(nav(seite).get("hinweis"), "Hinweis mit Korrektur");
             Rechteck flaecheVorher = rechteck(nav(seite).get("flaeche"), "Flaeche");
-            page.addStyleTag(new Page.AddStyleTagOptions().setContent(STAND_DAVOR_HINWEIS));
+            stil(STAND_DAVOR_HINWEIS);
             page.waitForTimeout(150);
             Map<String, Object> nachher = nav(seite);
             Rechteck hinweis = rechteck(nachher.get("hinweis"), "Hinweis am Stand davor");
@@ -389,7 +412,7 @@ class WatchMusterPlaywrightIT {
     void gegenprobeZeilenluft() {
         oeffne(GALERIE);
         double mitKorrektur = kleinsteLuft();
-        page.addStyleTag(new Page.AddStyleTagOptions().setContent(STAND_DAVOR_ZEILEN));
+        stil(STAND_DAVOR_ZEILEN);
         page.waitForTimeout(150);
         double ohneKorrektur = kleinsteLuft();
         LOG.info("Karte 1312/Punkt 1 — mit Korrektur {} px, am Stand davor {} px",
@@ -440,7 +463,7 @@ class WatchMusterPlaywrightIT {
     void gegenprobeAktionsknopf() {
         oeffne(GALERIE);
         assertFalse(aktionsknoepfe().isEmpty(), "nichts zu messen");
-        page.addStyleTag(new Page.AddStyleTagOptions().setContent(STAND_DAVOR_AKTION));
+        stil(STAND_DAVOR_AKTION);
         page.waitForTimeout(150);
         List<Map<String, Object>> knoepfe = aktionsknoepfe();
         assertFalse(knoepfe.isEmpty(), "nach der Kontrolle nichts mehr zu messen");
@@ -457,28 +480,57 @@ class WatchMusterPlaywrightIT {
     }
 
     @Test
-    @DisplayName("Der Grossknopf loest wirklich aus — ein Knopf, der nur aussieht wie einer, ist keiner")
+    @DisplayName("Der Grossknopf loest wirklich aus — per fetch, ohne die Seite neu zu laden")
     void derGrossknopfLoestAus() {
         oeffne(GALERIE);
-        // Die Elementgalerie schreibt jede Handlung in ihre Karte "Zuletzt". Vor dem Tippen
-        // steht dort etwas anderes — sonst belegte der Text danach nichts.
-        String vorher = page.locator("#el .w-card .w-value").first().innerText().trim();
-        page.locator(".w-aktion:has(.w-aktion-gross) .w-aktion-flaeche").first().click();
-        page.waitForLoadState();
-        String nachher = page.locator("#el .w-card .w-value").first().innerText().trim();
+        // Eine Marke im Fenster: ueberlebt sie den Tipp, ist die Seite nicht neu geladen worden.
+        page.evaluate("() => { window.__ohneNeuladen = true; }");
+        String vorher = page.locator("#m-meldung").innerText().trim();
+        page.locator("button.w-aktion:has(.w-aktion-gross)").first().click();
+        page.waitForFunction("() => document.getElementById('m-meldung').textContent.includes('Getippt')");
+        String nachher = page.locator("#m-meldung").innerText().trim();
 
-        LOG.info("Karte 1312 — Grossknopf: 'Zuletzt' vorher '{}', nachher '{}'", vorher, nachher);
-        assertTrue(nachher.contains("Stop (gross)"),
-                "Der Knopf des Tags w:aktion hat nichts ausgeloest: 'Zuletzt' steht auf '"
-                        + nachher + "'. Das durchsichtige Eingabefeld ist der EINZIGE Weg, auf "
-                        + "dem ein Tipp beim Bean ankommt — und die Methode kommt ueber ein "
-                        + "Tag-File-Attribut (action=\"#{aktion}\"). Faellt das aus, sieht der "
-                        + "Knopf richtig aus und tut nichts, auf allen sieben Seiten.");
+        LOG.info("Karte 1312/1387 — Grossknopf: Statuszeile vorher '{}', nachher '{}'", vorher, nachher);
+        assertTrue(nachher.contains("Getippt: Stop"),
+                "Der grosse Knopf hat nichts ausgeloest: die Statuszeile sagt '" + nachher + "'.");
         assertNotEquals(vorher, nachher,
-                "'Zuletzt' stand schon vorher auf demselben Wert — dann belegt der Text nichts.");
+                "Die Statuszeile stand schon vorher auf demselben Wert — dann belegt der Text nichts.");
+        assertEquals(Boolean.TRUE, page.evaluate("() => window.__ohneNeuladen === true"),
+                "Die Seite wurde neu geladen — die Aktion lief als Formular-Postback statt per fetch.");
+    }
+
+    @Test
+    @DisplayName("Karte 1387: die laufende Zeit im Knopf zaehlt im Browser weiter, ohne Anfrage")
+    void laufendeZeitZaehltWeiter() {
+        oeffne(GALERIE);
+        Locator zahl = page.locator(".w-aktion-gross[data-laeuft]").first();
+        String vorher = zahl.innerText().trim();
+        // Die Galerie zeichnet 754 s = 0:12. Zwei Minuten spaeter, ohne Server: der Zeitpunkt des
+        // Eintreffens wird zurueckgestellt, und das Sichtbarwerden der Seite (Telefon entsperrt)
+        // rechnet neu.
+        page.evaluate("() => { const e = document.querySelector('.w-aktion-gross[data-laeuft]');"
+                + " e.t0 = Date.now() - 120000; document.dispatchEvent(new Event('visibilitychange')); }");
+        String nachher = zahl.innerText().trim();
+        LOG.info("Karte 1387 — laufende Zeit: '{}' -> '{}'", vorher, nachher);
+        assertEquals("0:12", vorher, "Die Galerie zeichnet 754 s als 0:12 — sonst misst der Test etwas anderes.");
+        assertEquals("0:14", nachher,
+                "Die laufende Zeit zaehlt nicht weiter: '" + nachher + "'. Auf dem Telefon stuende "
+                        + "dann bis zum naechsten Tippen die Dauer vom Seitenaufruf.");
     }
 
     // ═══════════════════════════════════════════════════════════════════════ Werkzeug
+
+    /**
+     * Haengt den Stand DAVOR als Stylesheet an — ueber CSSOM statt {@code addStyleTag}. Die Seiten
+     * des Mobil-Frameworks laufen mit {@code style-src 'self'} ohne {@code unsafe-inline}
+     * (Karte 1355), und der Browser blockiert ein eingeschleustes {@code <style>} zu Recht: der
+     * erste Lauf dieser Klasse gegen die neuen Seiten scheiterte genau daran. Ein per Skript
+     * gebautes Stylesheet ({@code adoptedStyleSheets}) faellt nicht unter die Direktive.
+     */
+    private void stil(String css) {
+        page.evaluate("css => { const s = new CSSStyleSheet(); s.replaceSync(css);"
+                + " document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; }", css);
+    }
 
     private void oeffne(String pfad) {
         page.navigate(url(pfad));

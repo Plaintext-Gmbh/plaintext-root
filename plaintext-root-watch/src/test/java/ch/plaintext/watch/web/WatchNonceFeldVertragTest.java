@@ -89,10 +89,12 @@ class WatchNonceFeldVertragTest {
             }
         }
 
-        assertTrue(formulare >= 2,
+        // Karte 1387: 1 statt 2 — die Elemente-Seite ist eine Seite des Mobil-Frameworks und hat
+        // kein h:form mehr. Uebrig ist das Navigationsformular des Rahmens, den Module mit einer
+        // Facelet-Watch-Seite noch benutzen.
+        assertTrue(formulare >= 1,
                 "Nur " + formulare + " Formulare gefunden — dann sucht der Test falsch und "
-                        + "belegt nichts. Erwartet mindestens das Navigationsformular und eines auf "
-                        + "der Elemente-Seite.");
+                        + "belegt nichts. Erwartet mindestens das Navigationsformular des Rahmens.");
         assertTrue(maengel.isEmpty(), "Watch-Formulare ohne Pflichtfeld:\n  "
                 + String.join("\n  ", maengel));
     }

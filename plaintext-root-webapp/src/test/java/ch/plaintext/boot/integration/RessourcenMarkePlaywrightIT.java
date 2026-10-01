@@ -59,6 +59,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * heraus, sind sie identisch. Das ist der Stand DAVOR, an derselben Seite abgelesen statt
  * behauptet: zwei Releases, eine Adresse.
  *
+ * <p><b>Karte 1387: gemessen an einer anderen Datei, dieselbe Aussage.</b> Bis hierher las
+ * der Test {@code watch.css} auf {@code /watch/home.html}. Die Uhr-Seiten von root sind seit
+ * Karte 1387 Seiten des Mobil-Frameworks: sie binden {@code watch.css} nicht mehr ueber den
+ * JSF-Ressourcenweg ein, sondern unter einer Adresse mit Inhaltsmarke ({@code MobilDateien}).
+ * Der JSF-Weg mit {@code rev=} gilt weiter fuer jede Seite mit dem Layout von
+ * plaintext-root-template; gemessen wird darum {@code css/button-spacing.css} der Bibliothek
+ * {@code plaintext-layout} auf {@code /watch-einstellungen.html}.
+ *
  * @author info@plaintext.ch
  * @since 2026
  */
@@ -80,8 +88,14 @@ class RessourcenMarkePlaywrightIT {
     /** Der Stand nach dem „Release" — die einzige Aenderung zwischen den beiden Abrufen. */
     private static final String STAND_NACHHER = "1.714.0";
 
-    /** Eine Zeichenkette, die nur in der echten watch.css steht. */
-    private static final String INHALTSPROBE = "--w-schrift";
+    /** Die gemessene Seite: eine JSF-Seite mit dem Layout von plaintext-root-template (Karte 1387). */
+    private static final String SEITE = "/watch-einstellungen.html";
+
+    /** Die gemessene Datei: klein, eigen, in jeder Seite mit Layout. */
+    private static final String DATEI = "button-spacing.css";
+
+    /** Eine Zeichenkette, die nur in der echten Datei steht. */
+    private static final String INHALTSPROBE = "Karte 478";
 
     /** Alle href der Stylesheets einer Seite, absolut aufgeloest. */
     private static final String SKRIPT_STYLESHEETS = """
@@ -145,17 +159,17 @@ class RessourcenMarkePlaywrightIT {
     }
 
     @Test
-    @DisplayName("Karte 1311: nach einem Release lautet die Adresse von watch.css anders — vorher nicht")
+    @DisplayName("Karte 1311: nach einem Release lautet die Adresse einer eigenen Ressource anders — vorher nicht")
     void zweiAbrufeMitEinerAenderungDazwischen() {
         try (BrowserContext ctx = angemeldet()) {
             Page p = ctx.newPage();
 
             RessourcenStand.setze(STAND_VORHER);
-            String adresseVorher = watchCss(p);
+            String adresseVorher = dateiAdresse(p);
 
             // ── das „Release": derselbe Server, neue Version ──────────────────────────────
             RessourcenStand.setze(STAND_NACHHER);
-            String adresseNachher = watchCss(p);
+            String adresseNachher = dateiAdresse(p);
 
             LOG.info("Karte 1311 — Abruf 1 ({}): {}", STAND_VORHER, adresseVorher);
             LOG.info("Karte 1311 — Abruf 2 ({}): {}", STAND_NACHHER, adresseNachher);
@@ -192,11 +206,11 @@ class RessourcenMarkePlaywrightIT {
     void dieFristIstDerGrundWarumDieMarkeNoetigIst() {
         try (BrowserContext ctx = angemeldet()) {
             Page p = ctx.newPage();
-            String adresse = watchCss(p);
+            String adresse = dateiAdresse(p);
             APIResponse antwort = p.request().get(adresse);
             String cacheControl = antwort.headers().get("cache-control");
-            LOG.info("Karte 1311 — cache-control von watch.css: {}", cacheControl);
-            assertNotNull(cacheControl, "watch.css kommt ohne cache-control: " + adresse);
+            LOG.info("Karte 1311 — cache-control von {}: {}", DATEI, cacheControl);
+            assertNotNull(cacheControl, DATEI + " kommt ohne cache-control: " + adresse);
             assertTrue(cacheControl.contains("max-age="), cacheControl);
             long maxAge = Long.parseLong(cacheControl.replaceAll(".*max-age=(\\d+).*", "$1"));
             assertTrue(maxAge >= 3600,
@@ -207,11 +221,11 @@ class RessourcenMarkePlaywrightIT {
     }
 
     @Test
-    @DisplayName("Die Marke haengt an JEDER eigenen Ressource, nicht nur an watch.css")
+    @DisplayName("Die Marke haengt an JEDER eigenen Ressource, nicht nur an einer")
     void jedeEigeneRessourceTraegtEineMarke() {
         try (BrowserContext ctx = angemeldet()) {
             Page p = ctx.newPage();
-            p.navigate(url("/watch/home.html"));
+            p.navigate(url(SEITE));
             p.waitForLoadState();
             @SuppressWarnings("unchecked")
             List<String> hrefs = (List<String>) p.evaluate(SKRIPT_STYLESHEETS);
@@ -228,16 +242,16 @@ class RessourcenMarkePlaywrightIT {
 
     // ───────────────────────────────────────────────────────────────────────────────────
 
-    private String watchCss(Page p) {
-        p.navigate(url("/watch/home.html"));
+    private String dateiAdresse(Page p) {
+        p.navigate(url(SEITE));
         p.waitForLoadState();
         @SuppressWarnings("unchecked")
         List<String> hrefs = (List<String>) p.evaluate(SKRIPT_STYLESHEETS);
         return hrefs.stream()
-                .filter(h -> h.contains("ln=watch"))
+                .filter(h -> h.contains(DATEI) && h.contains("ln=plaintext-layout"))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(
-                        "watch.css haengt gar nicht in der Seite — gefunden: " + hrefs));
+                        DATEI + " haengt gar nicht in der Seite — gefunden: " + hrefs));
     }
 
     private void pruefeAuslieferung(Page p, String adresse, String was) {
@@ -246,7 +260,7 @@ class RessourcenMarkePlaywrightIT {
                 was + " antwortet mit HTTP " + antwort.status() + ": " + adresse);
         String inhalt = antwort.text();
         assertTrue(inhalt.contains(INHALTSPROBE),
-                was + " liefert nicht die watch.css (kein '" + INHALTSPROBE + "' darin): " + adresse);
+                was + " liefert nicht die " + DATEI + " (kein '" + INHALTSPROBE + "' darin): " + adresse);
     }
 
     private static String ohneMarke(String adresse) {

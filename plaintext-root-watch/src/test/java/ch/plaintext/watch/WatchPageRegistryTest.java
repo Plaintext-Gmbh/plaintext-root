@@ -85,4 +85,44 @@ class WatchPageRegistryTest {
         assertEquals("allein", r.naechste("allein").orElseThrow().id());
         assertEquals("allein", r.vorherige("allein").orElseThrow().id());
     }
+
+    @Test
+    @DisplayName("Karte 1387: naechste() mit vorberechnetem Umlauf liefert dasselbe wie ohne — und fragt die Seiten nicht neu")
+    void naechsteImVorberechnetenUmlauf() {
+        java.util.concurrent.atomic.AtomicInteger fragen = new java.util.concurrent.atomic.AtomicInteger();
+        WatchPage gezaehlt = new WatchPage() {
+            public String id() {
+                return "c";
+            }
+
+            public String title() {
+                return "c";
+            }
+
+            public String view() {
+                return "/watch/c.xhtml";
+            }
+
+            public int order() {
+                return 3;
+            }
+
+            public boolean available() {
+                fragen.incrementAndGet();
+                return true;
+            }
+        };
+        var r = new WatchPageRegistry(List.of(seite("a", 1, true), seite("b", 2, true), gezaehlt), null);
+        List<WatchPage> umlauf = r.verfuegbare();
+        int nachEinmal = fragen.get();
+
+        for (String id : List.of("a", "b", "c", "unbekannt")) {
+            assertEquals(r.naechste(id).map(WatchPage::id), r.naechste(id, umlauf).map(WatchPage::id), id);
+        }
+        int vorher = fragen.get();
+        r.naechste("a", umlauf);
+        assertEquals(vorher, fragen.get(), "mit vorberechnetem Umlauf wird keine Zugriffsregel neu gefragt");
+        assertEquals(1, nachEinmal, "Positivkontrolle: verfuegbare() fragt die Seite");
+        assertTrue(r.naechste("a", List.of()).isEmpty());
+    }
 }

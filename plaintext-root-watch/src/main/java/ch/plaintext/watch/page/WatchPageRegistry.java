@@ -179,8 +179,25 @@ public class WatchPageRegistry {
         return nachbar(aktuelleId, -1);
     }
 
+    /**
+     * The page after {@code aktuelleId} within a rotation the caller has already computed
+     * (card 1387).
+     *
+     * <p>{@link #verfuegbare()} asks every page's access rule — the page guard, once per module —
+     * and the mobile framework needs the same list twice per render (position "x/n" and the
+     * forward button). Measured 01.10.2026: around 18 guard calls per page view, the render time
+     * of {@code /watch/m/alkohol} rose from 26 to 62 ms median once home and the overview asked the
+     * guard too. One list per request is enough.</p>
+     */
+    public Optional<WatchPage> naechste(String aktuelleId, List<WatchPage> umlauf) {
+        return nachbar(aktuelleId, +1, umlauf);
+    }
+
     private Optional<WatchPage> nachbar(String aktuelleId, int richtung) {
-        List<WatchPage> sichtbar = verfuegbare();
+        return nachbar(aktuelleId, richtung, verfuegbare());
+    }
+
+    private static Optional<WatchPage> nachbar(String aktuelleId, int richtung, List<WatchPage> sichtbar) {
         if (sichtbar.isEmpty()) {
             return Optional.empty();
         }

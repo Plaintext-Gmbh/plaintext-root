@@ -5,6 +5,7 @@ package ch.plaintext.watch.mobil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * What a page shows — described, not drawn (Karte 1355).
@@ -17,10 +18,15 @@ import java.util.List;
  *
  * <h2>Why a closed vocabulary</h2>
  *
- * <p>Four block types cover all five watch pages that exist today (alkohol, kalorien, zeit,
- * challenge, kalender). A page that needs a fifth kind gets it here, once, for everybody —
- * not as a free HTML string, which would reopen exactly the door the escaping in
- * {@link MobilHtml} closes.</p>
+ * <p>A page that needs a new kind of block gets it here, once, for everybody — not as a free
+ * HTML string, which would reopen exactly the door the escaping in {@link MobilHtml} closes.</p>
+ *
+ * <p>Card 1387 moved every watch page onto this framework and added what they needed, each
+ * kind once: {@link Kacheln} for the home screen, {@link Aktion} (the large acting button of
+ * zeit and challenge, with a running time that keeps counting in the browser), {@link Schalter}
+ * for the page switches of the overview, the chosen state of a {@link Knopf}, and entries with
+ * a leading column, a line below and editable fields ({@link Eintrag}). The four original blocks
+ * and their constructors are unchanged, so a page written for card 1355 compiles as it is.</p>
  *
  * @param bausteine the blocks, top to bottom
  */
@@ -35,7 +41,7 @@ public record MobilSeite(List<Baustein> bausteine) {
     }
 
     /** One block of a page. */
-    public sealed interface Baustein permits Wert, Knoepfe, Liste, Hinweis {
+    public sealed interface Baustein permits Wert, Knoepfe, Liste, Hinweis, Kacheln, Aktion, Schalter {
     }
 
     /**
@@ -67,8 +73,15 @@ public record MobilSeite(List<Baustein> bausteine) {
      *                     case, digits and dashes
      * @param wert         the value sent along (a type, an id), may be {@code null}
      * @param beschriftung what the button says
+     * @param gewaehlt     whether this is the currently chosen one of a row (drawn highlighted,
+     *                     {@code aria-pressed}); card 1387, for the label chips of zeit
      */
-    public record Knopf(String aktion, String wert, String beschriftung) {
+    public record Knopf(String aktion, String wert, String beschriftung, boolean gewaehlt) {
+
+        /** A button that is not a choice. */
+        public Knopf(String aktion, String wert, String beschriftung) {
+            this(aktion, wert, beschriftung, false);
+        }
     }
 
     /**
@@ -88,16 +101,165 @@ public record MobilSeite(List<Baustein> bausteine) {
      * One entry of a list.
      *
      * @param schluessel   stable key of the entry (an id); sent as {@code wert} when it is deleted
-     * @param text         left, what it is
+     *                     or changed
+     * @param text         what it is
      * @param rechts       right, a time or a figure; may be {@code null}
      * @param loeschAktion action that deletes the entry after an inline confirmation;
      *                     {@code null} means the entry cannot be deleted
+     * @param vorne        a short column before the text (the time of an appointment); may be
+     *                     {@code null}
+     * @param unter        a line below (place, time of a meal); may be {@code null}
+     * @param aenderung    fields of the entry that can be changed in place (from/to of a time
+     *                     entry); {@code null} for none
      */
-    public record Eintrag(String schluessel, String text, String rechts, String loeschAktion) {
+    public record Eintrag(String schluessel, String text, String rechts, String loeschAktion,
+                          String vorne, String unter, Aenderung aenderung) {
+
+        /** The entry of card 1355: text, figure, delete. */
+        public Eintrag(String schluessel, String text, String rechts, String loeschAktion) {
+            this(schluessel, text, rechts, loeschAktion, null, null, null);
+        }
+    }
+
+    /**
+     * Fields of an entry that are changed in place (card 1387). With JavaScript every change is
+     * saved at once, as a {@code fetch} — the way the time fields of zeit always worked; without
+     * it the row carries a small OK button.
+     *
+     * <p>The action receives the key of the entry as {@code wert} and the fields by name
+     * ({@link MobilWatchPage#handle(String, String, java.util.Map)}).</p>
+     *
+     * @param aktion action name, like {@link Knopf#aktion()}
+     * @param felder the fields, left to right
+     */
+    public record Aenderung(String aktion, List<Feld> felder) {
+        public Aenderung {
+            felder = List.copyOf(felder);
+        }
+    }
+
+    /** What kind of input a field is. Native inputs only: they bring the phone's own picker. */
+    public enum FeldArt {
+        ZEIT("time"), DATUM("date"), TEXT("text");
+
+        private final String typ;
+
+        FeldArt(String typ) {
+            this.typ = typ;
+        }
+
+        /** The {@code type} attribute of the input. */
+        public String typ() {
+            return typ;
+        }
+    }
+
+    /**
+     * One field.
+     *
+     * @param name         name the page reads the value under; lower case and digits, it is sent
+     *                     as {@code f-<name>}
+     * @param art          time, date or text
+     * @param wert         current value ({@code HH:mm}, {@code yyyy-MM-dd} or text); {@code null}
+     *                     or blank leaves the field empty
+     * @param beschriftung accessible name ("von", "bis")
+     */
+    public record Feld(String name, FeldArt art, String wert, String beschriftung) {
+
+        /** What a field may be called — it ends up in a request parameter name. */
+        static final Pattern NAME = Pattern.compile("[a-z][a-z0-9]{0,19}");
+
+        public Feld {
+            if (name == null || !NAME.matcher(name).matches()) {
+                throw new IllegalArgumentException("Feldname ungültig: " + name);
+            }
+            if (art == null) {
+                throw new IllegalArgumentException("Feldart fehlt: " + name);
+            }
+        }
     }
 
     /** A plain line of explanation. */
     public record Hinweis(String text) implements Baustein {
+    }
+
+    /**
+     * A row of tiles — figure above, caption below (card 1387, the home screen). Two per row,
+     * three from three tiles on.
+     *
+     * @param kacheln  the tiles
+     * @param leerText what is shown when there are none
+     */
+    public record Kacheln(List<Kachel> kacheln, String leerText) implements Baustein {
+        public Kacheln {
+            kacheln = List.copyOf(kacheln);
+        }
+    }
+
+    /** One tile: a short figure and its caption. */
+    public record Kachel(String label, String wert) {
+    }
+
+    /** Colour of an {@link Aktion}: what the tap will do, in colour AND in the word. */
+    public enum Farbe {
+        NEUTRAL, GO, STOP
+    }
+
+    /**
+     * The large acting button of a page (card 1312, here since card 1387): what is being worked
+     * on, the figure for it and the word for what a tap does — all inside the button, one tap
+     * area. Below it optional small buttons for the side action (challenge: −1).
+     *
+     * @param knopf         the action; its {@link Knopf#beschriftung()} is the large word
+     * @param oben          first line inside the button (category, title); may be {@code null}
+     * @param gross         the figure inside the button (duration, count); may be {@code null}
+     * @param farbe         colour
+     * @param laeuftSekunden when not {@code null}, {@code gross} is a running time that started
+     *                      this many seconds ago — the browser keeps counting it (as {@code H:mm})
+     *                      without asking the server
+     * @param neben         small buttons below, may be empty
+     */
+    public record Aktion(Knopf knopf, String oben, String gross, Farbe farbe, Long laeuftSekunden,
+                         List<Knopf> neben) implements Baustein {
+        public Aktion {
+            if (knopf == null) {
+                throw new IllegalArgumentException("Aktion ohne Knopf");
+            }
+            farbe = farbe == null ? Farbe.NEUTRAL : farbe;
+            neben = neben == null ? List.of() : List.copyOf(neben);
+        }
+    }
+
+    /**
+     * A list of switches, one row per thing that is on or off (card 1387, the page switches of
+     * the overview). One tap flips one row and saves at once — on a watch, a form with checkboxes
+     * and a save button is a form nobody fills in.
+     *
+     * @param label   caption above
+     * @param zeilen  the rows
+     * @param hinweis a note below, may be {@code null}
+     */
+    public record Schalter(String label, List<SchalterZeile> zeilen, String hinweis) implements Baustein {
+        public Schalter {
+            zeilen = List.copyOf(zeilen);
+        }
+    }
+
+    /**
+     * One switch.
+     *
+     * @param titel  what it switches
+     * @param aktion action that flips it, the {@code wert} is sent along
+     * @param wert   which one (an id)
+     * @param an     the current state
+     */
+    public record SchalterZeile(String titel, String aktion, String wert, boolean an) {
+    }
+
+    /** {@code H:mm} — the format of a running time on a display this size (seconds are noise). */
+    public static String dauer(long sekunden) {
+        long s = Math.max(0, sekunden);
+        return String.format("%d:%02d", s / 3600, (s % 3600) / 60);
     }
 
     /** Collects the blocks in order. */
@@ -121,6 +283,27 @@ public record MobilSeite(List<Baustein> bausteine) {
 
         public Builder hinweis(String text) {
             bausteine.add(new Hinweis(text));
+            return this;
+        }
+
+        public Builder kacheln(List<Kachel> kacheln, String leerText) {
+            bausteine.add(new Kacheln(kacheln, leerText));
+            return this;
+        }
+
+        public Builder aktion(Aktion aktion) {
+            bausteine.add(aktion);
+            return this;
+        }
+
+        public Builder schalter(String label, List<SchalterZeile> zeilen, String hinweis) {
+            bausteine.add(new Schalter(label, zeilen, hinweis));
+            return this;
+        }
+
+        /** Any block, for a page that builds one conditionally. */
+        public Builder baustein(Baustein baustein) {
+            bausteine.add(baustein);
             return this;
         }
 

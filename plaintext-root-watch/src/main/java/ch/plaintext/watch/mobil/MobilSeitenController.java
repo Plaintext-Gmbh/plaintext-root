@@ -101,6 +101,12 @@ public class MobilSeitenController {
 
     static final String FEHLGESCHLAGEN = "Hat nicht geklappt.";
 
+    /** At most this many fields per action reach the page (card 1387). */
+    public static final int FELDER_MAX = 10;
+
+    /** A field longer than this is cut — a time is five characters, a note fits in two hundred. */
+    public static final int FELD_LAENGE_MAX = 200;
+
     private final WatchPageRegistry registry;
     private final WatchStateService zustand;
     private final MobilDateien dateien;
@@ -128,10 +134,13 @@ public class MobilSeitenController {
         }
         String kontext = request.getContextPath();
         String inhalt = inhalt(seite, request, frage);
+        // Einmal je Anfrage (Karte 1387): Position und Weiter brauchen denselben Umlauf, und jede
+        // Berechnung fragt die Zugriffsregel jeder Seite beim Seitenwaechter.
+        List<WatchPage> umlauf = registry.verfuegbare();
         MobilHtml.Rahmen rahmen = new MobilHtml.Rahmen(
                 seite.title(),
-                position(seite),
-                registry.naechste(seite.id()).map(p -> kontext + adresse(p)).orElse(null),
+                position(seite, umlauf),
+                registry.naechste(seite.id(), umlauf).map(p -> kontext + adresse(p)).orElse(null),
                 registry.uebersicht().map(p -> kontext + adresse(p)).orElse(null),
                 kontext + dateien.adresse("watch.css"),
                 kontext + dateien.adresse("mobil.js"),
@@ -161,7 +170,7 @@ public class MobilSeitenController {
 
         MobilAntwort antwort;
         try {
-            antwort = seite.handle(aktion, wert);
+            antwort = seite.handle(aktion, wert, felder(request));
             if (antwort == null) {
                 antwort = MobilAntwort.ok(null);
             }
@@ -242,15 +251,37 @@ public class MobilSeitenController {
             beschreibung = seite.beschreibe();
         } catch (RuntimeException e) {
             // Eine Seite, die ihre Daten nicht lesen kann, zeigt das in Worten statt einer
-            // Fehlerseite — dieselbe Haltung wie WatchHomeBean bei einer kaputten Kachel.
+            // Fehlerseite — dieselbe Haltung wie WatchHomePage bei einer kaputten Kachel.
             log.warn("Mobil: Seite {} nicht beschreibbar: {}", seite.id(), e.toString());
             beschreibung = MobilSeite.neu().hinweis("Die Daten sind gerade nicht lesbar.").bauen();
         }
         return MobilHtml.inhalt(beschreibung, formular);
     }
 
-    private String position(WatchPage seite) {
-        List<WatchPage> umlauf = registry.verfuegbare();
+    /**
+     * The fields of the form: only parameters named {@code f-<name>} with a name a
+     * {@link MobilSeite.Feld} may have, at most {@link #FELDER_MAX}, each cut to
+     * {@link #FELD_LAENGE_MAX}. Never the CSRF token, never {@code wert}.
+     */
+    static Map<String, String> felder(HttpServletRequest request) {
+        Map<String, String> felder = new LinkedHashMap<>();
+        for (Map.Entry<String, String[]> p : request.getParameterMap().entrySet()) {
+            String name = p.getKey();
+            if (felder.size() >= FELDER_MAX || !name.startsWith(MobilHtml.FELD_PRAEFIX)) {
+                continue;
+            }
+            String kurz = name.substring(MobilHtml.FELD_PRAEFIX.length());
+            String[] werte = p.getValue();
+            if (!MobilSeite.Feld.NAME.matcher(kurz).matches() || werte == null || werte.length == 0) {
+                continue;
+            }
+            String w = werte[0] == null ? "" : werte[0];
+            felder.put(kurz, w.length() > FELD_LAENGE_MAX ? w.substring(0, FELD_LAENGE_MAX) : w);
+        }
+        return Map.copyOf(felder);
+    }
+
+    private static String position(WatchPage seite, List<WatchPage> umlauf) {
         for (int i = 0; i < umlauf.size(); i++) {
             if (umlauf.get(i).id().equals(seite.id())) {
                 return (i + 1) + "/" + umlauf.size();

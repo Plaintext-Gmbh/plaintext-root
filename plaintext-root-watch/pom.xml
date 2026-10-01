@@ -35,6 +35,14 @@
             <artifactId>plaintext-root-menu</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Karte 1387: home und elemente sind Seiten des Mobil-Frameworks und keine Views mehr;
+             ihre Rollenregel (bis dahin der Alias watch/home -> watch-einstellungen im
+             PageAccessGuardService) fragt WatchPage.available() jetzt selbst beim Seitenwaechter. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-pageguard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Spring / JSF / Lombok wie in den uebrigen root-Modulen (Vorbild: plaintext-admin-settings) -->
         <dependency>

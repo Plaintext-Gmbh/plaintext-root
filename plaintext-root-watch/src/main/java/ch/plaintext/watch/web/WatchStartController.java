@@ -92,9 +92,10 @@ public class WatchStartController {
      * by role. {@code home} is always present in this module and renders the empty frame, which
      * is the same answer the watch gave before this class existed. Deliberately not a 404: the
      * user asked for their watch, and "empty" is a truthful answer where "not found" would not
-     * be.
+     * be. Since card 1387 home is a page of the mobile framework, addressed directly (the old
+     * {@code /watch/home.html} would only add a redirect).
      */
-    static final String RUECKFALL = "/watch/home.html";
+    static final String RUECKFALL = ch.plaintext.watch.mobil.MobilWatchPage.PFAD + "home";
 
     private final WatchPageRegistry registry;
     private final WatchStateService zustand;
