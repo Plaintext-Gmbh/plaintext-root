@@ -177,7 +177,7 @@ class MobilSeitenControllerTest {
     }
 
     @Test
-    @DisplayName("404 fuer unbekannte, gesperrte, abgeschaltete und Facelet-Seiten — ohne Unterschied")
+    @DisplayName("404 fuer unbekannte, gesperrte und Facelet-Seiten — ohne Unterschied; selbst abgeschaltete bleibt direkt aufrufbar")
     void nichtSichtbarIst404() {
         when(zustand.seiteAktiv("abgeschaltet")).thenReturn(false);
         ZaehlSeite abgeschaltet = new ZaehlSeite("abgeschaltet", true);
@@ -185,7 +185,7 @@ class MobilSeitenControllerTest {
                 new WatchPageRegistry(List.of(zaehler, gesperrt, abgeschaltet, facelet("home", 0)), zustand),
                 zustand, new MobilDateien());
 
-        for (String id : List.of("gibtsnicht", "gesperrt", "abgeschaltet", "home")) {
+        for (String id : List.of("gibtsnicht", "gesperrt", "home")) {
             ResponseEntity<String> r = controller.seite(id, null, anfrage(false));
             assertThat(r.getStatusCode()).as(id).isEqualTo(HttpStatus.NOT_FOUND);
             assertThat(r.getBody()).as(id).isEqualTo(MobilSeitenController.NICHT_GEFUNDEN);
@@ -193,6 +193,9 @@ class MobilSeitenControllerTest {
         verify(zustand, never()).merkeSeite(anyString());
         // Positivkontrolle: dieselbe Registry zeigt die erlaubte Seite.
         assertThat(controller.seite("zaehler", null, anfrage(false)).getStatusCode()).isEqualTo(HttpStatus.OK);
+        // Nachbesserung 1355: der eigene Schalter nimmt die Seite nur aus der Runde — direkt aufgerufen
+        // erscheint sie (Daniel hatte "alkohol" abgeschaltet und bekam auf /watch/m/alkohol 404).
+        assertThat(controller.seite("abgeschaltet", null, anfrage(false)).getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     // ═══════════════════════════════════════════════════════════════ Aktionen
