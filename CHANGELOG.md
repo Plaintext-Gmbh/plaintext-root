@@ -12,6 +12,16 @@ exhaustive.
 
 ## [Unreleased]
 
+### Added
+- **Mobile framework for watch/phone pages** (Karte 1355, prototype). A module describes a page
+  (`MobilWatchPage.beschreibe()`: figure, buttons, list, note) and handles its actions
+  (`handle(aktion, wert)`); `MobilSeitenController` renders plain HTML under `/watch/m/{id}` with
+  `watch.css` and one script (`mobil.js`, under 5 KB), and runs actions as `fetch` without a page
+  reload (no-JavaScript fallback: POST/303). Same registry, rotation, visibility, phone-link
+  confinement and CSRF as the Facelet pages; no inline script. `WatchPageRegistry.uebersicht()`
+  now holds the overview rule that `WatchFrameBean` had. **Consumer impact:** none until a page
+  implements `MobilWatchPage`.
+
 ### Security
 - **Security audit part B hardenings** (Karte 1360, 30 September 2026).
   - Requirements module: every by-id path is tenant-scoped (`anforderungdetail`/`claudesummary`/

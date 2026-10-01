@@ -21,6 +21,10 @@ geschuetzt    /api/i18n/export
 geschuetzt    /debug/menu-scan
 geschuetzt    /carddav/daniel/addressbooks/default/
 geschuetzt    /.well-known/acme-challenge/token
+# Karte 1355: Mobil-Framework — Seiten und Aktionen liegen hinter der Anmeldung (bzw. dem Handy-Link)
+geschuetzt    /watch/m/alkohol
 
 csrf-pflicht  /api/i18n/import
 csrf-pflicht  /api/preferences/save
+# Karte 1355: jede Aktion des Mobil-Frameworks ist ein POST mit Sitzungscookie
+csrf-pflicht  /watch/m/alkohol/erfassen
