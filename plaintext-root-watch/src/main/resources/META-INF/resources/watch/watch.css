@@ -125,6 +125,14 @@ html, body {
 /* Two or three widgets next to each other — the one exception to single column. */
 .w-widgets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .w-widgets.w-3 { grid-template-columns: repeat(3, 1fr); }
+/* Karte 1387, gemessen bei 390 px (MobilWatchSeitenPlaywrightIT): drei Spalten zu je ~105 px
+   tragen keine vierstellige Zahl in 2.8rem — "0:00" braucht 146 px, die Kachelreihe wurde 382
+   statt 332 px breit und die ganze Startseite scrollte quer. Die Facelet-Startseite hatte dieselbe
+   Regel. Am Telefon darum zwei Spalten (vier Kacheln = 2x2), drei erst ab Tabletbreite. Die
+   Schrift bleibt, wie sie ist (Karte 1276: "viel zu klein"). */
+@media (max-width: 480px) {
+    .w-widgets.w-3 { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* ── Buttons: full width, thumb sized ───────────────────────────────────── */
 .w-btn {

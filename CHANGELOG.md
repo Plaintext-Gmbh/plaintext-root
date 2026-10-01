@@ -27,6 +27,10 @@ exhaustive.
   `watch/elemente` are removed. The Facelet frame (`frame.xhtml`, `WatchFrameBean`, `w:aktion`)
   stays for modules that still ship a Facelet watch page (guild with an older
   `plaintext-z-kalenderhost`). A module page without editable fields needs no change.
+- **Watch tiles at phone width** (Karte 1387): three tiles per row only from 481 px; below, two.
+  Measured at 390 px, three columns of ~105 px could not hold a four-character figure at 2.8rem
+  and the home screen scrolled sideways (row 382 px in a 332 px card). Same rule as the Facelet
+  home had; the font size is unchanged.
 
 ### Added
 - **Mobile framework for watch/phone pages** (Karte 1355, prototype). A module describes a page
