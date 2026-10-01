@@ -54,9 +54,12 @@ import java.util.regex.Pattern;
  *       phone-link session is let through by {@code WatchTokenSitzungFilter} exactly as on the
  *       Facelet pages — and the token is re-checked against the database on every request,
  *       including every action.</li>
- *   <li><b>Which page</b>: {@link WatchPageRegistry#sichtbar(WatchPage)}, for showing and for
- *       acting — roles and the user's own switch. A page that says no answers 404, the same as
- *       one that does not exist, so the answer does not tell which of the two it is.</li>
+ *   <li><b>Which page</b>: {@link WatchPage#available()} — the access rule (roles), checked for
+ *       showing and for acting, fail-closed. A page that says no answers 404, the same as one that
+ *       does not exist, so the answer does not tell which of the two it is. The user's own switch
+ *       ({@code abgeschaltete_seiten}) is NOT an access rule: it only takes a page out of the
+ *       rotation. A switched-off page opened directly still shows (card 1355 follow-up, 01.10.2026:
+ *       Daniel opened {@code /watch/m/alkohol} with "alkohol" switched off and got 404).</li>
  *   <li><b>CSRF</b>: every action is a {@code POST}; Spring Security checks the token (form
  *       field or {@code X-CSRF-TOKEN} header) before this controller is reached. The token is
  *       written into each form of the page.</li>
@@ -212,7 +215,17 @@ public class MobilSeitenController {
         return registry.byId(id)
                 .filter(MobilWatchPage.class::isInstance)
                 .map(MobilWatchPage.class::cast)
-                .filter(registry::sichtbar);
+                .filter(MobilSeitenController::erlaubt);
+    }
+
+    /** Access rule only (roles), fail-closed — the user's own switch does not apply here. */
+    private static boolean erlaubt(WatchPage seite) {
+        try {
+            return seite.available();
+        } catch (RuntimeException e) {
+            log.warn("Mobil: Zugriffsregel von {} nicht auswertbar: {}", seite.id(), e.toString());
+            return false;
+        }
     }
 
     private String inhalt(MobilWatchPage seite, HttpServletRequest request, String frage) {
