@@ -496,3 +496,22 @@ select.w-field { appearance: none; background-image: none; text-align: center; }
     padding: 0 12px;
     font-size: var(--w-schrift-gross);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Mobil-Framework (Karte 1355). Die Seiten unter /watch/m/ benutzen dieselben Klassen wie
+   die Facelets; hier steht nur, was ein Link oder ein verborgenes Element anders braucht als
+   ein <input type="submit">.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Der Vorwaerts-Knopf und "Nein" sind Links: ohne das waeren sie unterstrichen, und "Nein"
+   stuende oben im Kasten statt in der Mitte wie der Text eines Knopfes. */
+a.w-aktion,
+a.w-btn { text-decoration: none; color: var(--w-ink); }
+a.w-btn { display: flex; align-items: center; justify-content: center; }
+
+/* Das hidden-Attribut muss gegen jede display-Regel oben gewinnen, sonst klappt die
+   Rueckfrage beim Loeschen nie zu und die leere Statuszeile nimmt Platz weg. */
+[hidden] { display: none !important; }
+
+/* Waehrend eine Aktion laeuft: sichtbar gedaempft, damit niemand ein zweites Mal tippt. */
+form[aria-busy="true"] { opacity: .6; }

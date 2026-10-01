@@ -174,10 +174,9 @@ public class WatchFrameBean implements Serializable {
      * never reaches it — without this link it would only be reachable by typing the address.</p>
      */
     public String getUebersichtAdresse() {
-        return registry.alle().stream()
-                .filter(p -> !p.imUmlauf())
-                .filter(registry::sichtbar)
-                .findFirst()
+        // Die Regel steht seit Karte 1355 in der Registry — das Mobil-Framework zeichnet
+        // denselben Knopf und muss dieselbe Seite finden.
+        return registry.uebersicht()
                 .map(p -> p.view().replace(".xhtml", ".html"))
                 .orElse("");
     }

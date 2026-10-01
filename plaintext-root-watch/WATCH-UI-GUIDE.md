@@ -263,3 +263,59 @@ plaintext-root-watch/
 The signed-in user always comes from `PlaintextSecurityHolder`, never from a request
 parameter. An earlier module in this house took it from a parameter and thereby let anyone read
 anyone else's data (card 1195).
+
+---
+
+## 7. Mobil-Framework: eine Seite ohne Facelet (Karte 1355, Prototyp)
+
+Seit Karte 1355 kann eine Watch-Seite statt einer `.xhtml` eine **Beschreibung** liefern. Das
+Framework zeichnet daraus schlankes HTML mit denselben `w-`Klassen und fuehrt jede Aktion per
+`fetch` aus, ohne die Seite neu zu laden. Gemessen am 01.10.2026 (Karte 1355, Messprotokoll
+`MobilMessungPlaywrightIT` in plaintext-app): eine Anfrage fuer das HTML und zwei Dateien, die
+nach dem ersten Besuch ein Jahr im Cache liegen.
+
+```java
+@Component
+public class AlkoholWatchPage implements MobilWatchPage {
+    public String id()    { return "alkohol"; }       // stabil, wie bei jeder WatchPage
+    public String title() { return "Getränk"; }
+    public int order()    { return 20; }
+    public boolean available() { return guard.hasAccessToView("/alkoholErfassen.xhtml"); }
+
+    public MobilSeite beschreibe() {                    // was die Seite zeigt, fuer den Angemeldeten
+        return MobilSeite.neu()
+                .wert("Heute", "14 g", "2 Getränke")
+                .knoepfe("Erfassen", List.of(new MobilSeite.Knopf("erfassen", "BIER", "Bier")))
+                .liste("Heute erfasst", "Noch nichts erfasst.", eintraege)
+                .bauen();
+    }
+
+    public MobilAntwort handle(String aktion, String wert) {   // was ein Knopf tut
+        ...
+        return MobilAntwort.ok("Bier erfasst");
+    }
+}
+```
+
+`view()` braucht niemand zu schreiben: es ist `/watch/m/<id>`. Weil Weiter, Start, Handy-Link
+und Uebersicht nur `view()` lesen, laeuft die Seite ohne weiteres im Umlauf mit — neben den
+Facelet-Seiten.
+
+**Was das Framework zusichert** (`MobilSeitenController`, `MobilHtml`):
+
+| Frage | Antwort |
+|---|---|
+| Wer sieht die Seite? | `WatchPageRegistry.sichtbar()` — Rollen UND eigener Schalter, fuer Anzeigen und fuer Aktionen. Sonst 404. |
+| Anmeldung? | Alles liegt unter `/watch/`: ohne Anmeldung die Anmeldeseite, mit Handy-Link durch `WatchTokenSitzungFilter` (Token bei JEDER Anfrage geprueft). |
+| CSRF? | Jede Aktion ist ein POST mit dem `_csrf`-Feld der Sitzung; Spring Security prueft es. |
+| CSP? | Kein Inline-Skript, kein `on…`, kein `style`-Attribut (`MobilHtmlTest`). |
+| Escaping? | Jeder Text aus der Beschreibung, an einer Stelle (`MobilHtml.e`). |
+| Ohne JavaScript? | Echte Formulare: POST, 303 zurueck, Meldung beim naechsten Aufruf. |
+
+**Was beim Modul bleibt**, wie bisher: der Benutzer kommt aus `PlaintextSecurityHolder`, nie
+aus der Anfrage, und ein `wert`, der eine Id ist, wird im Dienst gegen den Benutzer geprueft
+(Karte 1195).
+
+**Was es (noch) nicht gibt:** eigene Bausteine ueber Wert/Knoepfe/Liste/Hinweis hinaus,
+Eingabefelder, Service Worker/Offline-Puffer. Das ist der Umfang des Prototyps; der Entscheid
+ueber die Migration der uebrigen Seiten steht in Karte 1355.

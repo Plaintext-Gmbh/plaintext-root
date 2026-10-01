@@ -110,6 +110,21 @@ public class WatchPageRegistry {
         return alle.stream().filter(this::sichtbar).filter(WatchPage::imUmlauf).toList();
     }
 
+    /**
+     * The overview: the first visible page that is <b>not</b> in the rotation (card 1260), reached
+     * by a long press on the forward button. Empty when there is none.
+     *
+     * <p>Moved here from {@code WatchFrameBean} with card 1355: the mobile framework draws the
+     * same button and has to find the same page. Two copies of the rule would drift, and the
+     * long press would lead somewhere else depending on the page it started on.</p>
+     */
+    public Optional<WatchPage> uebersicht() {
+        return alle.stream()
+                .filter(p -> !p.imUmlauf())
+                .filter(this::sichtbar)
+                .findFirst();
+    }
+
     public Optional<WatchPage> byId(String id) {
         return alle.stream().filter(p -> p.id().equals(id)).findFirst();
     }
