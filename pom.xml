@@ -219,6 +219,7 @@
         <module>plaintext-admin-oidc</module>
         <module>plaintext-admin-apitoken</module>
         <module>plaintext-admin-secrets</module>
+        <module>plaintext-admin-sidecars</module>
         <module>plaintext-admin-modules</module>
         <module>plaintext-admin-mailtemplate</module>
         <module>plaintext-admin-webhooks</module>
@@ -338,6 +339,11 @@
             <dependency>
                 <groupId>ch.plaintext</groupId>
                 <artifactId>plaintext-admin-secrets</artifactId>
+                <version>${plaintext-root.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.plaintext</groupId>
+                <artifactId>plaintext-admin-sidecars</artifactId>
                 <version>${plaintext-root.version}</version>
             </dependency>
             <dependency>

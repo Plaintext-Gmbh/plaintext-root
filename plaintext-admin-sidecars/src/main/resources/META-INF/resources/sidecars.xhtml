@@ -1,0 +1,127 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <!-- Karte 1400: Übersicht der Sidecars nach dem Plaintext-Sidecar-Protokoll (docs/SIDECAR_PROTOKOLL.md). -->
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{sidecarsBean.seitenaufruf()}"/>
+    </f:metadata>
+
+    <ui:define name="title">Sidecars</ui:define>
+
+    <ui:define name="head">
+        <style>
+            .sc-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+            .sc-karte { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+            .sc-kopf { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+            .sc-name { font-weight: 700; font-size: 1.05rem; }
+            .sc-ampel { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
+            .sc-ampel.ok { background: #2e7d32; }
+            .sc-ampel.eingeschraenkt { background: #f9a825; }
+            .sc-ampel.fehler, .sc-ampel.aus { background: #c62828; }
+            .sc-klein { color: #64748b; font-size: .85rem; overflow-wrap: anywhere; }
+            .sc-fehler { color: #c62828; font-size: .85rem; overflow-wrap: anywhere; }
+            .sc-faehigkeiten { width: 100%; border-collapse: collapse; font-size: .85rem; }
+            .sc-faehigkeiten td { border-top: 1px solid #f1f5f9; padding: 3px 4px; vertical-align: top; overflow-wrap: anywhere; }
+            .sc-token { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+            .sc-leiste { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+        </style>
+    </ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:growl id="messages" showDetail="true" life="6000"/>
+
+            <p class="sc-klein">
+                Sidecars sind eigenständige Container, die dieser Anwendung Dienste anbieten. Jeder beschreibt sich
+                über das <h:outputLink value="#{sidecarsBean.protokollDoku}" target="_blank">Plaintext-Sidecar-Protokoll</h:outputLink>
+                mit Status, Version und Fähigkeiten. Bekannt sind die aus <code>plaintext.sidecars</code> und die hier ergänzten.
+                Tokens werden verschlüsselt gespeichert und nie angezeigt.
+            </p>
+
+            <div class="sc-leiste">
+                <p:commandButton value="Alle neu abfragen" icon="pi pi-refresh" action="#{sidecarsBean.alleAbfragen()}"
+                                 process="@this" update="fm"/>
+                <div>
+                    <p:outputLabel for="neueUrl" value="Sidecar ergänzen (Basis-URL)"/>
+                    <div class="sc-token">
+                        <p:inputText id="neueUrl" value="#{sidecarsBean.neueUrl}" placeholder="http://name:port"/>
+                        <p:commandButton value="Ergänzen" icon="pi pi-plus" action="#{sidecarsBean.registrieren()}"
+                                         process="@this neueUrl" update="fm"/>
+                    </div>
+                </div>
+            </div>
+
+            <h:outputText value="Noch keine Sidecars bekannt." styleClass="sc-klein" rendered="#{empty sidecarsBean.zeilen}"/>
+
+            <div class="sc-raster">
+                <ui:repeat value="#{sidecarsBean.zeilen}" var="z">
+                    <div class="sc-karte">
+                        <div class="sc-kopf">
+                            <span class="sc-ampel #{z.ampel}" title="#{z.ampel}"></span>
+                            <span class="sc-name">#{z.sidecar.name}</span>
+                            <span>#{z.sidecar.titel}</span>
+                            <span class="sc-klein">#{z.sidecar.version}</span>
+                        </div>
+                        <div class="sc-klein">
+                            #{z.sidecar.url} · #{z.sidecar.quelle == 'KONFIG' ? 'aus der Konfiguration' : 'von Hand'}
+                            <h:outputText value=" · #{z.sidecar.antwortMs} ms" rendered="#{z.sidecar.antwortMs != null}"/>
+                            <h:outputText value=" · abgefragt #{z.sidecar.letzteAbfrage}" rendered="#{z.sidecar.letzteAbfrage != null}"/>
+                        </div>
+                        <h:outputText value="#{z.sidecar.statusText}" rendered="#{not empty z.sidecar.statusText}"/>
+                        <h:outputText value="#{z.sidecar.fehler}" styleClass="sc-fehler" rendered="#{not empty z.sidecar.fehler}"/>
+
+                        <ui:repeat value="#{z.teile}" var="t">
+                            <div class="sc-klein"><span class="sc-ampel #{t.status}"></span> #{t.name}: #{t.text}</div>
+                        </ui:repeat>
+
+                        <h:panelGroup rendered="#{not empty z.faehigkeiten}">
+                            <table class="sc-faehigkeiten">
+                                <ui:repeat value="#{z.faehigkeiten}" var="f">
+                                    <tr>
+                                        <td><code>#{f.id()}</code></td>
+                                        <td title="#{f.beschreibung()}">#{f.titel()}</td>
+                                        <td class="sc-klein">#{f.methode()} #{f.pfad()}</td>
+                                        <td class="sc-klein">#{f.seiteneffekt()}#{f.perMcpAufrufbar() ? ' · MCP' : ''}</td>
+                                    </tr>
+                                </ui:repeat>
+                            </table>
+                        </h:panelGroup>
+
+                        <div class="sc-klein"><b>Zugang:</b> #{sidecarsBean.authText(z.sidecar.authZustand)}</div>
+                        <h:panelGroup layout="block" styleClass="sc-token" rendered="#{z.tokenNoetig}">
+                            <p:password value="#{sidecarsBean.tokenEingabe[z.sidecar.name]}" redisplay="false" feedback="false"
+                                        placeholder="#{z.sidecar.hatToken() ? 'neuen Token hinterlegen' : 'Token hinterlegen'}"
+                                        autocomplete="new-password"/>
+                            <p:commandButton value="Speichern" icon="pi pi-key" action="#{sidecarsBean.tokenSpeichern(z.sidecar.name)}"
+                                             process="@parent" update="fm"/>
+                            <p:commandButton value="Entfernen" icon="pi pi-times" styleClass="ui-button-secondary"
+                                             action="#{sidecarsBean.tokenEntfernen(z.sidecar.name)}" process="@this" update="fm"
+                                             rendered="#{z.sidecar.hatToken()}"/>
+                        </h:panelGroup>
+
+                        <div class="sc-token">
+                            <p:commandButton value="Neu abfragen" icon="pi pi-refresh" styleClass="ui-button-flat"
+                                             action="#{sidecarsBean.abfragen(z.sidecar.name)}" process="@this" update="fm"/>
+                            <h:outputLink value="#{z.beschreibung.doku()}" target="_blank" rendered="#{not empty z.beschreibung and not empty z.beschreibung.doku()}">Doku</h:outputLink>
+                            <p:commandButton value="Entfernen" icon="pi pi-trash" styleClass="ui-button-flat ui-button-danger"
+                                             action="#{sidecarsBean.entfernen(z.sidecar.name)}" process="@this" update="fm"
+                                             rendered="#{z.sidecar.quelle == 'HAND'}">
+                                <p:confirm header="Sidecar entfernen" message="«#{z.sidecar.name}» aus der Übersicht entfernen? Der Container selbst bleibt unberührt."
+                                           icon="pi pi-exclamation-triangle"/>
+                            </p:commandButton>
+                        </div>
+                    </div>
+                </ui:repeat>
+            </div>
+
+            <p:confirmDialog global="true" showEffect="fade">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes" icon="pi pi-check"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no ui-button-secondary" icon="pi pi-times"/>
+            </p:confirmDialog>
+        </h:form>
+    </ui:define>
+</ui:composition>
