@@ -60,6 +60,7 @@ class SchlankerKontextTest {
             "ch.plaintext.webhooks.",
             "ch.plaintext.notifications.",
             "ch.plaintext.secrets.",
+            "ch.plaintext.sidecars.",
             "ch.plaintext.modules.");
 
     /** One class from each deselected module jar; loading it has to fail. */
@@ -67,6 +68,7 @@ class SchlankerKontextTest {
             "ch.plaintext.webhooks.config.WebhooksModuleConfiguration",
             "ch.plaintext.notifications.config.NotificationsModuleConfiguration",
             "ch.plaintext.secrets.config.SecretsModuleConfiguration",
+            "ch.plaintext.sidecars.config.SidecarsModuleConfiguration",
             "ch.plaintext.modules.config.ModulesModuleConfiguration");
 
     @DynamicPropertySource

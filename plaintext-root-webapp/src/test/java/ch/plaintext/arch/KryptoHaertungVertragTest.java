@@ -123,6 +123,10 @@ class KryptoHaertungVertragTest {
 
         assertEquals("quer", webhook.decrypt(secret.encrypt("quer")));
         assertEquals("quer", secret.decrypt(webhook.encrypt("quer")));
+        // Karte 1400: die Sidecar-Tokens teilen Schlüssel und Format
+        ch.plaintext.sidecars.service.SidecarCrypto sidecar = new ch.plaintext.sidecars.service.SidecarCrypto(new MockEnvironment());
+        assertEquals("quer", sidecar.decrypt(secret.encrypt("quer")));
+        assertEquals("quer", secret.decrypt(sidecar.encrypt("quer")));
     }
 
     @Test

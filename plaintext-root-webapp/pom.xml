@@ -112,7 +112,7 @@
 
              Abwaehlbar (nachgewiesen durch den Surefire-Lauf 'kontext-ohne-abwaehlbare-module',
              siehe unten, und AbwaehlbareModuleXhtmlTest):
-                 plaintext-admin-webhooks, -notifications, -secrets, -modules
+                 plaintext-admin-webhooks, -notifications, -secrets, -sidecars, -modules
              Nicht abwaehlbar und warum je einzeln: docs/OPTIONAL_MODULES.md,
              Begruendung des Wegs: docs/adr/0007-admin-module-abwaehlbar-per-exclusions.md. -->
         <dependency>
@@ -147,6 +147,11 @@
         <dependency>
             <groupId>ch.plaintext</groupId>
             <artifactId>plaintext-admin-secrets</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-admin-sidecars</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -512,10 +517,11 @@
                                 <classpathDependencyExclude>ch.plaintext:plaintext-admin-webhooks</classpathDependencyExclude>
                                 <classpathDependencyExclude>ch.plaintext:plaintext-admin-notifications</classpathDependencyExclude>
                                 <classpathDependencyExclude>ch.plaintext:plaintext-admin-secrets</classpathDependencyExclude>
+                                <classpathDependencyExclude>ch.plaintext:plaintext-admin-sidecars</classpathDependencyExclude>
                                 <classpathDependencyExclude>ch.plaintext:plaintext-admin-modules</classpathDependencyExclude>
                             </classpathDependencyExcludes>
                             <systemPropertyVariables>
-                                <plaintext.abgewaehlte.module>ch.plaintext:plaintext-admin-webhooks,ch.plaintext:plaintext-admin-notifications,ch.plaintext:plaintext-admin-secrets,ch.plaintext:plaintext-admin-modules</plaintext.abgewaehlte.module>
+                                <plaintext.abgewaehlte.module>ch.plaintext:plaintext-admin-webhooks,ch.plaintext:plaintext-admin-notifications,ch.plaintext:plaintext-admin-secrets,ch.plaintext:plaintext-admin-sidecars,ch.plaintext:plaintext-admin-modules</plaintext.abgewaehlte.module>
                             </systemPropertyVariables>
                             <reportsDirectory>${project.build.directory}/surefire-reports-schlank</reportsDirectory>
                         </configuration>

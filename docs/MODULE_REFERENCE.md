@@ -147,6 +147,21 @@ JWT API tokens for REST/MCP access (`JwtTokenService`, `ApiTokenValidatorService
 Secret store with pluggable backends (`SecretService`, `SecretBackendConfig`), ROOT-only.
 Secret values are encrypted at rest with `SecretCrypto` (module `plaintext-admin-secrets`); `EncString` carries an encrypted value through the entity layer. The former `ConfigEncryptionService` and its `ENCv2` format were removed together with the legacy e-mail tables — the migration `V1782929880__drop_legacy_email_tables.sql` is the last trace.
 
+### plaintext-admin-sidecars
+
+Registry of **sidecars** — standalone containers offering services to the application (messenger,
+image recognition, image conversion …), Karte 1400. Each sidecar answers the
+[Plaintext-Sidecar-Protokoll](SIDECAR_PROTOKOLL.md) (`GET /.well-known/plaintext-sidecar`, `…/auth`).
+`SidecarService` knows them from `plaintext.sidecars` (`name=url,…`) or from manual entries (hosts
+limited by `plaintext.sidecars.erlaubte-hosts`), polls them every five minutes (`SidecarAbfrageCron`)
+and implements `SidecarRegister` (in `-interfaces`): modules ask for a **capability** such as
+`bild.vorschau`, not for a container. Tokens are stored with `SidecarCrypto` (same
+`PLAINTEXT_SECRET_KEY` as `SecretCrypto`; not the secret store, because that one is tenant-bound and
+only readable inside a request). ROOT page *Root → Sidecars*, MCP tools `list_sidecars`,
+`get_sidecar`, `find_sidecar_faehigkeit`, `pruefe_sidecar`, `registriere_sidecar`,
+`set_sidecar_token`, `rufe_sidecar_faehigkeit` (only capabilities with `mcp: true` and no external
+side effect).
+
 ### plaintext-admin-modules
 
 Module registry and activation per application (`ModuleService`, `ModuleConfig`,
@@ -217,6 +232,7 @@ plaintext-root-webapp
 ├── plaintext-admin-oidc
 ├── plaintext-admin-apitoken
 ├── plaintext-admin-secrets
+├── plaintext-admin-sidecars
 ├── plaintext-admin-modules
 ├── plaintext-admin-mailtemplate
 ├── plaintext-admin-webhooks
