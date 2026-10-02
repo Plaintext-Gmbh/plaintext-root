@@ -41,8 +41,28 @@ public class SidecarsBackingBean implements Serializable {
     @Autowired
     private transient SpeicherAblageService ablagen;
 
-    /** Eine Zeile der Übersicht. */
-    public record Zeile(Sidecar sidecar, SidecarBeschreibung beschreibung) {
+    /**
+     * Eine Zeile der Übersicht. Bewusst eine Klasse und kein Record: der EL-Resolver für Records
+     * kennt nur die Record-Komponenten, nicht zusätzliche Getter wie {@code getAmpel()} (PROD-Fehler
+     * auf sidecars.html am 02.10.2026, «does not have a readable property 'ampel'»).
+     */
+    public static final class Zeile {
+
+        private final Sidecar sidecar;
+        private final SidecarBeschreibung beschreibung;
+
+        public Zeile(Sidecar sidecar, SidecarBeschreibung beschreibung) {
+            this.sidecar = sidecar;
+            this.beschreibung = beschreibung;
+        }
+
+        public Sidecar getSidecar() {
+            return sidecar;
+        }
+
+        public SidecarBeschreibung getBeschreibung() {
+            return beschreibung;
+        }
 
         public List<SidecarBeschreibung.Faehigkeit> getFaehigkeiten() {
             return beschreibung == null ? List.of() : beschreibung.faehigkeiten();
