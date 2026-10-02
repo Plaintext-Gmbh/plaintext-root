@@ -1,0 +1,5 @@
+{"modul":"test-interfaces","schnittstellen":[
+ {"name":"ch.plaintext.modules.katalog.SchnittstellenKatalogTest.Vertrag","kurz":"Vertrag","zweck":"Rechnet Mails um. Zweiter Satz.","erweitert":[],
+  "methoden":[{"name":"rechne","rueckgabe":"long","art":"abstrakt","zweck":"Rechnet.","parameter":[{"name":"betrag","typ":"long"}]}]},
+ {"name":"ch.plaintext.fehlt.Weg","kurz":"Weg","zweck":"Gibt es nicht.","erweitert":[],"methoden":[]}
+]}

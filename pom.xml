@@ -188,6 +188,7 @@
 
     <modules>
         <!-- root -->
+        <module>plaintext-root-katalog</module>
         <module>plaintext-root-interfaces</module>
         <module>plaintext-root-common</module>
         <module>plaintext-root-flyway</module>
