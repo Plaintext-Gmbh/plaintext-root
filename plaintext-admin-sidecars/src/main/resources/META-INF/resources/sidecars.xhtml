@@ -118,6 +118,59 @@
                 </ui:repeat>
             </div>
 
+            <!-- Karte 1406: Speicher-Ablagen -->
+            <h2 style="margin-top: 28px;">Speicher-Ablagen</h2>
+            <p class="sc-klein">
+                Eine Ablage ist ein Ordner auf einem Speicher (heute Nextcloud), in dem Module Dateien ablegen,
+                z. B. Draw.io seine Diagramme. Benutzer und App-Passwort gelten nur für diesen Zugang; das Passwort
+                wird verschlüsselt gespeichert und nie angezeigt. Erlaubt sind öffentliche Adressen und die in
+                <code>plaintext.ausgehend.erlaubte-hosts</code> freigegebenen.
+            </p>
+            <div class="sc-raster">
+                <ui:repeat value="#{sidecarsBean.speicherAblagen}" var="a">
+                    <div class="sc-karte">
+                        <div class="sc-kopf">
+                            <span class="sc-ampel #{a.ok == null ? 'aus' : (a.ok ? 'ok' : 'fehler')}"></span>
+                            <span class="sc-name">#{a.name}</span>
+                            <span class="sc-klein">Nextcloud</span>
+                        </div>
+                        <div class="sc-klein">#{a.url} · #{a.benutzer} · Pfad <code>#{a.pfad}</code></div>
+                        <h:outputText value="#{a.meldung}" styleClass="#{a.ok ? 'sc-klein' : 'sc-fehler'}" rendered="#{not empty a.meldung}"/>
+                        <div class="sc-token">
+                            <p:commandButton value="Prüfen" icon="pi pi-refresh" styleClass="ui-button-flat"
+                                             action="#{sidecarsBean.ablagePruefen(a.name)}" process="@this" update="fm"/>
+                            <p:commandButton value="Ändern" icon="pi pi-pencil" styleClass="ui-button-flat"
+                                             action="#{sidecarsBean.ablageBearbeiten(a.name)}" process="@this" update="fm:ablageForm"/>
+                            <p:commandButton value="Entfernen" icon="pi pi-trash" styleClass="ui-button-flat ui-button-danger"
+                                             action="#{sidecarsBean.ablageEntfernen(a.name)}" process="@this" update="fm">
+                                <p:confirm header="Ablage entfernen" message="Die Ablage «#{a.name}» entfernen? Die Dateien in der Nextcloud bleiben."
+                                           icon="pi pi-exclamation-triangle"/>
+                            </p:commandButton>
+                        </div>
+                    </div>
+                </ui:repeat>
+            </div>
+
+            <h:panelGroup id="ablageForm" layout="block" styleClass="sc-karte" style="margin-top: 14px; max-width: 520px;">
+                <b>#{empty sidecarsBean.abName ? 'Ablage einrichten' : 'Ablage einrichten oder ändern'}</b>
+                <p:outputLabel for="abName" value="Name (a-z, 0-9, -)"/>
+                <p:inputText id="abName" value="#{sidecarsBean.abName}" placeholder="nextcloud-drawio"/>
+                <p:outputLabel for="abUrl" value="Nextcloud-Adresse"/>
+                <p:inputText id="abUrl" value="#{sidecarsBean.abUrl}" placeholder="https://home.plaintext.ch"/>
+                <p:outputLabel for="abBenutzer" value="Benutzer"/>
+                <p:inputText id="abBenutzer" value="#{sidecarsBean.abBenutzer}" autocomplete="off"/>
+                <p:outputLabel for="abPasswort" value="App-Passwort (leer lassen = unverändert)"/>
+                <p:password id="abPasswort" value="#{sidecarsBean.abPasswort}" redisplay="false" feedback="false" autocomplete="new-password"/>
+                <p:outputLabel for="abPfad" value="Pfad (Ordner in der Nextcloud)"/>
+                <p:inputText id="abPfad" value="#{sidecarsBean.abPfad}" placeholder="z. B. Projekte/drawio"/>
+                <div class="sc-token">
+                    <p:commandButton value="Speichern und prüfen" icon="pi pi-check" action="#{sidecarsBean.ablageSpeichern()}"
+                                     process="ablageForm" update="fm"/>
+                    <p:commandButton value="Leeren" styleClass="ui-button-secondary" action="#{sidecarsBean.ablageNeu()}"
+                                     process="@this" update="ablageForm"/>
+                </div>
+            </h:panelGroup>
+
             <p:confirmDialog global="true" showEffect="fade">
                 <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes" icon="pi pi-check"/>
                 <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no ui-button-secondary" icon="pi pi-times"/>
