@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.netz;
 
+import ch.plaintext.arch.StabileApi;
+
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
  * Antwort wechseln. Für die heutige Lage (nur eigene Admins, Karte 1362 „latent niedrig") ist das
  * angemessen; ein vollständiger Schutz bräuchte einen eigenen Resolver im Client.</p>
  */
+@StabileApi("SSRF-Pruefung ausgehender Ziele fuer Consumer-Apps (Karte 1362/1406/1409)")
 public final class AusgehendesZiel {
 
     /** Name der Allowlist-Eigenschaft, damit Fehlermeldungen und Konfiguration denselben Schlüssel nennen. */
