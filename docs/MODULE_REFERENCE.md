@@ -162,6 +162,14 @@ only readable inside a request). ROOT page *Root → Sidecars*, MCP tools `list_
 `set_sidecar_token`, `rufe_sidecar_faehigkeit` (only capabilities with `mcp: true` and no external
 side effect).
 
+Second section of the same page (Karte 1406): **storage locations** (`SpeicherAblage`, today Nextcloud
+via WebDAV) with URL, user, app password (encrypted with `SidecarCrypto`, write-only) and a folder path.
+Modules store files through `DateiAblagenRegister`/`DateiAblage` (in `-interfaces`, package
+`ch.plaintext.ablagen`) without knowing credentials; paths stay below the configured folder. URLs are
+checked with `ch.plaintext.boot.plugins.netz.AusgehendesZiel` (moved up from plaintext-app, Karte 1362):
+public hosts or those in `plaintext.ausgehend.erlaubte-hosts`. MCP: `list_speicher_ablagen`,
+`pruefe_speicher_ablage`, `set_speicher_ablage`.
+
 ### plaintext-admin-modules
 
 Module registry and activation per application (`ModuleService`, `ModuleConfig`,

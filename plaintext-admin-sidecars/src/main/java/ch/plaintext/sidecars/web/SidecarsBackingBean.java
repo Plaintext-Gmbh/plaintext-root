@@ -6,8 +6,10 @@ package ch.plaintext.sidecars.web;
 import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.sidecars.entity.AuthZustand;
 import ch.plaintext.sidecars.entity.Sidecar;
+import ch.plaintext.sidecars.entity.SpeicherAblage;
 import ch.plaintext.sidecars.service.SidecarBeschreibung;
 import ch.plaintext.sidecars.service.SidecarService;
+import ch.plaintext.sidecars.service.SpeicherAblageService;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +38,8 @@ public class SidecarsBackingBean implements Serializable {
 
     @Autowired
     private transient SidecarService service;
+    @Autowired
+    private transient SpeicherAblageService ablagen;
 
     /** Eine Zeile der Übersicht. */
     public record Zeile(Sidecar sidecar, SidecarBeschreibung beschreibung) {
@@ -63,6 +67,15 @@ public class SidecarsBackingBean implements Serializable {
     @Getter private Map<String, String> tokenEingabe = new HashMap<>();
     @Getter @Setter private String neueUrl;
 
+    // Karte 1406: Speicher-Ablagen (zweiter Abschnitt)
+    @Getter private transient List<SpeicherAblage> speicherAblagen = List.of();
+    /** Formular «Ablage einrichten/ändern»; das Passwort wird nie zurückgegeben. */
+    @Getter @Setter private String abName;
+    @Getter @Setter private String abUrl;
+    @Getter @Setter private String abBenutzer;
+    @Getter @Setter private String abPasswort;
+    @Getter @Setter private String abPfad;
+
     public String getProtokollDoku() {
         return PROTOKOLL_DOKU;
     }
@@ -74,6 +87,66 @@ public class SidecarsBackingBean implements Serializable {
 
     void laden() {
         zeilen = service.liste().stream().map(s -> new Zeile(s, service.beschreibung(s))).toList();
+        speicherAblagen = ablagen.liste();
+    }
+
+    // ---------- Karte 1406: Speicher-Ablagen ----------
+
+    public void ablageBearbeiten(String name) {
+        SpeicherAblage a = ablagen.eintrag(name);
+        abName = a.getName();
+        abUrl = a.getUrl();
+        abBenutzer = a.getBenutzer();
+        abPfad = a.getPfad();
+        abPasswort = null;
+    }
+
+    public void ablageNeu() {
+        abName = null;
+        abUrl = null;
+        abBenutzer = null;
+        abPasswort = null;
+        abPfad = null;
+    }
+
+    public void ablageSpeichern() {
+        try {
+            SpeicherAblage a = ablagen.speichere(abName, abUrl, abBenutzer, abPasswort, abPfad);
+            if (Boolean.TRUE.equals(a.getOk())) {
+                FacesMessages.info("Ablage «" + a.getName() + "» gespeichert. " + a.getMeldung());
+            } else {
+                FacesMessages.warn("Ablage «" + a.getName() + "» gespeichert, aber nicht erreichbar: " + a.getMeldung());
+            }
+            ablageNeu();
+        } catch (IllegalArgumentException e) {
+            FacesMessages.error(e.getMessage());
+        }
+        abPasswort = null;
+        laden();
+    }
+
+    public void ablagePruefen(String name) {
+        try {
+            SpeicherAblage a = ablagen.pruefe(ablagen.eintrag(name));
+            if (Boolean.TRUE.equals(a.getOk())) {
+                FacesMessages.info("«" + name + "»: " + a.getMeldung());
+            } else {
+                FacesMessages.warn("«" + name + "»: " + a.getMeldung());
+            }
+        } catch (NoSuchElementException e) {
+            FacesMessages.error(e.getMessage());
+        }
+        laden();
+    }
+
+    public void ablageEntfernen(String name) {
+        try {
+            ablagen.entferne(name);
+            FacesMessages.info("Ablage «" + name + "» entfernt. Die Dateien in der Nextcloud bleiben.");
+        } catch (NoSuchElementException e) {
+            FacesMessages.error(e.getMessage());
+        }
+        laden();
     }
 
     public void alleAbfragen() {
