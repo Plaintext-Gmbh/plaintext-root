@@ -59,7 +59,8 @@ final class TestSidecar implements AutoCloseable {
         });
         server.createContext("/info", ex -> {
             String auth = ex.getRequestHeaders().getFirst("Authorization");
-            aufrufe.add(ex.getRequestMethod() + " " + ex.getRequestURI() + " auth=" + (auth != null));
+            aufrufe.add(ex.getRequestMethod() + " " + ex.getRequestURI() + " auth=" + (auth != null)
+                    + (ex.getRequestHeaders().containsKey("Upgrade") ? " UPGRADE" : ""));
             if (!("Bearer " + TOKEN).equals(auth)) {
                 ex.sendResponseHeaders(401, -1);
                 ex.close();

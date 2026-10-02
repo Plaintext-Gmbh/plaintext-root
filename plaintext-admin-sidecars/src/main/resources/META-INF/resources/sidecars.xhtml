@@ -75,7 +75,7 @@
                         <h:outputText value="#{z.sidecar.fehler}" styleClass="sc-fehler" rendered="#{not empty z.sidecar.fehler}"/>
 
                         <ui:repeat value="#{z.teile}" var="t">
-                            <div class="sc-klein"><span class="sc-ampel #{t.status}"></span> #{t.name}: #{t.text}</div>
+                            <div class="sc-klein"><span class="sc-ampel #{t.status()}"></span> #{t.name()}: #{t.text()}</div>
                         </ui:repeat>
 
                         <h:panelGroup rendered="#{not empty z.faehigkeiten}">

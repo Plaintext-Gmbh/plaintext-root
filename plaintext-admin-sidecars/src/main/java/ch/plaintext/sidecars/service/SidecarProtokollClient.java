@@ -37,7 +37,13 @@ public class SidecarProtokollClient {
     static final int MAX_BESCHREIBUNG = 256 * 1024;
     static final int MAX_ANTWORT = 64 * 1024;
 
+    /**
+     * HTTP/1.1 erzwungen: mit der Vorgabe HTTP/2 schickt der JDK-Client bei {@code http://} einen
+     * h2c-Upgrade, und Python-Server (uvicorn/gunicorn) lesen dann einen leeren Body (PROD 02.10.2026,
+     * Fotos-Sidecar: «Kein Bild im Body»).
+     */
     private final HttpClient http = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(ABFRAGE_ZEIT)
             .followRedirects(HttpClient.Redirect.NEVER)
             .build();
