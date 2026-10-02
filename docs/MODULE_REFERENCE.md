@@ -176,6 +176,15 @@ Module registry and activation per application (`ModuleService`, `ModuleConfig`,
 `ModuleDataService`, `ModuleDangerZoneService`). The `moduleId` shown here is the key for
 `plaintext.menu.module-roles.<moduleId>`.
 
+
+**Interface catalog (Karte 1405).** `SchnittstellenKatalog` reads every
+`META-INF/plaintext-katalog/<module>.json` on the classpath and links each interface to the Spring beans
+that implement it (bean, class, module jar). The JSON is written at compile time by the annotation
+processor `plaintext-root-katalog` in every `*-interfaces` module: all public interfaces with their
+Javadoc as purpose and every method with return type, parameters and Javadoc. An interface without
+Javadoc fails the build (`-Aplaintext.katalog.streng=true`). MCP (read-only, role ADMIN/ROOT):
+`list_modul_schnittstellen`, `get_modul_schnittstelle`, `suche_modul_schnittstellen` — meant for an LLM
+planning new features from the building blocks that are already there.
 ### plaintext-admin-mailtemplate
 
 Editable mail templates with per-mandate overrides (`MailTemplateService`,
@@ -223,6 +232,7 @@ plaintext-root-webapp
 │   └── plaintext-root-menu
 ├── plaintext-root-pageguard
 │   └── plaintext-root-menu
+├── plaintext-root-katalog   (annotation processor, build time only)
 ├── plaintext-root-interfaces
 ├── plaintext-root-jpa
 │   └── plaintext-root-common

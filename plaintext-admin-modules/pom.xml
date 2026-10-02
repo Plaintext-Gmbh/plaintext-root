@@ -53,6 +53,14 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Karte 1405: MCP-Werkzeuge des Schnittstellen-Katalogs, optional wie bei plaintext-admin-secrets -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+            <version>2.0.1</version>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
