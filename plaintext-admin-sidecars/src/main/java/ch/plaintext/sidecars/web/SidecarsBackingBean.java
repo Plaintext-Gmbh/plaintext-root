@@ -114,9 +114,13 @@ public class SidecarsBackingBean implements Serializable {
                     || (sidecar.getFehler() != null && !sidecar.getFehler().isBlank());
         }
 
-        /** Der Sidecar verlangt einen Token, und es ist keiner hinterlegt oder er wird abgelehnt. */
+        /**
+         * Der Sidecar verlangt laut Beschreibung einen Token, und es ist keiner hinterlegt oder er wird
+         * abgelehnt. Ohne Beschreibung (nie erreicht) ist das unbekannt und zählt nicht.
+         */
         public boolean isTokenFehlt() {
-            return isTokenNoetig() && (!sidecar.hatToken() || sidecar.getAuthZustand() == AuthZustand.UNGUELTIG);
+            return beschreibung != null && isTokenNoetig()
+                    && (!sidecar.hatToken() || sidecar.getAuthZustand() == AuthZustand.UNGUELTIG);
         }
 
         /** Karte 1413: Zeilen, bei denen etwas zu tun ist, stehen beim Laden offen. */
@@ -132,6 +136,9 @@ public class SidecarsBackingBean implements Serializable {
             if (sidecar.getAuthZustand() == AuthZustand.UNGUELTIG) {
                 return "Token ungültig";
             }
+            if (beschreibung == null && !sidecar.hatToken()) {
+                return "unbekannt";
+            }
             if (!sidecar.hatToken()) {
                 return "Token fehlt";
             }
@@ -145,6 +152,9 @@ public class SidecarsBackingBean implements Serializable {
             }
             if (isTokenFehlt()) {
                 return "danger";
+            }
+            if (beschreibung == null && !sidecar.hatToken()) {
+                return "warning";
             }
             return sidecar.getAuthZustand() == AuthZustand.GUELTIG ? "success" : "warning";
         }

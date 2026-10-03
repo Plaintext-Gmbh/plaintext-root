@@ -83,6 +83,11 @@ class SidecarsZeileTest {
         assertThat(aus.getAmpel()).isEqualTo("aus");
         assertThat(aus.getAmpelText()).isEqualTo("nicht erreichbar");
         assertThat(aus.isAufgeklappt()).isTrue();
+        var nieGesehen = new SidecarsBackingBean.Zeile(sidecar(false, null, AuthZustand.UNBEKANNT, false), null);
+        assertThat(nieGesehen.getZugang()).as("ohne Beschreibung weiss niemand, ob ein Token nötig ist").isEqualTo("unbekannt");
+        assertThat(nieGesehen.getZugangSchwere()).isEqualTo("warning");
+        assertThat(nieGesehen.isTokenFehlt()).isFalse();
+        assertThat(nieGesehen.isAufgeklappt()).as("offen wegen des Fehlers").isTrue();
 
         var rot = new SidecarsBackingBean.Zeile(sidecar(true, "fehler", AuthZustand.NICHT_NOETIG, false), beschreibung("keine"));
         assertThat(rot.isAufgeklappt()).isTrue();

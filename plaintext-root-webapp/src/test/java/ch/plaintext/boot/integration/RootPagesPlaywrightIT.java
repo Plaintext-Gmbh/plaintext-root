@@ -342,7 +342,7 @@ class RootPagesPlaywrightIT {
         Locator tokenFeld = offen.first().locator("input[type=password]");
         assertTrue(tokenFeld.isVisible(), "Token-Feld in der offenen Zeile fehlt");
         assertEquals("", tokenFeld.inputValue(), "Token-Feld darf nie vorbelegt sein");
-        assertTrue(tabelle.innerText().contains("Token fehlt"), "Spalte Zugang zeigt «Token fehlt» nicht");
+        assertTrue(tabelle.innerText().contains("unbekannt"), "Spalte Zugang zeigt den Zustand nicht");
 
         // Zuklappen und wieder aufklappen über den rowToggler (Ajax-Nachladen der Zeile).
         Locator toggler = tabelle.locator("tr[data-rk='pw-kaputt'] .ui-row-toggler");
