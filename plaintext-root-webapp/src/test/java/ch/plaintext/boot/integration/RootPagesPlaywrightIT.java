@@ -291,7 +291,8 @@ class RootPagesPlaywrightIT {
             s.setErreichbar(false);
             s.setFehler("Verbindung abgelehnt");
             s.setAuthZustand(AuthZustand.KEIN_TOKEN);
-            s.setLetzteAbfrage(Instant.now());
+            // In der Zukunft: der Seitenaufruf fragt ihn dann nicht neu ab (FRISCH_SEKUNDEN), der Stand bleibt fest.
+            s.setLetzteAbfrage(Instant.now().plusSeconds(3600));
             sidecarRepository.save(s);
         }
         if (ablageRepository.findFirstByNameAndDeletedFalse("pw-ablage").isEmpty()) {
@@ -336,20 +337,22 @@ class RootPagesPlaywrightIT {
 
         // Die Fehlerzeile steht offen: Fehlertext und Token-Feld sind ohne Klick sichtbar.
         Locator tabelle = page.locator("#fm\\:reiter\\:sidecars");
-        Locator offen = tabelle.locator("tr.ui-expanded-row-content");
-        assertTrue(offen.count() >= 1, "Fehlerzeile ist nicht aufgeklappt: " + tabelle.innerText());
-        assertTrue(offen.first().innerText().contains("Verbindung abgelehnt"), "Fehlertext fehlt in der offenen Zeile");
-        Locator tokenFeld = offen.first().locator("input[type=password]");
+        Locator offen = tabelle.locator("tr[data-rk='pw-kaputt'] + tr.ui-expanded-row-content");
+        assertEquals(1, offen.count(), "Fehlerzeile ist nicht aufgeklappt: " + tabelle.innerText());
+        Locator fehlerText = offen.locator(".sc-fehler");
+        assertTrue(fehlerText.isVisible() && !fehlerText.innerText().isBlank(),
+                "Fehlertext fehlt in der offenen Zeile: " + offen.innerText());
+        Locator tokenFeld = offen.locator("input[type=password]");
         assertTrue(tokenFeld.isVisible(), "Token-Feld in der offenen Zeile fehlt");
         assertEquals("", tokenFeld.inputValue(), "Token-Feld darf nie vorbelegt sein");
-        assertTrue(tabelle.innerText().contains("unbekannt"), "Spalte Zugang zeigt den Zustand nicht");
+        assertTrue(tabelle.locator("tr[data-rk='pw-kaputt']").innerText().contains("unbekannt"), "Spalte Zugang zeigt den Zustand nicht");
 
         // Zuklappen und wieder aufklappen über den rowToggler (Ajax-Nachladen der Zeile).
         Locator toggler = tabelle.locator("tr[data-rk='pw-kaputt'] .ui-row-toggler");
         toggler.click();
         page.waitForCondition(() -> !tabelle.locator("tr[data-rk='pw-kaputt']").getAttribute("class").contains("ui-expanded-row"));
         toggler.click();
-        tabelle.locator("tr.ui-expanded-row-content input[type=password]").first().waitFor();
+        tabelle.locator("tr[data-rk='pw-kaputt'] + tr.ui-expanded-row-content input[type=password]").waitFor();
 
         // Dialog «Sidecar ergänzen»
         page.click("#fm\\:reiter\\:ergaenzen");
@@ -366,8 +369,9 @@ class RootPagesPlaywrightIT {
         reiter.nth(1).click();
         Locator ablagen = page.locator("#fm\\:reiter\\:ablagen");
         ablagen.waitFor();
-        assertTrue(ablagen.locator("tr.ui-expanded-row-content").first().innerText().contains("pw-meldung"),
-                "Ablage mit Fehler ist nicht aufgeklappt");
+        Locator ablageOffen = ablagen.locator("tr[data-rk='pw-ablage'] + tr.ui-expanded-row-content");
+        assertEquals(1, ablageOffen.count(), "Ablage mit Fehler ist nicht aufgeklappt: " + ablagen.innerText());
+        assertTrue(ablageOffen.innerText().contains("pw-meldung"), "Meldung fehlt: " + ablageOffen.innerText());
         page.click("#fm\\:reiter\\:ablageEinrichten");
         Locator dlgAblage = page.locator("#fm\\:dlgAblage");
         dlgAblage.waitFor();
@@ -378,7 +382,7 @@ class RootPagesPlaywrightIT {
         dlgAblage.locator("button:has-text('Abbrechen')").click();
 
         // «Ändern» füllt den Dialog vor, der Name ist fest, das Passwort leer.
-        ablagen.locator("tr.ui-expanded-row-content button:has-text('Ändern')").first().click();
+        ablageOffen.locator("button:has-text('Ändern')").click();
         page.waitForCondition(() -> "pw-ablage".equals(page.locator("#fm\\:abName").inputValue()));
         assertTrue(dlgAblage.isVisible(), "Ablage-Dialog ging für «Ändern» nicht auf");
         assertTrue(dlgAblage.innerText().contains("Ablage ändern"), "Kopf beim Ändern: " + dlgAblage.innerText());
