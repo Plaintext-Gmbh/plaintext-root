@@ -14,6 +14,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Response;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import ch.plaintext.sidecars.entity.AuthZustand;
 import ch.plaintext.sidecars.entity.Sidecar;
 import ch.plaintext.sidecars.entity.SidecarQuelle;
@@ -279,6 +280,16 @@ class RootPagesPlaywrightIT {
 
     // ------------------------------------------------------------------ 7. sidecar cockpit (Karte 1413)
 
+    /**
+     * Wartet, bis keine Ajax-Anfrage mehr läuft und keine Ein- oder Ausblendung mehr animiert wird.
+     * In der CI ging ein Klick auf «Abbrechen» sonst in eine noch laufende Einblendung, und der
+     * Dialog blieb über dem nächsten Knopf stehen.
+     */
+    private void ruhig() {
+        page.waitForFunction("() => window.jQuery && jQuery.active === 0 && jQuery(':animated').length === 0"
+                + " && (!window.PrimeFaces || PrimeFaces.ajax.Queue.isEmpty())");
+    }
+
     @Test
     @DisplayName("Sidecars: Reiter mit Anzahl, Fehlerzeile offen mit Token-Feld, beide Dialoge gehen mit Feldern auf")
     void sidecarCockpit() {
@@ -355,15 +366,18 @@ class RootPagesPlaywrightIT {
         tabelle.locator("tr[data-rk='pw-kaputt'] + tr.ui-expanded-row-content input[type=password]").waitFor();
 
         // Dialog «Sidecar ergänzen»
-        page.click("#fm\\:reiter\\:ergaenzen");
+        page.waitForResponse(r -> "POST".equals(r.request().method()), () -> page.click("#fm\\:reiter\\:ergaenzen"));
         Locator dlgErgaenzen = page.locator("#fm\\:dlgErgaenzen");
         dlgErgaenzen.waitFor();
+        ruhig();
         assertTrue(page.locator("#fm\\:neueUrl").isVisible(), "Dialog «Sidecar ergänzen» ohne URL-Feld");
         page.fill("#fm\\:neueUrl", "ftp://nicht-erlaubt");
-        page.click("#fm\\:ergaenzenSpeichern");
+        page.waitForResponse(r -> "POST".equals(r.request().method()), () -> page.click("#fm\\:ergaenzenSpeichern"));
         page.locator(".ui-growl-message").first().waitFor();
+        ruhig();
         assertTrue(dlgErgaenzen.isVisible(), "Dialog muss bei abgelehnter URL offen bleiben");
         dlgErgaenzen.locator("button:has-text('Abbrechen')").click();
+        dlgErgaenzen.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.HIDDEN));
 
         // Reiter «Speicher-Ablagen»: Fehlerzeile offen, «Ablage einrichten» öffnet den Dialog
         reiter.nth(1).click();
@@ -372,14 +386,16 @@ class RootPagesPlaywrightIT {
         Locator ablageOffen = ablagen.locator("tr[data-rk='pw-ablage'] + tr.ui-expanded-row-content");
         assertEquals(1, ablageOffen.count(), "Ablage mit Fehler ist nicht aufgeklappt: " + ablagen.innerText());
         assertTrue(ablageOffen.innerText().contains("pw-meldung"), "Meldung fehlt: " + ablageOffen.innerText());
-        page.click("#fm\\:reiter\\:ablageEinrichten");
+        page.waitForResponse(r -> "POST".equals(r.request().method()), () -> page.click("#fm\\:reiter\\:ablageEinrichten"));
         Locator dlgAblage = page.locator("#fm\\:dlgAblage");
         dlgAblage.waitFor();
+        ruhig();
         for (String feld : List.of("abName", "abUrl", "abBenutzer", "abPasswort", "abPfad")) {
             assertTrue(page.locator("#fm\\:" + feld).isVisible(), "Feld " + feld + " fehlt im Ablage-Dialog");
         }
         assertTrue(dlgAblage.innerText().contains("Ablage einrichten"), "Kopf des Ablage-Dialogs: " + dlgAblage.innerText());
         dlgAblage.locator("button:has-text('Abbrechen')").click();
+        dlgAblage.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.HIDDEN));
 
         // «Ändern» füllt den Dialog vor, der Name ist fest, das Passwort leer.
         ablageOffen.locator("button:has-text('Ändern')").click();
