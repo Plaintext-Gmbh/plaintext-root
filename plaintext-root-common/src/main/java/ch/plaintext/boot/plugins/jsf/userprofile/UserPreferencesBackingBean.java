@@ -164,50 +164,12 @@ public class UserPreferencesBackingBean implements Serializable {
             log.info("PREFS-INIT user={} componentTheme={} darkMode={} customColor={} cookieColor={} cookieCustomColor={}",
                     Log.mail(username), prefs.getComponentTheme(), prefs.getDarkMode(), prefs.getCustomColor(), cookieColor, cookieCustomColor);
 
-            // If cookie theme differs from DB, update DB to match cookie
-            if (cookieTheme != null && !cookieTheme.equals(prefs.getDarkMode())) {
-                log.debug("Cookie theme '{}' differs from DB '{}', updating DB to match cookie", cookieTheme, prefs.getDarkMode());
-                prefs.setDarkMode(cookieTheme);
-                prefs.setTopbarTheme(cookieTheme);
-                prefs.setMenuTheme(cookieTheme);
-                prefs.setLightLogo(!cookieTheme.equals("light"));
-            }
-
-            boolean needsSync = false;
-
-            // If color cookie differs from DB, update DB to match cookie
-            if (cookieColor != null && !cookieColor.equals(prefs.getComponentTheme())) {
-                log.debug("Cookie color '{}' differs from DB '{}', updating DB to match cookie", cookieColor, prefs.getComponentTheme());
-                prefs.setComponentTheme(cookieColor);
-                needsSync = true;
-            }
-
-            // If custom color cookie differs from DB, update DB to match cookie
-            if (cookieCustomColor != null && !cookieCustomColor.equals(prefs.getCustomColor())) {
-                log.debug("Cookie custom color '{}' differs from DB '{}', updating DB to match cookie", cookieCustomColor, prefs.getCustomColor());
-                prefs.setCustomColor(cookieCustomColor);
-                needsSync = true;
-            }
-
-            // Ensure themes are consistent with darkMode
-            // Topbar and menu themes must match darkMode to render correctly
-            if (!prefs.getTopbarTheme().equals(prefs.getDarkMode())) {
-                log.debug("Syncing topbarTheme from '{}' to '{}' to match darkMode", prefs.getTopbarTheme(), prefs.getDarkMode());
-                prefs.setTopbarTheme(prefs.getDarkMode());
-                needsSync = true;
-            }
-            if (!prefs.getMenuTheme().equals(prefs.getDarkMode())) {
-                log.debug("Syncing menuTheme from '{}' to '{}' to match darkMode", prefs.getMenuTheme(), prefs.getDarkMode());
-                prefs.setMenuTheme(prefs.getDarkMode());
-                needsSync = true;
-            }
-            // Migration: Set menuStatic to true if it was false (old default)
-            if (!prefs.isMenuStatic()) {
-                log.debug("Migrating menuStatic from false to true (new default: sidebar expanded)");
-                prefs.setMenuStatic(true);
-                needsSync = true;
-            }
-            if (needsSync) {
+            themaAusCookie(cookieTheme);
+            // Beide Schritte laufen immer, erst danach wird entschieden (Karte 1410: aufgeteilt,
+            // Reihenfolge und Wirkung wie vorher).
+            boolean farbenGeaendert = farbenAusCookies(cookieColor, cookieCustomColor);
+            boolean themenGeaendert = themenAngleichen();
+            if (farbenGeaendert || themenGeaendert) {
                 save(); // Persist the corrected values
             }
         } else {
@@ -215,6 +177,63 @@ public class UserPreferencesBackingBean implements Serializable {
             prefs.setUniqueId(username);
             save();
         }
+    }
+
+    /**
+     * Theme (hell/dunkel) aus dem Cookie in die Einstellungen uebernehmen, wenn es abweicht (nahtloser
+     * Wechsel nach der Anmeldung). Loest fuer sich keine Speicherung aus, wie vor Karte 1410.
+     */
+    private void themaAusCookie(String cookieTheme) {
+        if (cookieTheme != null && !cookieTheme.equals(prefs.getDarkMode())) {
+            log.debug("Cookie theme '{}' differs from DB '{}', updating DB to match cookie", cookieTheme, prefs.getDarkMode());
+            prefs.setDarkMode(cookieTheme);
+            prefs.setTopbarTheme(cookieTheme);
+            prefs.setMenuTheme(cookieTheme);
+            prefs.setLightLogo(!cookieTheme.equals("light"));
+        }
+    }
+
+    /** Farbe und eigene Farbe aus den Cookies uebernehmen; {@code true}, wenn sich etwas geaendert hat. */
+    private boolean farbenAusCookies(String cookieColor, String cookieCustomColor) {
+        boolean geaendert = false;
+        // If color cookie differs from DB, update DB to match cookie
+        if (cookieColor != null && !cookieColor.equals(prefs.getComponentTheme())) {
+            log.debug("Cookie color '{}' differs from DB '{}', updating DB to match cookie", cookieColor, prefs.getComponentTheme());
+            prefs.setComponentTheme(cookieColor);
+            geaendert = true;
+        }
+        // If custom color cookie differs from DB, update DB to match cookie
+        if (cookieCustomColor != null && !cookieCustomColor.equals(prefs.getCustomColor())) {
+            log.debug("Cookie custom color '{}' differs from DB '{}', updating DB to match cookie", cookieCustomColor, prefs.getCustomColor());
+            prefs.setCustomColor(cookieCustomColor);
+            geaendert = true;
+        }
+        return geaendert;
+    }
+
+    /**
+     * Topbar- und Menue-Theme auf {@code darkMode} angleichen (sonst rendern sie falsch) und den alten
+     * Vorgabewert {@code menuStatic=false} migrieren; {@code true}, wenn sich etwas geaendert hat.
+     */
+    private boolean themenAngleichen() {
+        boolean geaendert = false;
+        if (!prefs.getTopbarTheme().equals(prefs.getDarkMode())) {
+            log.debug("Syncing topbarTheme from '{}' to '{}' to match darkMode", prefs.getTopbarTheme(), prefs.getDarkMode());
+            prefs.setTopbarTheme(prefs.getDarkMode());
+            geaendert = true;
+        }
+        if (!prefs.getMenuTheme().equals(prefs.getDarkMode())) {
+            log.debug("Syncing menuTheme from '{}' to '{}' to match darkMode", prefs.getMenuTheme(), prefs.getDarkMode());
+            prefs.setMenuTheme(prefs.getDarkMode());
+            geaendert = true;
+        }
+        // Migration: Set menuStatic to true if it was false (old default)
+        if (!prefs.isMenuStatic()) {
+            log.debug("Migrating menuStatic from false to true (new default: sidebar expanded)");
+            prefs.setMenuStatic(true);
+            geaendert = true;
+        }
+        return geaendert;
     }
 
     /**
