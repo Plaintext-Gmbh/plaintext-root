@@ -575,12 +575,20 @@ public class TableSettings implements Serializable {
 
     /** Checkbox oben/unten geaendert: speichern und die Tabelle angleichen. */
     public void onPaginatorChange(String tabelle) {
-        persist();
-        tabelleAngleichen(tabelle);
+        speichernUndAngleichen(tabelle);
     }
 
     /** Seitengroesse im Bedienbereich geaendert: speichern und die Tabelle angleichen. */
     public void onSeitengroesseChange(String tabelle) {
+        speichernUndAngleichen(tabelle);
+    }
+
+    /**
+     * Gemeinsamer Rumpf der beiden Listener (Karte 1410, Sonar java:S4144). Zwei Listener bleiben es
+     * trotzdem: Sie haengen an verschiedenen Bedienelementen in {@code tableSettings.xhtml}, und
+     * wer einen davon spaeter anders behandeln muss, aendert nur seinen.
+     */
+    private void speichernUndAngleichen(String tabelle) {
         persist();
         tabelleAngleichen(tabelle);
     }

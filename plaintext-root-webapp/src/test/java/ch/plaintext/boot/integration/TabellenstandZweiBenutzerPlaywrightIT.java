@@ -140,7 +140,7 @@ class TabellenstandZweiBenutzerPlaywrightIT {
             eintragId.locator(".ui-chkbox-box").click();
             seite.keyboard().press("Escape");
 
-            TableState gespeichert = warteAufGespeichertenStand(ANNA);
+            TableState gespeichert = warteAufGespeichertenStand(seite, ANNA);
             assertEquals(Boolean.FALSE, gespeichert.getColumnVisible().get("id"),
                     "In der Datenbank steht fuer A nicht 'id=false': " + gespeichert.getColumnVisible());
             idKopf(seite).waitFor(new Locator.WaitForOptions()
@@ -191,8 +191,14 @@ class TabellenstandZweiBenutzerPlaywrightIT {
         return seite.locator("#fm\\:tbl thead th:has(.ui-column-title:text-is('ID'))");
     }
 
-    /** Das Speichern laeuft per Ajax; bis zu 15 s warten, bis der Stand in der Datenbank steht. */
-    private TableState warteAufGespeichertenStand(String benutzer) {
+    /**
+     * Das Speichern laeuft per Ajax; bis zu 15 s warten, bis der Stand in der Datenbank steht.
+     *
+     * <p>Die Pause zwischen zwei Blicken in die Datenbank macht Playwright ({@code waitForTimeout}),
+     * nicht {@code Thread.sleep} (Karte 1410, Sonar java:S2925): Die Seite verarbeitet waehrenddessen
+     * ihre Ereignisse weiter, und es gibt keine {@code InterruptedException} zu behandeln.</p>
+     */
+    private TableState warteAufGespeichertenStand(Page seite, String benutzer) {
         long bis = System.currentTimeMillis() + 15_000;
         while (System.currentTimeMillis() < bis) {
             UserPreference prefs = userPrefs.findByUniqueId(benutzer);
@@ -200,12 +206,7 @@ class TabellenstandZweiBenutzerPlaywrightIT {
             if (stand != null && Boolean.FALSE.equals(stand.getColumnVisible().get("id"))) {
                 return stand;
             }
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+            seite.waitForTimeout(200);
         }
         UserPreference prefs = userPrefs.findByUniqueId(benutzer);
         String vorhanden = eintraegeInDerAblage().toString();
