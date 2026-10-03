@@ -10,6 +10,7 @@ import ch.plaintext.sidecars.entity.SpeicherAblage;
 import ch.plaintext.sidecars.service.SidecarBeschreibung;
 import ch.plaintext.sidecars.service.SidecarService;
 import ch.plaintext.sidecars.service.SpeicherAblageService;
+import jakarta.faces.context.FacesContext;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,9 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +31,10 @@ import java.util.NoSuchElementException;
  * Fähigkeiten und Token-Zustand; Token hinterlegen, von Hand ergänzen, neu abfragen.
  *
  * <p>Ein Token wird nur geschrieben, nie angezeigt: das Eingabefeld ist nach dem Speichern leer.</p>
+ *
+ * <p>Karte 1413: die Seite ist eine Tabelle mit Aufklappen in zwei Reitern. Die Bean liefert dafür
+ * nur Ansichtswerte dazu (Zähler, Kurztexte, welche Zeilen vorab offen sind, Dialogzustand); die
+ * Abläufe zum Abfragen, Token setzen und Ablagen prüfen sind unverändert.</p>
  */
 @Component("sidecarsBean")
 @Scope("session")
@@ -35,6 +43,9 @@ public class SidecarsBackingBean implements Serializable {
 
     private static final long serialVersionUID = 1L;
     static final String PROTOKOLL_DOKU = "https://github.com/Plaintext-Gmbh/plaintext-root/blob/master/docs/SIDECAR_PROTOKOLL.md";
+    private static final DateTimeFormatter ZEIT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.of("Europe/Zurich"));
+    private static final String AMPEL_FEHLER = "fehler";
+    private static final String AMPEL_AUS = "aus";
 
     @Autowired
     private transient SidecarService service;
@@ -74,11 +85,78 @@ public class SidecarsBackingBean implements Serializable {
 
         /** @return {@code ok}, {@code eingeschraenkt}, {@code fehler} oder {@code aus} (nicht erreichbar) */
         public String getAmpel() {
-            return !sidecar.isErreichbar() ? "aus" : sidecar.getStatus();
+            return !sidecar.isErreichbar() ? AMPEL_AUS : sidecar.getStatus();
+        }
+
+        /** @return die Ampel als Wort, für Tooltip und Screenreader */
+        public String getAmpelText() {
+            String a = getAmpel();
+            if (a == null) {
+                return "Status unbekannt";
+            }
+            return switch (a) {
+                case "ok" -> "in Ordnung";
+                case "eingeschraenkt" -> "eingeschränkt";
+                case AMPEL_FEHLER -> "Fehler";
+                case AMPEL_AUS -> "nicht erreichbar";
+                default -> a;
+            };
         }
 
         public boolean isTokenNoetig() {
             return beschreibung == null || !beschreibung.ohneAuth();
+        }
+
+        /** Fehlerampel, nicht erreichbar oder ein Hinweis aus der letzten Abfrage. */
+        public boolean isFehlerhaft() {
+            String a = getAmpel();
+            return AMPEL_FEHLER.equals(a) || AMPEL_AUS.equals(a)
+                    || (sidecar.getFehler() != null && !sidecar.getFehler().isBlank());
+        }
+
+        /**
+         * Der Sidecar verlangt laut Beschreibung einen Token, und es ist keiner hinterlegt oder er wird
+         * abgelehnt. Ohne Beschreibung (nie erreicht) ist das unbekannt und zählt nicht.
+         */
+        public boolean isTokenFehlt() {
+            return beschreibung != null && isTokenNoetig()
+                    && (!sidecar.hatToken() || sidecar.getAuthZustand() == AuthZustand.UNGUELTIG);
+        }
+
+        /** Karte 1413: Zeilen, bei denen etwas zu tun ist, stehen beim Laden offen. */
+        public boolean isAufgeklappt() {
+            return isFehlerhaft() || isTokenFehlt();
+        }
+
+        /** @return Kurztext für die Spalte «Zugang» */
+        public String getZugang() {
+            if (!isTokenNoetig() || sidecar.getAuthZustand() == AuthZustand.NICHT_NOETIG) {
+                return "nicht nötig";
+            }
+            if (sidecar.getAuthZustand() == AuthZustand.UNGUELTIG) {
+                return "Token ungültig";
+            }
+            if (beschreibung == null && !sidecar.hatToken()) {
+                return "unbekannt";
+            }
+            if (!sidecar.hatToken()) {
+                return "Token fehlt";
+            }
+            return sidecar.getAuthZustand() == AuthZustand.GUELTIG ? "Token ✓" : "Token ungeprüft";
+        }
+
+        /** @return Schweregrad für {@code p:tag} ({@code success}, {@code warning}, {@code danger}, {@code info}) */
+        public String getZugangSchwere() {
+            if (!isTokenNoetig() || sidecar.getAuthZustand() == AuthZustand.NICHT_NOETIG) {
+                return "info";
+            }
+            if (isTokenFehlt()) {
+                return "danger";
+            }
+            if (beschreibung == null && !sidecar.hatToken()) {
+                return "warning";
+            }
+            return sidecar.getAuthZustand() == AuthZustand.GUELTIG ? "success" : "warning";
         }
     }
 
@@ -95,6 +173,8 @@ public class SidecarsBackingBean implements Serializable {
     @Getter @Setter private String abBenutzer;
     @Getter @Setter private String abPasswort;
     @Getter @Setter private String abPfad;
+    /** Karte 1413: der Dialog ändert eine bestehende Ablage (Name fest) statt eine neue einzurichten. */
+    @Getter private boolean ablageBestehend;
 
     public String getProtokollDoku() {
         return PROTOKOLL_DOKU;
@@ -110,6 +190,51 @@ public class SidecarsBackingBean implements Serializable {
         speicherAblagen = ablagen.liste();
     }
 
+    // ---------- Karte 1413: Kennzahlen für die Kopfzeilen ----------
+
+    public long getAnzahlOk() {
+        return zeilen.stream().filter(z -> "ok".equals(z.getAmpel())).count();
+    }
+
+    public long getAnzahlEingeschraenkt() {
+        return zeilen.stream().filter(z -> "eingeschraenkt".equals(z.getAmpel())).count();
+    }
+
+    /** Fehlerampel oder nicht erreichbar. */
+    public long getAnzahlFehler() {
+        return zeilen.stream().filter(z -> AMPEL_FEHLER.equals(z.getAmpel()) || AMPEL_AUS.equals(z.getAmpel())).count();
+    }
+
+    public long getAnzahlTokenFehlt() {
+        return zeilen.stream().filter(Zeile::isTokenFehlt).count();
+    }
+
+    public long getAnzahlAblagenOk() {
+        return speicherAblagen.stream().filter(a -> Boolean.TRUE.equals(a.getOk())).count();
+    }
+
+    public long getAnzahlAblagenFehler() {
+        return speicherAblagen.stream().filter(a -> Boolean.FALSE.equals(a.getOk())).count();
+    }
+
+    /** @return Zeitpunkt als {@code dd.MM.yyyy HH:mm} (Europe/Zurich), leer bei {@code null} */
+    public String zeit(Instant i) {
+        return i == null ? "" : ZEIT.format(i);
+    }
+
+    /** Leert den Dialog «Sidecar ergänzen» vor dem Öffnen. */
+    public void ergaenzenVorbereiten() {
+        neueUrl = null;
+    }
+
+    /** Bricht eine Aktion aus einem Dialog ab, ohne ihn zu schliessen (oncomplete prüft validationFailed). */
+    private static void dialogOffenLassen() {
+        FacesContext fc = FacesContext.getCurrentInstance();
+        if (fc != null) {
+            fc.validationFailed();
+        }
+    }
+
     // ---------- Karte 1406: Speicher-Ablagen ----------
 
     public void ablageBearbeiten(String name) {
@@ -119,6 +244,7 @@ public class SidecarsBackingBean implements Serializable {
         abBenutzer = a.getBenutzer();
         abPfad = a.getPfad();
         abPasswort = null;
+        ablageBestehend = true;
     }
 
     public void ablageNeu() {
@@ -127,6 +253,7 @@ public class SidecarsBackingBean implements Serializable {
         abBenutzer = null;
         abPasswort = null;
         abPfad = null;
+        ablageBestehend = false;
     }
 
     public void ablageSpeichern() {
@@ -140,6 +267,7 @@ public class SidecarsBackingBean implements Serializable {
             ablageNeu();
         } catch (IllegalArgumentException e) {
             FacesMessages.error(e.getMessage());
+            dialogOffenLassen();
         }
         abPasswort = null;
         laden();
@@ -217,6 +345,7 @@ public class SidecarsBackingBean implements Serializable {
             neueUrl = null;
         } catch (IllegalArgumentException e) {
             FacesMessages.error(e.getMessage());
+            dialogOffenLassen();
         }
         laden();
     }
