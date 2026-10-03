@@ -4,7 +4,9 @@
                 xmlns:f="http://xmlns.jcp.org/jsf/core"
                 xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
 
-    <!-- Karte 1400: Übersicht der Sidecars nach dem Plaintext-Sidecar-Protokoll (docs/SIDECAR_PROTOKOLL.md). -->
+    <!-- Karte 1400: Übersicht der Sidecars nach dem Plaintext-Sidecar-Protokoll (docs/SIDECAR_PROTOKOLL.md).
+         Karte 1413: Reiter «Sidecars» und «Speicher-Ablagen», je eine Tabelle mit Aufklappen; Zeilen mit
+         Fehler oder fehlendem Token stehen offen. «Ergänzen» und «Ablage einrichten/ändern» sind Dialoge. -->
     <f:metadata>
         <f:event type="preRenderView" listener="#{sidecarsBean.seitenaufruf()}"/>
     </f:metadata>
@@ -13,20 +15,27 @@
 
     <ui:define name="head">
         <style>
-            .sc-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 14px; }
-            .sc-karte { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-            .sc-kopf { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-            .sc-name { font-weight: 700; font-size: 1.05rem; }
-            .sc-ampel { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
-            .sc-ampel.ok { background: #2e7d32; }
-            .sc-ampel.eingeschraenkt { background: #f9a825; }
-            .sc-ampel.fehler, .sc-ampel.aus { background: #c62828; }
-            .sc-klein { color: #64748b; font-size: .85rem; overflow-wrap: anywhere; }
-            .sc-fehler { color: #c62828; font-size: .85rem; overflow-wrap: anywhere; }
+            /* Karte 1413: nur Theme-Variablen, damit Hell und Dunkel stimmen. */
+            .sc-einleitung { color: var(--text-color-secondary); font-size: .9rem; margin: 0 0 12px; }
+            .sc-kopf { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+            .sc-zahl { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px;
+                       border: 1px solid var(--surface-border); background: var(--surface-card); color: var(--text-color); }
+            .sc-zahl b { font-size: 1.15rem; }
+            .sc-luecke { flex: 1 1 auto; }
+            .sc-ampel { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none;
+                        background: var(--text-color-secondary); vertical-align: middle; }
+            .sc-ampel.ok { background: var(--green-500); }
+            .sc-ampel.eingeschraenkt { background: var(--yellow-500); }
+            .sc-ampel.fehler, .sc-ampel.aus { background: var(--red-500); }
+            .sc-name { font-weight: 700; }
+            .sc-klein { color: var(--text-color-secondary); font-size: .85rem; overflow-wrap: anywhere; }
+            .sc-fehler { color: var(--red-500); font-size: .9rem; overflow-wrap: anywhere; }
+            .sc-details { display: flex; flex-direction: column; gap: 10px; padding: 6px 4px; color: var(--text-color); }
+            .sc-abschnitt { font-weight: 600; font-size: .85rem; color: var(--text-color-secondary); margin-bottom: 2px; }
             .sc-faehigkeiten { width: 100%; border-collapse: collapse; font-size: .85rem; }
-            .sc-faehigkeiten td { border-top: 1px solid #f1f5f9; padding: 3px 4px; vertical-align: top; overflow-wrap: anywhere; }
-            .sc-token { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-            .sc-leiste { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+            .sc-faehigkeiten td { border-top: 1px solid var(--surface-border); padding: 3px 4px; vertical-align: top; overflow-wrap: anywhere; }
+            .sc-leiste { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+            .sc-formular { display: flex; flex-direction: column; gap: 6px; min-width: min(80vw, 420px); }
         </style>
     </ui:define>
 
@@ -35,141 +44,218 @@
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
             <p:growl id="messages" showDetail="true" life="6000"/>
 
-            <p class="sc-klein">
+            <p class="sc-einleitung">
                 Sidecars sind eigenständige Container, die dieser Anwendung Dienste anbieten. Jeder beschreibt sich
                 über das <h:outputLink value="#{sidecarsBean.protokollDoku}" target="_blank">Plaintext-Sidecar-Protokoll</h:outputLink>
-                mit Status, Version und Fähigkeiten. Bekannt sind die aus <code>plaintext.sidecars</code> und die hier ergänzten.
-                Tokens werden verschlüsselt gespeichert und nie angezeigt.
+                mit Status, Version und Fähigkeiten. Tokens und Passwörter werden verschlüsselt gespeichert und nie angezeigt.
             </p>
 
-            <div class="sc-leiste">
-                <p:commandButton value="Alle neu abfragen" icon="pi pi-refresh" action="#{sidecarsBean.alleAbfragen()}"
-                                 process="@this" update="fm"/>
-                <div>
-                    <p:outputLabel for="neueUrl" value="Sidecar ergänzen (Basis-URL)"/>
-                    <div class="sc-token">
-                        <p:inputText id="neueUrl" value="#{sidecarsBean.neueUrl}" placeholder="http://name:port"/>
-                        <p:commandButton value="Ergänzen" icon="pi pi-plus" action="#{sidecarsBean.registrieren()}"
-                                         process="@this neueUrl" update="fm"/>
+            <!-- Der Reiter merkt sich seine Auswahl im Ansichtszustand: tabChange verarbeitet den tabView,
+                 damit ein späteres update="fm" nicht auf den ersten Reiter zurückspringt. -->
+            <p:tabView id="reiter">
+                <p:ajax event="tabChange" process="@this" global="false"/>
+
+                <p:tab title="Sidecars (#{sidecarsBean.zeilen.size()})">
+                    <div class="sc-kopf">
+                        <span class="sc-zahl" title="in Ordnung"><span class="sc-ampel ok"></span><b>#{sidecarsBean.anzahlOk}</b> ok</span>
+                        <span class="sc-zahl" title="eingeschränkt"><span class="sc-ampel eingeschraenkt"></span><b>#{sidecarsBean.anzahlEingeschraenkt}</b> eingeschränkt</span>
+                        <span class="sc-zahl" title="Fehler oder nicht erreichbar"><span class="sc-ampel fehler"></span><b>#{sidecarsBean.anzahlFehler}</b> Fehler</span>
+                        <h:panelGroup styleClass="sc-zahl" rendered="#{sidecarsBean.anzahlTokenFehlt > 0}">
+                            <i class="pi pi-key"></i><b>#{sidecarsBean.anzahlTokenFehlt}</b> ohne gültigen Token
+                        </h:panelGroup>
+                        <span class="sc-luecke"></span>
+                        <p:commandButton id="alleAbfragen" value="Alle neu abfragen" icon="pi pi-refresh"
+                                         action="#{sidecarsBean.alleAbfragen()}" process="@this" update="fm"/>
+                        <p:commandButton id="ergaenzen" value="Sidecar ergänzen" icon="pi pi-plus"
+                                         action="#{sidecarsBean.ergaenzenVorbereiten()}" process="@this"
+                                         update=":fm:dlgErgaenzen" oncomplete="PF('dlgErgaenzen').show()"/>
                     </div>
-                </div>
-            </div>
 
-            <h:outputText value="Noch keine Sidecars bekannt." styleClass="sc-klein" rendered="#{empty sidecarsBean.zeilen}"/>
-
-            <div class="sc-raster">
-                <ui:repeat value="#{sidecarsBean.zeilen}" var="z">
-                    <div class="sc-karte">
-                        <div class="sc-kopf">
-                            <span class="sc-ampel #{z.ampel}" title="#{z.ampel}"></span>
+                    <p:dataTable id="sidecars" value="#{sidecarsBean.zeilen}" var="z" rowKey="#{z.sidecar.name}"
+                                 expandedRow="#{z.aufgeklappt}" rowExpandMode="multiple"
+                                 emptyMessage="Noch keine Sidecars bekannt. Bekannt sind die aus plaintext.sidecars und die hier ergänzten."
+                                 styleClass="ui-datatable-sm" reflow="true">
+                        <p:column style="width:2.5rem">
+                            <p:rowToggler/>
+                        </p:column>
+                        <p:column headerText="Status" style="width:4.5rem">
+                            <span class="sc-ampel #{z.ampel}" title="#{z.ampelText}" role="img" aria-label="#{z.ampelText}"></span>
+                        </p:column>
+                        <p:column headerText="Name">
                             <span class="sc-name">#{z.sidecar.name}</span>
-                            <span>#{z.sidecar.titel}</span>
-                            <span class="sc-klein">#{z.sidecar.version}</span>
-                        </div>
-                        <div class="sc-klein">
-                            #{z.sidecar.url} · #{z.sidecar.quelle == 'KONFIG' ? 'aus der Konfiguration' : 'von Hand'}
-                            <h:outputText value=" · #{z.sidecar.antwortMs} ms" rendered="#{z.sidecar.antwortMs != null}"/>
-                            <h:outputText value=" · abgefragt #{z.sidecar.letzteAbfrage}" rendered="#{z.sidecar.letzteAbfrage != null}"/>
-                        </div>
-                        <h:outputText value="#{z.sidecar.statusText}" rendered="#{not empty z.sidecar.statusText}"/>
-                        <h:outputText value="#{z.sidecar.fehler}" styleClass="sc-fehler" rendered="#{not empty z.sidecar.fehler}"/>
+                        </p:column>
+                        <p:column headerText="Titel">#{z.sidecar.titel}</p:column>
+                        <p:column headerText="Version">#{z.sidecar.version}</p:column>
+                        <p:column headerText="Antwort">
+                            <h:outputText value="#{z.sidecar.antwortMs} ms" rendered="#{z.sidecar.antwortMs != null}"/>
+                        </p:column>
+                        <p:column headerText="Zugang">
+                            <p:tag value="#{z.zugang}" severity="#{z.zugangSchwere}"/>
+                        </p:column>
+                        <p:column headerText="Fähigkeiten" style="width:7rem">#{z.faehigkeiten.size()}</p:column>
+                        <p:column headerText="Quelle">#{z.sidecar.quelle == 'KONFIG' ? 'Konfiguration' : 'von Hand'}</p:column>
 
-                        <ui:repeat value="#{z.teile}" var="t">
-                            <div class="sc-klein"><span class="sc-ampel #{t.status()}"></span> #{t.name()}: #{t.text()}</div>
-                        </ui:repeat>
+                        <p:rowExpansion>
+                            <div class="sc-details">
+                                <div class="sc-klein">
+                                    #{z.sidecar.url} · #{z.sidecar.quelle == 'KONFIG' ? 'aus plaintext.sidecars' : 'von Hand ergänzt'}
+                                    <h:outputText value=" · abgefragt #{sidecarsBean.zeit(z.sidecar.letzteAbfrage)}" rendered="#{z.sidecar.letzteAbfrage != null}"/>
+                                    <h:outputText value=" · Protokoll #{z.sidecar.protokoll}" rendered="#{not empty z.sidecar.protokoll}"/>
+                                </div>
+                                <h:outputText value="#{z.sidecar.statusText}" rendered="#{not empty z.sidecar.statusText}"/>
+                                <h:outputText value="#{z.sidecar.fehler}" styleClass="sc-fehler" rendered="#{not empty z.sidecar.fehler}"/>
 
-                        <h:panelGroup rendered="#{not empty z.faehigkeiten}">
-                            <table class="sc-faehigkeiten">
-                                <ui:repeat value="#{z.faehigkeiten}" var="f">
-                                    <tr>
-                                        <td><code>#{f.id()}</code></td>
-                                        <td title="#{f.beschreibung()}">#{f.titel()}</td>
-                                        <td class="sc-klein">#{f.methode()} #{f.pfad()}</td>
-                                        <td class="sc-klein">#{f.seiteneffekt()}#{f.perMcpAufrufbar() ? ' · MCP' : ''}</td>
-                                    </tr>
-                                </ui:repeat>
-                            </table>
-                        </h:panelGroup>
+                                <h:panelGroup layout="block" rendered="#{not empty z.teile}">
+                                    <div class="sc-abschnitt">Teile</div>
+                                    <ui:repeat value="#{z.teile}" var="t">
+                                        <div class="sc-klein"><span class="sc-ampel #{t.status()}"></span> #{t.name()}: #{t.text()}</div>
+                                    </ui:repeat>
+                                </h:panelGroup>
 
-                        <div class="sc-klein"><b>Zugang:</b> #{sidecarsBean.authText(z.sidecar.authZustand)}</div>
-                        <h:panelGroup layout="block" styleClass="sc-token" rendered="#{z.tokenNoetig}">
-                            <p:password value="#{sidecarsBean.tokenEingabe[z.sidecar.name]}" redisplay="false" feedback="false"
-                                        placeholder="#{z.sidecar.hatToken() ? 'neuen Token hinterlegen' : 'Token hinterlegen'}"
-                                        autocomplete="new-password"/>
-                            <p:commandButton value="Speichern" icon="pi pi-key" action="#{sidecarsBean.tokenSpeichern(z.sidecar.name)}"
-                                             process="@parent" update="fm"/>
-                            <p:commandButton value="Entfernen" icon="pi pi-times" styleClass="ui-button-secondary"
-                                             action="#{sidecarsBean.tokenEntfernen(z.sidecar.name)}" process="@this" update="fm"
-                                             rendered="#{z.sidecar.hatToken()}"/>
-                        </h:panelGroup>
+                                <h:panelGroup layout="block" rendered="#{not empty z.faehigkeiten}">
+                                    <div class="sc-abschnitt">Fähigkeiten</div>
+                                    <table class="sc-faehigkeiten">
+                                        <ui:repeat value="#{z.faehigkeiten}" var="f">
+                                            <tr>
+                                                <td><code>#{f.id()}</code></td>
+                                                <td title="#{f.beschreibung()}">#{f.titel()}</td>
+                                                <td class="sc-klein">#{f.methode()} #{f.pfad()}</td>
+                                                <td class="sc-klein">#{f.seiteneffekt()}#{f.perMcpAufrufbar() ? ' · MCP' : ''}</td>
+                                            </tr>
+                                        </ui:repeat>
+                                    </table>
+                                </h:panelGroup>
 
-                        <div class="sc-token">
-                            <p:commandButton value="Neu abfragen" icon="pi pi-refresh" styleClass="ui-button-flat"
-                                             action="#{sidecarsBean.abfragen(z.sidecar.name)}" process="@this" update="fm"/>
-                            <h:outputLink value="#{z.beschreibung.doku()}" target="_blank" rendered="#{not empty z.beschreibung and not empty z.beschreibung.doku()}">Doku</h:outputLink>
-                            <p:commandButton value="Entfernen" icon="pi pi-trash" styleClass="ui-button-flat ui-button-danger"
-                                             action="#{sidecarsBean.entfernen(z.sidecar.name)}" process="@this" update="fm"
-                                             rendered="#{z.sidecar.quelle == 'HAND'}">
-                                <p:confirm header="Sidecar entfernen" message="«#{z.sidecar.name}» aus der Übersicht entfernen? Der Container selbst bleibt unberührt."
-                                           icon="pi pi-exclamation-triangle"/>
-                            </p:commandButton>
-                        </div>
+                                <div>
+                                    <div class="sc-abschnitt">Zugang: #{sidecarsBean.authText(z.sidecar.authZustand)}</div>
+                                    <h:panelGroup layout="block" styleClass="sc-leiste" rendered="#{z.tokenNoetig}">
+                                        <p:password value="#{sidecarsBean.tokenEingabe[z.sidecar.name]}" redisplay="false" feedback="false"
+                                                    placeholder="#{z.sidecar.hatToken() ? 'neuen Token hinterlegen' : 'Token hinterlegen'}"
+                                                    autocomplete="new-password"/>
+                                        <p:commandButton value="Token speichern" icon="pi pi-key" action="#{sidecarsBean.tokenSpeichern(z.sidecar.name)}"
+                                                         process="@parent" update=":fm"/>
+                                        <p:commandButton value="Token entfernen" icon="pi pi-times" styleClass="ui-button-secondary"
+                                                         action="#{sidecarsBean.tokenEntfernen(z.sidecar.name)}" process="@this" update=":fm"
+                                                         rendered="#{z.sidecar.hatToken()}"/>
+                                    </h:panelGroup>
+                                </div>
+
+                                <div class="sc-leiste">
+                                    <p:commandButton value="Neu abfragen" icon="pi pi-refresh" styleClass="ui-button-flat"
+                                                     action="#{sidecarsBean.abfragen(z.sidecar.name)}" process="@this" update=":fm"/>
+                                    <h:outputLink value="#{z.beschreibung.doku()}" target="_blank"
+                                                  rendered="#{not empty z.beschreibung and not empty z.beschreibung.doku()}">Doku</h:outputLink>
+                                    <p:commandButton value="Entfernen" icon="pi pi-trash" styleClass="ui-button-flat ui-button-danger"
+                                                     action="#{sidecarsBean.entfernen(z.sidecar.name)}" process="@this" update=":fm"
+                                                     rendered="#{z.sidecar.quelle == 'HAND'}">
+                                        <p:confirm header="Sidecar entfernen" message="«#{z.sidecar.name}» aus der Übersicht entfernen? Der Container selbst bleibt unberührt."
+                                                   icon="pi pi-exclamation-triangle"/>
+                                    </p:commandButton>
+                                </div>
+                            </div>
+                        </p:rowExpansion>
+                    </p:dataTable>
+                </p:tab>
+
+                <!-- Karte 1406: Speicher-Ablagen -->
+                <p:tab title="Speicher-Ablagen (#{sidecarsBean.speicherAblagen.size()})">
+                    <p class="sc-einleitung">
+                        Eine Ablage ist ein Ordner auf einem Speicher (heute Nextcloud), in dem Module Dateien ablegen,
+                        z. B. Draw.io seine Diagramme. Erlaubt sind öffentliche Adressen und die in
+                        <code>plaintext.ausgehend.erlaubte-hosts</code> freigegebenen.
+                    </p>
+                    <div class="sc-kopf">
+                        <span class="sc-zahl" title="erreichbar"><span class="sc-ampel ok"></span><b>#{sidecarsBean.anzahlAblagenOk}</b> ok</span>
+                        <span class="sc-zahl" title="nicht erreichbar"><span class="sc-ampel fehler"></span><b>#{sidecarsBean.anzahlAblagenFehler}</b> Fehler</span>
+                        <span class="sc-luecke"></span>
+                        <p:commandButton id="ablageEinrichten" value="Ablage einrichten" icon="pi pi-plus"
+                                         action="#{sidecarsBean.ablageNeu()}" process="@this"
+                                         update=":fm:dlgAblage" oncomplete="PF('dlgAblage').show()"/>
                     </div>
-                </ui:repeat>
-            </div>
 
-            <!-- Karte 1406: Speicher-Ablagen -->
-            <h2 style="margin-top: 28px;">Speicher-Ablagen</h2>
-            <p class="sc-klein">
-                Eine Ablage ist ein Ordner auf einem Speicher (heute Nextcloud), in dem Module Dateien ablegen,
-                z. B. Draw.io seine Diagramme. Benutzer und App-Passwort gelten nur für diesen Zugang; das Passwort
-                wird verschlüsselt gespeichert und nie angezeigt. Erlaubt sind öffentliche Adressen und die in
-                <code>plaintext.ausgehend.erlaubte-hosts</code> freigegebenen.
-            </p>
-            <div class="sc-raster">
-                <ui:repeat value="#{sidecarsBean.speicherAblagen}" var="a">
-                    <div class="sc-karte">
-                        <div class="sc-kopf">
-                            <span class="sc-ampel #{a.ok == null ? 'aus' : (a.ok ? 'ok' : 'fehler')}"></span>
-                            <span class="sc-name">#{a.name}</span>
-                            <span class="sc-klein">Nextcloud</span>
-                        </div>
-                        <div class="sc-klein">#{a.url} · #{a.benutzer} · Pfad <code>#{a.pfad}</code></div>
-                        <h:outputText value="#{a.meldung}" styleClass="#{a.ok ? 'sc-klein' : 'sc-fehler'}" rendered="#{not empty a.meldung}"/>
-                        <div class="sc-token">
-                            <p:commandButton value="Prüfen" icon="pi pi-refresh" styleClass="ui-button-flat"
-                                             action="#{sidecarsBean.ablagePruefen(a.name)}" process="@this" update="fm"/>
-                            <p:commandButton value="Ändern" icon="pi pi-pencil" styleClass="ui-button-flat"
-                                             action="#{sidecarsBean.ablageBearbeiten(a.name)}" process="@this" update="fm:ablageForm"/>
-                            <p:commandButton value="Entfernen" icon="pi pi-trash" styleClass="ui-button-flat ui-button-danger"
-                                             action="#{sidecarsBean.ablageEntfernen(a.name)}" process="@this" update="fm">
-                                <p:confirm header="Ablage entfernen" message="Die Ablage «#{a.name}» entfernen? Die Dateien in der Nextcloud bleiben."
-                                           icon="pi pi-exclamation-triangle"/>
-                            </p:commandButton>
-                        </div>
-                    </div>
-                </ui:repeat>
-            </div>
+                    <p:dataTable id="ablagen" value="#{sidecarsBean.speicherAblagen}" var="a" rowKey="#{a.name}"
+                                 expandedRow="#{a.ok != null and not a.ok}" rowExpandMode="multiple"
+                                 emptyMessage="Noch keine Ablage eingerichtet."
+                                 styleClass="ui-datatable-sm" reflow="true">
+                        <p:column style="width:2.5rem">
+                            <p:rowToggler/>
+                        </p:column>
+                        <p:column headerText="Status" style="width:4.5rem">
+                            <span class="sc-ampel #{a.ok == null ? 'aus' : (a.ok ? 'ok' : 'fehler')}"
+                                  title="#{a.ok == null ? 'nicht geprüft' : (a.ok ? 'erreichbar' : 'nicht erreichbar')}"></span>
+                        </p:column>
+                        <p:column headerText="Name"><span class="sc-name">#{a.name}</span></p:column>
+                        <p:column headerText="Art">Nextcloud</p:column>
+                        <p:column headerText="Adresse"><span class="sc-klein">#{a.url}</span></p:column>
+                        <p:column headerText="Benutzer">#{a.benutzer}</p:column>
+                        <p:column headerText="Pfad"><code>#{a.pfad}</code></p:column>
+                        <p:column headerText="Geprüft">#{sidecarsBean.zeit(a.letztePruefung)}</p:column>
 
-            <h:panelGroup id="ablageForm" layout="block" styleClass="sc-karte" style="margin-top: 14px; max-width: 520px;">
-                <b>#{empty sidecarsBean.abName ? 'Ablage einrichten' : 'Ablage einrichten oder ändern'}</b>
-                <p:outputLabel for="abName" value="Name (a-z, 0-9, -)"/>
-                <p:inputText id="abName" value="#{sidecarsBean.abName}" placeholder="nextcloud-drawio"/>
-                <p:outputLabel for="abUrl" value="Nextcloud-Adresse"/>
-                <p:inputText id="abUrl" value="#{sidecarsBean.abUrl}" placeholder="https://home.plaintext.ch"/>
-                <p:outputLabel for="abBenutzer" value="Benutzer"/>
-                <p:inputText id="abBenutzer" value="#{sidecarsBean.abBenutzer}" autocomplete="off"/>
-                <p:outputLabel for="abPasswort" value="App-Passwort (leer lassen = unverändert)"/>
-                <p:password id="abPasswort" value="#{sidecarsBean.abPasswort}" redisplay="false" feedback="false" autocomplete="new-password"/>
-                <p:outputLabel for="abPfad" value="Pfad (Ordner in der Nextcloud)"/>
-                <p:inputText id="abPfad" value="#{sidecarsBean.abPfad}" placeholder="z. B. Projekte/drawio"/>
-                <div class="sc-token">
-                    <p:commandButton value="Speichern und prüfen" icon="pi pi-check" action="#{sidecarsBean.ablageSpeichern()}"
-                                     process="ablageForm" update="fm"/>
-                    <p:commandButton value="Leeren" styleClass="ui-button-secondary" action="#{sidecarsBean.ablageNeu()}"
-                                     process="@this" update="ablageForm"/>
-                </div>
-            </h:panelGroup>
+                        <p:rowExpansion>
+                            <div class="sc-details">
+                                <h:outputText value="#{a.meldung}" styleClass="#{a.ok ? 'sc-klein' : 'sc-fehler'}" rendered="#{not empty a.meldung}"/>
+                                <div class="sc-klein">App-Passwort #{a.hatPasswort() ? 'hinterlegt (verschlüsselt)' : 'fehlt'}</div>
+                                <div class="sc-leiste">
+                                    <p:commandButton value="Prüfen" icon="pi pi-refresh" styleClass="ui-button-flat"
+                                                     action="#{sidecarsBean.ablagePruefen(a.name)}" process="@this" update=":fm"/>
+                                    <p:commandButton value="Ändern" icon="pi pi-pencil" styleClass="ui-button-flat"
+                                                     action="#{sidecarsBean.ablageBearbeiten(a.name)}" process="@this"
+                                                     update=":fm:dlgAblage" oncomplete="PF('dlgAblage').show()"/>
+                                    <p:commandButton value="Entfernen" icon="pi pi-trash" styleClass="ui-button-flat ui-button-danger"
+                                                     action="#{sidecarsBean.ablageEntfernen(a.name)}" process="@this" update=":fm">
+                                        <p:confirm header="Ablage entfernen" message="Die Ablage «#{a.name}» entfernen? Die Dateien in der Nextcloud bleiben."
+                                                   icon="pi pi-exclamation-triangle"/>
+                                    </p:commandButton>
+                                </div>
+                            </div>
+                        </p:rowExpansion>
+                    </p:dataTable>
+                </p:tab>
+            </p:tabView>
+
+            <!-- Dialoge stehen ausserhalb des tabView in fm: ihre Knöpfe verarbeiten nur die eigenen Felder
+                 und aktualisieren den Reiter, nie den offenen Dialog selbst. -->
+            <p:dialog id="dlgErgaenzen" widgetVar="dlgErgaenzen" header="Sidecar ergänzen" modal="true"
+                      resizable="false" styleClass="mobile-safe" showEffect="fade">
+                <h:panelGroup id="ergaenzenFelder" layout="block" styleClass="sc-formular">
+                    <p:outputLabel for="neueUrl" value="Basis-URL"/>
+                    <p:inputText id="neueUrl" value="#{sidecarsBean.neueUrl}" placeholder="http://name:port"/>
+                    <span class="sc-klein">Der Name kommt aus der Beschreibung des Sidecars. Erlaubt sind die Hosts aus
+                        plaintext.sidecars und plaintext.sidecars.erlaubte-hosts.</span>
+                </h:panelGroup>
+                <f:facet name="footer">
+                    <p:commandButton id="ergaenzenSpeichern" value="Ergänzen" icon="pi pi-plus" action="#{sidecarsBean.registrieren()}"
+                                     process="@this ergaenzenFelder" update="reiter messages"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlgErgaenzen').hide()"/>
+                    <p:commandButton value="Abbrechen" type="button" styleClass="ui-button-secondary"
+                                     onclick="PF('dlgErgaenzen').hide()"/>
+                </f:facet>
+            </p:dialog>
+
+            <p:dialog id="dlgAblage" widgetVar="dlgAblage" modal="true" resizable="false" styleClass="mobile-safe"
+                      showEffect="fade" header="#{sidecarsBean.ablageBestehend ? 'Ablage ändern' : 'Ablage einrichten'}">
+                <h:panelGroup id="ablageFelder" layout="block" styleClass="sc-formular">
+                    <p:outputLabel for="abName" value="Name (a-z, 0-9, -)"/>
+                    <p:inputText id="abName" value="#{sidecarsBean.abName}" placeholder="nextcloud-drawio"
+                                 readonly="#{sidecarsBean.ablageBestehend}"/>
+                    <p:outputLabel for="abUrl" value="Nextcloud-Adresse"/>
+                    <p:inputText id="abUrl" value="#{sidecarsBean.abUrl}" placeholder="https://home.plaintext.ch"/>
+                    <p:outputLabel for="abBenutzer" value="Benutzer"/>
+                    <p:inputText id="abBenutzer" value="#{sidecarsBean.abBenutzer}" autocomplete="off"/>
+                    <p:outputLabel for="abPasswort"
+                                   value="#{sidecarsBean.ablageBestehend ? 'App-Passwort (leer lassen = unverändert)' : 'App-Passwort'}"/>
+                    <p:password id="abPasswort" value="#{sidecarsBean.abPasswort}" redisplay="false" feedback="false" autocomplete="new-password"/>
+                    <p:outputLabel for="abPfad" value="Pfad (Ordner in der Nextcloud)"/>
+                    <p:inputText id="abPfad" value="#{sidecarsBean.abPfad}" placeholder="z. B. Projekte/drawio"/>
+                </h:panelGroup>
+                <f:facet name="footer">
+                    <p:commandButton id="ablageSpeichern" value="Speichern und prüfen" icon="pi pi-check"
+                                     action="#{sidecarsBean.ablageSpeichern()}" process="@this ablageFelder" update="reiter messages"
+                                     oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlgAblage').hide()"/>
+                    <p:commandButton value="Abbrechen" type="button" styleClass="ui-button-secondary"
+                                     onclick="PF('dlgAblage').hide()"/>
+                </f:facet>
+            </p:dialog>
 
             <p:confirmDialog global="true" showEffect="fade">
                 <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes" icon="pi pi-check"/>

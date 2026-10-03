@@ -13,6 +13,13 @@ import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.Response;
+import ch.plaintext.sidecars.entity.AuthZustand;
+import ch.plaintext.sidecars.entity.Sidecar;
+import ch.plaintext.sidecars.entity.SidecarQuelle;
+import ch.plaintext.sidecars.entity.SpeicherAblage;
+import ch.plaintext.sidecars.repository.SidecarRepository;
+import ch.plaintext.sidecars.repository.SpeicherAblageRepository;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -28,6 +35,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -71,6 +82,8 @@ class RootPagesPlaywrightIT {
     @Autowired MyUserRepository userRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired ISettingsService settingsService;
+    @Autowired SidecarRepository sidecarRepository;
+    @Autowired SpeicherAblageRepository ablageRepository;
 
     private Playwright playwright;
     private Browser browser;
@@ -262,5 +275,116 @@ class RootPagesPlaywrightIT {
         page.waitForLoadState();
         assertTrue(page.url().contains("mailtemplates"), "ADMIN wurde umgeleitet nach " + page.url());
         assertTrue(page.content().contains("Mailtext-Overrides"), "Mailtexte-Seite nicht gerendert");
+    }
+
+    // ------------------------------------------------------------------ 7. sidecar cockpit (Karte 1413)
+
+    @Test
+    @DisplayName("Sidecars: Reiter mit Anzahl, Fehlerzeile offen mit Token-Feld, beide Dialoge gehen mit Feldern auf")
+    void sidecarCockpit() {
+        if (sidecarRepository.findFirstByNameAndDeletedFalse("pw-kaputt").isEmpty()) {
+            Sidecar s = new Sidecar();
+            s.setName("pw-kaputt");
+            s.setMandat(Sidecar.MANDAT);
+            s.setUrl("http://127.0.0.1:9");
+            s.setQuelle(SidecarQuelle.HAND);
+            s.setErreichbar(false);
+            s.setFehler("Verbindung abgelehnt");
+            s.setAuthZustand(AuthZustand.KEIN_TOKEN);
+            s.setLetzteAbfrage(Instant.now());
+            sidecarRepository.save(s);
+        }
+        if (ablageRepository.findFirstByNameAndDeletedFalse("pw-ablage").isEmpty()) {
+            SpeicherAblage a = new SpeicherAblage();
+            a.setName("pw-ablage");
+            a.setMandat(Sidecar.MANDAT);
+            a.setUrl("https://cloud.example.invalid");
+            a.setBenutzer("pw");
+            a.setPfad("Projekte/pw");
+            a.setOk(false);
+            a.setMeldung("pw-meldung: nicht erreichbar");
+            ablageRepository.save(a);
+        }
+
+        // PrimeFaces liefert Fehler IN der Teilantwort mit HTTP 200 (siehe DialogeOeffnenPlaywrightIT).
+        List<String> ajaxFehler = new ArrayList<>();
+        page.onRequestFinished(anfrage -> {
+            if (!"POST".equals(anfrage.method())) {
+                return;
+            }
+            try {
+                Response antwort = anfrage.response();
+                String rumpf = antwort == null ? "" : antwort.text();
+                if (rumpf.startsWith("<?xml") && (rumpf.contains("<error-name>") || rumpf.contains("Exception"))) {
+                    ajaxFehler.add(rumpf.length() > 400 ? rumpf.substring(0, 400) : rumpf);
+                }
+            } catch (RuntimeException e) {
+                // Rumpf nicht mehr abrufbar: kein Befund.
+            }
+        });
+
+        anmelden(ROOT_USER);
+        Response seite = page.navigate(url("/sidecars.html"));
+        page.waitForLoadState();
+        assertTrue(page.url().contains("sidecars"), "umgeleitet nach " + page.url());
+        assertEquals(200, seite.status(), "sidecars.html antwortet nicht mit 200");
+
+        Locator reiter = page.locator("#fm\\:reiter .ui-tabs-header");
+        assertEquals(2, reiter.count(), "zwei Reiter erwartet");
+        assertTrue(reiter.nth(0).innerText().matches("Sidecars \\(\\d+\\)"), "Reiter 1: " + reiter.nth(0).innerText());
+        assertTrue(reiter.nth(1).innerText().matches("Speicher-Ablagen \\(\\d+\\)"), "Reiter 2: " + reiter.nth(1).innerText());
+
+        // Die Fehlerzeile steht offen: Fehlertext und Token-Feld sind ohne Klick sichtbar.
+        Locator tabelle = page.locator("#fm\\:reiter\\:sidecars");
+        Locator offen = tabelle.locator("tr.ui-expanded-row-content");
+        assertTrue(offen.count() >= 1, "Fehlerzeile ist nicht aufgeklappt: " + tabelle.innerText());
+        assertTrue(offen.first().innerText().contains("Verbindung abgelehnt"), "Fehlertext fehlt in der offenen Zeile");
+        Locator tokenFeld = offen.first().locator("input[type=password]");
+        assertTrue(tokenFeld.isVisible(), "Token-Feld in der offenen Zeile fehlt");
+        assertEquals("", tokenFeld.inputValue(), "Token-Feld darf nie vorbelegt sein");
+        assertTrue(tabelle.innerText().contains("Token fehlt"), "Spalte Zugang zeigt «Token fehlt» nicht");
+
+        // Zuklappen und wieder aufklappen über den rowToggler (Ajax-Nachladen der Zeile).
+        Locator toggler = tabelle.locator("tr[data-rk='pw-kaputt'] .ui-row-toggler");
+        toggler.click();
+        page.waitForCondition(() -> !tabelle.locator("tr[data-rk='pw-kaputt']").getAttribute("class").contains("ui-expanded-row"));
+        toggler.click();
+        tabelle.locator("tr.ui-expanded-row-content input[type=password]").first().waitFor();
+
+        // Dialog «Sidecar ergänzen»
+        page.click("#fm\\:reiter\\:ergaenzen");
+        Locator dlgErgaenzen = page.locator("#fm\\:dlgErgaenzen");
+        dlgErgaenzen.waitFor();
+        assertTrue(page.locator("#fm\\:neueUrl").isVisible(), "Dialog «Sidecar ergänzen» ohne URL-Feld");
+        page.fill("#fm\\:neueUrl", "ftp://nicht-erlaubt");
+        page.click("#fm\\:ergaenzenSpeichern");
+        page.locator(".ui-growl-message").first().waitFor();
+        assertTrue(dlgErgaenzen.isVisible(), "Dialog muss bei abgelehnter URL offen bleiben");
+        dlgErgaenzen.locator("button:has-text('Abbrechen')").click();
+
+        // Reiter «Speicher-Ablagen»: Fehlerzeile offen, «Ablage einrichten» öffnet den Dialog
+        reiter.nth(1).click();
+        Locator ablagen = page.locator("#fm\\:reiter\\:ablagen");
+        ablagen.waitFor();
+        assertTrue(ablagen.locator("tr.ui-expanded-row-content").first().innerText().contains("pw-meldung"),
+                "Ablage mit Fehler ist nicht aufgeklappt");
+        page.click("#fm\\:reiter\\:ablageEinrichten");
+        Locator dlgAblage = page.locator("#fm\\:dlgAblage");
+        dlgAblage.waitFor();
+        for (String feld : List.of("abName", "abUrl", "abBenutzer", "abPasswort", "abPfad")) {
+            assertTrue(page.locator("#fm\\:" + feld).isVisible(), "Feld " + feld + " fehlt im Ablage-Dialog");
+        }
+        assertTrue(dlgAblage.innerText().contains("Ablage einrichten"), "Kopf des Ablage-Dialogs: " + dlgAblage.innerText());
+        dlgAblage.locator("button:has-text('Abbrechen')").click();
+
+        // «Ändern» füllt den Dialog vor, der Name ist fest, das Passwort leer.
+        ablagen.locator("tr.ui-expanded-row-content button:has-text('Ändern')").first().click();
+        page.waitForCondition(() -> "pw-ablage".equals(page.locator("#fm\\:abName").inputValue()));
+        assertTrue(dlgAblage.isVisible(), "Ablage-Dialog ging für «Ändern» nicht auf");
+        assertTrue(dlgAblage.innerText().contains("Ablage ändern"), "Kopf beim Ändern: " + dlgAblage.innerText());
+        assertEquals("", page.locator("#fm\\:abPasswort").inputValue(), "Passwort darf nie vorbelegt sein");
+
+        assertTrue(ajaxFehler.isEmpty(), "Fehler in Teilantworten: " + ajaxFehler);
+        assertFalse(page.content().contains("PropertyNotFoundException"));
     }
 }
