@@ -208,6 +208,25 @@ class RootPagesPlaywrightIT {
         assertTrue(page.locator("a[href*='mandatemenu.html']").count() > 0, "Root-Menue fehlt");
     }
 
+    // ------------------------------------------------------------------ 3b. Woche ab Montag (Karte 1421)
+
+    @Test
+    @DisplayName("Kalender beginnen in jeder Sprache am Montag (primefaces-fixes.js, Karte 1421)")
+    void wocheBeginntAmMontag() {
+        anmelden(ROOT_USER);
+        page.navigate(url("/index.html"));
+        page.waitForLoadState();
+
+        assertEquals(Boolean.TRUE, page.evaluate("() => PrimeFaces.__ptMontag === true"),
+                "Montag-Umschlag aus primefaces-fixes.js nicht aktiv");
+        // Positivkontrolle: Die eingebaute Locale en_US steht roh auf Sonntag (0). Ohne den Umschlag
+        // saehe jeder englische Kalender den Sonntag zuerst; sonst bewiese die 1 unten nichts.
+        assertEquals(0, ((Number) page.evaluate("() => PrimeFaces.locales['en_US'].firstDayOfWeek")).intValue(),
+                "Rohwert en_US ist nicht mehr Sonntag, die Probe sagt dann nichts");
+        assertEquals(1, ((Number) page.evaluate("() => PrimeFaces.getLocaleSettings('en_US').firstDayOfWeek")).intValue(),
+                "getLocaleSettings('en_US') liefert nicht Montag");
+    }
+
     // ------------------------------------------------------------------ 4. guide
 
     @Test

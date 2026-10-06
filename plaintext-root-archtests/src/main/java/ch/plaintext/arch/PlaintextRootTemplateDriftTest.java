@@ -179,7 +179,7 @@ class PlaintextRootTemplateDriftTest {
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/menu.js",
                 "d062e2ff0861dd4af1d41302d7c602f44b9b83faf328f68b33e26262314bc8d7");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/primefaces-fixes.js",
-                "70a3b2db35424d4718db57fe8b6be33240714ec5063fdef00443d957b775ae35");
+                "38e3e18c6625d884f97be2f2e42e90a898bd10584d15680e210092df44d0d525");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/pushstate.js",
                 "ff84eff15a1bfa8ccec5234e3b965c9db65e5042241fe46915bd77a5b366b5d5");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/topbar.js",
