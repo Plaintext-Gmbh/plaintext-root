@@ -91,3 +91,33 @@ $(document).ready(function() {
     });
 });
 }
+
+// Karte 1421 (Daniel, 04.10.2026): Die Woche beginnt in ALLEN Kalendern ALLER Apps am Montag,
+// unabhaengig von der Sprache. PrimeFaces 15 holt den ersten Wochentag ueber
+// PrimeFaces.getLocaleSettings(userLocale) (datepicker.js, configureLocale); locale-de.js hat
+// firstDayOfWeek 1, locale-en.js aber 0 = Sonntag. Wer die App auf Englisch nutzt, sah den
+// Sonntag zuerst. Statt jede Locale einzeln zu kennen, setzt dieser Umschlag den Wert fuer jede
+// zurueckgegebene Einstellung. Er laeuft vor den Widgets (diese Datei steht im <h:head>).
+(function() {
+    try {
+        if (window.PrimeFaces && typeof PrimeFaces.getLocaleSettings === 'function' && !PrimeFaces.__ptMontag) {
+            PrimeFaces.__ptMontag = true;
+            var original = PrimeFaces.getLocaleSettings;
+            PrimeFaces.getLocaleSettings = function() {
+                var einstellungen = original.apply(this, arguments);
+                if (!einstellungen) {
+                    return einstellungen;
+                }
+                // Kopie statt Aenderung: die Locale-Daten von PrimeFaces bleiben unberuehrt.
+                var kopie = {};
+                for (var schluessel in einstellungen) {
+                    kopie[schluessel] = einstellungen[schluessel];
+                }
+                kopie.firstDayOfWeek = 1;
+                return kopie;
+            };
+        }
+    } catch (e) {
+        // Ohne PrimeFaces (Fehlerseite) gibt es nichts zu korrigieren.
+    }
+})();
