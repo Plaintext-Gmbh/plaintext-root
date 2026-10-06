@@ -12,6 +12,22 @@ exhaustive.
 
 ## [Unreleased]
 
+### Added
+- **`@ModulApi` and `@ModulApiUmsetzung`** (Karte 1422, Daniel 04.10.2026), in
+  `plaintext-root-interfaces` (`ch.plaintext.modules`). `@ModulApi(art = SCHNITTSTELLE | DTO,
+  stabilitaet = STABIL | NEU | VERALTET, seit, ersatz)` marks a contract other modules may use; a DTO's
+  name must start with `I`. `@ModulApiUmsetzung(beschreibung, seiteneffekte = KEINE | INTERN | AUSSEN,
+  hinweise, beispiele)` describes how an implementation behaves, on the class and optionally on methods.
+- **The interface catalog runs in every module.** The parent now puts `plaintext-root-katalog` in front
+  of Lombok in `annotationProcessorPaths` and passes `-Aplaintext.katalog.modul=${project.artifactId}`.
+  Outside `*-interfaces` it records only `@ModulApi` interfaces and `@ModulApiUmsetzung` descriptions and
+  writes no file when there are none; in `*-interfaces` it still records every public interface.
+  `SchnittstellenKatalog` and the MCP tools show art, stability, origin and the implementation's
+  description next to each implementer. **Consumer impact:** a module that declares its own
+  `annotationProcessorPaths` must use `combine.self="override"` with the catalog before Lombok, or it
+  loses the catalog (Maven merges these lists by position). Catalogs written by older processors stay
+  readable.
+
 ### Changed
 - **All watch pages of root on the mobile framework** (Karte 1387, Daniel 01.10.2026: «bitte alles
   umstellen»). `WatchHomePage` (tiles from `WatchWidget`) and `WatchTestPage` (page switches plus a

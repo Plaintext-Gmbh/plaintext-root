@@ -33,8 +33,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <!-- Der Prozessor darf sich beim eigenen Kompilieren nicht selbst finden. -->
+                    <!-- Der Prozessor darf sich beim eigenen Kompilieren nicht selbst finden. Karte 1422: der
+                         Parent traegt ihn jetzt fuer alle Module ein — hier die Liste leeren, sonst wuerde Maven
+                         das noch nicht gebaute eigene Jar aufloesen. -->
                     <proc>none</proc>
+                    <annotationProcessorPaths combine.self="override"/>
+                    <compilerArgs combine.self="override"/>
                 </configuration>
             </plugin>
         </plugins>

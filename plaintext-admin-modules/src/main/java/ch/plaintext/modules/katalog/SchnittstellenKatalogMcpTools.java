@@ -40,8 +40,9 @@ public class SchnittstellenKatalogMcpTools {
 
     @PreAuthorize("hasAuthority('SCOPE_READ')")
     @McpTool(name = "list_modul_schnittstellen", description = "Listet die öffentlichen Schnittstellen (Verträge) der "
-            + "geladenen Module dieser Anwendung: Modul, Name, Zweck in einem Satz, Anzahl Methoden und welche Module sie "
-            + "umsetzen. Grundlage, um neue Funktionen aus vorhandenen Bausteinen zu planen; Details mit "
+            + "geladenen Module dieser Anwendung: Modul, Name, Zweck in einem Satz, Art (SCHNITTSTELLE = Dienst, DTO = "
+            + "übergebenes Model, leer = nicht mit @ModulApi markiert), Stabilität (STABIL/NEU/VERALTET), Herkunft "
+            + "(interfaces-Modul oder im Modul), Anzahl Methoden und welche Module sie umsetzen. Grundlage, um neue Funktionen aus vorhandenen Bausteinen zu planen; Details mit "
             + "get_modul_schnittstelle. Erfordert die Rolle ADMIN oder ROOT.")
     public String listModulSchnittstellen() {
         String v = pruefe("list_modul_schnittstellen");
@@ -54,6 +55,10 @@ public class SchnittstellenKatalogMcpTools {
             o.put("modul", s.modul());
             o.put("name", s.name());
             o.put("zweck", s.zweckKurz());
+            // Karte 1422: Art (SCHNITTSTELLE/DTO), Stabilität und Herkunft aus @ModulApi
+            o.put("art", s.art());
+            o.put("stabilitaet", s.stabilitaet());
+            o.put("herkunft", s.herkunft());
             o.put("methoden", s.methoden().size());
             ArrayNode u = o.putArray("umgesetztIn");
             s.umsetzer().stream().map(SchnittstellenKatalog.Umsetzer::modul).distinct().forEach(u::add);
@@ -63,8 +68,9 @@ public class SchnittstellenKatalogMcpTools {
 
     @PreAuthorize("hasAuthority('SCOPE_READ')")
     @McpTool(name = "get_modul_schnittstelle", description = "Vollständige Beschreibung einer Schnittstelle: Zweck "
-            + "(Javadoc), erweiterte Schnittstellen, jede Methode mit Rückgabe, Parametern und Zweck sowie die umsetzenden "
-            + "Beans mit Klasse und Modul. Name voll (ch.plaintext…) oder kurz. Erfordert die Rolle ADMIN oder ROOT.")
+            + "(Javadoc), Art, Stabilität, seit, Ersatz, erweiterte Schnittstellen, jede Methode mit Rückgabe, Parametern "
+            + "und Zweck sowie die umsetzenden Beans mit Klasse, Modul und — falls vorhanden — der Beschreibung der "
+            + "Umsetzung (@ModulApiUmsetzung: Verhalten, Seiteneffekte KEINE/INTERN/AUSSEN, Hinweise, Beispiele). Name voll (ch.plaintext…) oder kurz. Erfordert die Rolle ADMIN oder ROOT.")
     public String getModulSchnittstelle(@McpToolParam(description = "Name der Schnittstelle, voll oder kurz") String name) {
         String v = pruefe("get_modul_schnittstelle");
         if (v != null) {

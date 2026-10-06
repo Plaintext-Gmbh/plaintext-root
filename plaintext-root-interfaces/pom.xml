@@ -65,20 +65,21 @@
                 <configuration>
                     <source>21</source>
                     <target>21</target>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </path>
-                        <!-- Karte 1405: Schnittstellen-Katalog (META-INF/plaintext-katalog/plaintext-root-interfaces.json) -->
+                    <!-- Karte 1405: Schnittstellen-Katalog (META-INF/plaintext-katalog/plaintext-root-interfaces.json).
+                         Karte 1422: Katalog VOR Lombok, vollstaendige Liste statt Zusammenfuehren mit dem Parent. -->
+                    <annotationProcessorPaths combine.self="override">
                         <path>
                             <groupId>ch.plaintext</groupId>
                             <artifactId>plaintext-root-katalog</artifactId>
                             <version>${project.version}</version>
                         </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
                     </annotationProcessorPaths>
-                    <compilerArgs>
+                    <compilerArgs combine.self="override">
                         <arg>-Aplaintext.katalog.modul=${project.artifactId}</arg>
                         <arg>-Aplaintext.katalog.streng=true</arg>
                     </compilerArgs>

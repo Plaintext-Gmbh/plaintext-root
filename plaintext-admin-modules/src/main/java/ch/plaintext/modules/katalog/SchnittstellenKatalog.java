@@ -39,7 +39,7 @@ public class SchnittstellenKatalog {
 
     private final ApplicationContext kontext;
     /** Einmal gelesen, dann unveraendert; AtomicReference statt volatile (Karte 1416, Sonar java:S3077). */
-    private final java.util.concurrent.atomic.AtomicReference<List<Schnittstelle>> zwischenspeicher =
+    private final java.util.concurrent.atomic.AtomicReference<Stand> zwischenspeicher =
             new java.util.concurrent.atomic.AtomicReference<>();
 
     public SchnittstellenKatalog(ApplicationContext kontext) {
@@ -54,13 +54,41 @@ public class SchnittstellenKatalog {
     public record Parameter(String name, String typ) {
     }
 
-    /** Wer eine Schnittstelle umsetzt: Bean-Name, Klasse, Modul-Jar. */
-    public record Umsetzer(String bean, String klasse, String modul) {
+    /**
+     * Wer eine Schnittstelle umsetzt: Bean-Name, Klasse, Modul-Jar und — falls die Klasse
+     * {@code @ModulApiUmsetzung} trägt — ihre Beschreibung (Karte 1422), sonst {@code null}.
+     */
+    public record Umsetzer(String bean, String klasse, String modul, Umsetzung beschreibung) {
     }
 
-    /** Eine Schnittstelle mit Zweck, Methoden und Umsetzern. */
+    /**
+     * Karte 1422: wie eine Klasse einen Vertrag umsetzt, aus {@code @ModulApiUmsetzung} (Klasse und
+     * einzelne Methoden). {@code modul} ist das Modul, in dessen Katalog die Beschreibung steht.
+     */
+    public record Umsetzung(String modul, String klasse, String kurz, List<String> schnittstellen,
+                            String beschreibung, String seiteneffekte, List<String> hinweise,
+                            List<String> beispiele, List<MethodenUmsetzung> methoden) {
+    }
+
+    /** Eigene Beschreibung einer einzelnen Methode einer Umsetzung. */
+    public record MethodenUmsetzung(String name, String beschreibung, String seiteneffekte,
+                                    List<String> hinweise, List<String> beispiele) {
+    }
+
+    /**
+     * Eine Schnittstelle mit Zweck, Methoden und Umsetzern. Karte 1422: {@code annotiert} = trägt
+     * {@code @ModulApi}; {@code art} {@code SCHNITTSTELLE}/{@code DTO} (leer ohne Annotation);
+     * {@code stabilitaet} {@code STABIL}/{@code NEU}/{@code VERALTET}; {@code herkunft}
+     * «interfaces-Modul» oder «im Modul».
+     */
     public record Schnittstelle(String modul, String name, String kurz, String zweck, List<String> erweitert,
-                                List<Methode> methoden, List<Umsetzer> umsetzer) {
+                                List<Methode> methoden, List<Umsetzer> umsetzer, boolean annotiert, String art,
+                                String stabilitaet, String seit, String ersatz, String herkunft) {
+
+        /** @return {@code true} für ein zwischen Modulen übergebenes Model ({@code @ModulApi(art = DTO)}) */
+        public boolean istDto() {
+            return "DTO".equals(art);
+        }
 
         /** @return der erste Satz des Zwecks (für Übersichten) */
         public String zweckKurz() {
@@ -72,12 +100,25 @@ public class SchnittstellenKatalog {
 
     /** @return alle Schnittstellen, nach Name; einmal gelesen und dann gehalten */
     public List<Schnittstelle> alle() {
-        List<Schnittstelle> l = zwischenspeicher.get();
-        if (l == null) {
-            l = lies();
-            zwischenspeicher.set(l);
+        return stand().schnittstellen();
+    }
+
+    /** @return alle beschriebenen Umsetzungen ({@code @ModulApiUmsetzung}), nach Klasse (Karte 1422) */
+    public List<Umsetzung> umsetzungen() {
+        return stand().umsetzungen();
+    }
+
+    /** Gelesener Stand: Schnittstellen und Umsetzungen aus allen Katalogen. */
+    record Stand(List<Schnittstelle> schnittstellen, List<Umsetzung> umsetzungen) {
+    }
+
+    private Stand stand() {
+        Stand st = zwischenspeicher.get();
+        if (st == null) {
+            st = lies();
+            zwischenspeicher.set(st);
         }
-        return l;
+        return st;
     }
 
     /** @param name voller oder kurzer Name */
@@ -99,17 +140,13 @@ public class SchnittstellenKatalog {
         }).toList();
     }
 
-    List<Schnittstelle> lies() {
-        List<Schnittstelle> l = new ArrayList<>();
+    Stand lies() {
+        List<JsonNode> kataloge = new ArrayList<>();
         try {
             Resource[] rs = new PathMatchingResourcePatternResolver(getClass().getClassLoader()).getResources(MUSTER);
             for (Resource r : rs) {
                 try (InputStream in = r.getInputStream()) {
-                    JsonNode k = JSON.readTree(in);
-                    String modul = k.path("modul").asText();
-                    for (JsonNode s : k.path("schnittstellen")) {
-                        l.add(schnittstelle(modul, s));
-                    }
+                    kataloge.add(JSON.readTree(in));
                 } catch (IOException | RuntimeException e) {
                     log.warn("Schnittstellen-Katalog {} nicht lesbar: {}", r, e.getMessage());
                 }
@@ -117,11 +154,43 @@ public class SchnittstellenKatalog {
         } catch (IOException e) {
             log.warn("Schnittstellen-Kataloge nicht auffindbar: {}", e.getMessage());
         }
+        // Erst alle Umsetzungen, damit jede Schnittstelle ihre Umsetzer samt Beschreibung bekommt —
+        // die Beschreibung steht im Katalog des umsetzenden Moduls, nicht in dem des Vertrags.
+        List<Umsetzung> umsetzungen = new ArrayList<>();
+        for (JsonNode k : kataloge) {
+            String modul = k.path("modul").asText();
+            k.path("umsetzungen").forEach(u -> umsetzungen.add(umsetzung(modul, u)));
+        }
+        umsetzungen.sort(Comparator.comparing(Umsetzung::klasse));
+        java.util.Map<String, Umsetzung> nachKlasse = new java.util.HashMap<>();
+        umsetzungen.forEach(u -> nachKlasse.putIfAbsent(binaerName(u.klasse()), u));
+        List<Schnittstelle> l = new ArrayList<>();
+        for (JsonNode k : kataloge) {
+            String modul = k.path("modul").asText();
+            for (JsonNode s : k.path("schnittstellen")) {
+                l.add(schnittstelle(modul, s, nachKlasse));
+            }
+        }
         l.sort(Comparator.comparing(Schnittstelle::name));
+        return new Stand(List.copyOf(l), List.copyOf(umsetzungen));
+    }
+
+    private static Umsetzung umsetzung(String modul, JsonNode u) {
+        List<MethodenUmsetzung> m = new ArrayList<>();
+        u.path("methoden").forEach(x -> m.add(new MethodenUmsetzung(x.path("name").asText(), x.path("beschreibung").asText(),
+                x.path("seiteneffekte").asText(), texte(x.path("hinweise")), texte(x.path("beispiele")))));
+        return new Umsetzung(modul, u.path("klasse").asText(), u.path("kurz").asText(), texte(u.path("schnittstellen")),
+                u.path("beschreibung").asText(), u.path("seiteneffekte").asText(), texte(u.path("hinweise")),
+                texte(u.path("beispiele")), List.copyOf(m));
+    }
+
+    private static List<String> texte(JsonNode liste) {
+        List<String> l = new ArrayList<>();
+        liste.forEach(x -> l.add(x.asText()));
         return List.copyOf(l);
     }
 
-    private Schnittstelle schnittstelle(String modul, JsonNode s) {
+    private Schnittstelle schnittstelle(String modul, JsonNode s, java.util.Map<String, Umsetzung> beschreibungen) {
         List<String> erweitert = new ArrayList<>();
         s.path("erweitert").forEach(x -> erweitert.add(x.asText()));
         List<Methode> methoden = new ArrayList<>();
@@ -132,12 +201,19 @@ public class SchnittstellenKatalog {
                     m.path("zweck").asText(), List.copyOf(p)));
         }
         String name = s.path("name").asText();
+        String herkunft = s.path("herkunft").asText(modul.endsWith("-interfaces") ? "interfaces-Modul" : "im Modul");
         return new Schnittstelle(modul, name, s.path("kurz").asText(), s.path("zweck").asText(),
-                List.copyOf(erweitert), List.copyOf(methoden), umsetzer(name));
+                List.copyOf(erweitert), List.copyOf(methoden), umsetzer(name, beschreibungen),
+                s.path("annotiert").asBoolean(false), s.path("art").asText(""), s.path("stabilitaet").asText(""),
+                s.path("seit").asText(""), s.path("ersatz").asText(""), herkunft);
     }
 
     /** Beans, die die Schnittstelle umsetzen; ohne Laden fremder Klassen, wenn die Schnittstelle fehlt. */
     List<Umsetzer> umsetzer(String name) {
+        return umsetzer(name, java.util.Map.of());
+    }
+
+    private List<Umsetzer> umsetzer(String name, java.util.Map<String, Umsetzung> beschreibungen) {
         Class<?> typ;
         try {
             typ = Class.forName(binaerName(name), false, getClass().getClassLoader());
@@ -149,7 +225,7 @@ public class SchnittstellenKatalog {
             Class<?> k = kontext.getType(bean);
             k = k == null ? null : org.springframework.util.ClassUtils.getUserClass(k);
             if (k != null) {
-                u.add(new Umsetzer(bean, k.getName(), modul(k)));
+                u.add(new Umsetzer(bean, k.getName(), modul(k), beschreibungen.get(k.getName())));
             }
         }
         u.sort(Comparator.comparing(Umsetzer::bean));

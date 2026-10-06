@@ -1,0 +1,10 @@
+{"modul":"test-fachmodul","schnittstellen":[
+ {"name":"ch.plaintext.modules.katalog.IZeiteintrag","kurz":"IZeiteintrag","zweck":"Ein erfasster Zeitraum.","annotiert":true,
+  "art":"DTO","stabilitaet":"STABIL","seit":"1.749.0","ersatz":"","herkunft":"im Modul","erweitert":[],
+  "methoden":[{"name":"minuten","rueckgabe":"long","art":"abstrakt","zweck":"","parameter":[]}]}
+],"umsetzungen":[
+ {"klasse":"ch.plaintext.modules.katalog.SchnittstellenKatalogTest.Umsetzung","kurz":"Umsetzung",
+  "schnittstellen":["ch.plaintext.modules.katalog.SchnittstellenKatalogTest.Vertrag"],
+  "beschreibung":"Rechnet ohne Umweg.","seiteneffekte":"KEINE","hinweise":["Nur ganze Rappen"],"beispiele":["rechne(5) -> 5"],
+  "methoden":[{"name":"rechne","beschreibung":"Gibt den Betrag zurück.","seiteneffekte":"KEINE","hinweise":[],"beispiele":[]}]}
+]}
