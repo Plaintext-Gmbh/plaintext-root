@@ -23,6 +23,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AusgehendesZielTest {
 
+    /** Keine Freigaben; als Konstante, damit im Lambda nur der gepruefte Aufruf steht (Sonar java:S5778). */
+    private static final Set<String> KEINE = Set.of();
+
     /** Test-Auflöser: kennt genau zwei Namen, alles andere ist unbekannt. */
     private static final AusgehendesZiel.Aufloeser TEST_DNS = host -> switch (host) {
         case "kalender.example.org" -> new InetAddress[]{InetAddress.getByName("93.184.215.14")};
@@ -40,37 +43,41 @@ class AusgehendesZielTest {
     @ValueSource(strings = {"127.0.0.1", "127.8.9.10", "0.0.0.0", "10.0.0.1", "172.16.5.4", "172.31.255.255",
             "192.168.1.224", "169.254.169.254", "100.64.0.1", "100.127.255.254", "224.0.0.1",
             "255.255.255.255", "198.18.0.1", "192.0.0.8", "::1", "::", "fe80::1", "fd00::1", "fc12::5",
-            "::ffff:127.0.0.1", "::ffff:192.168.1.1"})
+            "::ffff:127.0.0.1", "::ffff:192.168.1.1",
+            // Karte 1416: jeder Block aus istOeffentlich() einzeln, vor dem Umbau der Methode
+            "0.1.2.3", "198.19.255.1", "240.0.0.1", "fec0::1", "feff::1"})
     void interneAdressenSindGesperrt(String ip) {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> AusgehendesZiel.pruefeHost(ip, Set.of(), TEST_DNS));
+                () -> AusgehendesZiel.pruefeHost(ip, KEINE, TEST_DNS));
         assertTrue(e.getMessage().contains("interne Adresse"), e.getMessage());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"8.8.8.8", "1.1.1.1", "93.184.215.14", "172.32.0.1", "100.128.0.1", "2a00:1450:4001::1"})
+    @ValueSource(strings = {"8.8.8.8", "1.1.1.1", "93.184.215.14", "172.32.0.1", "100.128.0.1", "2a00:1450:4001::1",
+            // Karte 1416: Gegenproben direkt an den Blockgrenzen
+            "100.63.255.255", "192.0.1.1", "198.17.255.255", "198.20.0.1", "223.255.255.254"})
     void oeffentlicheAdressenSindErlaubt(String ip) {
         // Positivkontrolle: ohne sie wäre eine Prüfung, die ALLES sperrt, ebenfalls grün.
-        assertDoesNotThrow(() -> AusgehendesZiel.pruefeHost(ip, Set.of(), TEST_DNS));
+        assertDoesNotThrow(() -> AusgehendesZiel.pruefeHost(ip, KEINE, TEST_DNS));
     }
 
     @Test
     void hostMitEinerInternenAdresseUnterMehrerenIstGesperrt() {
         assertThrows(IllegalArgumentException.class,
-                () -> AusgehendesZiel.pruefeHost("intern.example.org", Set.of(), TEST_DNS));
-        assertDoesNotThrow(() -> AusgehendesZiel.pruefeHost("kalender.example.org", Set.of(), TEST_DNS));
+                () -> AusgehendesZiel.pruefeHost("intern.example.org", KEINE, TEST_DNS));
+        assertDoesNotThrow(() -> AusgehendesZiel.pruefeHost("kalender.example.org", KEINE, TEST_DNS));
     }
 
     @Test
     void localhostPerNameIstGesperrt() {
         // Echter Auflöser: "localhost" löst auf jeder Maschine lokal auf, ohne Netz.
-        assertThrows(IllegalArgumentException.class, () -> AusgehendesZiel.pruefeHost("localhost", Set.of()));
+        assertThrows(IllegalArgumentException.class, () -> AusgehendesZiel.pruefeHost("localhost", KEINE));
     }
 
     @Test
     void nichtAufloesbarIstGesperrt() {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> AusgehendesZiel.pruefeHost("gibt-es-nicht.example.org", Set.of(), TEST_DNS));
+                () -> AusgehendesZiel.pruefeHost("gibt-es-nicht.example.org", KEINE, TEST_DNS));
         assertTrue(e.getMessage().contains("nicht auflösbar"));
     }
 
@@ -93,12 +100,12 @@ class AusgehendesZielTest {
 
     @Test
     void urlNurHttpUndHttps() {
-        URI ok = AusgehendesZiel.pruefeUrl("https://kalender.example.org/dav/cal/", Set.of(), TEST_DNS);
+        URI ok = AusgehendesZiel.pruefeUrl("https://kalender.example.org/dav/cal/", KEINE, TEST_DNS);
         assertEquals("kalender.example.org", ok.getHost());
-        assertDoesNotThrow(() -> AusgehendesZiel.pruefeUrl("http://93.184.215.14/x.ics", Set.of(), TEST_DNS));
+        assertDoesNotThrow(() -> AusgehendesZiel.pruefeUrl("http://93.184.215.14/x.ics", KEINE, TEST_DNS));
         for (String url : new String[]{"file:///etc/passwd", "ftp://93.184.215.14/x", "gopher://93.184.215.14/",
                 "jar:http://93.184.215.14/x!/", "93.184.215.14/x.ics"}) {
-            assertThrows(IllegalArgumentException.class, () -> AusgehendesZiel.pruefeUrl(url, Set.of(), TEST_DNS), url);
+            assertThrows(IllegalArgumentException.class, () -> AusgehendesZiel.pruefeUrl(url, KEINE, TEST_DNS), url);
         }
     }
 
@@ -107,15 +114,15 @@ class AusgehendesZielTest {
         for (String url : new String[]{"http://127.0.0.1:8080/actuator", "http://169.254.169.254/latest/meta-data/",
                 "http://[::1]/", "https://192.168.1.224:1156/api/Server", "http://0x7f000001/",
                 "https://user:pw@kalender.example.org/", "http:///nur-pfad", "", " "}) {
-            assertThrows(IllegalArgumentException.class, () -> AusgehendesZiel.pruefeUrl(url, Set.of(), TEST_DNS), url);
+            assertThrows(IllegalArgumentException.class, () -> AusgehendesZiel.pruefeUrl(url, KEINE, TEST_DNS), url);
         }
-        assertThrows(IllegalArgumentException.class, () -> AusgehendesZiel.pruefeUrl(null, Set.of(), TEST_DNS));
+        assertThrows(IllegalArgumentException.class, () -> AusgehendesZiel.pruefeUrl(null, KEINE, TEST_DNS));
     }
 
     @Test
     void ipv6LiteralInKlammernWirdGeprueft() {
-        assertDoesNotThrow(() -> AusgehendesZiel.pruefeUrl("https://[2a00:1450:4001::1]/cal", Set.of(), TEST_DNS));
+        assertDoesNotThrow(() -> AusgehendesZiel.pruefeUrl("https://[2a00:1450:4001::1]/cal", KEINE, TEST_DNS));
         assertThrows(IllegalArgumentException.class,
-                () -> AusgehendesZiel.pruefeUrl("https://[fd00::1]/cal", Set.of(), TEST_DNS));
+                () -> AusgehendesZiel.pruefeUrl("https://[fd00::1]/cal", KEINE, TEST_DNS));
     }
 }

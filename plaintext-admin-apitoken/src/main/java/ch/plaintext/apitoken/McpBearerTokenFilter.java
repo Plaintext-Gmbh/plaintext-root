@@ -96,6 +96,31 @@ import java.util.Set;
 @Slf4j
 public class McpBearerTokenFilter implements Filter {
 
+    /** Scope-Stufe ADMIN (Karte 1416, Sonar java:S1192). */
+    private static final String SCOPE_STUFE_ADMIN = "ADMIN";
+
+    /**
+     * A role of the user as authority; {@code null} for null/blank and for the reserved
+     * {@code PROPERTY_TOKEN_MANDAT_*} (card 1416, Sonar java:S135: split out of the filter loop).
+     *
+     * <p>PROPERTY_TOKEN_MANDAT_* is reserved and comes EXCLUSIVELY from the token (card 670). If it
+     * could also come from the roles column, more than one would be in the context again — and worse:
+     * an entry in {@code my_user_entity.roles} could override the tenant of the token and thereby
+     * shift the tenant boundary. It is therefore discarded here instead of being adopted.</p>
+     */
+    private static GrantedAuthority rollenAuthority(String role, Object userId) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+        String r = role.toUpperCase();
+        if (r.startsWith(TOKEN_MANDAT_PREFIX)) {
+            log.warn("Rolle {} des Benutzers {} ignoriert: {}* ist fuer den Token-Mandanten reserviert",
+                    role, userId, TOKEN_MANDAT_PREFIX);
+            return null;
+        }
+        return new SimpleGrantedAuthority(r.startsWith("PROPERTY_") ? r : "ROLE_" + r);
+    }
+
     private static final String BEARER_PREFIX = "Bearer ";
 
     /**
@@ -273,21 +298,10 @@ public class McpBearerTokenFilter implements Filter {
         addScopeAuthorities(authorities, gedeckelt.get());
         // Real roles of the user (ROOT/ADMIN/PROPERTY_MANDAT_* etc.) — so that getAllowedMandate() is correct.
         for (String role : userRoles) {
-            if (role == null || role.isBlank()) {
-                continue;
+            GrantedAuthority a = rollenAuthority(role, validation.userId());
+            if (a != null) {
+                authorities.add(a);
             }
-            String r = role.toUpperCase();
-            // PROPERTY_TOKEN_MANDAT_* is reserved and comes EXCLUSIVELY from the token
-            // (card 670). If it could also come from the roles column, more than one would be in
-            // the context again — and worse: an entry in `my_user_entity.roles` could override the
-            // tenant of the token and thereby shift the tenant boundary. It is therefore discarded
-            // here instead of being adopted.
-            if (r.startsWith(TOKEN_MANDAT_PREFIX)) {
-                log.warn("Rolle {} des Benutzers {} ignoriert: {}* ist fuer den Token-Mandanten reserviert",
-                        role, validation.userId(), TOKEN_MANDAT_PREFIX);
-                continue;
-            }
-            authorities.add(new SimpleGrantedAuthority(r.startsWith("PROPERTY_") ? r : "ROLE_" + r));
         }
         var auth = new UsernamePasswordAuthenticationToken(validation.email(), null, authorities);
 
@@ -424,11 +438,11 @@ public class McpBearerTokenFilter implements Filter {
     private void addScopeAuthorities(Set<GrantedAuthority> authorities, String scope) {
         String effective = scopeClaimOderFallback(scope);
         authorities.add(new SimpleGrantedAuthority("SCOPE_READ"));
-        if (effective.equals("WRITE") || effective.equals("EINTRAGEN") || effective.equals("ADMIN")) {
+        if (effective.equals("WRITE") || effective.equals("EINTRAGEN") || effective.equals(SCOPE_STUFE_ADMIN)) {
             authorities.add(new SimpleGrantedAuthority("SCOPE_WRITE"));
             authorities.add(new SimpleGrantedAuthority("SCOPE_EINTRAGEN"));
         }
-        if (effective.equals("ADMIN")) {
+        if (effective.equals(SCOPE_STUFE_ADMIN)) {
             authorities.add(new SimpleGrantedAuthority("SCOPE_ADMIN"));
         }
     }
@@ -438,7 +452,7 @@ public class McpBearerTokenFilter implements Filter {
      * {@code legacy-scope-admin}, card 312), upper case.
      */
     private String scopeClaimOderFallback(String scope) {
-        String fallback = legacyScopeAdmin ? "ADMIN" : "READ";
+        String fallback = legacyScopeAdmin ? SCOPE_STUFE_ADMIN : "READ";
         return (scope == null || scope.isBlank()) ? fallback : scope.trim().toUpperCase();
     }
 

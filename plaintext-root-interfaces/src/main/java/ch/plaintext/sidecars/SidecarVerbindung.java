@@ -16,8 +16,10 @@ public record SidecarVerbindung(String name, String basisUrl, String token) {
 
     /** @return die URL eines Pfads des Sidecars, z. B. {@code uri("/bild/vorschau")} */
     public URI uri(String pfad) {
-        String p = pfad == null || pfad.isEmpty() ? "" : pfad.startsWith("/") ? pfad : "/" + pfad;
-        return URI.create(basisUrl + p);
+        if (pfad == null || pfad.isEmpty()) {
+            return URI.create(basisUrl);
+        }
+        return URI.create(basisUrl + (pfad.startsWith("/") ? pfad : "/" + pfad));
     }
 
     /** @return Wert für den Header {@code Authorization} oder {@code null} ohne Token */

@@ -87,7 +87,7 @@ public class ApiTokenScopeDeckel {
     private List<String> leseRollen = new ArrayList<>();
 
     /** Roles that may hold {@code WRITE}. */
-    private List<String> schreibRollen = new ArrayList<>(List.of("ADMIN", "ROOT"));
+    private List<String> schreibRollen = new ArrayList<>(List.of(ADMIN, "ROOT"));
 
     /** Roles that may hold {@code ADMIN}. */
     private List<String> adminRollen = new ArrayList<>(List.of("ADMIN", "ROOT"));

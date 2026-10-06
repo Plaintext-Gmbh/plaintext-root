@@ -61,35 +61,44 @@ public final class StartseitenAnordnung {
         if (erlaubte == null || erlaubte.isEmpty()) {
             return ergebnis;
         }
+        Set<String> platziert = new HashSet<>();
+        if (layout != null) {
+            platziereNachLayout(nachId(erlaubte), layout, platziert, ergebnis);
+        }
+        for (DashboardTileData kachel : erlaubte) {
+            if (kachel != null && (kachel.getId() == null || !platziert.contains(kachel.getId()))) {
+                kachel.setHidden(false);
+                kachel.setHalfWidth(true);
+                ergebnis.add(kachel);
+            }
+        }
+        return ergebnis;
+    }
+
+    private static Map<String, DashboardTileData> nachId(List<DashboardTileData> erlaubte) {
         Map<String, DashboardTileData> nachId = new LinkedHashMap<>();
         for (DashboardTileData kachel : erlaubte) {
             if (kachel != null && kachel.getId() != null) {
                 nachId.putIfAbsent(kachel.getId(), kachel);
             }
         }
+        return nachId;
+    }
 
-        Set<String> platziert = new HashSet<>();
-        if (layout != null) {
-            for (StartseitenLayout.Eintrag eintrag : layout.getEintraege()) {
-                DashboardTileData kachel = eintrag == null ? null : nachId.get(eintrag.getId());
-                if (kachel == null || !platziert.add(eintrag.getId())) {
-                    continue; // nicht (mehr) erlaubt, oder doppelt im Datensatz
-                }
+    /**
+     * Die Kacheln in der Reihenfolge des Layouts; nicht (mehr) erlaubte oder doppelte Eintraege fallen weg
+     * (Karte 1416, Sonar java:S3776/S135: aus anwenden() herausgeloest).
+     */
+    private static void platziereNachLayout(Map<String, DashboardTileData> nachId, StartseitenLayout layout,
+                                            Set<String> platziert, List<DashboardTileData> ergebnis) {
+        for (StartseitenLayout.Eintrag eintrag : layout.getEintraege()) {
+            DashboardTileData kachel = eintrag == null ? null : nachId.get(eintrag.getId());
+            if (kachel != null && platziert.add(eintrag.getId())) {
                 kachel.setHidden(!eintrag.isSichtbar());
                 kachel.setHalfWidth(eintrag.isHalbeBreite());
                 ergebnis.add(kachel);
             }
         }
-
-        for (DashboardTileData kachel : erlaubte) {
-            if (kachel == null || (kachel.getId() != null && platziert.contains(kachel.getId()))) {
-                continue;
-            }
-            kachel.setHidden(false);
-            kachel.setHalfWidth(true);
-            ergebnis.add(kachel);
-        }
-        return ergebnis;
     }
 
     /**
@@ -147,21 +156,32 @@ public final class StartseitenAnordnung {
         Set<String> gesehen = new HashSet<>();
         List<StartseitenLayout.Eintrag> eintraege = new ArrayList<>();
         for (String teil : wert.split(TRENNER_KACHEL)) {
-            String[] felder = teil.trim().split(TRENNER_FELD);
-            if (felder.length != 3) {
-                continue;
+            StartseitenLayout.Eintrag e = eintrag(teil, erlaubt, gesehen);
+            if (e != null) {
+                eintraege.add(e);
             }
-            String id;
-            try {
-                id = URLDecoder.decode(felder[0], StandardCharsets.UTF_8);
-            } catch (IllegalArgumentException e) {
-                continue;
-            }
-            if (!erlaubt.contains(id) || !gesehen.add(id)) {
-                continue;
-            }
-            eintraege.add(new StartseitenLayout.Eintrag(id, "1".equals(felder[1]), "1".equals(felder[2])));
         }
         return new StartseitenLayout(eintraege);
+    }
+
+    /**
+     * Ein Teil {@code id~sichtbar~halb}; {@code null} bei falschem Aufbau, unlesbarer Id, nicht erlaubter
+     * oder doppelter Kachel (Karte 1416, Sonar java:S135: aus ausFormular() herausgeloest).
+     */
+    private static StartseitenLayout.Eintrag eintrag(String teil, Set<String> erlaubt, Set<String> gesehen) {
+        String[] felder = teil.trim().split(TRENNER_FELD);
+        if (felder.length != 3) {
+            return null;
+        }
+        String id;
+        try {
+            id = URLDecoder.decode(felder[0], StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException _) {
+            return null;
+        }
+        if (!erlaubt.contains(id) || !gesehen.add(id)) {
+            return null;
+        }
+        return new StartseitenLayout.Eintrag(id, "1".equals(felder[1]), "1".equals(felder[2]));
     }
 }

@@ -25,10 +25,17 @@ public record SidecarBeschreibung(String protokoll, String name, String titel, S
                                   String status, String statusText, String authArt, List<Teil> teile,
                                   List<Faehigkeit> faehigkeiten, String doku, List<String> hinweise) {
 
-    public static final String PROTOKOLL = "plaintext-sidecar/1";
-    static final Pattern NAME = Pattern.compile("[a-z0-9][a-z0-9-]{0,39}");
-    static final Pattern FAEHIGKEIT_ID = Pattern.compile("[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+");
-    static final Set<String> STATUS = Set.of("ok", "eingeschraenkt", "fehler");
+    /** Anfang der Hinweise zu einer Faehigkeit (Karte 1416, Sonar java:S1192). */
+    private static final String FAEHIGKEIT = "Fähigkeit ";
+
+    /** JSON-Feld (Karte 1416, Sonar java:S1192). */
+    private static final String FELD_TITEL = "titel";
+
+    public static final String PROTOKOLL_VERSION = "plaintext-sidecar/1";
+    static final Pattern NAME_MUSTER = Pattern.compile("[a-z0-9][a-z0-9-]{0,39}");
+    /** Ein Teil einer Faehigkeits-Id; die Id selbst sind mindestens zwei solche Teile mit Punkt (siehe istFaehigkeitId). */
+    private static final Pattern ID_TEIL = Pattern.compile("[a-z0-9][a-z0-9-]*");
+    static final Set<String> STATUS_WERTE = Set.of("ok", "eingeschraenkt", "fehler");
     static final Set<String> METHODEN = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");
     static final Set<String> SEITENEFFEKTE = Set.of("keiner", "intern", "aussen");
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -77,73 +84,109 @@ public record SidecarBeschreibung(String protokoll, String name, String titel, S
         JsonNode n;
         try {
             n = JSON.readTree(json);
-        } catch (IOException e) {
+        } catch (IOException _) {
             throw new Ungueltig("Antwort ist kein JSON.");
         }
         if (n == null || !n.isObject()) {
             throw new Ungueltig("Antwort ist kein JSON-Objekt.");
         }
         String protokoll = text(n, "protokoll");
-        if (!PROTOKOLL.equals(protokoll)) {
+        String name = text(n, "name");
+        String status = text(n, "status");
+        String authArt = n.path("auth").path("art").asText(null);
+        pruefeKopf(protokoll, name, status, authArt);
+        List<String> hinweise = new ArrayList<>();
+        List<Teil> teile = teile(n);
+        List<Faehigkeit> faehigkeiten = new ArrayList<>();
+        for (JsonNode f : n.path("faehigkeiten")) {
+            String fehler = pruefeFaehigkeit(f);
+            if (fehler == null) {
+                faehigkeiten.add(faehigkeit(f));
+            } else {
+                hinweise.add(fehler);
+            }
+        }
+        return new SidecarBeschreibung(protokoll, name, kurz(text(n, FELD_TITEL)), text(n, "beschreibung"), kurz(text(n, "version")),
+                status, kurz(text(n, "statusText")), authArt, List.copyOf(teile), List.copyOf(faehigkeiten),
+                kurz(text(n, "doku")), List.copyOf(hinweise));
+    }
+
+    /** Pflichtfelder des Kopfs, in dieser Reihenfolge (Karte 1416, Sonar java:S3776: aus lies() herausgeloest). */
+    private static void pruefeKopf(String protokoll, String name, String status, String authArt) throws Ungueltig {
+        if (!PROTOKOLL_VERSION.equals(protokoll)) {
             throw new Ungueltig(protokoll == null ? "Feld «protokoll» fehlt." : "Unbekanntes Protokoll «" + kurz(protokoll) + "».");
         }
-        String name = text(n, "name");
-        if (name == null || !NAME.matcher(name).matches()) {
+        if (name == null || !NAME_MUSTER.matcher(name).matches()) {
             throw new Ungueltig("Feld «name» fehlt oder ist ungültig (erlaubt: a-z, 0-9, -, höchstens 40 Zeichen).");
         }
-        String status = text(n, "status");
-        if (status == null || !STATUS.contains(status)) {
+        if (status == null || !STATUS_WERTE.contains(status)) {
             throw new Ungueltig("Feld «status» muss ok, eingeschraenkt oder fehler sein.");
         }
-        String authArt = n.path("auth").path("art").asText(null);
         if (!"bearer".equals(authArt) && !"keine".equals(authArt)) {
             throw new Ungueltig("Feld «auth.art» muss bearer oder keine sein.");
         }
-        List<String> hinweise = new ArrayList<>();
+    }
+
+    private static List<Teil> teile(JsonNode n) {
         List<Teil> teile = new ArrayList<>();
         for (JsonNode t : n.path("teile")) {
             if (text(t, "name") != null) {
                 teile.add(new Teil(kurz(text(t, "name")), kurz(text(t, "status")), kurz(text(t, "text"))));
             }
         }
-        List<Faehigkeit> faehigkeiten = new ArrayList<>();
-        for (JsonNode f : n.path("faehigkeiten")) {
-            String fehler = pruefeFaehigkeit(f);
-            if (fehler != null) {
-                hinweise.add(fehler);
-                continue;
-            }
-            faehigkeiten.add(new Faehigkeit(text(f, "id"), kurz(text(f, "titel")), text(f, "beschreibung"),
-                    text(f, "methode").toUpperCase(Locale.ROOT), text(f, "pfad"),
-                    f.has("eingabe") ? f.get("eingabe") : null, f.has("ausgabe") ? f.get("ausgabe") : null,
-                    f.path("auth").asBoolean(true), f.path("mcp").asBoolean(false), text(f, "seiteneffekt")));
-        }
-        return new SidecarBeschreibung(protokoll, name, kurz(text(n, "titel")), text(n, "beschreibung"), kurz(text(n, "version")),
-                status, kurz(text(n, "statusText")), authArt, List.copyOf(teile), List.copyOf(faehigkeiten),
-                kurz(text(n, "doku")), List.copyOf(hinweise));
+        return teile;
+    }
+
+    /** Eine schon gepruefte Faehigkeit (pruefeFaehigkeit gab null). */
+    private static Faehigkeit faehigkeit(JsonNode f) {
+        return new Faehigkeit(text(f, "id"), kurz(text(f, FELD_TITEL)), text(f, "beschreibung"),
+                grossOderNull(text(f, "methode")), text(f, "pfad"),
+                f.has("eingabe") ? f.get("eingabe") : null, f.has("ausgabe") ? f.get("ausgabe") : null,
+                f.path("auth").asBoolean(true), f.path("mcp").asBoolean(false), text(f, "seiteneffekt"));
     }
 
     /** @return Fehlermeldung oder {@code null}, wenn die Fähigkeit brauchbar ist */
     static String pruefeFaehigkeit(JsonNode f) {
         String id = text(f, "id");
-        if (id == null || !FAEHIGKEIT_ID.matcher(id).matches() || id.length() > 100) {
+        if (!istFaehigkeitId(id)) {
             return "Fähigkeit ohne gültige id («" + kurz(id) + "») übergangen.";
         }
         String methode = text(f, "methode");
         if (methode == null || !METHODEN.contains(methode.toUpperCase(Locale.ROOT))) {
-            return "Fähigkeit " + id + ": ungültige methode.";
+            return FAEHIGKEIT + id + ": ungültige methode.";
         }
         if (!pfadGueltig(text(f, "pfad"))) {
-            return "Fähigkeit " + id + ": ungültiger pfad.";
+            return FAEHIGKEIT + id + ": ungültiger pfad.";
         }
         String s = text(f, "seiteneffekt");
         if (s == null || !SEITENEFFEKTE.contains(s)) {
-            return "Fähigkeit " + id + ": seiteneffekt muss keiner, intern oder aussen sein.";
+            return FAEHIGKEIT + id + ": seiteneffekt muss keiner, intern oder aussen sein.";
         }
-        if (text(f, "titel") == null) {
-            return "Fähigkeit " + id + ": titel fehlt.";
+        if (text(f, FELD_TITEL) == null) {
+            return FAEHIGKEIT + id + ": titel fehlt.";
         }
         return null;
+    }
+
+    /**
+     * {@code bereich.aktion} mit mindestens zwei Teilen aus a-z, 0-9 und Bindestrich, hoechstens 100 Zeichen.
+     * Zerlegt am Punkt statt einer wiederholten Gruppe im Ausdruck (Karte 1416, Sonar java:S5998); die
+     * Laenge wird vor jedem Ausdruck geprueft.
+     */
+    static boolean istFaehigkeitId(String id) {
+        if (id == null || id.length() > 100) {
+            return false;
+        }
+        String[] teile = id.split("\\.", -1);
+        if (teile.length < 2) {
+            return false;
+        }
+        for (String t : teile) {
+            if (!ID_TEIL.matcher(t).matches()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Relativer Pfad ohne Ausbruch: kein {@code ..}, kein Schema, keine Query, kein Backslash. */
@@ -159,7 +202,15 @@ public record SidecarBeschreibung(String protokoll, String name, String titel, S
         return v == null || v.isNull() || !v.isValueNode() ? null : v.asText();
     }
 
+    /** pruefeFaehigkeit verlangt die Methode schon; hier nur, damit kein Weg ueber null fuehrt. */
+    private static String grossOderNull(String s) {
+        return s == null ? null : s.toUpperCase(Locale.ROOT);
+    }
+
     private static String kurz(String s) {
-        return s == null ? null : s.length() > 200 ? s.substring(0, 200) + "…" : s;
+        if (s == null || s.length() <= 200) {
+            return s;
+        }
+        return s.substring(0, 200) + "…";
     }
 }

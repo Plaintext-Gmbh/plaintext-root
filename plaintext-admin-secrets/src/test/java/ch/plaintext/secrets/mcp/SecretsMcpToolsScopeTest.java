@@ -133,7 +133,7 @@ class SecretsMcpToolsScopeTest {
 
         String antwort = tools.setSecret("app/token", "VAULTWARDEN", "neu", null);
 
-        verify(service).set(eq("app/token"), eq(SecretBackendType.VAULTWARDEN), eq("neu"), eq(null));
+        verify(service).set("app/token", SecretBackendType.VAULTWARDEN, "neu", null);
         assertTrue(antwort.startsWith("OK"), "Antwort war: " + antwort);
     }
 

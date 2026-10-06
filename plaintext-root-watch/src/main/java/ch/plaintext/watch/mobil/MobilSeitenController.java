@@ -83,6 +83,7 @@ public class MobilSeitenController {
     static final String MELDUNG_SCHLUESSEL = "watch.mobil.meldung";
 
     static final String NICHT_GEFUNDEN = "Diese Seite gibt es hier nicht.";
+    private static final MediaType TEXT = new MediaType(MediaType.TEXT_PLAIN, java.nio.charset.StandardCharsets.UTF_8);
 
     /**
      * The policy of these pages — stricter than the one of the house, on purpose.
@@ -155,7 +156,7 @@ public class MobilSeitenController {
     // ═══════════════════════════════════════════════════════════════════ Aktion
 
     @PostMapping(MobilWatchPage.PFAD + "{id}/{aktion}")
-    public ResponseEntity<?> aktion(@PathVariable("id") String id,
+    public ResponseEntity<Object> aktion(@PathVariable("id") String id,
                                     @PathVariable("aktion") String aktion,
                                     @RequestParam(name = "wert", required = false) String wert,
                                     HttpServletRequest request) {
@@ -164,7 +165,8 @@ public class MobilSeitenController {
         }
         Optional<MobilWatchPage> gefunden = finde(id);
         if (gefunden.isEmpty()) {
-            return nichtGefunden();
+            // Gleiche Antwort wie nichtGefunden(), aber als Object (Karte 1416, Sonar S1452: kein Wildcard-Rueckgabetyp).
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(TEXT).body(NICHT_GEFUNDEN);
         }
         MobilWatchPage seite = gefunden.get();
 
@@ -266,19 +268,24 @@ public class MobilSeitenController {
     static Map<String, String> felder(HttpServletRequest request) {
         Map<String, String> felder = new LinkedHashMap<>();
         for (Map.Entry<String, String[]> p : request.getParameterMap().entrySet()) {
-            String name = p.getKey();
-            if (felder.size() >= FELDER_MAX || !name.startsWith(MobilHtml.FELD_PRAEFIX)) {
-                continue;
+            if (felder.size() < FELDER_MAX) {
+                feld(felder, p.getKey(), p.getValue());
             }
-            String kurz = name.substring(MobilHtml.FELD_PRAEFIX.length());
-            String[] werte = p.getValue();
-            if (!MobilSeite.Feld.NAME.matcher(kurz).matches() || werte == null || werte.length == 0) {
-                continue;
-            }
-            String w = werte[0] == null ? "" : werte[0];
-            felder.put(kurz, w.length() > FELD_LAENGE_MAX ? w.substring(0, FELD_LAENGE_MAX) : w);
         }
         return Map.copyOf(felder);
+    }
+
+    /** Ein Parameter: nur mit Praefix, gueltigem Kurznamen und Wert; gekuerzt (Karte 1416, Sonar java:S135). */
+    private static void feld(Map<String, String> felder, String name, String[] werte) {
+        if (!name.startsWith(MobilHtml.FELD_PRAEFIX)) {
+            return;
+        }
+        String kurz = name.substring(MobilHtml.FELD_PRAEFIX.length());
+        if (!MobilSeite.Feld.NAME_MUSTER.matcher(kurz).matches() || werte == null || werte.length == 0) {
+            return;
+        }
+        String w = werte[0] == null ? "" : werte[0];
+        felder.put(kurz, w.length() > FELD_LAENGE_MAX ? w.substring(0, FELD_LAENGE_MAX) : w);
     }
 
     private static String position(WatchPage seite, List<WatchPage> umlauf) {
@@ -300,8 +307,6 @@ public class MobilSeitenController {
     }
 
     private static ResponseEntity<String> nichtGefunden() {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .contentType(new MediaType(MediaType.TEXT_PLAIN, java.nio.charset.StandardCharsets.UTF_8))
-                .body(NICHT_GEFUNDEN);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(TEXT).body(NICHT_GEFUNDEN);
     }
 }

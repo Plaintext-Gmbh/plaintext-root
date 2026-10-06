@@ -63,39 +63,50 @@ final class WebDavAntwort {
         List<Eintrag> out = new ArrayList<>();
         NodeList responses = doc.getElementsByTagNameNS("DAV:", "response");
         for (int i = 0; i < responses.getLength(); i++) {
-            Element r = (Element) responses.item(i);
-            String href = text(r, "href");
-            if (href == null) {
-                continue;
+            Eintrag e = eintrag((Element) responses.item(i));
+            if (e != null) {
+                out.add(e);
             }
-            String pfad;
-            try {
-                pfad = URI.create(href.trim()).getPath();
-            } catch (IllegalArgumentException e) {
-                continue;
-            }
-            boolean ordner = r.getElementsByTagNameNS("DAV:", "collection").getLength() > 0;
-            long groesse = -1;
-            String len = text(r, "getcontentlength");
-            if (len != null) {
-                try {
-                    groesse = Long.parseLong(len.trim());
-                } catch (NumberFormatException e) {
-                    groesse = -1;
-                }
-            }
-            Instant geaendert = null;
-            String lm = text(r, "getlastmodified");
-            if (lm != null) {
-                try {
-                    geaendert = ZonedDateTime.parse(lm.trim(), DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
-                } catch (RuntimeException e) {
-                    geaendert = null;
-                }
-            }
-            out.add(new Eintrag(pfad, ordner, groesse, geaendert));
         }
         return out;
+    }
+
+    /** Ein {@code response}-Element; {@code null} ohne brauchbares {@code href} (Karte 1416, S3776/S135). */
+    private static Eintrag eintrag(Element r) {
+        String href = text(r, "href");
+        if (href == null) {
+            return null;
+        }
+        String pfad;
+        try {
+            pfad = URI.create(href.trim()).getPath();
+        } catch (IllegalArgumentException _) {
+            return null;
+        }
+        boolean ordner = r.getElementsByTagNameNS("DAV:", "collection").getLength() > 0;
+        return new Eintrag(pfad, ordner, groesse(text(r, "getcontentlength")), geaendert(text(r, "getlastmodified")));
+    }
+
+    private static long groesse(String len) {
+        if (len == null) {
+            return -1;
+        }
+        try {
+            return Long.parseLong(len.trim());
+        } catch (NumberFormatException _) {
+            return -1;
+        }
+    }
+
+    private static Instant geaendert(String lm) {
+        if (lm == null) {
+            return null;
+        }
+        try {
+            return ZonedDateTime.parse(lm.trim(), DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
+        } catch (RuntimeException _) {
+            return null;
+        }
     }
 
     private static String text(Element e, String local) {

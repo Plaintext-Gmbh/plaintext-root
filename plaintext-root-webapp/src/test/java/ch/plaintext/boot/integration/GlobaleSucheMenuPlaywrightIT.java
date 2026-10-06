@@ -142,14 +142,14 @@ class GlobaleSucheMenuPlaywrightIT {
         assertFalse(page.url().contains("login"), "Login als " + benutzer + " schlug fehl: " + page.url());
     }
 
+    /** Raw answer of the last search, for the failure messages. */
+    private String letzteAntwort = "";
+
     /**
      * Types like a person (key by key, so the list narrows while typing) and returns the titles
      * rendered for the <b>complete</b> word: waits for the answer of {@code /api/search} to exactly
      * this query, then for the list to be drawn from it.
      */
-    /** Raw answer of the last search, for the failure messages. */
-    private String letzteAntwort = "";
-
     private List<String> suchen(String begriff) {
         Locator eingabe = page.locator(EINGABE);
         eingabe.click();

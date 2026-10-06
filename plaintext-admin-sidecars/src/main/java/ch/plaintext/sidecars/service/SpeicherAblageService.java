@@ -72,24 +72,7 @@ public class SpeicherAblageService implements DateiAblagenRegister {
      */
     public SpeicherAblage speichere(String name, String url, String benutzer, String neuesPasswort, String pfad) {
         String n = name == null ? "" : name.strip();
-        if (!SidecarBeschreibung.NAME.matcher(n).matches()) {
-            throw new IllegalArgumentException("Name: a-z, 0-9 und -, höchstens 40 Zeichen.");
-        }
-        URI u;
-        try {
-            u = AusgehendesZiel.pruefeUrl(url, erlaubteHosts);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Adresse: " + e.getMessage());
-        }
-        if (!"https".equals(u.getScheme()) && !erlaubteHosts.contains(u.getHost().toLowerCase(java.util.Locale.ROOT))) {
-            throw new IllegalArgumentException("Adresse: nur https, ausser für freigegebene interne Hosts.");
-        }
-        if (benutzer == null || benutzer.isBlank()) {
-            throw new IllegalArgumentException("Bitte den Benutzer angeben.");
-        }
-        if (pfad == null || pfad.isBlank()) {
-            throw new IllegalArgumentException("Bitte den Pfad angeben (Ordner in der Nextcloud).");
-        }
+        URI u = pruefeAngaben(n, url, benutzer, pfad);
         SpeicherAblage a = repo.findFirstByNameAndDeletedFalse(n).orElseGet(SpeicherAblage::new);
         boolean neu = a.getId() == null;
         if (neu && (neuesPasswort == null || neuesPasswort.isBlank())) {
@@ -110,6 +93,32 @@ public class SpeicherAblageService implements DateiAblagenRegister {
         }
         log.info("Speicher-Ablage «{}» {}: {} als {}, Pfad {}", n, neu ? "angelegt" : "geändert", a.getUrl(), a.getBenutzer(), a.getPfad());
         return pruefe(repo.save(a));
+    }
+
+    /**
+     * Name, Adresse (SSRF-Pruefung ueber AusgehendesZiel, https ausser freigegebenen Hosts), Benutzer und Pfad,
+     * in dieser Reihenfolge (Karte 1416, Sonar java:S3776: aus speichere() herausgeloest).
+     */
+    private URI pruefeAngaben(String n, String url, String benutzer, String pfad) {
+        if (!SidecarBeschreibung.NAME_MUSTER.matcher(n).matches()) {
+            throw new IllegalArgumentException("Name: a-z, 0-9 und -, höchstens 40 Zeichen.");
+        }
+        URI u;
+        try {
+            u = AusgehendesZiel.pruefeUrl(url, erlaubteHosts);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Adresse: " + e.getMessage());
+        }
+        if (!"https".equals(u.getScheme()) && !erlaubteHosts.contains(u.getHost().toLowerCase(java.util.Locale.ROOT))) {
+            throw new IllegalArgumentException("Adresse: nur https, ausser für freigegebene interne Hosts.");
+        }
+        if (benutzer == null || benutzer.isBlank()) {
+            throw new IllegalArgumentException("Bitte den Benutzer angeben.");
+        }
+        if (pfad == null || pfad.isBlank()) {
+            throw new IllegalArgumentException("Bitte den Pfad angeben (Ordner in der Nextcloud).");
+        }
+        return u;
     }
 
     /** Prüft Anmeldung und Ordner und speichert das Ergebnis. */

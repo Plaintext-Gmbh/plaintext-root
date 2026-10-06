@@ -29,6 +29,12 @@ import java.util.List;
  */
 public final class NextcloudAblage implements DateiAblage {
 
+    /** Was in der Fehlermeldung fehlt (Karte 1416, Sonar java:S1192). */
+    private static final String ORDNER = "Ordner";
+
+    /** HTTP-Kopf (Karte 1416, Sonar java:S1192). */
+    private static final String CONTENT_TYPE = "Content-Type";
+
     static final Duration ZEIT = Duration.ofSeconds(60);
     static final int MAX_LESEN = 50 * 1024 * 1024;
     private static final String PROPFIND = """
@@ -139,10 +145,10 @@ public final class NextcloudAblage implements DateiAblage {
      * @return Meldung für die Oberfläche
      */
     public String pruefe() throws IOException {
-        HttpResponse<String> r = sende(anfrage(wurzel).header("Depth", "1").header("Content-Type", "application/xml; charset=utf-8")
+        HttpResponse<String> r = sende(anfrage(wurzel).header("Depth", "1").header(CONTENT_TYPE, "application/xml; charset=utf-8")
                 .method("PROPFIND", HttpRequest.BodyPublishers.ofString(PROPFIND)).build(), HttpResponse.BodyHandlers.ofString());
         if (r.statusCode() != 207) {
-            throw fehler(r.statusCode(), "Ordner");
+            throw fehler(r.statusCode(), ORDNER);
         }
         int n = Math.max(0, WebDavAntwort.lies(r.body()).size() - 1);
         return "Verbindung in Ordnung, " + n + " Einträge im Ordner.";
@@ -159,10 +165,10 @@ public final class NextcloudAblage implements DateiAblage {
             HttpResponse<Void> m = sende(anfrage(URI.create(wurzel + rel.toString())).method("MKCOL", HttpRequest.BodyPublishers.noBody()).build(),
                     HttpResponse.BodyHandlers.discarding());
             if (m.statusCode() != 201 && m.statusCode() != 405) {
-                throw fehler(m.statusCode(), "Ordner");
+                throw fehler(m.statusCode(), ORDNER);
             }
         }
-        HttpResponse<Void> r = sende(anfrage(ziel).header("Content-Type", inhaltTyp == null ? "application/octet-stream" : inhaltTyp)
+        HttpResponse<Void> r = sende(anfrage(ziel).header(CONTENT_TYPE, inhaltTyp == null ? "application/octet-stream" : inhaltTyp)
                 .PUT(HttpRequest.BodyPublishers.ofByteArray(daten)).build(), HttpResponse.BodyHandlers.discarding());
         if (r.statusCode() != 201 && r.statusCode() != 204) {
             throw fehler(r.statusCode(), "Speichern");
@@ -200,10 +206,10 @@ public final class NextcloudAblage implements DateiAblage {
     @Override
     public List<AblageEintrag> liste(String ordner) throws IOException {
         URI u = URI.create(wurzel + kodiere(ordner == null ? "" : ordner, true));
-        HttpResponse<String> r = sende(anfrage(u).header("Depth", "1").header("Content-Type", "application/xml; charset=utf-8")
+        HttpResponse<String> r = sende(anfrage(u).header("Depth", "1").header(CONTENT_TYPE, "application/xml; charset=utf-8")
                 .method("PROPFIND", HttpRequest.BodyPublishers.ofString(PROPFIND)).build(), HttpResponse.BodyHandlers.ofString());
         if (r.statusCode() != 207) {
-            throw fehler(r.statusCode(), "Ordner");
+            throw fehler(r.statusCode(), ORDNER);
         }
         String basis = wurzel.getPath();
         String selbst = u.getPath();

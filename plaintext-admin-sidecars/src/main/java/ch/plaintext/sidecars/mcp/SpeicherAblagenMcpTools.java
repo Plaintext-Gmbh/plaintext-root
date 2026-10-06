@@ -34,6 +34,9 @@ import java.util.stream.Collectors;
 @ConditionalOnClass(name = "org.springframework.ai.mcp.annotation.McpTool")
 public class SpeicherAblagenMcpTools {
 
+    /** Praefix jeder Fehlerantwort (Karte 1416, Sonar java:S1192). */
+    private static final String FEHLER = "FEHLER: ";
+
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final SpeicherAblageService service;
@@ -73,9 +76,9 @@ public class SpeicherAblagenMcpTools {
         }
         try {
             SpeicherAblage s = service.pruefe(service.eintrag(name));
-            return (Boolean.TRUE.equals(s.getOk()) ? "OK: " : "FEHLER: ") + s.getMeldung();
+            return (Boolean.TRUE.equals(s.getOk()) ? "OK: " : FEHLER) + s.getMeldung();
         } catch (NoSuchElementException e) {
-            return "FEHLER: " + e.getMessage();
+            return FEHLER + e.getMessage();
         }
     }
 
@@ -97,7 +100,7 @@ public class SpeicherAblagenMcpTools {
             SpeicherAblage s = service.speichere(name, url, benutzer, passwort, pfad);
             return (Boolean.TRUE.equals(s.getOk()) ? "OK: " : "GESPEICHERT, ABER NICHT ERREICHBAR: ") + s.getMeldung();
         } catch (IllegalArgumentException e) {
-            return "FEHLER: " + e.getMessage();
+            return FEHLER + e.getMessage();
         }
     }
 
@@ -109,10 +112,10 @@ public class SpeicherAblagenMcpTools {
         Set<String> a = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toUnmodifiableSet());
         if (!a.contains("ROLE_ROOT")) {
             log.warn("MCP: {} abgewiesen — Rolle ROOT fehlt (Aufrufer {})", werkzeug, Log.mail(auth.getName()));
-            return "FEHLER: " + werkzeug + " erfordert die Rolle ROOT.";
+            return FEHLER + werkzeug + " erfordert die Rolle ROOT.";
         }
         if (schreibend && !a.contains("SCOPE_ADMIN")) {
-            return "FEHLER: " + werkzeug + " erfordert einen Aufrufer-Token mit scope=ADMIN.";
+            return FEHLER + werkzeug + " erfordert einen Aufrufer-Token mit scope=ADMIN.";
         }
         return null;
     }

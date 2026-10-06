@@ -110,6 +110,7 @@ class MobilSeitenControllerTest {
                 return "/watch/" + id + ".xhtml";
             }
 
+            @Override
             public int order() {
                 return order;
             }
@@ -130,6 +131,7 @@ class MobilSeitenControllerTest {
                 return "/watch/elemente.xhtml";
             }
 
+            @Override
             public boolean imUmlauf() {
                 return false;
             }

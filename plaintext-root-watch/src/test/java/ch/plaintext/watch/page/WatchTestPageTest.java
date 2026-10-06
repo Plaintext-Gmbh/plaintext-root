@@ -51,10 +51,12 @@ class WatchTestPageTest {
                 return "/watch/" + id + ".xhtml";
             }
 
+            @Override
             public boolean available() {
                 return erlaubt;
             }
 
+            @Override
             public boolean imUmlauf() {
                 return imUmlauf;
             }

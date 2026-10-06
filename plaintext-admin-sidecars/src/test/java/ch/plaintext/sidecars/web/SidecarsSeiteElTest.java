@@ -85,16 +85,16 @@ class SidecarsSeiteElTest {
     @DisplayName("Karte 1413: jede Property auf z.sidecar hat einen Getter an Sidecar")
     void sidecarHatGetter() throws Exception {
         List<String> gelesen = properties("z.sidecar");
-        assertThat(gelesen).as("Positivkontrolle: die Tabelle liest Sidecar-Felder").contains("name", "version", "authZustand");
-        assertThat(gelesen).isSubsetOf(lesbar(ch.plaintext.sidecars.entity.Sidecar.class));
+        assertThat(gelesen).as("Positivkontrolle: die Tabelle liest Sidecar-Felder").contains("name", "version", "authZustand")
+                .isSubsetOf(lesbar(ch.plaintext.sidecars.entity.Sidecar.class));
     }
 
     @Test
     @DisplayName("Karte 1413: jede Property auf a (Ablage) hat einen Getter an SpeicherAblage")
     void ablageHatGetter() throws Exception {
         List<String> gelesen = properties("a");
-        assertThat(gelesen).as("Positivkontrolle: die Ablagen-Tabelle liest Felder").contains("name", "ok", "letztePruefung");
-        assertThat(gelesen).isSubsetOf(lesbar(ch.plaintext.sidecars.entity.SpeicherAblage.class));
+        assertThat(gelesen).as("Positivkontrolle: die Ablagen-Tabelle liest Felder").contains("name", "ok", "letztePruefung")
+                .isSubsetOf(lesbar(ch.plaintext.sidecars.entity.SpeicherAblage.class));
     }
 
     @Test
@@ -102,8 +102,8 @@ class SidecarsSeiteElTest {
     void beanHatGetterUndMethoden() throws Exception {
         List<String> gelesen = properties("sidecarsBean");
         assertThat(gelesen).as("Positivkontrolle: Kennzahlen und Dialogzustand")
-                .contains("anzahlOk", "anzahlEingeschraenkt", "anzahlFehler", "ablageBestehend", "zeilen", "speicherAblagen");
-        assertThat(gelesen).isSubsetOf(lesbar(SidecarsBackingBean.class));
+                .contains("anzahlOk", "anzahlEingeschraenkt", "anzahlFehler", "ablageBestehend", "zeilen", "speicherAblagen")
+                .isSubsetOf(lesbar(SidecarsBackingBean.class));
 
         Set<String> methoden = Arrays.stream(SidecarsBackingBean.class.getMethods()).map(java.lang.reflect.Method::getName)
                 .collect(Collectors.toSet());
@@ -113,8 +113,8 @@ class SidecarsSeiteElTest {
             aufgerufen.add(m.group(1));
         }
         assertThat(aufgerufen).as("Positivkontrolle: Aktionen der Seite")
-                .contains("ergaenzenVorbereiten", "registrieren", "ablageNeu", "ablageBearbeiten", "ablageSpeichern", "zeit");
-        assertThat(aufgerufen).isSubsetOf(methoden);
+                .contains("ergaenzenVorbereiten", "registrieren", "ablageNeu", "ablageBearbeiten", "ablageSpeichern", "zeit")
+                .isSubsetOf(methoden);
     }
 
     @Test

@@ -132,23 +132,24 @@ public class MenuSearchProvider implements SearchProvider {
     }
 
     private static int literalScore(String t, String p, String[] tokens) {
-        if (tokens.length == 1) {
-            String n = tokens[0];
-            if (t.equals(n)) {
-                return 100;
-            }
-            if (t.startsWith(n)) {
-                return 80;
-            }
-            if (t.contains(n)) {
-                return 60;
-            }
-            if (p.contains(n)) {
-                return 30;
-            }
-            return 0;
-        }
+        return tokens.length == 1 ? einWortScore(t, p, tokens[0]) : mehrWortScore(t, p, tokens);
+    }
 
+    /** One search word (card 1416, Sonar java:S3776: split out of literalScore). */
+    private static int einWortScore(String t, String p, String n) {
+        if (t.equals(n)) {
+            return 100;
+        }
+        if (t.startsWith(n)) {
+            return 80;
+        }
+        if (t.contains(n)) {
+            return 60;
+        }
+        return p.contains(n) ? 30 : 0;
+    }
+
+    private static int mehrWortScore(String t, String p, String[] tokens) {
         // Multiple tokens: ALL parts have to occur in the path (parent + title).
         String path = p.isEmpty() ? t : p + " " + t;
         boolean titleHit = false;

@@ -68,13 +68,13 @@ class PlaintextDefaultsEnvironmentPostProcessorTest {
         processor.postProcessEnvironment(environment, new SpringApplication());
 
         String policy = environment.getProperty("joinfaces.primefaces.csp-policy");
-        assertThat(policy).isNotNull();
-        assertThat(policy).contains("base-uri 'self'", "object-src 'none'", "frame-ancestors 'self'");
-        assertThat(policy).as("PrimeFaces haengt ' nonce-…' ans Ende — script-src muss zuletzt stehen")
-                .endsWith("script-src 'self'");
+        assertThat(policy).isNotNull()
+                .contains("base-uri 'self'", "object-src 'none'", "frame-ancestors 'self'")
+                .as("PrimeFaces haengt ' nonce-…' ans Ende — script-src muss zuletzt stehen")
+                .endsWith("script-src 'self'")
         // Bewusst nicht: default-src (Kartenquellen der Apps) und form-action (Logout-Weiterleitung
         // zum IdP). Wer das aendert, braucht einen Seitendurchgang UND einen Logout-Test im Browser.
-        assertThat(policy).doesNotContain("default-src", "form-action", "unsafe-inline");
+                .doesNotContain("default-src", "form-action", "unsafe-inline");
     }
 
     @Test

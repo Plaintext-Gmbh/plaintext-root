@@ -237,12 +237,9 @@ class TabellenSortierungZweiBenutzerPlaywrightIT {
             if (stand != null && erwartet.equals(stand.getSortBy())) {
                 return stand;
             }
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+            // Gewartet wird auf die Datenbank, die Seite ist hier schon zu: parkNanos statt Thread.sleep
+            // (Karte 1416, Sonar java:S2925), ohne InterruptedException.
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(200));
         }
         UserPreference prefs = userPrefs.findByUniqueId(benutzer);
         throw new AssertionError("Keine Sortierung " + erwartet + " fuer " + benutzer + " unter " + SCHLUESSEL

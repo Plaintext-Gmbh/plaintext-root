@@ -43,6 +43,9 @@ import java.util.Set;
 @SupportedOptions({SchnittstellenKatalogProzessor.OPTION_MODUL, SchnittstellenKatalogProzessor.OPTION_STRENG})
 public class SchnittstellenKatalogProzessor extends AbstractProcessor {
 
+    /** Beginn eines Eintrags mit Name (Karte 1416, Sonar java:S1192). */
+    private static final String JSON_NAME_AUF = "{\"name\":";
+
     public static final String OPTION_MODUL = "plaintext.katalog.modul";
     public static final String OPTION_STRENG = "plaintext.katalog.streng";
     public static final String VERZEICHNIS = "META-INF/plaintext-katalog/";
@@ -107,7 +110,7 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
     }
 
     private String schnittstelle(TypeElement t, String zweck) {
-        StringBuilder s = new StringBuilder("{\"name\":").append(Json.text(t.getQualifiedName().toString()))
+        StringBuilder s = new StringBuilder(JSON_NAME_AUF).append(Json.text(t.getQualifiedName().toString()))
                 .append(",\"kurz\":").append(Json.text(t.getSimpleName().toString()))
                 .append(",\"zweck\":").append(Json.text(zweck))
                 .append(",\"erweitert\":[");
@@ -119,26 +122,29 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
         s.append("],\"methoden\":[");
         erste = true;
         for (Element m : t.getEnclosedElements()) {
-            if (m.getKind() != ElementKind.METHOD || m.getModifiers().contains(Modifier.PRIVATE)) {
-                continue;
+            if (m.getKind() == ElementKind.METHOD && !m.getModifiers().contains(Modifier.PRIVATE)) {
+                s.append(erste ? "" : ",");
+                methode(s, (ExecutableElement) m);
+                erste = false;
             }
-            ExecutableElement x = (ExecutableElement) m;
-            s.append(erste ? "" : ",").append("{\"name\":").append(Json.text(x.getSimpleName().toString()))
-                    .append(",\"rueckgabe\":").append(Json.text(x.getReturnType().toString()))
-                    .append(",\"art\":").append(Json.text(x.getModifiers().contains(Modifier.STATIC) ? "static"
-                            : x.getModifiers().contains(Modifier.DEFAULT) ? "default" : "abstrakt"))
-                    .append(",\"zweck\":").append(Json.text(javadoc(x)))
-                    .append(",\"parameter\":[");
-            boolean ep = true;
-            for (VariableElement p : x.getParameters()) {
-                s.append(ep ? "" : ",").append("{\"name\":").append(Json.text(p.getSimpleName().toString()))
-                        .append(",\"typ\":").append(Json.text(p.asType().toString())).append('}');
-                ep = false;
-            }
-            s.append("]}");
-            erste = false;
         }
         return s.append("]}").toString();
+    }
+
+    /** Eine Methode als JSON-Objekt (Karte 1416, Sonar java:S3776: aus schnittstelle() herausgeloest). */
+    private void methode(StringBuilder s, ExecutableElement x) {
+        s.append(JSON_NAME_AUF).append(Json.text(x.getSimpleName().toString()))
+                .append(",\"rueckgabe\":").append(Json.text(x.getReturnType().toString()))
+                .append(",\"art\":").append(Json.text(art(x)))
+                .append(",\"zweck\":").append(Json.text(javadoc(x)))
+                .append(",\"parameter\":[");
+        boolean ep = true;
+        for (VariableElement p : x.getParameters()) {
+            s.append(ep ? "" : ",").append(JSON_NAME_AUF).append(Json.text(p.getSimpleName().toString()))
+                    .append(",\"typ\":").append(Json.text(p.asType().toString())).append('}');
+            ep = false;
+        }
+        s.append("]}");
     }
 
     private String javadoc(Element e) {
@@ -171,5 +177,13 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
             }
             return b.append('"').toString();
         }
+    }
+
+    /** static, default oder abstrakt (Karte 1416, Sonar java:S3358: kein verschachtelter Ternary). */
+    private static String art(ExecutableElement x) {
+        if (x.getModifiers().contains(Modifier.STATIC)) {
+            return "static";
+        }
+        return x.getModifiers().contains(Modifier.DEFAULT) ? "default" : "abstrakt";
     }
 }

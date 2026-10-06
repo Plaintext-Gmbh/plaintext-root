@@ -494,44 +494,7 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
                 return Optional.empty();
             }
             Claims claims = verified.get();
-
-            // Card 635: a machine credential (signServiceToken) carries the same signature as an
-            // API token and would otherwise pass here -- with userId=null and without a scope claim,
-            // which counts as ADMIN. It is therefore explicitly rejected. Old API tokens do not carry
-            // the claim and remain valid unchanged.
-            String tokenUse = claims.get(CLAIM_TOKEN_USE, String.class);
-            if (tokenUse != null && !tokenUse.isBlank()) {
-                log.warn("JWT abgewiesen: token_use='{}' ist kein API-Token (jti={}). Ein Maschinen-Ausweis "
-                        + "gibt keinen API-Zugriff.", tokenUse, claims.getId());
-                return Optional.empty();
-            }
-
-            // Card 1360 (HB5): a token that names an issuer must name THIS instance. Tokens without
-            // iss (everything issued before root 1.738) stay valid — otherwise every token in use
-            // would die with the rollout. They age out by themselves (max. 90 days).
-            if (!issuerPasst(claims.getIssuer())) {
-                log.warn("JWT abgewiesen: iss='{}' ist nicht diese Instanz (erwartet '{}', jti={})",
-                        claims.getIssuer(), issuer == null ? "" : issuer.trim(), claims.getId());
-                return Optional.empty();
-            }
-
-            Long userId = claims.get(CLAIM_USER_ID, Long.class);
-            String mandat = claims.get(CLAIM_MANDAT, String.class);
-            String email = claims.get(CLAIM_EMAIL, String.class);
-            String tokenName = claims.get(CLAIM_TOKEN_NAME, String.class);
-            String scope = claims.get(CLAIM_SCOPE, String.class);
-            String jti = claims.getId();
-            Instant expiry = claims.getExpiration().toInstant();
-
-            // Check if token expires soon (within 7 days)
-            Duration timeUntilExpiry = Duration.between(Instant.now(), expiry);
-            if (timeUntilExpiry.compareTo(EXPIRY_WARNING_THRESHOLD) <= 0) {
-                log.warn("JWT token for userId={}, mandat={} expires in {} days - renewal recommended",
-                        userId, mandat, timeUntilExpiry.toDays());
-            }
-
-            log.debug("JWT token validated successfully for userId={}, mandat={}, email={}", userId, mandat, Log.mail(email));
-            return Optional.of(new JwtValidationResult(userId, mandat, email, tokenName, expiry, scope, jti));
+            return abgewiesen(claims) ? Optional.empty() : Optional.of(ergebnis(claims));
 
         } catch (ExpiredJwtException e) {
             Claims claims = e.getClaims();
@@ -547,6 +510,54 @@ public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
             log.warn("JWT token validation failed: {}", e.getMessage());
             return Optional.empty();
         }
+    }
+
+    /**
+     * Reasons to reject a correctly signed token (card 1416, Sonar java:S3776: split out of
+     * validateToken; logic and log lines unchanged).
+     */
+    private boolean abgewiesen(Claims claims) {
+        // Card 635: a machine credential (signServiceToken) carries the same signature as an
+        // API token and would otherwise pass here -- with userId=null and without a scope claim,
+        // which counts as ADMIN. It is therefore explicitly rejected. Old API tokens do not carry
+        // the claim and remain valid unchanged.
+        String tokenUse = claims.get(CLAIM_TOKEN_USE, String.class);
+        if (tokenUse != null && !tokenUse.isBlank()) {
+            log.warn("JWT abgewiesen: token_use='{}' ist kein API-Token (jti={}). Ein Maschinen-Ausweis "
+                    + "gibt keinen API-Zugriff.", tokenUse, claims.getId());
+            return true;
+        }
+
+        // Card 1360 (HB5): a token that names an issuer must name THIS instance. Tokens without
+        // iss (everything issued before root 1.738) stay valid — otherwise every token in use
+        // would die with the rollout. They age out by themselves (max. 90 days).
+        if (!issuerPasst(claims.getIssuer())) {
+            log.warn("JWT abgewiesen: iss='{}' ist nicht diese Instanz (erwartet '{}', jti={})",
+                    claims.getIssuer(), issuer == null ? "" : issuer.trim(), claims.getId());
+            return true;
+        }
+        return false;
+    }
+
+    /** The validation result of an accepted token, with an expiry warning shortly before the end. */
+    private JwtValidationResult ergebnis(Claims claims) {
+        Long userId = claims.get(CLAIM_USER_ID, Long.class);
+        String mandat = claims.get(CLAIM_MANDAT, String.class);
+        String email = claims.get(CLAIM_EMAIL, String.class);
+        String tokenName = claims.get(CLAIM_TOKEN_NAME, String.class);
+        String scope = claims.get(CLAIM_SCOPE, String.class);
+        String jti = claims.getId();
+        Instant expiry = claims.getExpiration().toInstant();
+
+        // Check if token expires soon (within 7 days)
+        Duration timeUntilExpiry = Duration.between(Instant.now(), expiry);
+        if (timeUntilExpiry.compareTo(EXPIRY_WARNING_THRESHOLD) <= 0) {
+            log.warn("JWT token for userId={}, mandat={} expires in {} days - renewal recommended",
+                    userId, mandat, timeUntilExpiry.toDays());
+        }
+
+        log.debug("JWT token validated successfully for userId={}, mandat={}, email={}", userId, mandat, Log.mail(email));
+        return new JwtValidationResult(userId, mandat, email, tokenName, expiry, scope, jti);
     }
 
     /**
