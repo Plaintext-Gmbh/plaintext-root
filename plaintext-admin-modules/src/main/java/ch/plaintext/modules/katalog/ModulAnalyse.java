@@ -7,6 +7,7 @@ import ch.plaintext.sidecars.SidecarRegister;
 import ch.plaintext.sidecars.SidecarStand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -14,12 +15,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ClassUtils;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -39,7 +44,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * <ul>
  *   <li><b>Nutzer</b> einer Schnittstelle: jede Bean aus {@code ch.plaintext.*}, die sie über ein Feld
  *       oder einen Konstruktor-Parameter bezieht — direkt (Pflicht) oder über {@code ObjectProvider},
- *       {@code Optional}, {@code List}/{@code Set}/{@code Collection} (optional: fehlt der Umsetzer,
+ *       {@code Optional}, {@code List}/{@code Set}/{@code Collection} oder als Feld mit
+ *       {@code @Autowired(required = false)} bzw. mit {@code @Nullable} (optional: fehlt der Umsetzer,
  *       läuft der Nutzer weiter).</li>
  *   <li><b>Modulbild</b>: was ein Modul anbietet, umsetzt und nutzt.</li>
  *   <li><b>Weglassen</b>: welche Pflicht-Nutzer brechen, wenn ein Modul fehlt, das den einzigen
@@ -155,6 +161,32 @@ public class ModulAnalyse {
 
     /** Ein Injektionspunkt: Binärname des bezogenen Typs und ob er über eine Hülle (optional) kommt. */
     record Bezug(String typ, boolean optional) {
+        Bezug alsOptional() {
+            return new Bezug(typ, true);
+        }
+    }
+
+    /**
+     * Ein Injektionspunkt ohne Hülle ist trotzdem optional, wenn Spring ihn ohne Umsetzer leer lässt:
+     * {@code @Autowired(required = false)} am Feld oder ein {@code @Nullable} (jspecify, Spring oder
+     * jakarta, erkannt am einfachen Namen). Sonst stünde der Nutzer beim Weglassen unter «bricht»,
+     * obwohl er weiterläuft (gefunden an {@code RechnungMailService.textProvider}, Karte 1422).
+     */
+    static boolean optionalMarkiert(AnnotatedElement e) {
+        Autowired a = e.getAnnotation(Autowired.class);
+        if (a != null && !a.required()) {
+            return true;
+        }
+        for (Annotation an : e.getAnnotations()) {
+            if (an.annotationType().getSimpleName().equals("Nullable")) {
+                return true;
+            }
+        }
+        // jspecify-@Nullable ist eine TYPE_USE-Annotation: sie hängt am Typ, nicht am Feld/Parameter.
+        AnnotatedType t = e instanceof Field f ? f.getAnnotatedType()
+                : e instanceof Parameter p ? p.getAnnotatedType() : null;
+        return t != null && Arrays.stream(t.getAnnotations())
+                .anyMatch(an -> an.annotationType().getSimpleName().equals("Nullable"));
     }
 
     /** Felder (auch geerbte) und Konstruktor-Parameter einer Klasse. */
@@ -163,12 +195,13 @@ public class ModulAnalyse {
         try {
             for (Class<?> c = k; c != null && c != Object.class; c = c.getSuperclass()) {
                 for (Field f : c.getDeclaredFields()) {
-                    bezug(f.getGenericType()).ifPresent(raus::add);
+                    bezug(f.getGenericType()).map(b -> optionalMarkiert(f) ? b.alsOptional() : b).ifPresent(raus::add);
                 }
             }
             for (Constructor<?> ctor : k.getDeclaredConstructors()) {
-                for (Type t : ctor.getGenericParameterTypes()) {
-                    bezug(t).ifPresent(raus::add);
+                for (Parameter p : ctor.getParameters()) {
+                    bezug(p.getParameterizedType()).map(b -> optionalMarkiert(p) ? b.alsOptional() : b)
+                            .ifPresent(raus::add);
                 }
             }
         } catch (RuntimeException | LinkageError e) {

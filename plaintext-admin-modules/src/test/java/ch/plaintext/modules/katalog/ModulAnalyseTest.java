@@ -9,7 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.mcp.annotation.McpTool;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.List;
@@ -32,6 +34,24 @@ class ModulAnalyseTest {
         }
     }
 
+    /** Feld mit @Autowired(required = false): läuft ohne Umsetzer weiter (RechnungMailService.textProvider). */
+    static class FeldOptionalNutzer {
+        @Autowired(required = false)
+        SchnittstellenKatalogTest.Vertrag v;
+    }
+
+    /** Gegenprobe: Feld mit @Autowired (Pflicht) bricht ohne Umsetzer. */
+    static class FeldPflichtNutzer {
+        @Autowired
+        SchnittstellenKatalogTest.Vertrag v;
+    }
+
+    /** Konstruktor-Parameter mit jspecify-@Nullable (TYPE_USE): optional. */
+    static class NullableNutzer {
+        NullableNutzer(SchnittstellenKatalogTest.@Nullable Vertrag v) {
+        }
+    }
+
     /** Ein MCP-Werkzeug, das der Bauplan finden soll. */
     static class Werkzeuge {
         @McpTool(name = "mahnung_senden", description = "Verschickt eine Mahnung.")
@@ -50,6 +70,9 @@ class ModulAnalyseTest {
         kontext.registerBean("pflichtNutzer", PflichtNutzer.class);
         kontext.registerBean("optionalerNutzer", OptionalerNutzer.class);
         kontext.registerBean("werkzeuge", Werkzeuge.class);
+        kontext.registerBean("feldOptionalNutzer", FeldOptionalNutzer.class);
+        kontext.registerBean("feldPflichtNutzer", FeldPflichtNutzer.class);
+        kontext.registerBean("nullableNutzer", NullableNutzer.class);
         kontext.refresh();
         SchnittstellenKatalog katalog = new SchnittstellenKatalog(kontext);
         analyse = new ModulAnalyse(katalog, kontext, kontext.getBeanProvider(SidecarRegister.class));
@@ -61,12 +84,15 @@ class ModulAnalyseTest {
     }
 
     @Test
-    @DisplayName("Nutzer: Pflicht über Konstruktor, optional über ObjectProvider; Gegenprobe: Werkzeuge nutzt nichts")
+    @DisplayName("Nutzer: Pflicht über Konstruktor und @Autowired-Feld, optional über ObjectProvider, @Autowired(required = false) und @Nullable; Gegenprobe: Werkzeuge nutzt nichts")
     void nutzer() {
         List<ModulAnalyse.Nutzung> n = analyse.nutzer("ch.plaintext.modules.katalog.SchnittstellenKatalogTest.Vertrag");
         assertThat(n).extracting(ModulAnalyse.Nutzung::bean, ModulAnalyse.Nutzung::optional).containsExactlyInAnyOrder(
                 org.assertj.core.groups.Tuple.tuple("pflichtNutzer", false),
-                org.assertj.core.groups.Tuple.tuple("optionalerNutzer", true));
+                org.assertj.core.groups.Tuple.tuple("optionalerNutzer", true),
+                org.assertj.core.groups.Tuple.tuple("feldOptionalNutzer", true),
+                org.assertj.core.groups.Tuple.tuple("feldPflichtNutzer", false),
+                org.assertj.core.groups.Tuple.tuple("nullableNutzer", true));
         assertThat(analyse.nutzungen()).noneMatch(x -> x.bean().equals("werkzeuge"));
     }
 
@@ -120,7 +146,7 @@ class ModulAnalyseTest {
         ModulAnalyse.SchnittstellenBild v = a.schnittstellen().stream()
                 .filter(s -> s.name().endsWith("SchnittstellenKatalogTest.Vertrag")).findFirst().orElseThrow();
         assertThat(v.umgesetztIn()).isNotEmpty();
-        assertThat(v.nutzer()).hasSize(2);
+        assertThat(v.nutzer()).hasSize(5);
         assertThat(a.ohneUmsetzer()).doesNotContain("ch.plaintext.modules.katalog.IZeiteintrag", "ch.plaintext.fehlt.Weg");
         assertThat(a.module()).isNotEmpty();
     }
