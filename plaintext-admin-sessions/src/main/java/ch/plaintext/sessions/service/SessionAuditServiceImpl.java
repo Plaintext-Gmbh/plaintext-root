@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sessions.service;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.sessions.ISessionAuditService;
 import ch.plaintext.sessions.entity.UserSession;
@@ -19,6 +21,10 @@ import java.util.List;
 @Service
 @Named("sessionAuditService")
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Hält je Anmeldung eine Sitzungszeile mit Benutzer, Mandant und Browserkennung aktuell und schliesst sie beim Abmelden.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"Fehler beim Schreiben werden geloggt und unterbrechen die Anmeldung nicht"},
+        beispiele = {})
 public class SessionAuditServiceImpl implements ISessionAuditService {
 
     private final UserSessionRepository repository;

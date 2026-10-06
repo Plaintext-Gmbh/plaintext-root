@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.deeplink;
 
+import ch.plaintext.modules.ModulApi;
+
 /**
  * SPI for deep link targets (Card 345).
  *
@@ -32,6 +34,7 @@ package ch.plaintext.boot.deeplink;
  *       link cannot target an arbitrary destination (no open redirect).</li>
  * </ul>
  */
+@ModulApi(art = ModulApi.Art.ERWEITERUNG, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface DeepLinkTarget {
 
     /**

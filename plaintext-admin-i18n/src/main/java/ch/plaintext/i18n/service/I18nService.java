@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.i18n.service;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.I18nProvider;
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import ch.plaintext.boot.utils.I18nSeedLinter;
@@ -34,6 +36,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Übersetzt Oberflächentexte aus der Tabelle der Übersetzungen, im Speicher zwischengespeichert; fehlende Einträge fallen auf den deutschen Text zurück.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"Saat-Dateien füllen beim Start nur fehlende Schlüssel", "Ob übersetzt wird, steht je Mandant in den Einstellungen"},
+        beispiele = {"translate(\"Speichern\", \"en\") -> Save"})
 public class I18nService implements I18nProvider {
 
     private final I18nTranslationRepository repository;

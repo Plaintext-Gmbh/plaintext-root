@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sidecars.service;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.sidecars.SidecarRegister;
 import ch.plaintext.sidecars.SidecarStand;
 import ch.plaintext.sidecars.SidecarVerbindung;
@@ -41,6 +43,10 @@ import java.util.Optional;
  */
 @Slf4j
 @Service
+@ModulApiUmsetzung(beschreibung = "Kennt die Sidecars aus der Konfiguration und die von Hand ergänzten, fragt sie nach dem Sidecar-Protokoll ab und vermittelt eine Fähigkeit an den passenden, erreichbaren Sidecar.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.AUSSEN,
+        hinweise = {"Nur freigegebene Hosts werden abgefragt", "Bei mehreren Anbietern gewinnt der mit Status ok und kürzester Antwortzeit"},
+        beispiele = {"fuer(\"bild.vorschau\")"})
 public class SidecarService implements SidecarRegister {
 
     /** Seltener als das nicht neu abfragen (Seitenaufruf). */

@@ -6,6 +6,8 @@
  */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.apitoken.IApiTokenService.ApiTokenValidationResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Prüft den Bearer-Header eines REST-Aufrufs: Signatur, Ablauf und Widerruf, und liefert entweder das Ergebnis oder eine RFC-7807-Fehlerantwort.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Liest nur, schreibt nichts", "Fehlender, ungültiger, abgelaufener oder widerrufener Token ergibt eine Fehlerantwort (hasError)"},
+        beispiele = {"validateRequest(request).hasError() -> Fehlerantwort zurückgeben"})
 public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
 
     private final ApiTokenService apiTokenService;

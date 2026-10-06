@@ -12,6 +12,40 @@ exhaustive.
 
 ## [Unreleased]
 
+### Added
+- **`@ModulApi` and `@ModulApiUmsetzung`** (Karte 1422, Daniel 04.10.2026), in
+  `plaintext-root-interfaces` (`ch.plaintext.modules`). `@ModulApi(art = SCHNITTSTELLE | DTO,
+  stabilitaet = STABIL | NEU | VERALTET, seit, ersatz)` marks a contract other modules may use; a DTO's
+  name must start with `I`. `@ModulApiUmsetzung(beschreibung, seiteneffekte = KEINE | INTERN | AUSSEN,
+  hinweise, beispiele)` describes how an implementation behaves, on the class and optionally on methods.
+- **The interface catalog runs in every module.** The parent now puts `plaintext-root-katalog` in front
+  of Lombok in `annotationProcessorPaths` and passes `-Aplaintext.katalog.modul=${project.artifactId}`.
+  Outside `*-interfaces` it records only `@ModulApi` interfaces and `@ModulApiUmsetzung` descriptions and
+  writes no file when there are none; in `*-interfaces` it still records every public interface.
+  `SchnittstellenKatalog` and the MCP tools show art, stability, origin and the implementation's
+  description next to each implementer. **Consumer impact:** a module that declares its own
+  `annotationProcessorPaths` must use `combine.self="override"` with the catalog before Lombok, or it
+  loses the catalog (Maven merges these lists by position). Catalogs written by older processors stay
+  readable. Test sources get no catalog (`default-testCompile` without the module option).
+- **Module page shows the interfaces** (Karte 1422): search, filter by kind, expandable rows with
+  methods, "Genutzt von" (required/optional) and the implementers with their `@ModulApiUmsetzung`.
+- **MCP `analysiere_module` and `bauplan`** (Karte 1422): who provides, implements and uses which
+  interface in the running version (from the beans' injection points), what breaks when a module is
+  left out, and for a question the matching interfaces, MCP tools, sidecar capabilities and gaps.
+  `get_modul_schnittstelle` adds `genutztVon`. ADMIN/ROOT only, like the existing catalog tools.
+- **`PlaintextModulApiVertragTest`** (shared rule, Karte 1422): a DTO interface is named `I…`, every
+  implementation of a `SCHNITTSTELLE` carries `@ModulApiUmsetzung`, and its texts contain no secrets
+  or internal addresses. Records may be DTOs and keep their name; `ERWEITERUNG` marks framework
+  extension points whose implementations need no description.
+- **root's own contracts are marked** (Karte 1422, Etappe B): in `plaintext-root-interfaces` 21 services
+  carry `@ModulApi(art = SCHNITTSTELLE)`, 8 extension points `ERWEITERUNG` (`PlaintextCron`,
+  `ModuleDescriptor`, `DashboardTileDataProvider`, `SearchProvider`, `DeepLinkTarget`,
+  `MenuVisibilityProvider`, `PlaintextBusSubscriber`, `StoreBacked`) and 2 DTOs; the 19 root
+  implementations carry `@ModulApiUmsetzung`. `MenuItem`, `TileItem` and `SearchHit` stay unmarked
+  until they are renamed with their consumers. **Consumer impact:** a consumer class that implements one
+  of the 21 services (e.g. `PlaintextSecurity`, `SystemMailSender`, `DateiAblage`) fails
+  `PlaintextModulApiVertragTest` until it carries `@ModulApiUmsetzung` — add it with the bump.
+
 ### Changed
 - **All watch pages of root on the mobile framework** (Karte 1387, Daniel 01.10.2026: «bitte alles
   umstellen»). `WatchHomePage` (tiles from `WatchWidget`) and `WatchTestPage` (page switches plus a

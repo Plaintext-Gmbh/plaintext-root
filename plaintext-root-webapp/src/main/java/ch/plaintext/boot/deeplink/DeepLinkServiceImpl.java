@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.deeplink;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,10 @@ import java.util.Optional;
  */
 @Service
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Baut Deep Links auf Datensätze aus den registrierten DeepLinkTarget-Beans; die Adresse ist kein Geheimnis und gibt kein Recht, beim Öffnen wird neu geprüft.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Absolute Links mit der konfigurierten eigenen Adresse, nie aus dem Request", "Unbekannter Typ oder ungültiger Mandant: IllegalArgumentException"},
+        beispiele = {"buildRelativeLink(\"rechnung\", \"plaintext\", \"42\")"})
 public class DeepLinkServiceImpl implements DeepLinkService {
 
     private final Map<String, DeepLinkTarget> targets = new LinkedHashMap<>();

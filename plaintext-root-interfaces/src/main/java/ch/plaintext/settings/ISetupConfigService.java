@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.settings;
 
+import ch.plaintext.modules.ModulApi;
+
 /**
  * Reads the per-tenant login and security setup that ROOT maintains under <i>Root → Setup</i>
  * (module {@code plaintext-admin-settings}): which login paths are on (OIDC auto-redirect, password,
@@ -10,6 +12,7 @@ package ch.plaintext.settings;
  * TOTP is enabled somewhere, and which system mail account sends auth mails. Callers outside the
  * settings module (login page, security filters) read through this contract instead of the entity.
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface ISetupConfigService {
 
     boolean isOidcAutoRedirectEnabled(String mandat);

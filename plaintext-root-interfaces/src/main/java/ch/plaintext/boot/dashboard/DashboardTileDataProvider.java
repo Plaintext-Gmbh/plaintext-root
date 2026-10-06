@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.dashboard;
 
+import ch.plaintext.modules.ModulApi;
+
 import ch.plaintext.DashboardTileData;
 
 /**
@@ -16,6 +18,7 @@ import ch.plaintext.DashboardTileData;
  *
  * @author plaintext.ch
  */
+@ModulApi(art = ModulApi.Art.ERWEITERUNG, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface DashboardTileDataProvider {
 
     /**

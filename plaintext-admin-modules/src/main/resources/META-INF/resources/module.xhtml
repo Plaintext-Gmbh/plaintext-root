@@ -56,6 +56,104 @@
                 </p:outputPanel>
             </p:fieldset>
 
+            <!-- Karte 1422: Schnittstellen der Module aus dem Katalog, dieselben Daten wie list/get_modul_schnittstelle(n) -->
+            <p:fieldset id="schnittstellenBereich" legend="🔌 Schnittstellen der Module" style="margin-bottom: 20px;">
+                <div style="display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-bottom:.6rem;">
+                    <p:inputText id="schnittstellenSuche" value="#{modulesBackingBean.schnittstellenSuche}"
+                                 placeholder="Suchen in Name, Zweck und Methoden" style="min-width:16rem;">
+                        <p:ajax event="keyup" delay="300" process="@this" update=":fm:schnittstellen"/>
+                    </p:inputText>
+                    <p:selectOneButton id="schnittstellenArt" value="#{modulesBackingBean.schnittstellenArt}">
+                        <f:selectItem itemLabel="Alle" itemValue=""/>
+                        <f:selectItem itemLabel="Dienste" itemValue="SCHNITTSTELLE"/>
+                        <f:selectItem itemLabel="DTOs" itemValue="DTO"/>
+                        <f:selectItem itemLabel="Erweiterungen" itemValue="ERWEITERUNG"/>
+                        <f:selectItem itemLabel="Nicht markiert" itemValue="OHNE"/>
+                        <p:ajax process="@this" update=":fm:schnittstellen"/>
+                    </p:selectOneButton>
+                </div>
+                <p:dataTable id="schnittstellen" value="#{modulesBackingBean.schnittstellen}" var="s" rowKey="#{s.name()}"
+                             rowExpandMode="multiple" paginator="true" rows="25"
+                             emptyMessage="Keine Schnittstelle passt zur Suche."
+                             styleClass="ui-datatable-sm" reflow="true">
+                    <p:column style="width:2.5rem">
+                        <p:rowToggler/>
+                    </p:column>
+                    <p:column headerText="Schnittstelle">
+                        <b title="#{s.name()}">#{s.kurz()}</b>
+                        <div style="font-size:.8em; color:var(--pt-text-color-secondary);">#{s.modul()} · #{s.herkunft()}#{s.typ() == 'record' ? ' · Record' : ''}</div>
+                    </p:column>
+                    <p:column headerText="Art" style="width:8rem">
+                        <p:tag value="#{modulesBackingBean.artText(s)}" severity="#{modulesBackingBean.artSchwere(s)}"/>
+                    </p:column>
+                    <p:column headerText="Stabilität" style="width:7rem">
+                        <p:tag value="#{s.stabilitaet()}" severity="#{modulesBackingBean.stabilitaetSchwere(s)}"
+                               rendered="#{not empty s.stabilitaet()}"/>
+                    </p:column>
+                    <p:column headerText="Zweck">#{s.zweckKurz()}</p:column>
+                    <p:column headerText="Umgesetzt in">#{modulesBackingBean.umgesetztIn(s)}</p:column>
+
+                    <p:rowExpansion>
+                        <div style="padding:.4rem .6rem;">
+                            <div style="white-space:pre-line;">#{s.zweck()}</div>
+                            <div style="font-size:.85em; color:var(--pt-text-color-secondary); margin-top:.3rem;">
+                                #{s.name()}
+                                <h:outputText value=" · seit #{s.seit()}" rendered="#{not empty s.seit()}"/>
+                                <h:outputText value=" · Ersatz: #{s.ersatz()}" rendered="#{not empty s.ersatz()}"/>
+                            </div>
+
+                            <h:panelGroup layout="block" rendered="#{not empty s.methoden()}" style="margin-top:.6rem;">
+                                <b>Methoden</b>
+                                <ui:repeat value="#{s.methoden()}" var="me">
+                                    <div style="margin:.2rem 0 0 .6rem;">
+                                        <code>#{me.rueckgabe()} #{me.name()}(<ui:repeat value="#{me.parameter()}" var="pa" varStatus="st">#{pa.typ()} #{pa.name()}#{st.last ? '' : ', '}</ui:repeat>)</code>
+                                        <h:outputText value=" — #{me.zweck()}" rendered="#{not empty me.zweck()}"/>
+                                    </div>
+                                </ui:repeat>
+                            </h:panelGroup>
+
+                            <h:panelGroup layout="block" style="margin-top:.6rem;">
+                                <b>Genutzt von</b>
+                                <h:outputText value=" niemandem in dieser Anwendung" rendered="#{empty modulesBackingBean.nutzer(s)}"/>
+                                <ui:repeat value="#{modulesBackingBean.nutzer(s)}" var="n">
+                                    <div style="margin:.2rem 0 0 .6rem;">
+                                        <code>#{n.klasse()}</code> (#{n.modul()})
+                                        <p:tag value="#{n.optional() ? 'optional' : 'Pflicht'}" severity="#{n.optional() ? 'secondary' : 'warning'}"/>
+                                    </div>
+                                </ui:repeat>
+                            </h:panelGroup>
+
+                            <h:panelGroup layout="block" style="margin-top:.6rem;">
+                                <b>Umsetzer</b>
+                                <h:outputText value=" keiner in dieser Anwendung" rendered="#{empty s.umsetzer()}"/>
+                                <ui:repeat value="#{s.umsetzer()}" var="u">
+                                    <div style="margin:.3rem 0 0 .6rem;">
+                                        <code>#{u.klasse()}</code> (#{u.modul()})
+                                        <h:panelGroup layout="block" rendered="#{u.beschreibung() != null}" style="margin:.2rem 0 0 .6rem;">
+                                            <p:tag value="#{u.beschreibung().seiteneffekte()}"
+                                                   severity="#{modulesBackingBean.seiteneffekteSchwere(u.beschreibung().seiteneffekte())}"/>
+                                            #{u.beschreibung().beschreibung()}
+                                            <ui:repeat value="#{u.beschreibung().hinweise()}" var="hw">
+                                                <div style="font-size:.85em;">• #{hw}</div>
+                                            </ui:repeat>
+                                            <ui:repeat value="#{u.beschreibung().beispiele()}" var="bs">
+                                                <div style="font-size:.85em;"><code>#{bs}</code></div>
+                                            </ui:repeat>
+                                            <ui:repeat value="#{u.beschreibung().methoden()}" var="mu">
+                                                <div style="font-size:.85em; margin-top:.15rem;"><code>#{mu.name()}</code>: #{mu.beschreibung()}
+                                                    (#{mu.seiteneffekte()})</div>
+                                            </ui:repeat>
+                                        </h:panelGroup>
+                                        <h:outputText value=" — ohne @ModulApiUmsetzung" style="font-size:.85em; color:var(--pt-text-color-secondary);"
+                                                      rendered="#{u.beschreibung() == null}"/>
+                                    </div>
+                                </ui:repeat>
+                            </h:panelGroup>
+                        </div>
+                    </p:rowExpansion>
+                </p:dataTable>
+            </p:fieldset>
+
             <p:dialog id="dlgImport" header="Modul importieren" widgetVar="dlgImport" modal="true"
                       resizable="false" styleClass="mobile-safe" showEffect="fade">
                 <p:outputPanel layout="block" rendered="#{not empty modulesBackingBean.importModuleId}">

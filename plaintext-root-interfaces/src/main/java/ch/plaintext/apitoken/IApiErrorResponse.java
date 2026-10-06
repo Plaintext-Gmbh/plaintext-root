@@ -3,12 +3,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.time.Instant;
 
 /**
  * Interface for standardized API error responses (RFC 7807).
  * Implementations are serialized to JSON in REST responses.
  */
+@ModulApi(art = ModulApi.Art.DTO, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface IApiErrorResponse {
 
     /**

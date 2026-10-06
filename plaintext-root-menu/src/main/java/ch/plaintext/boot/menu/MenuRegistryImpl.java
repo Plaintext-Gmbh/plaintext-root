@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.menu;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.MenuRegistry;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ModulApiUmsetzung(beschreibung = "Liefert alle mit MenuAnnotation registrierten Menüpunkte samt Titel, Rollen und Reihenfolge.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Sichtbarkeit je Mandant entscheidet MenuVisibilityProvider"},
+        beispiele = {})
 public class MenuRegistryImpl implements MenuRegistry {
 
     private final ApplicationContext applicationContext;

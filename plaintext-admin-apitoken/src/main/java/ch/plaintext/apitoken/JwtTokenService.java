@@ -6,6 +6,8 @@
  */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.secret.VaultwardenSecretService;
 import io.jsonwebtoken.Claims;
@@ -59,6 +61,10 @@ import java.util.UUID;
  */
 @Service
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Stellt kurzlebige, signierte Dienst-Tokens aus, mit denen sich diese Instanz bei einer Gegenstelle ausweist; prüft eingehende Tokens gegen alle aktiven öffentlichen Schlüssel.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Schlüsselrotation mit zwei Generationen gleichzeitig gültig", "Laufzeit der API-Tokens 90 Tage, Warnung 7 Tage vor Ablauf"},
+        beispiele = {})
 public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
 
     public static final int MIN_VALIDITY_DAYS = 7;

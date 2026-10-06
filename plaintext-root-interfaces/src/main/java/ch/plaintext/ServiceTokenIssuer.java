@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.time.Duration;
 
 /**
@@ -31,6 +33,7 @@ import java.time.Duration;
  * a way that this instance's own token validation rejects it — otherwise a value travelling over
  * the wire as an HTTP header would be a fully privileged entry into our own API.
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface ServiceTokenIssuer {
 
     /**

@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sidecars;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +19,7 @@ import java.util.Optional;
  * <p>Umgesetzt im Modul {@code plaintext-admin-sidecars}. Nicht jede Anwendung bindet es ein, deshalb
  * den Bezug optional halten ({@code @Autowired(required = false)} bzw. {@code ObjectProvider}).</p>
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.NEU)
 public interface SidecarRegister {
 
     /** @return alle bekannten Sidecars mit ihrem letzten Stand, nach Name */

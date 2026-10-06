@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.impersonation.ImpersonationAudit;
@@ -49,6 +51,10 @@ import java.util.Set;
 @Component
 @Named("plaintextSecurity")
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Gibt Auskunft über den angemeldeten Benutzer aus dem Spring-Sicherheitskontext: Mandant, Identität, Rollen, Benutzer eines Mandanten.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Ohne Anmeldung liefert getMandat() einen Platzhalter (NO_AUTH) statt einer Ausnahme", "Mandantenwechsel nur auf die für den Benutzer erlaubten Mandanten, sonst abgelehnt und geloggt"},
+        beispiele = {"getMandat() -> aktiver Mandant der Sitzung"})
 public class PlaintextSecurityImpl implements PlaintextSecurity {
 
     private static final String SESSION_ORIGINAL_USER_ID = "impersonation.originalUserId";

@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sidecars.service;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.ablagen.DateiAblage;
 import ch.plaintext.ablagen.DateiAblagenRegister;
 import ch.plaintext.boot.plugins.netz.AusgehendesZiel;
@@ -32,6 +34,10 @@ import java.util.Set;
  */
 @Slf4j
 @Service
+@ModulApiUmsetzung(beschreibung = "Verwaltet die unter Root → Sidecars eingerichteten Speicher-Ablagen und gibt Modulen eine Ablage nach Namen.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"Adressen nur öffentlich oder ausdrücklich freigegeben", "Lässt sich eine Ablage nicht öffnen, liefert ablage() ein leeres Optional und loggt den Grund"},
+        beispiele = {"ablage(\"drawio\")"})
 public class SpeicherAblageService implements DateiAblagenRegister {
 
     private final SpeicherAblageRepository repo;

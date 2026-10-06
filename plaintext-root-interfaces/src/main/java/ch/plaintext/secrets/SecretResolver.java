@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.secrets;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.util.Optional;
 
 /**
@@ -27,6 +29,7 @@ import java.util.Optional;
  * should keep the dependency <b>optional</b> ({@code @Autowired(required = false)}), because not
  * every application includes the secrets module.
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface SecretResolver {
 
     /**

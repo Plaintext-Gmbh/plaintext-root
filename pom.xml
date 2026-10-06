@@ -620,14 +620,37 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <configuration>
+                        <!-- Karte 1422: der Schnittstellen-Katalog laeuft in JEDEM Modul aller Repos und nimmt
+                             dort @ModulApi-Schnittstellen und @ModulApiUmsetzung-Beschreibungen auf (in
+                             *-interfaces wie bisher alle oeffentlichen Schnittstellen). VOR Lombok: dahinter sieht
+                             er unter release 25 keine Wurzelelemente (Karte 1405, leerer Katalog in app).
+                             Module mit eigener Liste brauchen combine.self="override" und dieselbe Reihenfolge. -->
                         <annotationProcessorPaths>
+                            <path>
+                                <groupId>ch.plaintext</groupId>
+                                <artifactId>plaintext-root-katalog</artifactId>
+                                <version>${plaintext-root.version}</version>
+                            </path>
                             <path>
                                 <groupId>org.projectlombok</groupId>
                                 <artifactId>lombok</artifactId>
                                 <version>${lombok.version}</version>
                             </path>
                         </annotationProcessorPaths>
+                        <compilerArgs>
+                            <arg>-Aplaintext.katalog.modul=${project.artifactId}</arg>
+                        </compilerArgs>
                     </configuration>
+                    <executions>
+                        <!-- Karte 1422: kein Katalog aus Testquellen. Ohne die Modul-Option schreibt der Prozessor
+                             still nichts und prueft nichts — Testfaelle duerfen absichtlich falsche @ModulApi tragen. -->
+                        <execution>
+                            <id>default-testCompile</id>
+                            <configuration>
+                                <compilerArgs combine.self="override"/>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>

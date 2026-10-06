@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.notifications;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.util.Map;
 
 /**
@@ -14,6 +16,7 @@ import java.util.Map;
  * ({@code IMailTemplateProvider}, key namespace {@code notif.*}): the caller supplies the default
  * title and text, and a tenant-scoped admin override in the DB takes precedence.</p>
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface NotificationService {
 
     /**

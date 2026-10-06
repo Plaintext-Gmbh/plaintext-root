@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.mailtemplate;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.util.Map;
 
 /**
@@ -17,6 +19,7 @@ import java.util.Map;
  * @author info@plaintext.ch
  * @since 2026
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface IMailTemplateProvider {
 
     /**

@@ -8,6 +8,8 @@ import ch.plaintext.modules.ModuleDangerZoneService;
 import ch.plaintext.modules.ModuleDataService;
 import ch.plaintext.modules.ModuleService;
 import ch.plaintext.modules.ModuleView;
+import ch.plaintext.modules.katalog.ModulAnalyse;
+import ch.plaintext.modules.katalog.SchnittstellenKatalog;
 import jakarta.faces.application.FacesMessage;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -66,7 +68,20 @@ public class ModulesBackingBean implements Serializable {
     @Autowired
     private transient ModuleDangerZoneService dangerZoneService;
 
+    /** Karte 1422: Schnittstellen der Module (Katalog), dieselben Daten wie über MCP. */
+    @Autowired
+    private transient SchnittstellenKatalog katalog;
+
+    @Autowired
+    private transient ModulAnalyse analyse;
+
     private List<ModuleView> module = new ArrayList<>();
+
+    // ── Schnittstellen (Karte 1422) ─────────────────────────
+    /** Suchtext in Name, Zweck und Methoden. */
+    private String schnittstellenSuche = "";
+    /** Filter: leer = alle, {@code SCHNITTSTELLE}, {@code DTO}, {@code OHNE} (nicht mit @ModulApi markiert). */
+    private String schnittstellenArt = "";
 
     // ── Export (Download) ──────────────────────────────────
     private StreamedContent exportFile;
@@ -191,6 +206,66 @@ public class ModulesBackingBean implements Serializable {
         } finally {
             clearBestaetigung = null;
         }
+    }
+
+    /**
+     * Schnittstellen nach Suche und Art gefiltert. Bewusst nicht im Feld gehalten: die Bean ist
+     * sitzungsgebunden und serialisierbar, der Katalog liegt einmal gelesen im Speicher.
+     */
+    public List<SchnittstellenKatalog.Schnittstelle> getSchnittstellen() {
+        return katalog == null ? List.of() : filtere(katalog.suche(schnittstellenSuche), schnittstellenArt);
+    }
+
+    static List<SchnittstellenKatalog.Schnittstelle> filtere(List<SchnittstellenKatalog.Schnittstelle> l, String art) {
+        String a = art == null ? "" : art;
+        return switch (a) {
+            case "" -> l;
+            case "OHNE" -> l.stream().filter(s -> !s.annotiert()).toList();
+            default -> l.stream().filter(s -> a.equals(s.art())).toList();
+        };
+    }
+
+    /** Wer die Schnittstelle in der laufenden Version bezieht (Karte 1422). */
+    public List<ModulAnalyse.Nutzung> nutzer(SchnittstellenKatalog.Schnittstelle s) {
+        return analyse == null ? List.of() : analyse.nutzer(s.name());
+    }
+
+    /** Module, in denen die Schnittstelle umgesetzt ist, oder ein Strich. */
+    public String umgesetztIn(SchnittstellenKatalog.Schnittstelle s) {
+        String m = String.join(", ", s.umsetzer().stream().map(SchnittstellenKatalog.Umsetzer::modul).distinct().toList());
+        return m.isEmpty() ? "—" : m;
+    }
+
+    public String artText(SchnittstellenKatalog.Schnittstelle s) {
+        return switch (s.art()) {
+            case "SCHNITTSTELLE" -> "Dienst";
+            case "DTO" -> "DTO";
+            case "ERWEITERUNG" -> "Erweiterungspunkt";
+            default -> "nicht markiert";
+        };
+    }
+
+    public String artSchwere(SchnittstellenKatalog.Schnittstelle s) {
+        return s.annotiert() ? "info" : "secondary";
+    }
+
+    public String stabilitaetSchwere(SchnittstellenKatalog.Schnittstelle s) {
+        return switch (s.stabilitaet()) {
+            case "STABIL" -> "success";
+            case "VERALTET" -> "warning";
+            case "NEU" -> "info";
+            default -> "secondary";
+        };
+    }
+
+    /** KEINE grün, INTERN blau, AUSSEN rot — Mail, Messenger und Zahlung fallen auf. */
+    public String seiteneffekteSchwere(String seiteneffekte) {
+        return switch (seiteneffekte == null ? "" : seiteneffekte) {
+            case "KEINE" -> "success";
+            case "INTERN" -> "info";
+            case "AUSSEN" -> "danger";
+            default -> "secondary";
+        };
     }
 
     private void addMessage(FacesMessage.Severity severity, String text) {

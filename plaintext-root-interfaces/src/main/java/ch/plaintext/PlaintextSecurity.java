@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext;
 
+import ch.plaintext.modules.ModulApi;
+
 import org.springframework.security.core.Authentication;
 
 import java.util.HashSet;
@@ -18,6 +20,7 @@ import java.util.Set;
  * @author mad
  * @since 15.11.2025
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface PlaintextSecurity {
 
     /**

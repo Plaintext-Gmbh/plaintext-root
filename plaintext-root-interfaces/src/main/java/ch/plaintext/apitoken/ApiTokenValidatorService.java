@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.modules.ModulApi;
+
 /**
  * Service for validating Bearer tokens in REST API requests.
  * Extracts and validates JWT tokens from the Authorization header.
@@ -14,6 +16,7 @@ package ch.plaintext.apitoken;
  * Long userId = outcome.getValidation().userId();
  * </pre>
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface ApiTokenValidatorService {
 
     /**

@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.dashboard;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.TileRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ModulApiUmsetzung(beschreibung = "Liefert alle mit @DashboardTile annotierten Kacheln als TileItem, gelesen beim Start aus den Beans.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Die Rollen stehen am TileItem, gefiltert wird beim Aufrufer"},
+        beispiele = {})
 public class TileRegistryImpl implements TileRegistry {
 
     private final ApplicationContext applicationContext;

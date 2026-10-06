@@ -6,6 +6,8 @@
  */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Verwaltet API-Tokens als RS256-signierte JWT; gespeichert wird nur der SHA-256-Hash, der Klartext erscheint einmal beim Anlegen.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"Ein Token gehört einem Benutzer und seinem Mandanten", "Widerruf wirkt sofort bei der nächsten Prüfung", "Ein verlorener Klartext lässt sich nicht wiederherstellen, nur neu ausstellen"},
+        beispiele = {"createToken(\"ci\", ...) liefert den JWT genau einmal"})
 public class ApiTokenService implements IApiTokenService {
 
     private final ApiTokenRepository apiTokenRepository;

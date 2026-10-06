@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.settings.service;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.settings.ISetupConfigService;
 import ch.plaintext.settings.entity.SetupConfig;
 import ch.plaintext.settings.repository.SetupConfigRepository;
@@ -18,6 +20,10 @@ import java.util.Optional;
 @Named("setupConfigService")
 @Slf4j
 @RequiredArgsConstructor
+@ModulApiUmsetzung(beschreibung = "Liest die Login- und Sicherheitseinstellungen, die ROOT je Mandant unter Root → Setup pflegt.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Ohne Eintrag für den Mandanten: Passwortverwaltung und Sitzungsprotokoll an; OIDC-Weiterleitung, Root-Benutzer, Selbstregistrierung, Reset-Link und Magic Link aus"},
+        beispiele = {})
 public class SetupConfigService implements ISetupConfigService {
 
     private final SetupConfigRepository repository;

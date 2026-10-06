@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.deeplink;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +19,7 @@ import java.util.Optional;
  *                                                 String.valueOf(auszahlung.getId()));
  * }</pre>
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface DeepLinkService {
 
     /** Path of the root entry point (without the context path). */

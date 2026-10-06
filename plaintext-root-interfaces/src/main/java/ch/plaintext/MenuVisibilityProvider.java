@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.util.Collection;
 
 /**
@@ -17,6 +19,7 @@ import java.util.Collection;
  * @author plaintext.ch
  * @since 1.39.0
  */
+@ModulApi(art = ModulApi.Art.ERWEITERUNG, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface MenuVisibilityProvider {
 
     /**

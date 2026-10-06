@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +14,7 @@ import java.util.Optional;
  * Allows modules to create and validate API tokens without
  * depending on the implementation module.
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface IApiTokenService {
 
     /**

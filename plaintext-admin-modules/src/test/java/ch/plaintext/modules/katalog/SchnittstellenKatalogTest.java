@@ -76,4 +76,39 @@ class SchnittstellenKatalogTest {
         assertThat(SchnittstellenKatalog.binaerName("ch.plaintext.a.Dienst")).isEqualTo("ch.plaintext.a.Dienst");
         assertThat(SchnittstellenKatalog.modul(org.junit.jupiter.api.Test.class)).isEqualTo("junit-jupiter-api");
     }
+
+    @Test
+    @DisplayName("Karte 1422: @ModulApi-Felder, DTO im Fachmodul, Beschreibung der Umsetzung am Umsetzer")
+    void modulApi() {
+        SchnittstellenKatalog k = katalog();
+        SchnittstellenKatalog.Schnittstelle dto = k.eine("IZeiteintrag").orElseThrow();
+        assertThat(dto.istDto()).isTrue();
+        assertThat(dto.annotiert()).isTrue();
+        assertThat(dto.stabilitaet()).isEqualTo("STABIL");
+        assertThat(dto.seit()).isEqualTo("1.749.0");
+        assertThat(dto.herkunft()).isEqualTo("im Modul");
+        assertThat(dto.modul()).isEqualTo("test-fachmodul");
+
+        // Beschreibung steht im Katalog des Fachmoduls, der Vertrag in test-interfaces: verknüpft über die Klasse
+        SchnittstellenKatalog.Umsetzer u = k.eine("Vertrag").orElseThrow().umsetzer().getFirst();
+        assertThat(u.beschreibung()).isNotNull();
+        assertThat(u.beschreibung().beschreibung()).isEqualTo("Rechnet ohne Umweg.");
+        assertThat(u.beschreibung().seiteneffekte()).isEqualTo("KEINE");
+        assertThat(u.beschreibung().hinweise()).containsExactly("Nur ganze Rappen");
+        assertThat(u.beschreibung().methoden()).extracting(SchnittstellenKatalog.MethodenUmsetzung::name).containsExactly("rechne");
+        // Seit Etappe B liegen auch echte Kataloge (z. B. plaintext-admin-modules mit ModuleService) auf dem Pfad.
+        assertThat(k.umsetzungen()).extracting(SchnittstellenKatalog.Umsetzung::modul).contains("test-fachmodul");
+        assertThat(k.umsetzungen()).filteredOn(x -> x.modul().equals("test-fachmodul"))
+                .extracting(SchnittstellenKatalog.Umsetzung::kurz).containsExactly("Umsetzung");
+    }
+
+    @Test
+    @DisplayName("Gegenprobe: ein Katalog im alten Format (ohne Felder aus 1422) bleibt lesbar, unannotiert")
+    void altesFormat() {
+        SchnittstellenKatalog.Schnittstelle alt = katalog().eine("ch.plaintext.fehlt.Weg").orElseThrow();
+        assertThat(alt.annotiert()).isFalse();
+        assertThat(alt.art()).isEmpty();
+        assertThat(alt.herkunft()).isEqualTo("interfaces-Modul");
+        assertThat(alt.istDto()).isFalse();
+    }
 }
