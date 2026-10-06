@@ -80,7 +80,12 @@ public class RootEntityBackingBean extends AbstractEntityBackingBean {
     }
 
     private void initializeObjectMapper() {
-        objectMapper = new ObjectMapper();
+        objectMapper = exportMapper();
+    }
+
+    /** Paket-sichtbar fuer den Formatvertrag (Karte 1423). */
+    static ObjectMapper exportMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
 
         // Hibernate module disabled (not yet compatible with Hibernate 7/SB4)
         // TODO: Re-enable when jackson-datatype-hibernate7 is released
@@ -101,6 +106,7 @@ public class RootEntityBackingBean extends AbstractEntityBackingBean {
         // Set visibility to ensure all fields are serialized
         objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
         objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+        return objectMapper;
     }
 
     /**

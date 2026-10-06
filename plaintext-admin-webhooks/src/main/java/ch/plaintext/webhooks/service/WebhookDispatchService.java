@@ -81,7 +81,7 @@ public class WebhookDispatchService {
         List<WebhookEndpoint> endpoints = endpointRepo.findByMandatAndEnabledTrueAndDeletedFalse(event.mandant());
         for (WebhookEndpoint endpoint : endpoints) {
             if (abonniert(endpoint, event.eventType())) {
-                anlegenUndZustellen(endpoint, event.eventType(), payloadJson(event));
+                anlegenUndZustellen(endpoint, event.eventType(), payloadJson(objectMapper, event));
             }
         }
     }
@@ -191,7 +191,8 @@ public class WebhookDispatchService {
         return false;
     }
 
-    private String payloadJson(PlaintextDomainEvent event) {
+    /** Rumpf an die Empfaenger; paket-sichtbar fuer den Formatvertrag (Karte 1423). */
+    static String payloadJson(ObjectMapper objectMapper, PlaintextDomainEvent event) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("eventType", event.eventType());

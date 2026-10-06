@@ -58,7 +58,7 @@ public class ModuleDataService {
         envelope.put("tables", tables);
 
         try {
-            return objectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
+            return exportMapper().writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Export von Modul '" + moduleId + "' fehlgeschlagen: " + e.getMessage(), e);
         }
@@ -78,7 +78,7 @@ public class ModuleDataService {
 
         JsonNode root;
         try {
-            root = objectMapper().readTree(json);
+            root = exportMapper().readTree(json);
         } catch (IOException e) {
             throw new IllegalArgumentException("Keine gültige Export-Datei: " + e.getMessage(), e);
         }
@@ -105,8 +105,8 @@ public class ModuleDataService {
 
             List<?> rows;
             try {
-                rows = objectMapper().convertValue(tables.get(entityName),
-                        objectMapper().getTypeFactory().constructCollectionType(List.class, entityClass));
+                rows = exportMapper().convertValue(tables.get(entityName),
+                        exportMapper().getTypeFactory().constructCollectionType(List.class, entityClass));
             } catch (Exception e) {
                 fehler.add("Tabelle '" + entityName + "': " + e.getMessage());
                 continue;
@@ -135,7 +135,8 @@ public class ModuleDataService {
     }
 
     /** Own instance (not shared as a bean) — configured analogously to {@code RootEntityBackingBean}. */
-    private ObjectMapper objectMapper() {
+    /** Paket-sichtbar fuer den Formatvertrag (Karte 1423). */
+    static ObjectMapper exportMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
