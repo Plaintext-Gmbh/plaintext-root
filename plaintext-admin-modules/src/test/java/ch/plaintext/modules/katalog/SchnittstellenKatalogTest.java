@@ -96,7 +96,10 @@ class SchnittstellenKatalogTest {
         assertThat(u.beschreibung().seiteneffekte()).isEqualTo("KEINE");
         assertThat(u.beschreibung().hinweise()).containsExactly("Nur ganze Rappen");
         assertThat(u.beschreibung().methoden()).extracting(SchnittstellenKatalog.MethodenUmsetzung::name).containsExactly("rechne");
-        assertThat(k.umsetzungen()).extracting(SchnittstellenKatalog.Umsetzung::modul).containsExactly("test-fachmodul");
+        // Seit Etappe B liegen auch echte Kataloge (z. B. plaintext-admin-modules mit ModuleService) auf dem Pfad.
+        assertThat(k.umsetzungen()).extracting(SchnittstellenKatalog.Umsetzung::modul).contains("test-fachmodul");
+        assertThat(k.umsetzungen()).filteredOn(x -> x.modul().equals("test-fachmodul"))
+                .extracting(SchnittstellenKatalog.Umsetzung::kurz).containsExactly("Umsetzung");
     }
 
     @Test
