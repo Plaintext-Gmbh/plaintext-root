@@ -5,10 +5,12 @@ package ch.plaintext.boot.plugins.objstore;
 
 import ch.plaintext.framework.XstreamBaseJPAConverter;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
+import tools.jackson.databind.DefaultTyping;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import lombok.extern.slf4j.Slf4j;
@@ -42,14 +44,15 @@ public class SimpleStorableConverter implements AttributeConverter<SimpleStorabl
     private final ObjectMapper mapper = createMapper();
 
     private static ObjectMapper createMapper() {
-        ObjectMapper m = new ObjectMapper();
-        m.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        // Karte 1423: Jackson 3 mit den Vorgaben von Jackson 2 — die Spalte ist ein Vertrag, alte Zeilen
+        // muessen lesbar bleiben und neue gleich aussehen (JsonFormatVertragTest, Vertragsdatei aus Jackson 2).
         // The concrete type is part of the JSON, otherwise the interface cannot be
         // reconstructed. activateDefaultTyping instead of an annotation on the
         // interface: SimpleStorable is meant to stay free of Jackson references.
-        m.activateDefaultTyping(typeValidator(), ObjectMapper.DefaultTyping.NON_FINAL,
-                JsonTypeInfo.As.PROPERTY);
-        return m;
+        return JsonMapper.builderWithJackson2Defaults()
+                .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
+                .activateDefaultTyping(typeValidator(), DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY)
+                .build();
     }
 
     /**

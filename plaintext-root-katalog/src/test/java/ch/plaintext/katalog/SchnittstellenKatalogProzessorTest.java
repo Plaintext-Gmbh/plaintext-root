@@ -3,8 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.katalog;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -58,19 +59,19 @@ class SchnittstellenKatalogProzessorTest {
                 }
                 """, true);
         assertThat(d.getDiagnostics()).noneMatch(x -> x.getKind() == Diagnostic.Kind.ERROR);
-        JsonNode k = new ObjectMapper().readTree(tmp.resolve("out/META-INF/plaintext-katalog/test-interfaces.json").toFile());
-        assertThat(k.path("modul").asText()).isEqualTo("test-interfaces");
+        JsonNode k = JsonMapper.builderWithJackson2Defaults().build().readTree(tmp.resolve("out/META-INF/plaintext-katalog/test-interfaces.json").toFile());
+        assertThat(k.path("modul").asString()).isEqualTo("test-interfaces");
         JsonNode s = k.path("schnittstellen");
         assertThat(s).hasSize(2);
-        assertThat(s.get(0).path("name").asText()).isEqualTo("ch.x.Dienst");
-        assertThat(s.get(0).path("zweck").asText()).startsWith("Rechnet Preise um.");
+        assertThat(s.get(0).path("name").asString()).isEqualTo("ch.x.Dienst");
+        assertThat(s.get(0).path("zweck").asString()).startsWith("Rechnet Preise um.");
         JsonNode m = s.get(0).path("methoden");
-        assertThat(m.get(0).path("name").asText()).isEqualTo("umrechnen");
-        assertThat(m.get(0).path("rueckgabe").asText()).isEqualTo("long");
-        assertThat(m.get(0).path("parameter").get(1).path("name").asText()).isEqualTo("waehrung");
-        assertThat(m.get(0).path("zweck").asText()).contains("Wandelt um");
-        assertThat(m.get(1).path("art").asText()).isEqualTo("default");
-        assertThat(s.get(1).path("name").asText()).isEqualTo("ch.x.Dienst.Teil");
+        assertThat(m.get(0).path("name").asString()).isEqualTo("umrechnen");
+        assertThat(m.get(0).path("rueckgabe").asString()).isEqualTo("long");
+        assertThat(m.get(0).path("parameter").get(1).path("name").asString()).isEqualTo("waehrung");
+        assertThat(m.get(0).path("zweck").asString()).contains("Wandelt um");
+        assertThat(m.get(1).path("art").asString()).isEqualTo("default");
+        assertThat(s.get(1).path("name").asString()).isEqualTo("ch.x.Dienst.Teil");
     }
 
     @Test

@@ -7,10 +7,11 @@ import ch.plaintext.boot.menu.MenuAnnotation;
 import ch.plaintext.jpa.model.EntityDescriptor;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Named;
 import lombok.Getter;
@@ -80,27 +81,25 @@ public class RootEntityBackingBean extends AbstractEntityBackingBean {
     }
 
     private void initializeObjectMapper() {
-        objectMapper = new ObjectMapper();
+        objectMapper = exportMapper();
+    }
 
+    /** Paket-sichtbar fuer den Formatvertrag (Karte 1423). */
+    static ObjectMapper exportMapper() {
+        // Karte 1423: Jackson 3 mit den Vorgaben von Jackson 2; das Exportformat ist ein Vertrag
+        // (RootEntityExportVertragTest). java.time ist in Jackson 3 eingebaut.
         // Hibernate module disabled (not yet compatible with Hibernate 7/SB4)
-        // TODO: Re-enable when jackson-datatype-hibernate7 is released
-
-        // Register JavaTime module for date/time handling
-        objectMapper.registerModule(new JavaTimeModule());
-
-        // Serialization features
-        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-        objectMapper.disable(SerializationFeature.FAIL_ON_SELF_REFERENCES);
-
-        // Deserialization features
-        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        objectMapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
-
-        // Set visibility to ensure all fields are serialized
-        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
-        objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+        return JsonMapper.builderWithJackson2Defaults()
+                .enable(SerializationFeature.INDENT_OUTPUT)
+                .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                .disable(SerializationFeature.FAIL_ON_SELF_REFERENCES)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
+                // Set visibility to ensure all fields are serialized
+                .changeDefaultVisibility(v -> v.withVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE)
+                        .withVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY))
+                .build();
     }
 
     /**

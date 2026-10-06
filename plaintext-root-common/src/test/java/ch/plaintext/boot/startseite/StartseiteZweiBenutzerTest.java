@@ -88,8 +88,8 @@ class StartseiteZweiBenutzerTest {
         UserPreference alt = new UserPreference();
         alt.setUniqueId("carla");
         ablage.save(alt);
-        com.fasterxml.jackson.databind.node.ObjectNode baum =
-                (com.fasterxml.jackson.databind.node.ObjectNode) new com.fasterxml.jackson.databind.ObjectMapper()
+        tools.jackson.databind.node.ObjectNode baum =
+                (tools.jackson.databind.node.ObjectNode) new tools.jackson.databind.ObjectMapper()
                         .readTree(ablage.json("carla"));
         assertThat(baum.has("startseiten")).isTrue(); // Positivkontrolle: das Feld wird geschrieben
         baum.remove("startseiten");

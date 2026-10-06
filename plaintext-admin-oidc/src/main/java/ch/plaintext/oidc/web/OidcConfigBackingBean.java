@@ -7,8 +7,9 @@ import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.oidc.entity.OidcConfig;
 import ch.plaintext.oidc.service.OidcConfigService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
 import jakarta.annotation.PostConstruct;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.ExternalContext;
@@ -191,8 +192,7 @@ public class OidcConfigBackingBean implements Serializable {
             json.put("defaultRoles", selected.getDefaultRoles());
             json.put("defaultMandat", selected.getDefaultMandat());
 
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.enable(SerializationFeature.INDENT_OUTPUT);
+            ObjectMapper mapper = JsonMapper.builderWithJackson2Defaults().enable(SerializationFeature.INDENT_OUTPUT).build();
             byte[] content = mapper.writeValueAsBytes(json);
 
             FacesContext fc = FacesContext.getCurrentInstance();
@@ -221,7 +221,7 @@ public class OidcConfigBackingBean implements Serializable {
         }
         try (InputStream is = uploadedFile.getInputStream()) {
             String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            ObjectMapper mapper = new ObjectMapper();
+            ObjectMapper mapper = JsonMapper.builderWithJackson2Defaults().build();
             Map<String, Object> json = mapper.readValue(content, Map.class);
 
             if (selected == null) {

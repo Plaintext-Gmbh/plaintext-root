@@ -5,7 +5,8 @@ package ch.plaintext.anforderungen.web;
 
 import ch.plaintext.anforderungen.entity.Anforderung;
 import ch.plaintext.anforderungen.service.AnforderungService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import jakarta.faces.context.FacesContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
@@ -119,7 +120,7 @@ public class ClaudeSummaryBackingBean implements Serializable {
             return "\"\"";
         }
         try {
-            ObjectMapper mapper = new ObjectMapper();
+            ObjectMapper mapper = JsonMapper.builderWithJackson2Defaults().build();
             return mapper.writeValueAsString(anforderung.getClaudeSummary());
         } catch (Exception e) {
             log.error("Error converting markdown to JSON", e);

@@ -9,7 +9,8 @@ import ch.plaintext.webhooks.entity.WebhookDeliveryStatus;
 import ch.plaintext.webhooks.entity.WebhookEndpoint;
 import ch.plaintext.webhooks.repository.WebhookDeliveryRepository;
 import ch.plaintext.webhooks.repository.WebhookEndpointRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,7 +54,7 @@ public class WebhookDispatchService {
     private final WebhookDeliveryRepository deliveryRepo;
     private final WebhookCrypto crypto;
     private final WebhookHttpClient httpClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonMapper.builderWithJackson2Defaults().build();
 
     // Sonar java:S2229 (card 891): dispatch() carries @Transactional, but was reached here via
     // SELF-INVOCATION — which bypasses the Spring proxy, so the annotation had no effect.
@@ -81,7 +82,7 @@ public class WebhookDispatchService {
         List<WebhookEndpoint> endpoints = endpointRepo.findByMandatAndEnabledTrueAndDeletedFalse(event.mandant());
         for (WebhookEndpoint endpoint : endpoints) {
             if (abonniert(endpoint, event.eventType())) {
-                anlegenUndZustellen(endpoint, event.eventType(), payloadJson(event));
+                anlegenUndZustellen(endpoint, event.eventType(), payloadJson(objectMapper, event));
             }
         }
     }
@@ -191,7 +192,8 @@ public class WebhookDispatchService {
         return false;
     }
 
-    private String payloadJson(PlaintextDomainEvent event) {
+    /** Rumpf an die Empfaenger; paket-sichtbar fuer den Formatvertrag (Karte 1423). */
+    static String payloadJson(ObjectMapper objectMapper, PlaintextDomainEvent event) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("eventType", event.eventType());

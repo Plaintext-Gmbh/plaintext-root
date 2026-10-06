@@ -1,0 +1,27 @@
+{
+  "module" : "probe",
+  "version" : "1.0",
+  "tables" : {
+    "Probe" : [ {
+      "id" : 42,
+      "deleted" : false,
+      "createdBy" : "anna@example.ch",
+      "createdDate" : "2026-10-06T04:00:00.123+00:00",
+      "lastModifiedBy" : null,
+      "lastModifiedDate" : null,
+      "mandat" : "plaintext",
+      "tags" : [ "a", "b" ],
+      "name" : "Probe \"mit\" Zeichen äöü",
+      "betrag" : 1234.50,
+      "tag" : "2026-10-06",
+      "zeit" : "2026-10-06T07:15:30",
+      "moment" : "2026-10-06T05:15:30Z",
+      "art" : "DOPPELT",
+      "aktiv" : true,
+      "leer" : null,
+      "zahlen" : {
+        "eins" : 1
+      }
+    } ]
+  }
+}

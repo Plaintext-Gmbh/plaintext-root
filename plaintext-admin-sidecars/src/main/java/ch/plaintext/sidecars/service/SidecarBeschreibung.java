@@ -3,10 +3,11 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sidecars.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -38,7 +39,7 @@ public record SidecarBeschreibung(String protokoll, String name, String titel, S
     static final Set<String> STATUS_WERTE = Set.of("ok", "eingeschraenkt", "fehler");
     static final Set<String> METHODEN = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");
     static final Set<String> SEITENEFFEKTE = Set.of("keiner", "intern", "aussen");
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     /** Ein Unterzustand, z. B. «WhatsApp gekoppelt». */
     public record Teil(String name, String status, String text) {
@@ -84,7 +85,7 @@ public record SidecarBeschreibung(String protokoll, String name, String titel, S
         JsonNode n;
         try {
             n = JSON.readTree(json);
-        } catch (IOException _) {
+        } catch (JacksonException _) {
             throw new Ungueltig("Antwort ist kein JSON.");
         }
         if (n == null || !n.isObject()) {
@@ -93,7 +94,7 @@ public record SidecarBeschreibung(String protokoll, String name, String titel, S
         String protokoll = text(n, "protokoll");
         String name = text(n, "name");
         String status = text(n, "status");
-        String authArt = n.path("auth").path("art").asText(null);
+        String authArt = n.path("auth").path("art").asString(null);
         pruefeKopf(protokoll, name, status, authArt);
         List<String> hinweise = new ArrayList<>();
         List<Teil> teile = teile(n);
@@ -199,7 +200,7 @@ public record SidecarBeschreibung(String protokoll, String name, String titel, S
 
     private static String text(JsonNode n, String feld) {
         JsonNode v = n.get(feld);
-        return v == null || v.isNull() || !v.isValueNode() ? null : v.asText();
+        return v == null || v.isNull() || !v.isValueNode() ? null : v.asString();
     }
 
     /** pruefeFaehigkeit verlangt die Methode schon; hier nur, damit kein Weg ueber null fuehrt. */

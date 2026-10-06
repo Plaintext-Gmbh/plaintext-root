@@ -3,8 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.katalog;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -86,7 +87,7 @@ class ModulApiKatalogProzessorTest {
     }
 
     private JsonNode katalog(String modul) throws Exception {
-        return new ObjectMapper().readTree(tmp.resolve("out/META-INF/plaintext-katalog/" + modul + ".json").toFile());
+        return JsonMapper.builderWithJackson2Defaults().build().readTree(tmp.resolve("out/META-INF/plaintext-katalog/" + modul + ".json").toFile());
     }
 
     @Test
@@ -122,24 +123,24 @@ class ModulApiKatalogProzessorTest {
         JsonNode k = katalog("plaintext-z-fotos");
         JsonNode s = k.path("schnittstellen");
         assertThat(s).as("Intern ist nicht annotiert und bleibt draussen").hasSize(1);
-        assertThat(s.get(0).path("name").asText()).isEqualTo("ch.x.IFotoQuelle");
+        assertThat(s.get(0).path("name").asString()).isEqualTo("ch.x.IFotoQuelle");
         assertThat(s.get(0).path("annotiert").asBoolean()).isTrue();
-        assertThat(s.get(0).path("art").asText()).isEqualTo("SCHNITTSTELLE");
-        assertThat(s.get(0).path("stabilitaet").asText()).isEqualTo("STABIL");
-        assertThat(s.get(0).path("seit").asText()).isEqualTo("1.749.0");
-        assertThat(s.get(0).path("herkunft").asText()).isEqualTo("im Modul");
+        assertThat(s.get(0).path("art").asString()).isEqualTo("SCHNITTSTELLE");
+        assertThat(s.get(0).path("stabilitaet").asString()).isEqualTo("STABIL");
+        assertThat(s.get(0).path("seit").asString()).isEqualTo("1.749.0");
+        assertThat(s.get(0).path("herkunft").asString()).isEqualTo("im Modul");
 
         JsonNode u = k.path("umsetzungen");
         assertThat(u).hasSize(1);
-        assertThat(u.get(0).path("klasse").asText()).isEqualTo("ch.x.NasFotoQuelle");
+        assertThat(u.get(0).path("klasse").asString()).isEqualTo("ch.x.NasFotoQuelle");
         assertThat(u.get(0).path("schnittstellen")).extracting(JsonNode::asText).containsExactly("ch.x.IFotoQuelle", "ch.x.Intern");
-        assertThat(u.get(0).path("beschreibung").asText()).isEqualTo("Liest vom Fotos-Sidecar.");
-        assertThat(u.get(0).path("seiteneffekte").asText()).isEqualTo("KEINE");
+        assertThat(u.get(0).path("beschreibung").asString()).isEqualTo("Liest vom Fotos-Sidecar.");
+        assertThat(u.get(0).path("seiteneffekte").asString()).isEqualTo("KEINE");
         assertThat(u.get(0).path("hinweise")).extracting(JsonNode::asText).containsExactly("Nur eigener Mandant", "Höchstens 20 MB");
         JsonNode m = u.get(0).path("methoden");
         assertThat(m).hasSize(1);
-        assertThat(m.get(0).path("name").asText()).isEqualTo("foto");
-        assertThat(m.get(0).path("seiteneffekte").asText()).isEqualTo("AUSSEN");
+        assertThat(m.get(0).path("name").asString()).isEqualTo("foto");
+        assertThat(m.get(0).path("seiteneffekte").asString()).isEqualTo("AUSSEN");
         assertThat(m.get(0).path("beispiele")).extracting(JsonNode::asText).containsExactly("foto(7) -> JPEG");
     }
 
@@ -165,8 +166,8 @@ class ModulApiKatalogProzessorTest {
                 """));
         assertThat(richtig.getDiagnostics()).noneMatch(x -> x.getKind() == Diagnostic.Kind.ERROR);
         JsonNode s = katalog("plaintext-z-zeit2").path("schnittstellen").get(0);
-        assertThat(s.path("art").asText()).isEqualTo("DTO");
-        assertThat(s.path("stabilitaet").asText()).isEqualTo("NEU");
+        assertThat(s.path("art").asString()).isEqualTo("DTO");
+        assertThat(s.path("stabilitaet").asString()).isEqualTo("NEU");
     }
 
     @Test
@@ -187,7 +188,7 @@ class ModulApiKatalogProzessorTest {
         JsonNode s = katalog("plaintext-y-interfaces").path("schnittstellen");
         assertThat(s).hasSize(1);
         assertThat(s.get(0).path("annotiert").asBoolean()).isFalse();
-        assertThat(s.get(0).path("herkunft").asText()).isEqualTo("interfaces-Modul");
+        assertThat(s.get(0).path("herkunft").asString()).isEqualTo("interfaces-Modul");
     }
 
     @Test
@@ -222,8 +223,8 @@ class ModulApiKatalogProzessorTest {
         assertThat(d.getDiagnostics()).noneMatch(x -> x.getKind() == Diagnostic.Kind.ERROR);
         JsonNode s = katalog("plaintext-z-mail").path("schnittstellen");
         assertThat(s).hasSize(1);
-        assertThat(s.get(0).path("kurz").asText()).isEqualTo("IncomingMail");
-        assertThat(s.get(0).path("typ").asText()).isEqualTo("record");
-        assertThat(s.get(0).path("art").asText()).isEqualTo("DTO");
+        assertThat(s.get(0).path("kurz").asString()).isEqualTo("IncomingMail");
+        assertThat(s.get(0).path("typ").asString()).isEqualTo("record");
+        assertThat(s.get(0).path("art").asString()).isEqualTo("DTO");
     }
 }
