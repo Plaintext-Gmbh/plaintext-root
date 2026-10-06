@@ -553,9 +553,11 @@ public class PlaintextSecurityConfig {
                 // and PrimeFaces writes styles at runtime. That is a separate, considerably
                 // larger rebuild — and an inline style is not the same risk as inline code.
                 "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; " +
-                "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org https://server.arcgisonline.com https://raw.githubusercontent.com https://wmts.geo.admin.ch https://unpkg.com; " +
+                // Card 1417: USGS The National Map (public domain, no key) for maps and aerial images outside
+                // Switzerland, e.g. the Appalachians; MapLibre loads raster tiles via fetch, hence also connect-src.
+                "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org https://server.arcgisonline.com https://raw.githubusercontent.com https://wmts.geo.admin.ch https://basemap.nationalmap.gov https://unpkg.com; " +
                 "font-src 'self' data:; " +
-                "connect-src 'self' https://wmts.geo.admin.ch https://s3.amazonaws.com https://*.s3.amazonaws.com; " +
+                "connect-src 'self' https://wmts.geo.admin.ch https://basemap.nationalmap.gov https://*.tile.opentopomap.org https://s3.amazonaws.com https://*.s3.amazonaws.com; " +
                 "worker-src 'self' blob:; " +
                 "frame-ancestors 'self'; " +
                 "base-uri 'self'; " +

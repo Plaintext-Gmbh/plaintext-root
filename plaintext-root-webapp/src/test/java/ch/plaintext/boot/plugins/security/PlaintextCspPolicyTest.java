@@ -82,4 +82,28 @@ class PlaintextCspPolicyTest {
         }
         throw new AssertionError("keine script-src-Direktive in: " + policy);
     }
+
+    /** Card 1417: maps and aerial images in the USA (overflight Appalachians) and the topo fallback load via fetch. */
+    @Test
+    void kartenquellenUsaUndTopoErlaubt() {
+        for (boolean inline : new boolean[]{true, false}) {
+            String policy = PlaintextSecurityConfig.cspPolicy(inline);
+            String img = direktive(policy, "img-src");
+            String connect = direktive(policy, "connect-src");
+            assertTrue(img.contains("https://basemap.nationalmap.gov"), img);
+            assertTrue(connect.contains("https://basemap.nationalmap.gov"), connect);
+            assertTrue(connect.contains("https://*.tile.opentopomap.org"), connect);
+            // Counter-check: only these hosts are new, no wildcard for everything.
+            assertFalse(connect.contains(" * ") || connect.endsWith(" *") || connect.contains("https://*;"), connect);
+        }
+    }
+
+    private static String direktive(String policy, String name) {
+        for (String d : policy.split("; ")) {
+            if (d.startsWith(name + " ")) {
+                return d;
+            }
+        }
+        throw new AssertionError(name + " fehlt in " + policy);
+    }
 }
