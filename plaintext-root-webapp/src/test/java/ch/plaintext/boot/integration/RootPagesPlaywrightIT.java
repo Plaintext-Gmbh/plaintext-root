@@ -448,12 +448,19 @@ class RootPagesPlaywrightIT {
         assertTrue(details.contains("Methoden") && details.contains("resolve"), "Aufgeklappt ohne Methoden: " + details);
         assertTrue(details.contains("Genutzt von") && details.contains("Umsetzer"), "Aufgeklappt ohne Nutzer/Umsetzer: " + details);
 
-        // Gegenprobe: in root ist noch kein DTO markiert — der Filter muss die Liste leeren
+        // Filter DTO: genau die zwei markierten DTOs aus root-interfaces (Etappe B)
         page.locator("#fm\\:schnittstellenSuche").fill("");
         page.locator("#fm\\:schnittstellenSuche").press("End");
         page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length >= 20");
         ruhig();
         page.locator("#fm\\:schnittstellenArt").getByText("DTOs").click();
+        page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length === 2");
+        ruhig();
+        String dtos = tabelle.innerText();
+        assertTrue(dtos.contains("IApiErrorResponse") && dtos.contains("ITokenValidationOutcome"), "DTO-Filter: " + dtos);
+        // Gegenprobe: ein Suchbegriff ohne Treffer leert die Liste
+        page.locator("#fm\\:schnittstellenSuche").fill("gibtesnirgends");
+        page.locator("#fm\\:schnittstellenSuche").press("End");
         page.waitForFunction("() => document.querySelector('[id=\"fm:schnittstellen\"]').innerText.includes('Keine Schnittstelle passt zur Suche.')");
         assertEquals(List.of(), ajaxFehler, "Fehler in den Ajax-Antworten");
         assertFalse(page.content().contains("PropertyNotFoundException"));
