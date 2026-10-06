@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -307,12 +306,9 @@ class StartseiteAnpassenPlaywrightIT {
             if (layout != null && fertig.test(layout)) {
                 return layout;
             }
-            try {
-                Thread.sleep(250);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+            // Gewartet wird auf die Datenbank, die Seite ist hier schon zu: parkNanos statt Thread.sleep
+            // (Karte 1416, Sonar java:S2925), ohne InterruptedException.
+            java.util.concurrent.locks.LockSupport.parkNanos(java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(250));
         }
         assertNull(layout, "Layout erreicht den erwarteten Stand nicht: "
                 + (layout == null ? null : layout.getEintraege()));

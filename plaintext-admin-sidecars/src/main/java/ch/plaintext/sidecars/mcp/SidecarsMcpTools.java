@@ -53,6 +53,12 @@ import java.util.stream.Collectors;
 @ConditionalOnClass(name = "org.springframework.ai.mcp.annotation.McpTool")
 public class SidecarsMcpTools {
 
+    /** Status, wenn der Sidecar nicht antwortet (Karte 1416, Sonar java:S1192). */
+    private static final String NICHT_ERREICHBAR = "nicht erreichbar";
+
+    /** JSON-Feld (Karte 1416, Sonar java:S1192). */
+    private static final String FELD_ERREICHBAR = "erreichbar";
+
     private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
     private static final String ROLE_ROOT = "ROLE_ROOT";
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -77,8 +83,8 @@ public class SidecarsMcpTools {
             o.put("name", s.getName());
             o.put("titel", s.getTitel());
             o.put("version", s.getVersion());
-            o.put("erreichbar", s.isErreichbar());
-            o.put("status", s.isErreichbar() ? s.getStatus() : "nicht erreichbar");
+            o.put(FELD_ERREICHBAR, s.isErreichbar());
+            o.put("status", s.isErreichbar() ? s.getStatus() : NICHT_ERREICHBAR);
             o.put("zugang", String.valueOf(s.getAuthZustand()));
             ArrayNode f = o.putArray("faehigkeiten");
             if (b != null) {
@@ -104,7 +110,7 @@ public class SidecarsMcpTools {
             o.put("name", s.getName());
             o.put("url", s.getUrl());
             o.put("quelle", s.getQuelle().name());
-            o.put("erreichbar", s.isErreichbar());
+            o.put(FELD_ERREICHBAR, s.isErreichbar());
             o.put("zugang", String.valueOf(s.getAuthZustand()));
             o.put("fehler", s.getFehler());
             o.put("letzteAbfrage", String.valueOf(s.getLetzteAbfrage()));
@@ -143,7 +149,7 @@ public class SidecarsMcpTools {
                 if (t.isEmpty() || heu.contains(t)) {
                     ObjectNode o = a.addObject();
                     o.put("sidecar", s.getName());
-                    o.put("erreichbar", s.isErreichbar());
+                    o.put(FELD_ERREICHBAR, s.isErreichbar());
                     o.put("id", f.id());
                     o.put("titel", f.titel());
                     o.put("seiteneffekt", f.seiteneffekt());
@@ -164,7 +170,7 @@ public class SidecarsMcpTools {
         }
         try {
             Sidecar s = service.aktualisiere(service.sidecar(name));
-            return "OK: " + s.getName() + " ist " + (s.isErreichbar() ? s.getStatus() : "nicht erreichbar")
+            return "OK: " + s.getName() + " ist " + (s.isErreichbar() ? s.getStatus() : NICHT_ERREICHBAR)
                     + ", Zugang " + s.getAuthZustand() + (s.getFehler() == null ? "" : ". Hinweis: " + s.getFehler());
         } catch (NoSuchElementException e) {
             return fehler(e.getMessage());
@@ -183,7 +189,7 @@ public class SidecarsMcpTools {
         }
         try {
             Sidecar s = service.registriere(url);
-            return "OK: Sidecar «" + s.getName() + "» ergänzt, " + (s.isErreichbar() ? s.getStatus() : "nicht erreichbar") + ".";
+            return "OK: Sidecar «" + s.getName() + "» ergänzt, " + (s.isErreichbar() ? s.getStatus() : NICHT_ERREICHBAR) + ".";
         } catch (IllegalArgumentException e) {
             return fehler(e.getMessage());
         }
@@ -250,7 +256,7 @@ public class SidecarsMcpTools {
             return o.toPrettyString();
         } catch (NoSuchElementException | IOException e) {
             return fehler(e.getMessage());
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return fehler("Aufruf unterbrochen.");
         }

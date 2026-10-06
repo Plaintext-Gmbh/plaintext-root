@@ -63,6 +63,9 @@ import java.util.Map;
 @Slf4j
 public class MobilAltadressenFilter extends OncePerRequestFilter {
 
+    /** Endung der alten Adressen (Karte 1416, Sonar java:S1192). */
+    private static final String HTML = ".html";
+
     /** Just ahead of the {@code .html} rewrite at {@code HIGHEST_PRECEDENCE + 30}. */
     public static final int ORDER = org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 20;
 
@@ -71,7 +74,8 @@ public class MobilAltadressenFilter extends OncePerRequestFilter {
     private final ObjectProvider<WatchPageRegistry> registry;
 
     /** Former view (always {@code .xhtml}) -> new address; built on first use. */
-    private volatile Map<String, String> ziele;
+    private final java.util.concurrent.atomic.AtomicReference<Map<String, String>> ziele =
+            new java.util.concurrent.atomic.AtomicReference<>();
 
     public MobilAltadressenFilter(ObjectProvider<WatchPageRegistry> registry) {
         this.registry = registry;
@@ -81,14 +85,14 @@ public class MobilAltadressenFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String pfad = pfad(request);
         return !pfad.startsWith(WATCH) || pfad.startsWith(MobilWatchPage.PFAD)
-                || !(pfad.endsWith(".html") || pfad.endsWith(".xhtml"));
+                || !(pfad.endsWith(HTML) || pfad.endsWith(".xhtml"));
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String pfad = pfad(request);
-        String alsView = pfad.endsWith(".html") ? pfad.substring(0, pfad.length() - ".html".length()) + ".xhtml" : pfad;
+        String alsView = pfad.endsWith(HTML) ? pfad.substring(0, pfad.length() - HTML.length()) + ".xhtml" : pfad;
         String ziel = ziele().get(alsView);
         if (ziel == null) {
             chain.doFilter(request, response);
@@ -105,7 +109,7 @@ public class MobilAltadressenFilter extends OncePerRequestFilter {
     }
 
     private Map<String, String> ziele() {
-        Map<String, String> z = ziele;
+        Map<String, String> z = ziele.get();
         if (z == null) {
             Map<String, String> neu = new HashMap<>();
             WatchPageRegistry r = registry.getIfAvailable();
@@ -117,7 +121,7 @@ public class MobilAltadressenFilter extends OncePerRequestFilter {
                 }
             }
             z = Map.copyOf(neu);
-            ziele = z;
+            ziele.set(z);
             log.info("Watch: alte Adressen umgeleitet: {}", z);
         }
         return z;

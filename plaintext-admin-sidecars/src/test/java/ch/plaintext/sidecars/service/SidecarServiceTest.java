@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -134,7 +133,7 @@ class SidecarServiceTest {
             s.aktualisiereAlle();
             assertThat(s.anbieter("bild.info")).extracting(Sidecar::getName).containsExactly("b", "a");
             assertThat(s.fuer("bild.info")).map(SidecarVerbindung::name).contains("b");
-            assertThat(s.fuer("gibt.es.nicht")).isEqualTo(Optional.empty());
+            assertThat(s.fuer("gibt.es.nicht")).isEmpty();
             assertThat(s.alle()).extracting(st -> st.name() + ":" + st.status())
                     .containsExactly("a:eingeschraenkt", "b:ok", "c:fehler", "d:unbekannt");
         }

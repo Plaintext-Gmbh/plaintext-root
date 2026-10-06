@@ -41,6 +41,12 @@ import java.util.NoSuchElementException;
 @SuppressWarnings("java:S6813") // Feldinjektion in Session-Beans wie SecretsBackingBean (Karte 1273)
 public class SidecarsBackingBean implements Serializable {
 
+    /** Anfang der Meldungen zum Token (Karte 1416, Sonar java:S1192). */
+    private static final String TOKEN_ANFANG = "Token für «";
+
+    /** Anfang der Meldungen zu einer Ablage (Karte 1416, Sonar java:S1192). */
+    private static final String ABLAGE_ANFANG = "Ablage «";
+
     private static final long serialVersionUID = 1L;
     static final String PROTOKOLL_DOKU = "https://github.com/Plaintext-Gmbh/plaintext-root/blob/master/docs/SIDECAR_PROTOKOLL.md";
     private static final DateTimeFormatter ZEIT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.of("Europe/Zurich"));
@@ -57,6 +63,7 @@ public class SidecarsBackingBean implements Serializable {
      * kennt nur die Record-Komponenten, nicht zusätzliche Getter wie {@code getAmpel()} (PROD-Fehler
      * auf sidecars.html am 02.10.2026, «does not have a readable property 'ampel'»).
      */
+    @SuppressWarnings("java:S6206") // muss Klasse bleiben, siehe oben (EL-Resolver kennt bei Records nur Komponenten)
     public static final class Zeile {
 
         private final Sidecar sidecar;
@@ -260,9 +267,9 @@ public class SidecarsBackingBean implements Serializable {
         try {
             SpeicherAblage a = ablagen.speichere(abName, abUrl, abBenutzer, abPasswort, abPfad);
             if (Boolean.TRUE.equals(a.getOk())) {
-                FacesMessages.info("Ablage «" + a.getName() + "» gespeichert. " + a.getMeldung());
+                FacesMessages.info(ABLAGE_ANFANG + a.getName() + "» gespeichert. " + a.getMeldung());
             } else {
-                FacesMessages.warn("Ablage «" + a.getName() + "» gespeichert, aber nicht erreichbar: " + a.getMeldung());
+                FacesMessages.warn(ABLAGE_ANFANG + a.getName() + "» gespeichert, aber nicht erreichbar: " + a.getMeldung());
             }
             ablageNeu();
         } catch (IllegalArgumentException e) {
@@ -290,7 +297,7 @@ public class SidecarsBackingBean implements Serializable {
     public void ablageEntfernen(String name) {
         try {
             ablagen.entferne(name);
-            FacesMessages.info("Ablage «" + name + "» entfernt. Die Dateien in der Nextcloud bleiben.");
+            FacesMessages.info(ABLAGE_ANFANG + name + "» entfernt. Die Dateien in der Nextcloud bleiben.");
         } catch (NoSuchElementException e) {
             FacesMessages.error(e.getMessage());
         }
@@ -331,10 +338,10 @@ public class SidecarsBackingBean implements Serializable {
 
     private static void meldeToken(String name, AuthZustand z) {
         switch (z) {
-            case GUELTIG -> FacesMessages.info("Token für «" + name + "» hinterlegt und vom Sidecar bestätigt.");
-            case UNGUELTIG -> FacesMessages.warn("Token für «" + name + "» hinterlegt, aber der Sidecar lehnt ihn ab.");
-            case NICHT_NOETIG -> FacesMessages.info("Token für «" + name + "» hinterlegt; der Sidecar verlangt keinen.");
-            default -> FacesMessages.warn("Token für «" + name + "» hinterlegt, Prüfung nicht möglich (Sidecar nicht erreichbar?).");
+            case GUELTIG -> FacesMessages.info(TOKEN_ANFANG + name + "» hinterlegt und vom Sidecar bestätigt.");
+            case UNGUELTIG -> FacesMessages.warn(TOKEN_ANFANG + name + "» hinterlegt, aber der Sidecar lehnt ihn ab.");
+            case NICHT_NOETIG -> FacesMessages.info(TOKEN_ANFANG + name + "» hinterlegt; der Sidecar verlangt keinen.");
+            default -> FacesMessages.warn(TOKEN_ANFANG + name + "» hinterlegt, Prüfung nicht möglich (Sidecar nicht erreichbar?).");
         }
     }
 

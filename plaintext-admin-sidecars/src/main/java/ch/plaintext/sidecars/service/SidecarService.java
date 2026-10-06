@@ -73,19 +73,23 @@ public class SidecarService implements SidecarRegister {
     static Map<String, String> leseKonfig(String sidecars) {
         Map<String, String> m = new LinkedHashMap<>();
         for (String paar : sidecars == null ? new String[0] : sidecars.split(",")) {
-            if (paar.isBlank()) {
-                continue;
+            if (!paar.isBlank()) {
+                eintragen(m, paar);
             }
-            int i = paar.indexOf('=');
-            String name = i > 0 ? paar.substring(0, i).trim() : "";
-            String url = i > 0 ? normalisiere(paar.substring(i + 1)) : null;
-            if (!SidecarBeschreibung.NAME.matcher(name).matches() || url == null) {
-                log.warn("plaintext.sidecars: Eintrag «{}» ist kein name=url, übergangen", paar.trim());
-                continue;
-            }
-            m.put(name, url);
         }
         return m;
+    }
+
+    /** Ein Paar {@code name=url}; ungültig: Warnung, nichts eingetragen (Karte 1416, Sonar java:S135). */
+    private static void eintragen(Map<String, String> m, String paar) {
+        int i = paar.indexOf('=');
+        String name = i > 0 ? paar.substring(0, i).trim() : "";
+        String url = i > 0 ? normalisiere(paar.substring(i + 1)) : null;
+        if (!SidecarBeschreibung.NAME_MUSTER.matcher(name).matches() || url == null) {
+            log.warn("plaintext.sidecars: Eintrag «{}» ist kein name=url, übergangen", paar.trim());
+            return;
+        }
+        m.put(name, url);
     }
 
     /** @return {@code scheme://host[:port][/pfad]} ohne Schrägstrich am Ende, oder {@code null} */
@@ -104,7 +108,7 @@ public class SidecarService implements SidecarRegister {
                 s = s.substring(0, s.length() - 1);
             }
             return s;
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             return null;
         }
     }
@@ -270,7 +274,7 @@ public class SidecarService implements SidecarRegister {
         }
         try {
             return SidecarBeschreibung.lies(s.getBeschreibungJson());
-        } catch (SidecarBeschreibung.Ungueltig e) {
+        } catch (SidecarBeschreibung.Ungueltig _) {
             return null;
         }
     }

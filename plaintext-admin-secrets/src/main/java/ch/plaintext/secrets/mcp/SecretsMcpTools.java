@@ -52,8 +52,8 @@ import java.util.stream.Collectors;
 public class SecretsMcpTools {
 
     private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
-    private static final Set<String> SCHREIB_ROLLEN = Set.of("ROLE_ADMIN", "ROLE_ROOT");
     private static final String ROLE_ROOT = "ROLE_ROOT";
+    private static final Set<String> SCHREIB_ROLLEN = Set.of("ROLE_ADMIN", ROLE_ROOT);
 
     private final SecretService secretService;
 

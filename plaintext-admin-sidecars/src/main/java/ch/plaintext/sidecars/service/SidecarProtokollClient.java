@@ -95,7 +95,7 @@ public class SidecarProtokollClient {
         } catch (IOException | IllegalArgumentException e) {
             return new Abfrage(null, null, "Nicht erreichbar: " + kurz(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()),
                     (int) ((System.nanoTime() - start) / 1_000_000), AuthZustand.UNBEKANNT);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return new Abfrage(null, null, "Abfrage unterbrochen.", 0, AuthZustand.UNBEKANNT);
         }
@@ -124,9 +124,9 @@ public class SidecarProtokollClient {
                 case 401, 403 -> AuthZustand.UNGUELTIG;
                 default -> AuthZustand.UNBEKANNT;
             };
-        } catch (IOException e) {
+        } catch (IOException _) {
             return AuthZustand.UNBEKANNT;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return AuthZustand.UNBEKANNT;
         }

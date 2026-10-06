@@ -74,8 +74,8 @@ class MobilHtmlTest {
     void allesWirdEscaped() {
         String html = MobilHtml.inhalt(alles(BOESE), FORMULAR);
 
-        assertThat(html).doesNotContain("<script>").doesNotContain("\"'&<");
-        assertThat(html).contains("&lt;script&gt;alert(1)&lt;/script&gt;&quot;&#39;&amp;");
+        assertThat(html).doesNotContain("<script>").doesNotContain("\"'&<")
+                .contains("&lt;script&gt;alert(1)&lt;/script&gt;&quot;&#39;&amp;");
         // Positivkontrolle: der Text kommt wirklich in allen Bausteinen an (Wert, Label, Hinweis,
         // Knopf, Liste) — sonst waere "kein <script>" auch fuer eine leere Seite wahr.
         assertThat(html.split("&lt;script&gt;", -1).length - 1).isGreaterThanOrEqualTo(8);
@@ -95,8 +95,8 @@ class MobilHtmlTest {
             assertThat(m.group(2)).isEmpty();
         }
         assertThat(anzahl).isEqualTo(1);
-        assertThat(html).doesNotContainPattern("\\son[a-z]+\\s*=");
-        assertThat(html).doesNotContain(" style=").doesNotContain("javascript:");
+        assertThat(html).doesNotContainPattern("\\son[a-z]+\\s*=")
+                .doesNotContain(" style=").doesNotContain("javascript:");
     }
 
     @Test
@@ -139,17 +139,17 @@ class MobilHtmlTest {
 
         String offen = MobilHtml.inhalt(alles("x"),
                 new MobilHtml.Formular("/watch/m/test", "/watch/m/test/", "_csrf", "t", "7"));
-        assertThat(offen).contains("id=\"m-frage-0\"><div class=\"w-confirm-text\">");
+        assertThat(offen).contains("id=\"m-frage-0\"><div class=\"w-confirm-text\">")
         // Nur ein Eintrag ist loeschbar: der zweite traegt weder × noch Rueckfrage.
-        assertThat(offen).doesNotContain("m-frage-1");
+                .doesNotContain("m-frage-1");
     }
 
     @Test
     @DisplayName("Knoepfe: jede Aktion an ihre eigene Adresse, der Wert im Knopf")
     void knoepfe() {
         String html = MobilHtml.inhalt(alles("x"), FORMULAR);
-        assertThat(html).contains("formaction=\"/watch/m/test/erfassen\" name=\"wert\" value=\"x\"");
-        assertThat(html).contains("formaction=\"/watch/m/test/zweite\">ohne Wert</button>");
+        assertThat(html).contains("formaction=\"/watch/m/test/erfassen\" name=\"wert\" value=\"x\"")
+                .contains("formaction=\"/watch/m/test/zweite\">ohne Wert</button>");
     }
 
     @Test
@@ -236,10 +236,10 @@ class MobilHtmlTest {
         String html = MobilHtml.inhalt(neueBausteine("x"), FORMULAR);
         assertThat(html).contains("<button type=\"submit\" class=\"w-aktion w-aktion-stop\" name=\"wert\" value=\"x\">"
                 + "<span class=\"w-aktion-oben\">x</span><span class=\"w-aktion-gross\">x</span>"
-                + "<span class=\"w-aktion-wort\">x</span></button>");
+                + "<span class=\"w-aktion-wort\">x</span></button>")
         // Laufende Zeit: Dauer statt Startzeit (die Telefonuhr darf falsch gehen), Anzeige H:mm.
-        assertThat(html).contains("<span class=\"w-aktion-gross\" data-laeuft=\"3725\">1:02</span>");
-        assertThat(html).contains("class=\"w-btn\" formaction=\"/watch/m/test/minus\" name=\"wert\" value=\"x\">x</button>");
+                .contains("<span class=\"w-aktion-gross\" data-laeuft=\"3725\">1:02</span>")
+                .contains("class=\"w-btn\" formaction=\"/watch/m/test/minus\" name=\"wert\" value=\"x\">x</button>");
     }
 
     @Test

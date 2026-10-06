@@ -167,10 +167,10 @@ public record MobilSeite(List<Baustein> bausteine) {
     public record Feld(String name, FeldArt art, String wert, String beschriftung) {
 
         /** What a field may be called — it ends up in a request parameter name. */
-        static final Pattern NAME = Pattern.compile("[a-z][a-z0-9]{0,19}");
+        static final Pattern NAME_MUSTER = Pattern.compile("[a-z][a-z0-9]{0,19}");
 
         public Feld {
-            if (name == null || !NAME.matcher(name).matches()) {
+            if (name == null || !NAME_MUSTER.matcher(name).matches()) {
                 throw new IllegalArgumentException("Feldname ungültig: " + name);
             }
             if (art == null) {

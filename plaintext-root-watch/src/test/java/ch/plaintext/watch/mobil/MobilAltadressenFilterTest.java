@@ -134,6 +134,6 @@ class MobilAltadressenFilterTest {
     @Test
     @DisplayName("Die Reihenfolge liegt vor dem .html-Rewrite (HIGHEST_PRECEDENCE + 30)")
     void reihenfolge() {
-        assertThat(MobilAltadressenFilter.ORDER).isLessThan(org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 30);
+        assertThat(MobilAltadressenFilter.ORDER - org.springframework.core.Ordered.HIGHEST_PRECEDENCE).isLessThan(30);
     }
 }

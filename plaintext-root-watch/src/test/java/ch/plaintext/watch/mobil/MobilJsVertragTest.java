@@ -51,9 +51,9 @@ class MobilJsVertragTest {
         assertThat(js).doesNotContainPattern("\\beval\\s*\\(")
                 .doesNotContainPattern("new\\s+Function\\s*\\(")
                 .doesNotContain("document.write")
-                .doesNotContainPattern("setTimeout\\s*\\(\\s*['\"]");
+                .doesNotContainPattern("setTimeout\\s*\\(\\s*['\"]")
         // Positivkontrolle: es ist wirklich das Framework-Skript.
-        assertThat(js).contains("data-mobil").contains("fetch(");
+                .contains("data-mobil").contains("fetch(");
     }
 
     @Test

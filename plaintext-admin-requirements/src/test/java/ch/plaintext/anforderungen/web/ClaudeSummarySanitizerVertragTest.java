@@ -33,12 +33,12 @@ class ClaudeSummarySanitizerVertragTest {
     void gerendertesMarkdownGehtNurGefiltertInsInnerHtml() throws IOException {
         String js = lies("/META-INF/resources/plaintext-root/js/claudesummary.js");
 
-        assertThat(js).contains("DOMPurify.sanitize(html");
-        assertThat(js).as("das rohe marked-Ergebnis darf nicht direkt ins innerHTML")
-                .doesNotContain("innerHTML = html");
+        assertThat(js).contains("DOMPurify.sanitize(html")
+                .as("das rohe marked-Ergebnis darf nicht direkt ins innerHTML")
+                .doesNotContain("innerHTML = html")
         // fail closed: ohne DOMPurify nur Text, kein ungefiltertes HTML
-        assertThat(js).contains("typeof DOMPurify === 'undefined'");
-        assertThat(js).contains("pre.textContent = fallbackText");
+                .contains("typeof DOMPurify === 'undefined'")
+                .contains("pre.textContent = fallbackText");
     }
 
     @Test
@@ -49,8 +49,8 @@ class ClaudeSummarySanitizerVertragTest {
         assertThat(purify).startsWith("/*! @license DOMPurify 3.4.16");
         int purifyTag = seite.indexOf("/js/purify.min.js");
         int renderSkript = seite.indexOf("js/claudesummary.js");
-        assertThat(purifyTag).as("purify.min.js wird eingebunden").isPositive();
-        assertThat(purifyTag).as("DOMPurify muss VOR claudesummary.js geladen sein")
+        assertThat(purifyTag).as("purify.min.js wird eingebunden").isPositive()
+                .as("DOMPurify muss VOR claudesummary.js geladen sein")
                 .isLessThan(renderSkript);
         assertThat(seite).as("lokal, kein CDN (CSP script-src 'self')").doesNotContain("cdn");
     }

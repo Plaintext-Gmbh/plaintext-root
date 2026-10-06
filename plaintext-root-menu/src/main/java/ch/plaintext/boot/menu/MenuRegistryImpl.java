@@ -45,11 +45,9 @@ public class MenuRegistryImpl implements MenuRegistry {
 
     @Override
     public List<MenuItem> getAllMenuItems() {
-        Map<String, MenuItemImpl> menuBeans = applicationContext.getBeansOfType(MenuItemImpl.class);
-
         // MenuItemImpl implements MenuItem (since card 1348 for real - before, this cast threw a
-        // ClassCastException on every call).
-        return new ArrayList<>(menuBeans.values());
+        // ClassCastException on every call). One source for both views (card 1416, Sonar S4144).
+        return new ArrayList<>(getAllMenuItemsImpl());
     }
 
     /**

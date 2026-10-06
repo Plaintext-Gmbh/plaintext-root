@@ -103,10 +103,12 @@ class WatchPageRegistryTest {
                 return "/watch/c.xhtml";
             }
 
+            @Override
             public int order() {
                 return 3;
             }
 
+            @Override
             public boolean available() {
                 fragen.incrementAndGet();
                 return true;

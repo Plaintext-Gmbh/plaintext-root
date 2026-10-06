@@ -315,7 +315,7 @@ public class ApiTokenBackingBean implements Serializable {
     private static List<String> eigeneRollen() {
         org.springframework.security.core.Authentication auth =
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getAuthorities() == null) {
+        if (auth == null) {
             return List.of();
         }
         return auth.getAuthorities().stream()

@@ -88,7 +88,7 @@ public final class AusgehendesZiel {
         URI uri;
         try {
             uri = URI.create(url.trim());
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             throw new IllegalArgumentException("Ungültige URL.");
         }
         String schema = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
@@ -128,7 +128,7 @@ public final class AusgehendesZiel {
         InetAddress[] adressen;
         try {
             adressen = aufloeser.aufloesen(h);
-        } catch (UnknownHostException e) {
+        } catch (UnknownHostException _) {
             throw new IllegalArgumentException("Host '" + h + "' ist nicht auflösbar.");
         }
         if (adressen == null || adressen.length == 0) {
@@ -154,34 +154,40 @@ public final class AusgehendesZiel {
         }
         byte[] b = a.getAddress();
         if (a instanceof Inet4Address) {
-            int o1 = b[0] & 0xff;
-            int o2 = b[1] & 0xff;
-            int o3 = b[2] & 0xff;
-            if (o1 == 0) {
-                return false;                                   // 0.0.0.0/8
-            }
-            if (o1 == 100 && o2 >= 64 && o2 <= 127) {
-                return false;                                   // 100.64.0.0/10 CGNAT
-            }
-            if (o1 == 192 && o2 == 0 && o3 == 0) {
-                return false;                                   // 192.0.0.0/24 IETF
-            }
-            if (o1 == 198 && (o2 == 18 || o2 == 19)) {
-                return false;                                   // 198.18.0.0/15 Benchmark
-            }
-            return o1 < 240;                                    // 240.0.0.0/4 reserviert, Broadcast
+            return istOeffentlichV4(b);
         }
         if (a instanceof Inet6Address) {
-            int o1 = b[0] & 0xff;
-            if ((o1 & 0xfe) == 0xfc) {
-                return false;                                   // fc00::/7 ULA
-            }
-            if ((o1 == 0xfe) && ((b[1] & 0xc0) == 0xc0)) {
-                return false;                                   // fec0::/10 Site-Local (veraltet)
-            }
-            // IPv4-kompatible/-gemappte Adressen liefert Java bereits als Inet4Address.
-            return true;
+            return istOeffentlichV6(b);
         }
         return false;
+    }
+
+    /** Reservierte IPv4-Bloecke ausserhalb der InetAddress-Pruefungen (Karte 1416, Sonar java:S3776). */
+    private static boolean istOeffentlichV4(byte[] b) {
+        int o1 = b[0] & 0xff;
+        int o2 = b[1] & 0xff;
+        int o3 = b[2] & 0xff;
+        if (o1 == 0) {
+            return false;                                   // 0.0.0.0/8
+        }
+        if (o1 == 100 && o2 >= 64 && o2 <= 127) {
+            return false;                                   // 100.64.0.0/10 CGNAT
+        }
+        if (o1 == 192 && o2 == 0 && o3 == 0) {
+            return false;                                   // 192.0.0.0/24 IETF
+        }
+        if (o1 == 198 && (o2 == 18 || o2 == 19)) {
+            return false;                                   // 198.18.0.0/15 Benchmark
+        }
+        return o1 < 240;                                    // 240.0.0.0/4 reserviert, Broadcast
+    }
+
+    /** IPv6-ULA und veraltetes Site-Local. IPv4-kompatible/-gemappte Adressen liefert Java bereits als Inet4Address. */
+    private static boolean istOeffentlichV6(byte[] b) {
+        int o1 = b[0] & 0xff;
+        if ((o1 & 0xfe) == 0xfc) {
+            return false;                                   // fc00::/7 ULA
+        }
+        return !((o1 == 0xfe) && ((b[1] & 0xc0) == 0xc0));  // fec0::/10 Site-Local (veraltet)
     }
 }

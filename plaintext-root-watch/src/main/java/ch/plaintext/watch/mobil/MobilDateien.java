@@ -33,24 +33,47 @@ import java.util.Optional;
 @Component
 public class MobilDateien {
 
+    /** Dateiname (Karte 1416, Sonar java:S1192). */
+    private static final String MOBIL_JS = "mobil.js";
+
+    /** Dateiname (Karte 1416, Sonar java:S1192). */
+    private static final String WATCH_CSS = "watch.css";
+
     /** A file as it is served. */
     public record Datei(String name, String typ, byte[] inhalt, String marke) {
+
+        // Records vergleichen Arrays nach Referenz; der Inhalt zaehlt (Karte 1416, Sonar java:S6218).
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof Datei d && java.util.Objects.equals(name, d.name) && java.util.Objects.equals(typ, d.typ)
+                    && java.util.Arrays.equals(inhalt, d.inhalt) && java.util.Objects.equals(marke, d.marke);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(name, typ, java.util.Arrays.hashCode(inhalt), marke);
+        }
+
+        @Override
+        public String toString() {
+            return "Datei[" + name + ", " + typ + ", " + (inhalt == null ? 0 : inhalt.length) + " Bytes, " + marke + "]";
+        }
     }
 
     private static final Map<String, String> QUELLEN = Map.of(
-            "watch.css", "META-INF/resources/watch/watch.css",
-            "mobil.js", "META-INF/resources/watch/mobil.js");
+            WATCH_CSS, "META-INF/resources/watch/watch.css",
+            MOBIL_JS, "META-INF/resources/watch/mobil.js");
 
     private static final Map<String, String> TYPEN = Map.of(
-            "watch.css", "text/css;charset=UTF-8",
-            "mobil.js", "text/javascript;charset=UTF-8");
+            WATCH_CSS, "text/css;charset=UTF-8",
+            MOBIL_JS, "text/javascript;charset=UTF-8");
 
     private final Map<String, Datei> dateien;
 
     public MobilDateien() {
         this.dateien = Map.of(
-                "watch.css", lies("watch.css"),
-                "mobil.js", lies("mobil.js"));
+                WATCH_CSS, lies(WATCH_CSS),
+                MOBIL_JS, lies(MOBIL_JS));
     }
 
     public Optional<Datei> datei(String name) {
@@ -80,7 +103,7 @@ public class MobilDateien {
         try {
             byte[] h = MessageDigest.getInstance("SHA-256").digest(inhalt);
             return HexFormat.of().formatHex(h, 0, 6);
-        } catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException _) {
             // SHA-256 ist in jeder JVM Pflicht; ohne sie waere die Marke die Laenge.
             return Integer.toHexString(new String(inhalt, StandardCharsets.UTF_8).hashCode());
         }

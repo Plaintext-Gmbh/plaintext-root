@@ -38,7 +38,9 @@ public class SchnittstellenKatalog {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final ApplicationContext kontext;
-    private volatile List<Schnittstelle> zwischenspeicher;
+    /** Einmal gelesen, dann unveraendert; AtomicReference statt volatile (Karte 1416, Sonar java:S3077). */
+    private final java.util.concurrent.atomic.AtomicReference<List<Schnittstelle>> zwischenspeicher =
+            new java.util.concurrent.atomic.AtomicReference<>();
 
     public SchnittstellenKatalog(ApplicationContext kontext) {
         this.kontext = kontext;
@@ -70,10 +72,10 @@ public class SchnittstellenKatalog {
 
     /** @return alle Schnittstellen, nach Name; einmal gelesen und dann gehalten */
     public List<Schnittstelle> alle() {
-        List<Schnittstelle> l = zwischenspeicher;
+        List<Schnittstelle> l = zwischenspeicher.get();
         if (l == null) {
             l = lies();
-            zwischenspeicher = l;
+            zwischenspeicher.set(l);
         }
         return l;
     }
@@ -139,7 +141,7 @@ public class SchnittstellenKatalog {
         Class<?> typ;
         try {
             typ = Class.forName(binaerName(name), false, getClass().getClassLoader());
-        } catch (ClassNotFoundException | LinkageError e) {
+        } catch (ClassNotFoundException | LinkageError _) {
             return List.of();
         }
         List<Umsetzer> u = new ArrayList<>();
@@ -179,15 +181,57 @@ public class SchnittstellenKatalog {
             if (u == null) {
                 return "?";
             }
-            String s = u.toString();
-            int jar = s.lastIndexOf(".jar");
-            if (jar < 0) {
-                return s.contains("/target/classes") ? s.replaceAll(".*/([^/]+)/target/classes/?.*", "$1") : "?";
-            }
-            String datei = s.substring(s.lastIndexOf('/', jar) + 1, jar);
-            return datei.replaceAll("-\\d+(\\.\\d+)*(-SNAPSHOT)?$", "");
-        } catch (RuntimeException e) {
+            return modulAusOrt(u.toString());
+        } catch (RuntimeException _) {
             return "?";
         }
+    }
+
+    /**
+     * Modulname aus dem Ort einer Klasse: Jar ohne Version, oder im Build das Verzeichnis vor
+     * {@code /target/classes}. Reine String-Arbeit statt regulaerer Ausdruecke (Karte 1416, Sonar
+     * java:S5852/S5998): {@code .*} vor einer Gruppe lief in polynomieller Zeit zurueck.
+     */
+    static String modulAusOrt(String ort) {
+        int jar = ort.lastIndexOf(".jar");
+        if (jar < 0) {
+            int t = ort.lastIndexOf("/target/classes");
+            if (t <= 0) {
+                return "?";
+            }
+            String vor = ort.substring(0, t);
+            String name = vor.substring(vor.lastIndexOf('/') + 1);
+            return name.isEmpty() ? "?" : name;
+        }
+        return ohneVersion(ort.substring(ort.lastIndexOf('/', jar) + 1, jar));
+    }
+
+    /** {@code plaintext-z-fotos-2.1905.0-SNAPSHOT} → {@code plaintext-z-fotos}; ohne Version unveraendert. */
+    static String ohneVersion(String datei) {
+        String d = datei.endsWith("-SNAPSHOT") ? datei.substring(0, datei.length() - "-SNAPSHOT".length()) : datei;
+        int strich = d.lastIndexOf('-');
+        if (strich < 0 || !istVersion(d.substring(strich + 1))) {
+            return datei;
+        }
+        return d.substring(0, strich);
+    }
+
+    /** Ziffern, durch einzelne Punkte getrennt, ohne Punkt am Anfang oder Ende. */
+    private static boolean istVersion(String v) {
+        if (v.isEmpty() || v.charAt(0) == '.' || v.charAt(v.length() - 1) == '.') {
+            return false;
+        }
+        char vorher = ' ';
+        for (int i = 0; i < v.length(); i++) {
+            char c = v.charAt(i);
+            if (c == '.' && vorher == '.') {
+                return false;
+            }
+            if (c != '.' && (c < '0' || c > '9')) {
+                return false;
+            }
+            vorher = c;
+        }
+        return true;
     }
 }
