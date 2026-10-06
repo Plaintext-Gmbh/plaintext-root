@@ -42,7 +42,8 @@ import java.util.Set;
  * {@code META-INF/plaintext-katalog/<modul>.json} ins Jar: Schnittstelle, Zweck (Javadoc), Methoden
  * mit Rückgabe, Parametern und deren Javadoc. Der Zweck ist Pflicht: fehlt einer Schnittstelle das
  * Javadoc, meldet der Prozessor einen Fehler (mit {@code -Aplaintext.katalog.streng=false} nur eine
- * Warnung). Eine eigene Annotation braucht es dafür nicht, die Beschreibung steht nur an einer Stelle.</p>
+ * Warnung). Fehlt die Option {@code plaintext.katalog.modul} (so beim Testkompilieren), schreibt und
+ * prüft der Prozessor nichts.</p>
  *
  * <p>Optionen: {@code plaintext.katalog.modul} (Pflicht, z. B. {@code plaintext-root-interfaces}),
  * {@code plaintext.katalog.streng} (Vorgabe {@code true}), {@code plaintext.katalog.alle} (alle
@@ -90,8 +91,8 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
             return false;
         }
         if (modul == null || modul.isBlank()) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                    "Schnittstellen-Katalog: Option -A" + OPTION_MODUL + " fehlt, kein Katalog geschrieben.");
+            // Karte 1422: der Parent setzt die Option nur fuer die Hauptquellen; beim Testkompilieren fehlt sie
+            // absichtlich. Still, sonst warnte jeder Testbau jedes Moduls.
             return false;
         }
         if (!alle && gefunden.isEmpty() && umsetzungen.isEmpty()) {
@@ -151,6 +152,12 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
                 && (alle || annotation(e, MODUL_API).isPresent())) {
             gefunden.add((TypeElement) e);
         }
+        // Ein Record, der zwischen Modulen übergeben wird, ist ein Werte-DTO: mit @ModulApi im Katalog,
+        // ohne I-Präfix (das gilt für Interfaces, IZeiteintrag).
+        if (e.getKind() == ElementKind.RECORD && e.getModifiers().contains(Modifier.PUBLIC)
+                && annotation(e, MODUL_API).isPresent()) {
+            gefunden.add((TypeElement) e);
+        }
         if ((e.getKind() == ElementKind.CLASS || e.getKind() == ElementKind.RECORD || e.getKind() == ElementKind.ENUM)
                 && beschriebeneUmsetzung(e)) {
             umsetzungen.add((TypeElement) e);
@@ -166,7 +173,7 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
         Optional<AnnotationMirror> api = annotation(t, MODUL_API);
         Map<String, String> werte = api.map(this::werte).orElse(Map.of());
         String art = werte.getOrDefault("art", "");
-        if ("DTO".equals(art) && !istIName(t.getSimpleName().toString())) {
+        if ("DTO".equals(art) && t.getKind() == ElementKind.INTERFACE && !istIName(t.getSimpleName().toString())) {
             processingEnv.getMessager().printMessage(fehler, "Modul-API (Karte 1422): " + t.getQualifiedName()
                     + " ist ein DTO und muss mit I beginnen (z. B. I" + t.getSimpleName() + ").", t);
         }
@@ -177,6 +184,7 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
         StringBuilder s = new StringBuilder(JSON_NAME_AUF).append(Json.text(t.getQualifiedName().toString()))
                 .append(",\"kurz\":").append(Json.text(t.getSimpleName().toString()))
                 .append(",\"zweck\":").append(Json.text(zweck))
+                .append(",\"typ\":").append(Json.text(t.getKind() == ElementKind.RECORD ? "record" : "interface"))
                 .append(",\"annotiert\":").append(api.isPresent())
                 .append(",\"art\":").append(Json.text(art))
                 .append(",\"stabilitaet\":").append(Json.text(werte.getOrDefault("stabilitaet", "")))

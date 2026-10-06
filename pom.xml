@@ -641,6 +641,16 @@
                             <arg>-Aplaintext.katalog.modul=${project.artifactId}</arg>
                         </compilerArgs>
                     </configuration>
+                    <executions>
+                        <!-- Karte 1422: kein Katalog aus Testquellen. Ohne die Modul-Option schreibt der Prozessor
+                             still nichts und prueft nichts — Testfaelle duerfen absichtlich falsche @ModulApi tragen. -->
+                        <execution>
+                            <id>default-testCompile</id>
+                            <configuration>
+                                <compilerArgs combine.self="override"/>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>

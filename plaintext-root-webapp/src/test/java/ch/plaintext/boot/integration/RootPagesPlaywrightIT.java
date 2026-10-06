@@ -407,4 +407,55 @@ class RootPagesPlaywrightIT {
         assertTrue(ajaxFehler.isEmpty(), "Fehler in Teilantworten: " + ajaxFehler);
         assertFalse(page.content().contains("PropertyNotFoundException"));
     }
+
+    @Test
+    @DisplayName("Karte 1422: Modulseite zeigt die Schnittstellen, Suche, Aufklappen mit Methoden, Filter DTO als Gegenprobe")
+    void modulSchnittstellen() {
+        List<String> ajaxFehler = new ArrayList<>();
+        page.onRequestFinished(anfrage -> {
+            if (!"POST".equals(anfrage.method())) {
+                return;
+            }
+            try {
+                Response antwort = anfrage.response();
+                String rumpf = antwort == null ? "" : antwort.text();
+                if (rumpf.startsWith("<?xml") && (rumpf.contains("<error-name>") || rumpf.contains("Exception"))) {
+                    ajaxFehler.add(rumpf.length() > 400 ? rumpf.substring(0, 400) : rumpf);
+                }
+            } catch (RuntimeException _) {
+                // Rumpf nicht mehr abrufbar: kein Befund.
+            }
+        });
+        anmelden(ROOT_USER);
+        Response seite = page.navigate(url("/module.html"));
+        page.waitForLoadState();
+        assertEquals(200, seite.status(), "module.html: HTTP " + seite.status());
+        Locator tabelle = page.locator("#fm\\:schnittstellen");
+        assertTrue(tabelle.count() > 0, "Schnittstellen-Tabelle fehlt");
+        assertTrue(tabelle.locator("tbody tr").count() >= 20,
+                "zu wenige Schnittstellen (plaintext-root-interfaces hat ueber 30): " + tabelle.innerText());
+
+        page.locator("#fm\\:schnittstellenSuche").fill("secretresolver");
+        page.locator("#fm\\:schnittstellenSuche").press("End");   // keyup loest die Suche aus
+        page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length === 1");
+        ruhig();
+        assertTrue(tabelle.innerText().contains("SecretResolver"), "Suche findet SecretResolver nicht: " + tabelle.innerText());
+
+        tabelle.locator(".ui-row-toggler").first().click();
+        page.waitForSelector(".ui-expanded-row-content");
+        ruhig();
+        String details = page.locator(".ui-expanded-row-content").first().innerText();
+        assertTrue(details.contains("Methoden") && details.contains("resolve"), "Aufgeklappt ohne Methoden: " + details);
+        assertTrue(details.contains("Genutzt von") && details.contains("Umsetzer"), "Aufgeklappt ohne Nutzer/Umsetzer: " + details);
+
+        // Gegenprobe: in root ist noch kein DTO markiert — der Filter muss die Liste leeren
+        page.locator("#fm\\:schnittstellenSuche").fill("");
+        page.locator("#fm\\:schnittstellenSuche").press("End");
+        page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length >= 20");
+        ruhig();
+        page.locator("#fm\\:schnittstellenArt").getByText("DTOs").click();
+        page.waitForFunction("() => document.querySelector('[id=\"fm:schnittstellen\"]').innerText.includes('Keine Schnittstelle passt zur Suche.')");
+        assertEquals(List.of(), ajaxFehler, "Fehler in den Ajax-Antworten");
+        assertFalse(page.content().contains("PropertyNotFoundException"));
+    }
 }

@@ -202,4 +202,28 @@ class ModulApiKatalogProzessorTest {
         assertThat(d.getDiagnostics()).anyMatch(x -> x.getKind() == Diagnostic.Kind.ERROR
                 && x.getMessage(null).contains("braucht eine beschreibung"));
     }
+
+    @Test
+    @DisplayName("Record als Werte-DTO: im Katalog mit typ=record, ohne I-Präfix erlaubt; Record ohne @ModulApi bleibt draussen")
+    void recordDto() throws Exception {
+        var d = kompiliere("plaintext-z-mail", Map.of(
+                "ch/x/IncomingMail.java", """
+                        package ch.x;
+                        import ch.plaintext.modules.ModulApi;
+                        /** Eine eingegangene Mail. */
+                        @ModulApi(art = ModulApi.Art.DTO)
+                        public record IncomingMail(String betreff, String von) { }
+                        """,
+                "ch/x/Intern.java", """
+                        package ch.x;
+                        /** Nur innen. */
+                        public record Intern(int x) { }
+                        """));
+        assertThat(d.getDiagnostics()).noneMatch(x -> x.getKind() == Diagnostic.Kind.ERROR);
+        JsonNode s = katalog("plaintext-z-mail").path("schnittstellen");
+        assertThat(s).hasSize(1);
+        assertThat(s.get(0).path("kurz").asText()).isEqualTo("IncomingMail");
+        assertThat(s.get(0).path("typ").asText()).isEqualTo("record");
+        assertThat(s.get(0).path("art").asText()).isEqualTo("DTO");
+    }
 }

@@ -79,11 +79,11 @@ public class SchnittstellenKatalog {
      * Eine Schnittstelle mit Zweck, Methoden und Umsetzern. Karte 1422: {@code annotiert} = trägt
      * {@code @ModulApi}; {@code art} {@code SCHNITTSTELLE}/{@code DTO} (leer ohne Annotation);
      * {@code stabilitaet} {@code STABIL}/{@code NEU}/{@code VERALTET}; {@code herkunft}
-     * «interfaces-Modul» oder «im Modul».
+     * «interfaces-Modul» oder «im Modul»; {@code typ} {@code interface} oder {@code record} (Werte-DTO).
      */
     public record Schnittstelle(String modul, String name, String kurz, String zweck, List<String> erweitert,
                                 List<Methode> methoden, List<Umsetzer> umsetzer, boolean annotiert, String art,
-                                String stabilitaet, String seit, String ersatz, String herkunft) {
+                                String stabilitaet, String seit, String ersatz, String herkunft, String typ) {
 
         /** @return {@code true} für ein zwischen Modulen übergebenes Model ({@code @ModulApi(art = DTO)}) */
         public boolean istDto() {
@@ -205,7 +205,7 @@ public class SchnittstellenKatalog {
         return new Schnittstelle(modul, name, s.path("kurz").asText(), s.path("zweck").asText(),
                 List.copyOf(erweitert), List.copyOf(methoden), umsetzer(name, beschreibungen),
                 s.path("annotiert").asBoolean(false), s.path("art").asText(""), s.path("stabilitaet").asText(""),
-                s.path("seit").asText(""), s.path("ersatz").asText(""), herkunft);
+                s.path("seit").asText(""), s.path("ersatz").asText(""), herkunft, s.path("typ").asText("interface"));
     }
 
     /** Beans, die die Schnittstelle umsetzen; ohne Laden fremder Klassen, wenn die Schnittstelle fehlt. */

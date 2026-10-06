@@ -20,9 +20,11 @@ import java.lang.annotation.Target;
  * annotated interface without it. The annotation itself only adds what the Javadoc cannot say in a
  * machine-readable way:
  * <ul>
- *   <li>{@link #art()}: a service other modules call ({@link Art#SCHNITTSTELLE}) or a model handed
- *       between modules ({@link Art#DTO}). A DTO's simple name starts with {@code I}
- *       ({@code IZeiteintrag}); a shared ArchUnit rule enforces that.</li>
+ *   <li>{@link #art()}: a service other modules call ({@link Art#SCHNITTSTELLE}), a model handed
+ *       between modules ({@link Art#DTO}) or an extension point of the framework ({@link Art#ERWEITERUNG}). A DTO <i>interface</i> is named {@code I…}
+ *       ({@code IZeiteintrag}); a shared ArchUnit rule enforces that. A <i>record</i> handed between
+ *       modules is a value DTO: it may carry {@code @ModulApi(art = DTO)} and keeps its name
+ *       ({@code IncomingMail}).</li>
  *   <li>{@link #stabilitaet()}: whether a consumer may build on it ({@link Stabilitaet#STABIL}), it
  *       is still moving ({@link Stabilitaet#NEU}, the default) or it is on its way out
  *       ({@link Stabilitaet#VERALTET}, then {@link #ersatz()} names the successor).</li>
@@ -58,8 +60,15 @@ public @interface ModulApi {
     enum Art {
         /** A service other modules call (e.g. a mail sender, a photo source). */
         SCHNITTSTELLE,
-        /** A model handed between modules; its simple name starts with {@code I}. */
-        DTO
+        /** A model handed between modules; as an interface its simple name starts with {@code I}. */
+        DTO,
+        /**
+         * An extension point of the framework: implemented by many modules, called by the framework
+         * ({@code ModuleDescriptor}, {@code PlaintextCron}, {@code DashboardTileDataProvider},
+         * {@code SearchProvider}). Listed in the catalog with its implementers; an implementation needs no
+         * {@link ModulApiUmsetzung} (card 1422: otherwise every module would carry boilerplate texts).
+         */
+        ERWEITERUNG
     }
 
     /** How far a consumer may rely on the API. */
