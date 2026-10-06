@@ -3,12 +3,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sessions;
 
+import ch.plaintext.modules.ModulApi;
+
 import org.springframework.security.core.Authentication;
 
 /**
  * Service interface for auditing user sessions.
  * Tracks user login sessions including authentication details and user agent information.
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface ISessionAuditService {
 
     /**

@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.McpUserRoles;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -42,6 +44,10 @@ import java.util.Set;
  * @since 2026
  */
 @Component
+@ModulApiUmsetzung(beschreibung = "Liest die Rollen eines Benutzers für den MCP-Bearer-Filter, bevor ein Sicherheitskontext besteht, ohne Entitäten oder Sitzungen offen zu halten.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Unbekannter Benutzer ergibt eine leere Menge", "Liest per JDBC, ohne JPA und ohne Transaktion"},
+        beispiele = {})
 public class McpUserRolesImpl implements McpUserRoles {
 
     /** XStream header of the ROLES value — the column holds a serialized {@code Set<String>}. */

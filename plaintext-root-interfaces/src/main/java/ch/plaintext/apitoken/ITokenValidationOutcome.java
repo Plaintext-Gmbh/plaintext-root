@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.modules.ModulApi;
+
 import org.springframework.http.ResponseEntity;
 
 /**
@@ -10,6 +12,7 @@ import org.springframework.http.ResponseEntity;
  * Either contains an error response (token missing/invalid/expired/revoked)
  * or a successful validation result.
  */
+@ModulApi(art = ModulApi.Art.DTO, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface ITokenValidationOutcome {
 
     /**

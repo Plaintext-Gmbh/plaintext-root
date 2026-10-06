@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.secrets;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@ModulApiUmsetzung(beschreibung = "Liest einen unter Root → Secrets gepflegten Wert zur Laufzeit aus dem jeweiligen Backend, ausschliesslich für technische Verbraucher.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Nie für die Oberfläche: die Anzeige bleibt Einweg", "Unbekannter Name ergibt ein leeres Optional"},
+        beispiele = {})
 public class SecretService implements SecretResolver {
 
     private final SecretEntryRepository entryRepo;

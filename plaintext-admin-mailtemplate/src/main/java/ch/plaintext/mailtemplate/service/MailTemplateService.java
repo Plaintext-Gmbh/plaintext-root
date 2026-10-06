@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.mailtemplate.service;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.mailtemplate.entity.MailTemplate;
 import ch.plaintext.mailtemplate.repository.MailTemplateRepository;
 import ch.plaintext.mailtemplate.IMailTemplateProvider;
@@ -28,6 +30,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Rendert Betreff und Text einer Mail: die Vorlage des Mandanten aus der Datenbank, sonst den vom Aufrufer mitgegebenen Standardtext, mit Platzhaltern in geschweiften Klammern.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"Vorlagen liegen im Speicher und werden beim Speichern aktualisiert", "Unbekannte Platzhalter bleiben stehen"},
+        beispiele = {"render(mandat, \"notif.x\", betreff, text, Map.of(\"name\", n))"})
 public class MailTemplateService implements IMailTemplateProvider {
 
     private final MailTemplateRepository repository;

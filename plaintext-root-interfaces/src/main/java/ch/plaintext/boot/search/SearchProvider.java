@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.search;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.util.List;
 
 /**
@@ -28,6 +30,7 @@ import java.util.List;
  *
  * @author plaintext.ch
  */
+@ModulApi(art = ModulApi.Art.ERWEITERUNG, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface SearchProvider {
 
     /**

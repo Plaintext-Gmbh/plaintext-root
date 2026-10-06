@@ -36,8 +36,15 @@ exhaustive.
 - **`PlaintextModulApiVertragTest`** (shared rule, Karte 1422): a DTO interface is named `I…`, every
   implementation of a `SCHNITTSTELLE` carries `@ModulApiUmsetzung`, and its texts contain no secrets
   or internal addresses. Records may be DTOs and keep their name; `ERWEITERUNG` marks framework
-  extension points whose implementations need no description. **Consumer impact:** none until a
-  consumer annotates its own interfaces.
+  extension points whose implementations need no description.
+- **root's own contracts are marked** (Karte 1422, Etappe B): in `plaintext-root-interfaces` 21 services
+  carry `@ModulApi(art = SCHNITTSTELLE)`, 8 extension points `ERWEITERUNG` (`PlaintextCron`,
+  `ModuleDescriptor`, `DashboardTileDataProvider`, `SearchProvider`, `DeepLinkTarget`,
+  `MenuVisibilityProvider`, `PlaintextBusSubscriber`, `StoreBacked`) and 2 DTOs; the 19 root
+  implementations carry `@ModulApiUmsetzung`. `MenuItem`, `TileItem` and `SearchHit` stay unmarked
+  until they are renamed with their consumers. **Consumer impact:** a consumer class that implements one
+  of the 21 services (e.g. `PlaintextSecurity`, `SystemMailSender`, `DateiAblage`) fails
+  `PlaintextModulApiVertragTest` until it carries `@ModulApiUmsetzung` — add it with the bump.
 
 ### Changed
 - **All watch pages of root on the mobile framework** (Karte 1387, Daniel 01.10.2026: «bitte alles

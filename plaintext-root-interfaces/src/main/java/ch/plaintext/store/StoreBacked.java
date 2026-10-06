@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.store;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +25,7 @@ import java.util.Map;
  * empty), another merges row by row (an existing key wins). This interface therefore hands
  * over the rows and leaves the merge semantics to the collection that owns them.</p>
  */
+@ModulApi(art = ModulApi.Art.ERWEITERUNG, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface StoreBacked {
 
     /**

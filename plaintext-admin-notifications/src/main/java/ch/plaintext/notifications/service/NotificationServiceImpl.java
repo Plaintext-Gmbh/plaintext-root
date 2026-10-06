@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.notifications.service;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.mailtemplate.IMailTemplateProvider;
 import ch.plaintext.mailtemplate.IMailTemplateProvider.RenderedMail;
@@ -22,6 +24,10 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Legt In-App-Benachrichtigungen für einen Benutzer oder alle Benutzer eines Mandanten an; Titel und Text gehen durch die Mailvorlagen des Mandanten.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"Kein Versand nach aussen, nur die Glocke in der Oberfläche", "notifyMandant schreibt je Benutzer einen Eintrag"},
+        beispiele = {"notify(\"anna\", mandat, \"rechnung.bezahlt\", titel, text, platzhalter, link)"})
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;

@@ -10,6 +10,7 @@ package ch.plaintext.modules;
  * {@code List<ModuleDescriptor>} automatically, no central registry). Without such a bean a module
  * does not show up (opt-in). The on/off state is persisted separately (table {@code module_config}).
  */
+@ModulApi(art = ModulApi.Art.ERWEITERUNG, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface ModuleDescriptor {
 
     /** Unique, stable module id (e.g. "secrets", "member", "buchhaltung"). */

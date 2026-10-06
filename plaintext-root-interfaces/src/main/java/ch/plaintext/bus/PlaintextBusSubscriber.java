@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.bus;
 
+import ch.plaintext.modules.ModulApi;
+
 /**
  * Subscriber to an event type on the internal bus. All Spring beans of this type are collected
  * automatically by the dispatcher (standard collection injection, no classpath scan needed —
@@ -13,6 +15,7 @@ package ch.plaintext.bus;
  * @author info@plaintext.ch
  * @since 2026
  */
+@ModulApi(art = ModulApi.Art.ERWEITERUNG, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface PlaintextBusSubscriber<T> {
 
     /** The event type this subscriber listens for (exact class, no subtype detection). */

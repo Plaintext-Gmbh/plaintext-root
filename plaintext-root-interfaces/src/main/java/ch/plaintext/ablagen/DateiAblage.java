@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.ablagen;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -14,6 +16,7 @@ import java.util.List;
  * eingetragenen Pfad, mit {@code /} getrennt; {@code ..}, absolute Pfade und leere Teile werden
  * abgewiesen, eine Ablage kommt nie aus ihrem Ordner heraus.</p>
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.NEU)
 public interface DateiAblage {
 
     /** @return Name der Ablage, z. B. {@code nextcloud-drawio} */

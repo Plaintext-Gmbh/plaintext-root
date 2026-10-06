@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.settings;
 
+import ch.plaintext.modules.ModulApi;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -11,6 +13,7 @@ import java.util.List;
  * Provides access to hierarchical settings with dot-separated keys.
  * Settings are mandat-based for multi-tenancy support.
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface ISettingsService {
 
     /**

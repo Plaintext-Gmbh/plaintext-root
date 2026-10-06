@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.modules;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,10 @@ import java.util.List;
  */
 @Service
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Fragt ab und speichert, ob ein Feature-Modul eingeschaltet ist; ohne Eintrag gilt ein Modul als eingeschaltet.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"Abschalten blendet das Menü aus", "Crons und Listener prüfen den Zustand selbst über isEnabled"},
+        beispiele = {})
 public class ModuleService implements ModuleEnablementProvider {
 
     @Autowired

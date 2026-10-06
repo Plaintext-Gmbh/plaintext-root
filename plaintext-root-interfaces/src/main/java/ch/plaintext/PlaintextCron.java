@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext;
 
+import ch.plaintext.modules.ModulApi;
+
 import ch.plaintext.bus.ExecutionScope;
 
 /**
@@ -11,6 +13,7 @@ import ch.plaintext.bus.ExecutionScope;
  * schedule changed) via the admin cron UI. Each cron job runs per mandate
  * unless {@link #isGlobal()} returns true.
  */
+@ModulApi(art = ModulApi.Art.ERWEITERUNG, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface PlaintextCron {
 
     /**

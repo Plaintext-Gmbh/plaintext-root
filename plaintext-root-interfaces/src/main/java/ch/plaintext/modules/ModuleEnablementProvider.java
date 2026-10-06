@@ -10,6 +10,7 @@ package ch.plaintext.modules;
  * {@code plaintext-admin-modules} — analogous to {@link ch.plaintext.MenuVisibilityProvider}, the
  * implementation (in admin-modules) is fetched lazily at runtime through the {@code BeanFactory}.
  */
+@ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.STABIL)
 public interface ModuleEnablementProvider {
 
     /** On/off state of a module (default: enabled when no entry exists). */

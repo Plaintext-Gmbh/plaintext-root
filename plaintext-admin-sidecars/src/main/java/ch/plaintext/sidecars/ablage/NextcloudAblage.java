@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sidecars.ablage;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.ablagen.AblageEintrag;
 import ch.plaintext.ablagen.DateiAblage;
 
@@ -27,6 +29,10 @@ import java.util.List;
  * Teile und absolute Pfade werden abgewiesen, ein Zugriff bleibt immer unter der Wurzel. Keine
  * Weiterleitungen (sonst schickte ein Server die Anmeldung woandershin).</p>
  */
+@ModulApiUmsetzung(beschreibung = "Speichert, liest, listet und löscht Dateien in einem Nextcloud-Ordner über WebDAV, ohne dass der Aufrufer Server oder Zugang kennt.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.AUSSEN,
+        hinweise = {"Pfade bleiben unter der Wurzel, Punkt-Segmente werden abgewiesen", "Keine Weiterleitungen", "Das App-Passwort liegt verschlüsselt"},
+        beispiele = {"schreibe(\"diagramme/a.drawio\", bytes)"})
 public final class NextcloudAblage implements DateiAblage {
 
     /** Was in der Fehlermeldung fehlt (Karte 1416, Sonar java:S1192). */

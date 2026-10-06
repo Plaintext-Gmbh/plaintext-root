@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.settings.service;
 
+import ch.plaintext.modules.ModulApiUmsetzung;
+
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.settings.ISettingsService;
 import ch.plaintext.settings.SettingsKeys;
@@ -23,6 +25,10 @@ import java.util.stream.Collectors;
 @Service
 @Named("settingsService")
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Liest Einstellungen mit Punkt-Schlüsseln je Mandant, mit Rückfall auf den globalen Wert.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
+        hinweise = {"Ohne Mandant im Kontext gilt der globale Wert", "Nicht lesbare Zahlen ergeben null und eine Warnung im Log"},
+        beispiele = {"getInt(\"mail.sync.minuten\", mandat)"})
 public class SettingsServiceImpl implements ISettingsService {
 
     private final SettingRepository repository;
