@@ -26,7 +26,18 @@ exhaustive.
   description next to each implementer. **Consumer impact:** a module that declares its own
   `annotationProcessorPaths` must use `combine.self="override"` with the catalog before Lombok, or it
   loses the catalog (Maven merges these lists by position). Catalogs written by older processors stay
-  readable.
+  readable. Test sources get no catalog (`default-testCompile` without the module option).
+- **Module page shows the interfaces** (Karte 1422): search, filter by kind, expandable rows with
+  methods, "Genutzt von" (required/optional) and the implementers with their `@ModulApiUmsetzung`.
+- **MCP `analysiere_module` and `bauplan`** (Karte 1422): who provides, implements and uses which
+  interface in the running version (from the beans' injection points), what breaks when a module is
+  left out, and for a question the matching interfaces, MCP tools, sidecar capabilities and gaps.
+  `get_modul_schnittstelle` adds `genutztVon`. ADMIN/ROOT only, like the existing catalog tools.
+- **`PlaintextModulApiVertragTest`** (shared rule, Karte 1422): a DTO interface is named `I…`, every
+  implementation of a `SCHNITTSTELLE` carries `@ModulApiUmsetzung`, and its texts contain no secrets
+  or internal addresses. Records may be DTOs and keep their name; `ERWEITERUNG` marks framework
+  extension points whose implementations need no description. **Consumer impact:** none until a
+  consumer annotates its own interfaces.
 
 ### Changed
 - **All watch pages of root on the mobile framework** (Karte 1387, Daniel 01.10.2026: «bitte alles
