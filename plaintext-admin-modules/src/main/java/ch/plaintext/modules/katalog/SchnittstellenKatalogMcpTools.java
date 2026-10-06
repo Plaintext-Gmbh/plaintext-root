@@ -4,9 +4,10 @@
 package ch.plaintext.modules.katalog;
 
 import ch.plaintext.boot.plugins.log.Log;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -34,7 +35,7 @@ import java.util.stream.Collectors;
 public class SchnittstellenKatalogMcpTools {
 
     private static final Set<String> ROLLEN = Set.of("ROLE_ADMIN", "ROLE_ROOT");
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     private final SchnittstellenKatalog katalog;
     private final ModulAnalyse analyse;

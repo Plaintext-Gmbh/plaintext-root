@@ -6,9 +6,10 @@ package ch.plaintext.sidecars.mcp;
 import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.sidecars.entity.SpeicherAblage;
 import ch.plaintext.sidecars.service.SpeicherAblageService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -37,7 +38,7 @@ public class SpeicherAblagenMcpTools {
     /** Praefix jeder Fehlerantwort (Karte 1416, Sonar java:S1192). */
     private static final String FEHLER = "FEHLER: ";
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     private final SpeicherAblageService service;
 

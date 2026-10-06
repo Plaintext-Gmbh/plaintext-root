@@ -4,9 +4,10 @@
 package ch.plaintext.secrets;
 
 import ch.plaintext.boot.plugins.security.PlaintextSecurityHolder;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,7 +33,7 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class HashiCorpVaultBackend implements SecretBackend {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     private final SecretBackendConfigRepository configRepo;
     private final SecretCrypto crypto;
@@ -85,7 +86,7 @@ public class HashiCorpVaultBackend implements SecretBackend {
                     HttpResponse.BodyHandlers.ofString());
             if (r.statusCode() == 200) {
                 JsonNode val = JSON.readTree(r.body()).path("data").path("data").path("value");
-                return val.isMissingNode() || val.isNull() ? null : val.asText();
+                return val.isMissingNode() || val.isNull() ? null : val.asString();
             }
         } catch (Exception e) {
             log.debug("HashiCorp readValue({}) fehlgeschlagen: {}", name, e.getMessage());
@@ -104,7 +105,7 @@ public class HashiCorpVaultBackend implements SecretBackend {
                     HttpResponse.BodyHandlers.ofString());
             if (r.statusCode() == 200) {
                 JsonNode note = JSON.readTree(r.body()).path("data").path("data").path("note");
-                return note.isMissingNode() || note.isNull() ? null : note.asText();
+                return note.isMissingNode() || note.isNull() ? null : note.asString();
             }
         } catch (Exception e) {
             log.debug("HashiCorp comment({}) fehlgeschlagen: {}", name, e.getMessage());
@@ -166,9 +167,9 @@ public class HashiCorpVaultBackend implements SecretBackend {
                 .map(cfg -> {
                     try {
                         JsonNode j = JSON.readTree(crypto.decrypt(cfg.getConfigEncrypted()));
-                        String url = j.path("url").asText(null);
-                        String token = j.path("token").asText(null);
-                        String mount = j.path("mount").asText("secret");
+                        String url = j.path("url").asString(null);
+                        String token = j.path("token").asString(null);
+                        String mount = j.path("mount").asString("secret");
                         if (url == null || token == null || url.isBlank() || token.isBlank()) {
                             return null;
                         }

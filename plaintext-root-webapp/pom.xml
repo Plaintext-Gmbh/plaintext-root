@@ -444,7 +444,6 @@
                         <exclude>ch/plaintext/boot/deeplink/web/DeepLinkMenu.class</exclude>
                         <exclude>ch/plaintext/boot/plugins/security/web/MandateMenu.class</exclude>
                         <!-- Reine Bean-Verdrahtung: @Bean-Methoden ohne Verzweigung, nur new/Registrierung. -->
-                        <exclude>ch/plaintext/boot/plugins/config/JacksonConfig.class</exclude>
                         <exclude>ch/plaintext/boot/plugins/security/config/SecurityJpaConfig.class</exclude>
                         <exclude>ch/plaintext/boot/plugins/security/SecurityContextRepositoryConfig.class</exclude>
                         <exclude>ch/plaintext/boot/plugins/maintenance/MaintenanceModeConfig.class</exclude>

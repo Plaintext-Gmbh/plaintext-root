@@ -6,17 +6,17 @@ package ch.plaintext.modules;
 import ch.plaintext.jpa.service.JpaEntityService;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -59,7 +59,7 @@ public class ModuleDataService {
 
         try {
             return exportMapper().writerWithDefaultPrettyPrinter().writeValueAsString(envelope);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Export von Modul '" + moduleId + "' fehlgeschlagen: " + e.getMessage(), e);
         }
     }
@@ -79,11 +79,11 @@ public class ModuleDataService {
         JsonNode root;
         try {
             root = exportMapper().readTree(json);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             throw new IllegalArgumentException("Keine gültige Export-Datei: " + e.getMessage(), e);
         }
 
-        String fileModule = root.path("module").asText(null);
+        String fileModule = root.path("module").asString(null);
         if (fileModule == null || !moduleId.equals(fileModule)) {
             throw new IllegalArgumentException(
                     "Datei gehört zu Modul '" + fileModule + "', erwartet wurde '" + moduleId + "'.");
@@ -94,7 +94,7 @@ public class ModuleDataService {
         int gespeichert = 0;
         List<String> fehler = new ArrayList<>();
 
-        Iterator<String> tableNames = tables.fieldNames();
+        Iterator<String> tableNames = tables.propertyNames().iterator();
         while (tableNames.hasNext()) {
             String entityName = tableNames.next();
             Class<?> entityClass = entityClassByName.get(entityName);
@@ -137,12 +137,13 @@ public class ModuleDataService {
     /** Own instance (not shared as a bean) — configured analogously to {@code RootEntityBackingBean}. */
     /** Paket-sichtbar fuer den Formatvertrag (Karte 1423). */
     static ObjectMapper exportMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-        mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
-        mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
-        return mapper;
+        // Karte 1423: Jackson 3 mit den Vorgaben von Jackson 2; das Exportformat ist ein Vertrag
+        // (ModuleDataExportVertragTest). java.time ist in Jackson 3 eingebaut.
+        return JsonMapper.builderWithJackson2Defaults()
+                .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                .changeDefaultVisibility(v -> v.withVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE)
+                        .withVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY))
+                .build();
     }
 }

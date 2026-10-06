@@ -4,7 +4,8 @@
 package ch.plaintext.webhooks.service;
 
 import ch.plaintext.webhooks.PlaintextDomainEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -45,6 +46,6 @@ class WebhookPayloadVertragTest {
         nutzlast.put("liste", List.of("a", "b"));
         nutzlast.put("datum", java.time.LocalDate.of(2026, 10, 6).toString());
         PlaintextDomainEvent e = new PlaintextDomainEvent("rechnung.bezahlt", "Rechnung", "17", "plaintext", nutzlast);
-        vergleiche("webhook-rumpf.json", WebhookDispatchService.payloadJson(new ObjectMapper(), e));
+        vergleiche("webhook-rumpf.json", WebhookDispatchService.payloadJson(JsonMapper.builderWithJackson2Defaults().build(), e));
     }
 }

@@ -3,8 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,7 @@ public class ThemeColorProvider implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(ThemeColorProvider.class);
 
     /** Only used to write plain string maps — stateless and therefore shareable. */
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     @Getter
     public static class ColorPalette implements Serializable {
@@ -310,7 +311,7 @@ public class ThemeColorProvider implements Serializable {
         });
         try {
             return JSON.writeValueAsString(alle);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // Cannot happen with plain string maps; an empty object is still
             // valid JSON and lets config.js keep running (instead of aborting the file).
             LOG.error("Farbpalette liess sich nicht als JSON schreiben", e);

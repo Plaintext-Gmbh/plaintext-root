@@ -10,10 +10,12 @@ import ch.plaintext.sidecars.entity.Sidecar;
 import ch.plaintext.sidecars.service.SidecarBeschreibung;
 import ch.plaintext.sidecars.service.SidecarProtokollClient;
 import ch.plaintext.sidecars.service.SidecarService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -61,7 +63,7 @@ public class SidecarsMcpTools {
 
     private static final String SCOPE_ADMIN = "SCOPE_ADMIN";
     private static final String ROLE_ROOT = "ROLE_ROOT";
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     private final SidecarService service;
     private final SidecarProtokollClient client;
@@ -123,7 +125,7 @@ public class SidecarsMcpTools {
                 }
             }
             return o.toPrettyString();
-        } catch (NoSuchElementException | IOException e) {
+        } catch (NoSuchElementException | JacksonException e) {
             return fehler(e.getMessage());
         }
     }
@@ -254,7 +256,7 @@ public class SidecarsMcpTools {
             o.put("gekuerzt", a.gekuerzt());
             o.put("text", a.text());
             return o.toPrettyString();
-        } catch (NoSuchElementException | IOException e) {
+        } catch (NoSuchElementException | IOException | JacksonException e) {
             return fehler(e.getMessage());
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();

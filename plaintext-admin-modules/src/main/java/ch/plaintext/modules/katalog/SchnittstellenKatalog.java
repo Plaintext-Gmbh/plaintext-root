@@ -3,8 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.modules.katalog;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
@@ -35,7 +36,7 @@ import java.util.Optional;
 public class SchnittstellenKatalog {
 
     static final String MUSTER = "classpath*:META-INF/plaintext-katalog/*.json";
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     private final ApplicationContext kontext;
     /** Einmal gelesen, dann unveraendert; AtomicReference statt volatile (Karte 1416, Sonar java:S3077). */
@@ -158,7 +159,7 @@ public class SchnittstellenKatalog {
         // die Beschreibung steht im Katalog des umsetzenden Moduls, nicht in dem des Vertrags.
         List<Umsetzung> umsetzungen = new ArrayList<>();
         for (JsonNode k : kataloge) {
-            String modul = k.path("modul").asText();
+            String modul = k.path("modul").asString();
             k.path("umsetzungen").forEach(u -> umsetzungen.add(umsetzung(modul, u)));
         }
         umsetzungen.sort(Comparator.comparing(Umsetzung::klasse));
@@ -166,7 +167,7 @@ public class SchnittstellenKatalog {
         umsetzungen.forEach(u -> nachKlasse.putIfAbsent(binaerName(u.klasse()), u));
         List<Schnittstelle> l = new ArrayList<>();
         for (JsonNode k : kataloge) {
-            String modul = k.path("modul").asText();
+            String modul = k.path("modul").asString();
             for (JsonNode s : k.path("schnittstellen")) {
                 l.add(schnittstelle(modul, s, nachKlasse));
             }
@@ -177,35 +178,35 @@ public class SchnittstellenKatalog {
 
     private static Umsetzung umsetzung(String modul, JsonNode u) {
         List<MethodenUmsetzung> m = new ArrayList<>();
-        u.path("methoden").forEach(x -> m.add(new MethodenUmsetzung(x.path("name").asText(), x.path("beschreibung").asText(),
-                x.path("seiteneffekte").asText(), texte(x.path("hinweise")), texte(x.path("beispiele")))));
-        return new Umsetzung(modul, u.path("klasse").asText(), u.path("kurz").asText(), texte(u.path("schnittstellen")),
-                u.path("beschreibung").asText(), u.path("seiteneffekte").asText(), texte(u.path("hinweise")),
+        u.path("methoden").forEach(x -> m.add(new MethodenUmsetzung(x.path("name").asString(), x.path("beschreibung").asString(),
+                x.path("seiteneffekte").asString(), texte(x.path("hinweise")), texte(x.path("beispiele")))));
+        return new Umsetzung(modul, u.path("klasse").asString(), u.path("kurz").asString(), texte(u.path("schnittstellen")),
+                u.path("beschreibung").asString(), u.path("seiteneffekte").asString(), texte(u.path("hinweise")),
                 texte(u.path("beispiele")), List.copyOf(m));
     }
 
     private static List<String> texte(JsonNode liste) {
         List<String> l = new ArrayList<>();
-        liste.forEach(x -> l.add(x.asText()));
+        liste.forEach(x -> l.add(x.asString()));
         return List.copyOf(l);
     }
 
     private Schnittstelle schnittstelle(String modul, JsonNode s, java.util.Map<String, Umsetzung> beschreibungen) {
         List<String> erweitert = new ArrayList<>();
-        s.path("erweitert").forEach(x -> erweitert.add(x.asText()));
+        s.path("erweitert").forEach(x -> erweitert.add(x.asString()));
         List<Methode> methoden = new ArrayList<>();
         for (JsonNode m : s.path("methoden")) {
             List<Parameter> p = new ArrayList<>();
-            m.path("parameter").forEach(x -> p.add(new Parameter(x.path("name").asText(), x.path("typ").asText())));
-            methoden.add(new Methode(m.path("name").asText(), m.path("rueckgabe").asText(), m.path("art").asText(),
-                    m.path("zweck").asText(), List.copyOf(p)));
+            m.path("parameter").forEach(x -> p.add(new Parameter(x.path("name").asString(), x.path("typ").asString())));
+            methoden.add(new Methode(m.path("name").asString(), m.path("rueckgabe").asString(), m.path("art").asString(),
+                    m.path("zweck").asString(), List.copyOf(p)));
         }
-        String name = s.path("name").asText();
-        String herkunft = s.path("herkunft").asText(modul.endsWith("-interfaces") ? "interfaces-Modul" : "im Modul");
-        return new Schnittstelle(modul, name, s.path("kurz").asText(), s.path("zweck").asText(),
+        String name = s.path("name").asString();
+        String herkunft = s.path("herkunft").asString(modul.endsWith("-interfaces") ? "interfaces-Modul" : "im Modul");
+        return new Schnittstelle(modul, name, s.path("kurz").asString(), s.path("zweck").asString(),
                 List.copyOf(erweitert), List.copyOf(methoden), umsetzer(name, beschreibungen),
-                s.path("annotiert").asBoolean(false), s.path("art").asText(""), s.path("stabilitaet").asText(""),
-                s.path("seit").asText(""), s.path("ersatz").asText(""), herkunft, s.path("typ").asText("interface"));
+                s.path("annotiert").asBoolean(false), s.path("art").asString(""), s.path("stabilitaet").asString(""),
+                s.path("seit").asString(""), s.path("ersatz").asString(""), herkunft, s.path("typ").asString("interface"));
     }
 
     /** Beans, die die Schnittstelle umsetzen; ohne Laden fremder Klassen, wenn die Schnittstelle fehlt. */

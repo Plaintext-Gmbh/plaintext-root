@@ -3,9 +3,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.jsf.userprofile;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.core.JacksonException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -42,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ThemeColorProviderJsonTest {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     /** The keys that {@code applyColorVariables()} in config.js touches. */
     private static final List<String> FELDER = List.of(
@@ -66,7 +67,7 @@ class ThemeColorProviderJsonTest {
     @Test
     void dasAlteJavaScriptLiteralWaereDurchgefallen() {
         String altesFormat = "{'blue':{light:{primary:'#2196F3',primaryText:'#ffffff'}}}";
-        assertThrows(JsonProcessingException.class, () -> JSON.readTree(altesFormat),
+        assertThrows(JacksonException.class, () -> JSON.readTree(altesFormat),
                 "Genau diese Schreibweise stand bis Karte 938 im Attribut. Wenn der Parser sie "
                         + "akzeptiert, misst der Test oben nichts.");
     }
@@ -93,7 +94,7 @@ class ThemeColorProviderJsonTest {
                     "Farbe " + farbe + " hat keinen Modus " + modus + ".");
             for (String feld : FELDER) {
                 JsonNode wert = werte.get(feld);
-                assertTrue(wert != null && wert.isTextual() && !wert.asText().isBlank(),
+                assertTrue(wert != null && wert.isString() && !wert.asString().isBlank(),
                         "config.js liest " + farbe + "." + modus + "." + feld
                                 + " und setzt es als CSS-Variable — der Wert fehlt.");
             }
@@ -107,9 +108,9 @@ class ThemeColorProviderJsonTest {
     @Test
     void dieWerteSindFarbenUndBrauchenKeinEscaping() throws Exception {
         JsonNode wurzel = JSON.readTree(provider.getColorsJson());
-        wurzel.fields().forEachRemaining(farbe -> farbe.getValue().fields().forEachRemaining(
-                modus -> modus.getValue().fields().forEachRemaining(feld -> {
-                    String wert = feld.getValue().asText();
+        wurzel.properties().forEach(farbe -> farbe.getValue().properties().forEach(
+                modus -> modus.getValue().properties().forEach(feld -> {
+                    String wert = feld.getValue().asString();
                     assertTrue(wert.matches("^(#[0-9A-Fa-f]{6}|rgba?\\([0-9,. ]+\\))$"),
                             farbe.getKey() + "." + modus.getKey() + "." + feld.getKey()
                                     + " ist keine Farbangabe, sondern: " + wert);
