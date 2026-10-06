@@ -316,8 +316,12 @@ class MobilSeitePlaywrightIT {
             p.evaluate("() => { window.__marke = 1387; }");
             assertEquals(0, p.locator("noscript button:visible").count(), "Mit JavaScript gibt es keinen OK-Knopf");
 
-            p.locator("input[name='f-von']").fill("08:30");
-            p.locator("input[name='f-von']").dispatchEvent("change");
+            // Genau EIN change (Karte 1421): fill() loest bei type=time selbst schon change aus. Ein zweites
+            // dispatchEvent traf, wenn die erste Antwort schneller war, bereits das NEU gerenderte Feld
+            // (die Beispielseite rendert immer 08:00) und schickte 08:00 hinterher — rot in root#289 und
+            // lokal, gruen nur, wenn die Antwort langsamer kam.
+            p.locator("input[name='f-von']").evaluate(
+                    "e => { e.value = '08:30'; e.dispatchEvent(new Event('change', {bubbles: true})); }");
             p.waitForFunction("() => document.getElementById('m-meldung').textContent.includes('Übernommen')");
 
             assertEquals("Übernommen: 08:30–09:45", p.locator("#m-meldung").innerText().trim(),
