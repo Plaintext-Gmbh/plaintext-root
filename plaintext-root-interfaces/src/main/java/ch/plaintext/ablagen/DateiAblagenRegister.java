@@ -9,15 +9,15 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Die eingerichteten Speicher-Ablagen (Karte 1406), umgesetzt in {@code plaintext-admin-sidecars}.
- * Optional einbinden ({@code @Autowired(required = false)}), nicht jede Anwendung hat das Modul.
+ * The configured file stores (card 1406), implemented in {@code plaintext-admin-sidecars}. Inject it
+ * as optional ({@code @Autowired(required = false)}), not every application contains that module.
  */
 @ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.NEU)
 public interface DateiAblagenRegister {
 
-    /** @return Namen aller eingerichteten Ablagen */
+    /** @return names of all configured stores */
     List<String> namen();
 
-    /** @return die Ablage dieses Namens, wenn eingerichtet */
+    /** @return the store with this name, if it is configured */
     Optional<DateiAblage> ablage(String name);
 }

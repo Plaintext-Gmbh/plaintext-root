@@ -82,6 +82,8 @@ public class ModulesBackingBean implements Serializable {
     private String schnittstellenSuche = "";
     /** Filter: leer = alle, {@code SCHNITTSTELLE}, {@code DTO}, {@code OHNE} (nicht mit @ModulApi markiert). */
     private String schnittstellenArt = "";
+    /** Card 1438: filter for modules and interfaces — empty = all, {@code root}, {@code modul}. */
+    private String ebene = "";
 
     // ── Export (Download) ──────────────────────────────────
     private StreamedContent exportFile;
@@ -213,7 +215,56 @@ public class ModulesBackingBean implements Serializable {
      * sitzungsgebunden und serialisierbar, der Katalog liegt einmal gelesen im Speicher.
      */
     public List<SchnittstellenKatalog.Schnittstelle> getSchnittstellen() {
-        return katalog == null ? List.of() : filtere(katalog.suche(schnittstellenSuche), schnittstellenArt);
+        return katalog == null ? List.of()
+                : SchnittstellenKatalog.nachEbene(filtere(katalog.suche(schnittstellenSuche), schnittstellenArt), ebene);
+    }
+
+    /** Card 1438: the module rows, filtered by {@link #ebene}. */
+    public List<ModuleView> getModuleGefiltert() {
+        return nachEbene(module, ebene);
+    }
+
+    static List<ModuleView> nachEbene(List<ModuleView> l, String wert) {
+        return wert == null || wert.isBlank() ? l : l.stream().filter(m -> wert.equals(m.getEbene())).toList();
+    }
+
+    /**
+     * Card 1438: what the module offers, implements and uses, each list filtered by {@link #ebene}
+     * (the level of the interface, not of the module).
+     */
+    public ModulAnalyse.ModulBild modulBild(ModuleView m) {
+        if (analyse == null || katalog == null) {
+            return new ModulAnalyse.ModulBild(m.getJar(), List.of(), List.of(), List.of());
+        }
+        ModulAnalyse.ModulBild b = analyse.bildVon(m.getJar());
+        return new ModulAnalyse.ModulBild(b.modul(), passend(b.bietetAn()), passend(b.setztUm()), passend(b.nutzt()));
+    }
+
+    private List<String> passend(List<String> namen) {
+        return ebene == null || ebene.isBlank() ? namen : namen.stream().filter(n -> ebene.equals(ebeneVon(n))).toList();
+    }
+
+    /** @return root or modul of the interface {@code name}, from the module that declares it */
+    public String ebeneVon(String name) {
+        return katalog == null ? "" : katalog.eine(name).map(SchnittstellenKatalog.Schnittstelle::ebene).orElse("");
+    }
+
+    /** @return short name of the interface for lists ({@code ch.plaintext.mail.MailSender} → {@code MailSender}) */
+    public String kurzVon(String name) {
+        return katalog == null ? name : katalog.eine(name).map(SchnittstellenKatalog.Schnittstelle::kurz).orElse(name);
+    }
+
+    public String ebeneText(String wert) {
+        return switch (wert == null ? "" : wert) {
+            case SchnittstellenKatalog.ROOT -> "root";
+            case SchnittstellenKatalog.MODUL -> "Modul";
+            default -> "";
+        };
+    }
+
+    /** root in the default tag colour, modules green; PrimeFaces 15 knows success/info/warning/danger only. */
+    public String ebeneSchwere(String wert) {
+        return SchnittstellenKatalog.MODUL.equals(wert) ? "success" : null;
     }
 
     static List<SchnittstellenKatalog.Schnittstelle> filtere(List<SchnittstellenKatalog.Schnittstelle> l, String art) {

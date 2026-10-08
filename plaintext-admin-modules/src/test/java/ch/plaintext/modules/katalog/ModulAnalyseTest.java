@@ -150,4 +150,16 @@ class ModulAnalyseTest {
         assertThat(a.ohneUmsetzer()).doesNotContain("ch.plaintext.modules.katalog.IZeiteintrag", "ch.plaintext.fehlt.Weg");
         assertThat(a.module()).isNotEmpty();
     }
+
+    @Test
+    @DisplayName("Karte 1438: Modulbild für die Modulseite vereint das Modul und sein -interfaces-Jar; Gegenprobe Namensanfang")
+    void bildVon() {
+        ModulAnalyse.ModulBild b = analyse.bildVon("test");
+        assertThat(b.modul()).isEqualTo("test");
+        assertThat(b.bietetAn()).contains("ch.plaintext.modules.katalog.SchnittstellenKatalogTest.Vertrag");
+        assertThat(analyse.bildVon("tes").bietetAn()).as("kein Präfix-Treffer auf test-interfaces").isEmpty();
+        assertThat(analyse.bildVon("gibtesnicht").setztUm()).isEmpty();
+        assertThat(new ModulAnalyse.ModulBild("plaintext-admin-cron", List.of(), List.of(), List.of()).ebene()).isEqualTo("root");
+        assertThat(new ModulAnalyse.Nutzung("x", "b", "k", "plaintext-z-wiki", false).ebene()).isEqualTo("modul");
+    }
 }

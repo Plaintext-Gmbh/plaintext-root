@@ -111,4 +111,36 @@ class SchnittstellenKatalogTest {
         assertThat(alt.herkunft()).isEqualTo("interfaces-Modul");
         assertThat(alt.istDto()).isFalse();
     }
+
+    @Test
+    @DisplayName("Karte 1438: Ebene root für plaintext-root-*/plaintext-admin-*, sonst Modul; Filter; Gegenprobe ähnlicher Namen")
+    void ebene() {
+        assertThat(SchnittstellenKatalog.ebene("plaintext-root-interfaces")).isEqualTo("root");
+        assertThat(SchnittstellenKatalog.ebene("plaintext-admin-sidecars")).isEqualTo("root");
+        assertThat(SchnittstellenKatalog.ebene("plaintext-z-fotos")).isEqualTo("modul");
+        assertThat(SchnittstellenKatalog.ebene("plaintext-app-interfaces")).isEqualTo("modul");
+        assertThat(SchnittstellenKatalog.ebene("plaintext-rootkit")).as("Präfix nur mit Bindestrich").isEqualTo("modul");
+        assertThat(SchnittstellenKatalog.ebene(null)).isEqualTo("modul");
+
+        SchnittstellenKatalog k = katalog();
+        // Auf dem Testklassenpfad liegt neben test-interfaces auch der echte Katalog von plaintext-root-interfaces.
+        assertThat(SchnittstellenKatalog.nachEbene(k.alle(), "modul")).extracting(SchnittstellenKatalog.Schnittstelle::kurz)
+                .contains("Vertrag").doesNotContain("I18nProvider");
+        assertThat(SchnittstellenKatalog.nachEbene(k.alle(), "root")).extracting(SchnittstellenKatalog.Schnittstelle::kurz)
+                .contains("I18nProvider").doesNotContain("Vertrag");
+        assertThat(SchnittstellenKatalog.nachEbene(k.alle(), " ROOT ")).as("Gross/klein und Leerzeichen egal")
+                .isEqualTo(SchnittstellenKatalog.nachEbene(k.alle(), "root"));
+        assertThat(SchnittstellenKatalog.nachEbene(k.alle(), "")).hasSameSizeAs(k.alle());
+        assertThat(SchnittstellenKatalog.nachEbene(k.alle(), null)).hasSameSizeAs(k.alle());
+    }
+
+    @Test
+    @DisplayName("Karte 1438: MCP-JSON trägt ebene an Schnittstelle und Umsetzer (Jackson über @JsonProperty)")
+    void ebeneImJson() {
+        SchnittstellenKatalog.Schnittstelle v = katalog().eine("Vertrag").orElseThrow();
+        tools.jackson.databind.JsonNode j = tools.jackson.databind.json.JsonMapper.builderWithJackson2Defaults().build().valueToTree(v);
+        assertThat(j.path("ebene").asString()).isEqualTo("modul");
+        assertThat(j.path("umsetzer").get(0).path("ebene").asString()).isEqualTo("modul");
+        assertThat(j.path("herkunft").asString()).as("bestehendes Feld bleibt").isEqualTo("interfaces-Modul");
+    }
 }

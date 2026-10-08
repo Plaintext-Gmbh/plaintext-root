@@ -9,35 +9,35 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Eine eingerichtete Speicher-Ablage (Karte 1406), z. B. ein Ordner in der Nextcloud.
+ * A configured file store (card 1406), e.g. a folder in Nextcloud.
  *
- * <p>Module (Draw.io, Exporte …) speichern darüber Dateien, ohne Zugangsdaten oder Server zu kennen;
- * die Ablage richtet ROOT unter <i>Root → Sidecars</i> ein. Alle Pfade sind <b>relativ</b> zum dort
- * eingetragenen Pfad, mit {@code /} getrennt; {@code ..}, absolute Pfade und leere Teile werden
- * abgewiesen, eine Ablage kommt nie aus ihrem Ordner heraus.</p>
+ * <p>Modules (Draw.io, exports …) store files through it without knowing credentials or the server;
+ * ROOT sets the store up under <i>Root → Sidecars</i>. All paths are <b>relative</b> to the path
+ * configured there, separated by {@code /}; {@code ..}, absolute paths and empty segments are
+ * rejected, so a store never leaves its folder.</p>
  */
 @ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.NEU)
 public interface DateiAblage {
 
-    /** @return Name der Ablage, z. B. {@code nextcloud-drawio} */
+    /** @return name of the store, e.g. {@code nextcloud-drawio} */
     String name();
 
     /**
-     * Schreibt eine Datei; fehlende Ordner werden angelegt, eine vorhandene Datei überschrieben.
+     * Writes a file; missing folders are created, an existing file is overwritten.
      *
-     * @param inhaltTyp Medientyp, z. B. {@code image/png}; {@code null} = {@code application/octet-stream}
+     * @param inhaltTyp media type, e.g. {@code image/png}; {@code null} = {@code application/octet-stream}
      */
     void schreibe(String pfad, byte[] daten, String inhaltTyp) throws IOException;
 
-    /** @return der Inhalt einer Datei (höchstens 50 MB) */
+    /** @return the content of a file (at most 50 MB) */
     byte[] lies(String pfad) throws IOException;
 
-    /** @return {@code true}, wenn unter dem Pfad eine Datei oder ein Ordner liegt */
+    /** @return {@code true} if a file or a folder exists at the path */
     boolean existiert(String pfad) throws IOException;
 
-    /** @param ordner relativer Ordner, leer = Wurzel der Ablage; Ergebnis ohne den Ordner selbst */
+    /** @param ordner relative folder, empty = root of the store; the result does not contain the folder itself */
     List<AblageEintrag> liste(String ordner) throws IOException;
 
-    /** Löscht eine Datei; bei Nextcloud landet sie im Papierkorb. */
+    /** Deletes a file; with Nextcloud it ends up in the trash bin. */
     void loesche(String pfad) throws IOException;
 }

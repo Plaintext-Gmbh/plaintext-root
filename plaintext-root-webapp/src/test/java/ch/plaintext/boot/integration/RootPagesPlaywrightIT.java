@@ -484,4 +484,59 @@ class RootPagesPlaywrightIT {
         assertEquals(List.of(), ajaxFehler, "Fehler in den Ajax-Antworten");
         assertFalse(page.content().contains("PropertyNotFoundException"));
     }
+
+    @Test
+    @DisplayName("Karte 1438: Modul aufklappen zeigt bietet an/setzt um/nutzt mit Badge root; Filter Module leert beide Listen, root füllt sie wieder")
+    void modulAufklappenUndEbene() {
+        List<String> ajaxFehler = new ArrayList<>();
+        page.onRequestFinished(anfrage -> {
+            if (!"POST".equals(anfrage.method())) {
+                return;
+            }
+            try {
+                Response antwort = anfrage.response();
+                String rumpf = antwort == null ? "" : antwort.text();
+                if (rumpf.startsWith("<?xml") && (rumpf.contains("<error-name>") || rumpf.contains("Exception"))) {
+                    ajaxFehler.add(rumpf.length() > 400 ? rumpf.substring(0, 400) : rumpf);
+                }
+            } catch (RuntimeException _) {
+                // Rumpf nicht mehr abrufbar: kein Befund.
+            }
+        });
+        anmelden(ROOT_USER);
+        Response seite = page.navigate(url("/module.html"));
+        page.waitForLoadState();
+        assertEquals(200, seite.status(), "module.html: HTTP " + seite.status());
+        // nur Datenzeilen: eine aufgeklappte Zeile bringt ein weiteres tr ohne data-ri, und PrimeFaces
+        // haelt sie ueber rowKey auch nach dem Filtern offen
+        String zeilen = "[id=\"fm:tbl_data\"] > tr[data-ri]";
+        int module = page.locator(zeilen).count();
+        assertTrue(module >= 5, "zu wenige Module in root: " + module);
+
+        // Secrets (plaintext-admin-secrets) setzt SecretResolver aus plaintext-root-interfaces um
+        Locator secrets = page.locator(zeilen).filter(new Locator.FilterOptions().setHasText("plaintext-admin-secrets"));
+        assertEquals(1, secrets.count(), "Zeile Secrets fehlt: " + page.locator("#fm\\:tbl").innerText());
+        assertTrue(secrets.innerText().contains("root"), "Badge root fehlt an der Modulzeile: " + secrets.innerText());
+        secrets.locator(".ui-row-toggler").click();
+        page.waitForSelector("[id=\"fm:tbl\"] .ui-expanded-row-content");
+        ruhig();
+        String bild = page.locator("[id=\"fm:tbl\"] .ui-expanded-row-content").first().innerText();
+        assertTrue(bild.contains("Bietet an") && bild.contains("Setzt um") && bild.contains("Nutzt"), "Listen fehlen: " + bild);
+        assertTrue(bild.contains("SecretResolver"), "SecretResolver fehlt unter «Setzt um»: " + bild);
+        assertTrue(bild.contains("root"), "Badge root fehlt im aufgeklappten Modul: " + bild);
+
+        // Gegenprobe: in root gibt es keine Fachmodule, «Module» leert beide Listen
+        page.locator("#fm\\:ebene").getByText("Module").click();
+        page.waitForFunction("() => document.querySelector('[id=\"fm:schnittstellen\"]').innerText.includes('Keine Schnittstelle passt zur Suche.')");
+        ruhig();
+        assertTrue(page.locator("#fm\\:tbl").innerText().contains("Keine Module gemeldet"),
+                "Filter Module zeigt root-Module: " + page.locator("#fm\\:tbl").innerText());
+
+        page.locator("#fm\\:ebene").getByText("root").click();
+        page.waitForFunction("n => document.querySelectorAll('[id=\"fm:tbl_data\"] > tr[data-ri]').length === n", module);
+        ruhig();
+        assertTrue(page.locator("[id=\"fm:schnittstellen_data\"] > tr").count() >= 20, "Filter root leert die Schnittstellen");
+        assertEquals(List.of(), ajaxFehler, "Fehler in den Ajax-Antworten");
+        assertFalse(page.content().contains("PropertyNotFoundException"));
+    }
 }

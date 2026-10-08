@@ -5,6 +5,7 @@ package ch.plaintext.modules.katalog;
 
 import ch.plaintext.sidecars.SidecarRegister;
 import ch.plaintext.sidecars.SidecarStand;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,15 +76,33 @@ public class ModulAnalyse {
 
     /** Eine Bean, die eine Katalog-Schnittstelle bezieht. */
     public record Nutzung(String schnittstelle, String bean, String klasse, String modul, boolean optional) {
+
+        /** @return root or modul for the using module (card 1438) */
+        @JsonProperty("ebene")
+        public String ebene() {
+            return SchnittstellenKatalog.ebene(modul);
+        }
     }
 
     /** Was ein Modul anbietet (Katalog), umsetzt (Beans) und nutzt (Injektion). */
     public record ModulBild(String modul, List<String> bietetAn, List<String> setztUm, List<String> nutzt) {
+
+        /** @return root or modul (card 1438) */
+        @JsonProperty("ebene")
+        public String ebene() {
+            return SchnittstellenKatalog.ebene(modul);
+        }
     }
 
     /** Eine Schnittstelle im Zusammenspiel. */
     public record SchnittstellenBild(String name, String art, String stabilitaet, String modul,
                                      List<String> umgesetztIn, List<Nutzung> nutzer, List<String> verwendetIn) {
+
+        /** @return root or modul for the module that declares the contract (card 1438) */
+        @JsonProperty("ebene")
+        public String ebene() {
+            return SchnittstellenKatalog.ebene(modul);
+        }
     }
 
     /** Was bricht, wenn {@code modul} fehlt. */
@@ -248,6 +267,26 @@ public class ModulAnalyse {
                 .filter(b -> !"DTO".equals(b.art()) && b.umgesetztIn().isEmpty() && !b.nutzer().isEmpty())
                 .map(SchnittstellenBild::name).toList();
         return new Analyse(module, bilder, ohneUmsetzer, folgen(bilder));
+    }
+
+    /**
+     * Card 1438: the module picture of a feature module for the module page — its own jar and its
+     * contract jar, if it has one ({@code plaintext-z-fotos-interfaces}).
+     *
+     * @param jar jar name of the module, e.g. {@code plaintext-z-fotos}
+     * @return what the module offers, implements and uses; empty lists if it takes no part
+     */
+    public ModulBild bildVon(String jar) {
+        List<ModulBild> teile = analysiere().module().stream()
+                .filter(b -> b.modul().equals(jar) || b.modul().equals(jar + "-interfaces")).toList();
+        return new ModulBild(jar, vereint(teile, ModulBild::bietetAn), vereint(teile, ModulBild::setztUm),
+                vereint(teile, ModulBild::nutzt));
+    }
+
+    private static List<String> vereint(List<ModulBild> teile, java.util.function.Function<ModulBild, List<String>> f) {
+        Set<String> s = new TreeSet<>();
+        teile.forEach(b -> s.addAll(f.apply(b)));
+        return List.copyOf(s);
     }
 
     @SuppressWarnings("unchecked")

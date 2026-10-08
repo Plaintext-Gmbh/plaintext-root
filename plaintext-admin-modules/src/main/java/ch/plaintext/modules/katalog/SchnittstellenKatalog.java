@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.modules.katalog;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -36,6 +37,10 @@ import java.util.Optional;
 public class SchnittstellenKatalog {
 
     static final String MUSTER = "classpath*:META-INF/plaintext-katalog/*.json";
+    /** Card 1438: framework functionality of plaintext-root ({@code plaintext-root-*}, {@code plaintext-admin-*}). */
+    public static final String ROOT = "root";
+    /** Card 1438: functionality of an app module ({@code plaintext-z-*}, {@code plaintext-guild-*}, …). */
+    public static final String MODUL = "modul";
     private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     private final ApplicationContext kontext;
@@ -60,6 +65,12 @@ public class SchnittstellenKatalog {
      * {@code @ModulApiUmsetzung} trägt — ihre Beschreibung (Karte 1422), sonst {@code null}.
      */
     public record Umsetzer(String bean, String klasse, String modul, Umsetzung beschreibung) {
+
+        /** @return {@link #ROOT} or {@link #MODUL} for {@link #modul()} (card 1438) */
+        @JsonProperty("ebene")
+        public String ebene() {
+            return SchnittstellenKatalog.ebene(modul);
+        }
     }
 
     /**
@@ -69,6 +80,12 @@ public class SchnittstellenKatalog {
     public record Umsetzung(String modul, String klasse, String kurz, List<String> schnittstellen,
                             String beschreibung, String seiteneffekte, List<String> hinweise,
                             List<String> beispiele, List<MethodenUmsetzung> methoden) {
+
+        /** @return {@link #ROOT} or {@link #MODUL} for {@link #modul()} (card 1438) */
+        @JsonProperty("ebene")
+        public String ebene() {
+            return SchnittstellenKatalog.ebene(modul);
+        }
     }
 
     /** Eigene Beschreibung einer einzelnen Methode einer Umsetzung. */
@@ -89,6 +106,12 @@ public class SchnittstellenKatalog {
         /** @return {@code true} für ein zwischen Modulen übergebenes Model ({@code @ModulApi(art = DTO)}) */
         public boolean istDto() {
             return "DTO".equals(art);
+        }
+
+        /** @return {@link #ROOT} for a contract of plaintext-root, {@link #MODUL} for one of an app module (card 1438) */
+        @JsonProperty("ebene")
+        public String ebene() {
+            return SchnittstellenKatalog.ebene(modul);
         }
 
         /** @return der erste Satz des Zwecks (für Übersichten) */
@@ -120,6 +143,28 @@ public class SchnittstellenKatalog {
             zwischenspeicher.set(st);
         }
         return st;
+    }
+
+    /**
+     * Card 1438 (Daniel 08.10.2026: "root or module?"): every module of plaintext-root is named
+     * {@code plaintext-root-*} or {@code plaintext-admin-*}, and no app uses these prefixes.
+     *
+     * @param modul jar name without version, e.g. {@code plaintext-admin-sidecars}
+     * @return {@link #ROOT} or {@link #MODUL}
+     */
+    public static String ebene(String modul) {
+        String m = modul == null ? "" : modul;
+        return m.startsWith("plaintext-root-") || m.startsWith("plaintext-admin-") ? ROOT : MODUL;
+    }
+
+    /**
+     * Card 1438: filter by {@link #ebene(String)}; empty or {@code null} keeps everything.
+     *
+     * @param ebene {@code root}, {@code modul} or empty
+     */
+    public static List<Schnittstelle> nachEbene(List<Schnittstelle> l, String ebene) {
+        String e = ebene == null ? "" : ebene.strip().toLowerCase(Locale.ROOT);
+        return e.isEmpty() ? l : l.stream().filter(s -> s.ebene().equals(e)).toList();
     }
 
     /** @param name voller oder kurzer Name */
@@ -251,7 +296,7 @@ public class SchnittstellenKatalog {
     }
 
     /** @return Jar-Name ohne Version, z. B. {@code plaintext-z-fotos}, oder {@code ?} */
-    static String modul(Class<?> k) {
+    public static String modul(Class<?> k) {
         try {
             CodeSource cs = k.getProtectionDomain().getCodeSource();
             URL u = cs == null ? null : cs.getLocation();

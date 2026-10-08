@@ -24,9 +24,9 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Legt In-App-Benachrichtigungen für einen Benutzer oder alle Benutzer eines Mandanten an; Titel und Text gehen durch die Mailvorlagen des Mandanten.",
+@ModulApiUmsetzung(beschreibung = "Creates in-app notifications for one user or for all users of a tenant; title and text go through the tenant's mail templates.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
-        hinweise = {"Kein Versand nach aussen, nur die Glocke in der Oberfläche", "notifyMandant schreibt je Benutzer einen Eintrag"},
+        hinweise = {"Nothing is sent outside, only the bell in the UI", "notifyMandant writes one entry per user"},
         beispiele = {"notify(\"anna\", mandat, \"rechnung.bezahlt\", titel, text, platzhalter, link)"})
 public class NotificationServiceImpl implements NotificationService {
 

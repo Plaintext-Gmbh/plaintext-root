@@ -61,9 +61,9 @@ import java.util.UUID;
  */
 @Service
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Stellt kurzlebige, signierte Dienst-Tokens aus, mit denen sich diese Instanz bei einer Gegenstelle ausweist; prüft eingehende Tokens gegen alle aktiven öffentlichen Schlüssel.",
+@ModulApiUmsetzung(beschreibung = "Issues short-lived, signed service tokens with which this instance identifies itself to a counterpart; checks incoming tokens against all active public keys.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Schlüsselrotation mit zwei Generationen gleichzeitig gültig", "Laufzeit der API-Tokens 90 Tage, Warnung 7 Tage vor Ablauf"},
+        hinweise = {"Key rotation keeps two key generations valid at the same time", "API tokens are valid for 90 days by default (7 to 365), the token pages warn 7 days before expiry"},
         beispiele = {})
 public class JwtTokenService implements ch.plaintext.ServiceTokenIssuer {
 
