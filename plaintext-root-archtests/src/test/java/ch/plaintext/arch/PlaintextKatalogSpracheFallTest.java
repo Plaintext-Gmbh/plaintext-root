@@ -46,6 +46,10 @@ class PlaintextKatalogSpracheFallTest {
         assertNull(PlaintextKatalogSpracheTest.deutsch("fuer(\"bild.vorschau\")"), "Methodenname im Beispiel ist Code");
         assertNull(PlaintextKatalogSpracheTest.deutsch("Returns ablage.liste of the store."), "Feld nach Punkt ist Code");
         assertNotNull(PlaintextKatalogSpracheTest.deutsch("fuer(x) liefert den Sidecar"), "Prosa neben Code bleibt geprüft");
+        assertNull(PlaintextKatalogSpracheTest.deutsch("@param von start of the window @param bis end of the window"),
+                "Parameternamen sind Code (gefunden in app#1012)");
+        assertNotNull(PlaintextKatalogSpracheTest.deutsch("@param von Beginn des Fensters, nicht enthalten"),
+                "deutsche Beschreibung hinter dem Namen bleibt geprüft");
     }
 
     @Test
