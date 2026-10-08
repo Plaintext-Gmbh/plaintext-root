@@ -44,10 +44,12 @@ class PlaintextKatalogSpracheTest {
 
     /**
      * Code, links, HTML code and quotes: may contain German names and labels. A word directly before
-     * {@code (} or after {@code .} is a method or field ({@code fuer("bild.vorschau")}, {@code x.liste}).
+     * {@code (} or after {@code .} is a method or field ({@code fuer("bild.vorschau")}, {@code x.liste}),
+     * the word after {@code @param} or {@code @throws} a parameter or exception name ({@code @param von}).
      */
     static final Pattern AUSGENOMMEN = Pattern.compile(
-            "\\{@\\w+[^}]*}|<code>.*?</code>|`[^`]*`|«[^»]*»|„[^“\"]*[“\"]|\"[^\"]*\"|\\w+\\(|\\.\\w+",
+            "\\{@\\w+[^}]*}|<code>.*?</code>|`[^`]*`|«[^»]*»|„[^“\"]*[“\"]|\"[^\"]*\"|\\w+\\(|\\.\\w+"
+                    + "|@(param|throws|exception)\\s+\\S+",
             Pattern.DOTALL);
     static final Pattern UMLAUT = Pattern.compile("[äöüÄÖÜß]");
     static final Pattern WORT = Pattern.compile("\\p{L}+");
