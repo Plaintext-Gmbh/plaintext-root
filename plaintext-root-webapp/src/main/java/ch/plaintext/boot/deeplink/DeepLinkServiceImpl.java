@@ -28,9 +28,9 @@ import java.util.Optional;
  */
 @Service
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Baut Deep Links auf Datensätze aus den registrierten DeepLinkTarget-Beans; die Adresse ist kein Geheimnis und gibt kein Recht, beim Öffnen wird neu geprüft.",
+@ModulApiUmsetzung(beschreibung = "Builds deep links to records from the registered DeepLinkTarget beans; the address is no secret and grants no right, access is checked again when it is opened.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Absolute Links mit der konfigurierten eigenen Adresse, nie aus dem Request", "Unbekannter Typ oder ungültiger Mandant: IllegalArgumentException"},
+        hinweise = {"Absolute links use the configured own address, never one from the request", "Unknown type or invalid tenant: IllegalArgumentException"},
         beispiele = {"buildRelativeLink(\"rechnung\", \"plaintext\", \"42\")"})
 public class DeepLinkServiceImpl implements DeepLinkService {
 

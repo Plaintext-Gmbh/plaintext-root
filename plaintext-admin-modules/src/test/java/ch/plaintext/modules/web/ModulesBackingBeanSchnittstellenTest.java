@@ -48,4 +48,25 @@ class ModulesBackingBeanSchnittstellenTest {
         assertThat(b.seiteneffekteSchwere(null)).isEqualTo("secondary");
         assertThat(b.getSchnittstellen()).as("ohne Katalog (nach Deserialisierung) leer statt NPE").isEmpty();
     }
+
+    @Test
+    @DisplayName("Karte 1438: Modulzeilen nach Ebene filtern, Badge-Text und -Farbe, ohne Analyse leeres Bild statt NPE")
+    void ebene() {
+        ch.plaintext.modules.ModuleView fotos = new ch.plaintext.modules.ModuleView("fotos", "Fotos", "1", true, "plaintext-z-fotos");
+        ch.plaintext.modules.ModuleView cron = new ch.plaintext.modules.ModuleView("cron", "Cron", "1", true, "plaintext-admin-cron");
+        List<ch.plaintext.modules.ModuleView> l = List.of(fotos, cron);
+        assertThat(ModulesBackingBean.nachEbene(l, "root")).containsExactly(cron);
+        assertThat(ModulesBackingBean.nachEbene(l, "modul")).containsExactly(fotos);
+        assertThat(ModulesBackingBean.nachEbene(l, "")).containsExactly(fotos, cron);
+
+        ModulesBackingBean b = new ModulesBackingBean();
+        assertThat(b.ebeneText("root")).isEqualTo("root");
+        assertThat(b.ebeneText("modul")).isEqualTo("Modul");
+        assertThat(b.ebeneText(null)).isEmpty();
+        assertThat(b.ebeneSchwere("modul")).isEqualTo("success");
+        assertThat(b.ebeneSchwere("root")).isNull();
+        assertThat(b.modulBild(fotos).bietetAn()).isEmpty();
+        assertThat(b.ebeneVon("ch.x.IFoto")).isEmpty();
+        assertThat(b.kurzVon("ch.x.IFoto")).isEqualTo("ch.x.IFoto");
+    }
 }

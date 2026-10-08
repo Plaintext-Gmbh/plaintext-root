@@ -41,10 +41,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Verwaltet API-Tokens als RS256-signierte JWT; gespeichert wird nur der SHA-256-Hash, der Klartext erscheint einmal beim Anlegen.",
+@ModulApiUmsetzung(beschreibung = "Manages API tokens as RS256-signed JWTs; only the SHA-256 hash is stored, the plain token is shown once when it is created.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
-        hinweise = {"Ein Token gehört einem Benutzer und seinem Mandanten", "Widerruf wirkt sofort bei der nächsten Prüfung", "Ein verlorener Klartext lässt sich nicht wiederherstellen, nur neu ausstellen"},
-        beispiele = {"createToken(\"ci\", ...) liefert den JWT genau einmal"})
+        hinweise = {"A token belongs to one user and their tenant", "Revocation takes effect at the next check", "A lost plain token cannot be recovered, only reissued"},
+        beispiele = {"createToken(\"ci\", ...) returns the JWT exactly once"})
 public class ApiTokenService implements IApiTokenService {
 
     private final ApiTokenRepository apiTokenRepository;

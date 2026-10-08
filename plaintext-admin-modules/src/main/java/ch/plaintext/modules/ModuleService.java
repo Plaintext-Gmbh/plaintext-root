@@ -5,10 +5,12 @@ package ch.plaintext.modules;
 
 import ch.plaintext.modules.ModulApiUmsetzung;
 
+import ch.plaintext.modules.katalog.SchnittstellenKatalog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ClassUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -22,9 +24,9 @@ import java.util.List;
  */
 @Service
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Fragt ab und speichert, ob ein Feature-Modul eingeschaltet ist; ohne Eintrag gilt ein Modul als eingeschaltet.",
+@ModulApiUmsetzung(beschreibung = "Reads and stores whether a feature module is switched on; without an entry a module counts as switched on.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
-        hinweise = {"Abschalten blendet das Menü aus", "Crons und Listener prüfen den Zustand selbst über isEnabled"},
+        hinweise = {"Switching off hides the menu", "Crons and listeners check the state themselves through isEnabled"},
         beispiele = {})
 public class ModuleService implements ModuleEnablementProvider {
 
@@ -58,7 +60,8 @@ public class ModuleService implements ModuleEnablementProvider {
         List<ModuleView> result = new ArrayList<>();
         for (ModuleDescriptor d : descriptors) {
             result.add(new ModuleView(d.moduleId(), sicher(d::displayName, d.moduleId()),
-                    sicher(d::version, "dev"), isEnabled(d.moduleId())));
+                    sicher(d::version, "dev"), isEnabled(d.moduleId()),
+                    SchnittstellenKatalog.modul(ClassUtils.getUserClass(d.getClass()))));
         }
         result.sort(Comparator.comparing(ModuleView::getDisplayName, String.CASE_INSENSITIVE_ORDER));
         return result;

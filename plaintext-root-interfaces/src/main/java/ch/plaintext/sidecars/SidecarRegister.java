@@ -9,33 +9,33 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Registry der Sidecars (Karte 1400, Protokoll: {@code docs/SIDECAR_PROTOKOLL.md}).
+ * Registry of the sidecars (card 1400, protocol: {@code docs/SIDECAR_PROTOKOLL.md}).
  *
- * <p>Ein Modul, das eine Zusatzfunktion eines Containers braucht (Bildumrechnung, Erkennung,
- * Messenger), fragt hier nach der <b>Fähigkeit</b> und nicht nach einem Containernamen. Welcher
- * Dienst sie gerade anbietet, Basis-URL und Token: das weiss die Registry. So kann ein anderer
- * Dienst mit derselben Fähigkeit einspringen, ohne dass das Modul es merkt.</p>
+ * <p>A module that needs an additional function of a container (image conversion, recognition,
+ * messenger) asks here for the <b>capability</b>, not for a container name. Which service offers it
+ * right now, its base URL and token: the registry knows. Another service with the same capability can
+ * thus step in without the module noticing.</p>
  *
- * <p>Umgesetzt im Modul {@code plaintext-admin-sidecars}. Nicht jede Anwendung bindet es ein, deshalb
- * den Bezug optional halten ({@code @Autowired(required = false)} bzw. {@code ObjectProvider}).</p>
+ * <p>Implemented in the module {@code plaintext-admin-sidecars}. Not every application includes it, so
+ * keep the dependency optional ({@code @Autowired(required = false)} or {@code ObjectProvider}).</p>
  */
 @ModulApi(art = ModulApi.Art.SCHNITTSTELLE, stabilitaet = ModulApi.Stabilitaet.NEU)
 public interface SidecarRegister {
 
-    /** @return alle bekannten Sidecars mit ihrem letzten Stand, nach Name */
+    /** @return all known sidecars with their latest state, by name */
     List<SidecarStand> alle();
 
     /**
-     * @param name Name des Sidecars, z. B. {@code whatsapp}
-     * @return die Verbindung, wenn der Sidecar bekannt ist (auch wenn er gerade nicht antwortet)
+     * @param name name of the sidecar, e.g. {@code whatsapp}
+     * @return the connection if the sidecar is known (even if it does not answer right now)
      */
     Optional<SidecarVerbindung> verbindung(String name);
 
     /**
-     * Ein erreichbarer Sidecar, der die Fähigkeit anbietet; bei mehreren der mit Status {@code ok}
-     * und der kürzesten Antwortzeit.
+     * A reachable sidecar that offers the capability; sidecars with status {@code fehler} are skipped,
+     * among several the one with status {@code ok} and the shortest response time wins.
      *
-     * @param faehigkeitId z. B. {@code bild.vorschau}
+     * @param faehigkeitId e.g. {@code bild.vorschau}
      */
     Optional<SidecarVerbindung> fuer(String faehigkeitId);
 }

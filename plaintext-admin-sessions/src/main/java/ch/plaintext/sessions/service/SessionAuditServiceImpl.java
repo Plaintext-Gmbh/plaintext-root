@@ -21,9 +21,9 @@ import java.util.List;
 @Service
 @Named("sessionAuditService")
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Hält je Anmeldung eine Sitzungszeile mit Benutzer, Mandant und Browserkennung aktuell und schliesst sie beim Abmelden.",
+@ModulApiUmsetzung(beschreibung = "Keeps one session row per sign-in up to date with user, tenant and browser identifier, and closes it at sign-out.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
-        hinweise = {"Fehler beim Schreiben werden geloggt und unterbrechen die Anmeldung nicht"},
+        hinweise = {"Write errors are logged and do not interrupt the sign-in"},
         beispiele = {})
 public class SessionAuditServiceImpl implements ISessionAuditService {
 

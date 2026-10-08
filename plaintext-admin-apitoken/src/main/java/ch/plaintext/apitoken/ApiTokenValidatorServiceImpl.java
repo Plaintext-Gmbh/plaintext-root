@@ -29,10 +29,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Prüft den Bearer-Header eines REST-Aufrufs: Signatur, Ablauf und Widerruf, und liefert entweder das Ergebnis oder eine RFC-7807-Fehlerantwort.",
+@ModulApiUmsetzung(beschreibung = "Checks the bearer header of a REST call (signature, expiry and revocation) and returns either the outcome or an RFC 7807 error response.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Liest nur, schreibt nichts", "Fehlender, ungültiger, abgelaufener oder widerrufener Token ergibt eine Fehlerantwort (hasError)"},
-        beispiele = {"validateRequest(request).hasError() -> Fehlerantwort zurückgeben"})
+        hinweise = {"Reads only, writes nothing", "A missing, invalid, expired or revoked token yields an error response (hasError)"},
+        beispiele = {"validateRequest(request).hasError() -> return the error response"})
 public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
 
     private final ApiTokenService apiTokenService;

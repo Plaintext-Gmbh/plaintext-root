@@ -51,10 +51,10 @@ import java.util.Set;
 @Component
 @Named("plaintextSecurity")
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Gibt Auskunft über den angemeldeten Benutzer aus dem Spring-Sicherheitskontext: Mandant, Identität, Rollen, Benutzer eines Mandanten.",
+@ModulApiUmsetzung(beschreibung = "Tells about the signed-in user from the Spring security context: tenant, identity, roles, users of a tenant.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Ohne Anmeldung liefert getMandat() einen Platzhalter (NO_AUTH) statt einer Ausnahme", "Mandantenwechsel nur auf die für den Benutzer erlaubten Mandanten, sonst abgelehnt und geloggt"},
-        beispiele = {"getMandat() -> aktiver Mandant der Sitzung"})
+        hinweise = {"Without a sign-in getMandat() returns a placeholder (NO_AUTH) instead of an exception", "Switching tenants only to tenants allowed for the user, otherwise rejected and logged"},
+        beispiele = {"getMandat() -> active tenant of the session"})
 public class PlaintextSecurityImpl implements PlaintextSecurity {
 
     private static final String SESSION_ORIGINAL_USER_ID = "impersonation.originalUserId";

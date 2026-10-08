@@ -25,9 +25,9 @@ import java.util.stream.Collectors;
 @Service
 @Named("settingsService")
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Liest Einstellungen mit Punkt-Schlüsseln je Mandant, mit Rückfall auf den globalen Wert.",
+@ModulApiUmsetzung(beschreibung = "Reads settings with dotted keys per tenant, falling back to the global value.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Ohne Mandant im Kontext gilt der globale Wert", "Nicht lesbare Zahlen ergeben null und eine Warnung im Log"},
+        hinweise = {"Without a tenant in the context the global value applies", "Unreadable numbers yield null and a warning in the log"},
         beispiele = {"getInt(\"mail.sync.minuten\", mandat)"})
 public class SettingsServiceImpl implements ISettingsService {
 

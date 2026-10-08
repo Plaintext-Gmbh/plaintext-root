@@ -34,9 +34,9 @@ import java.util.Set;
  */
 @Slf4j
 @Service
-@ModulApiUmsetzung(beschreibung = "Verwaltet die unter Root → Sidecars eingerichteten Speicher-Ablagen und gibt Modulen eine Ablage nach Namen.",
+@ModulApiUmsetzung(beschreibung = "Manages the file stores set up under \"Root → Sidecars\" and hands a store to modules by name.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
-        hinweise = {"Adressen nur öffentlich oder ausdrücklich freigegeben", "Lässt sich eine Ablage nicht öffnen, liefert ablage() ein leeres Optional und loggt den Grund"},
+        hinweise = {"Addresses must be public or explicitly allowed", "If a store cannot be opened, ablage() returns an empty Optional and logs the reason"},
         beispiele = {"ablage(\"drawio\")"})
 public class SpeicherAblageService implements DateiAblagenRegister {
 

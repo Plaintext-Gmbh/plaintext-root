@@ -20,9 +20,9 @@ import java.util.Optional;
 @Named("setupConfigService")
 @Slf4j
 @RequiredArgsConstructor
-@ModulApiUmsetzung(beschreibung = "Liest die Login- und Sicherheitseinstellungen, die ROOT je Mandant unter Root → Setup pflegt.",
+@ModulApiUmsetzung(beschreibung = "Reads the login and security settings that ROOT maintains per tenant under \"Root → Setup\".",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Ohne Eintrag für den Mandanten: Passwortverwaltung und Sitzungsprotokoll an; OIDC-Weiterleitung, Root-Benutzer, Selbstregistrierung, Reset-Link und Magic Link aus"},
+        hinweise = {"Without an entry for the tenant: password management and session tracking on; OIDC redirect, root user, self-registration, reset link and magic link off"},
         beispiele = {})
 public class SetupConfigService implements ISetupConfigService {
 

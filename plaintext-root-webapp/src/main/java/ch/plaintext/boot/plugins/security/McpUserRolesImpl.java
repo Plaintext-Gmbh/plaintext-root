@@ -44,9 +44,9 @@ import java.util.Set;
  * @since 2026
  */
 @Component
-@ModulApiUmsetzung(beschreibung = "Liest die Rollen eines Benutzers für den MCP-Bearer-Filter, bevor ein Sicherheitskontext besteht, ohne Entitäten oder Sitzungen offen zu halten.",
+@ModulApiUmsetzung(beschreibung = "Reads the roles of a user for the MCP bearer filter before a security context exists, without keeping entities or sessions open.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Unbekannter Benutzer ergibt eine leere Menge", "Liest per JDBC, ohne JPA und ohne Transaktion"},
+        hinweise = {"An unknown user yields an empty set", "Reads through JDBC, without JPA and without a transaction"},
         beispiele = {})
 public class McpUserRolesImpl implements McpUserRoles {
 

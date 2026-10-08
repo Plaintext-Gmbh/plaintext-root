@@ -185,6 +185,11 @@ Javadoc as purpose and every method with return type, parameters and Javadoc. An
 Javadoc fails the build (`-Aplaintext.katalog.streng=true`). MCP (read-only, role ADMIN/ROOT):
 `list_modul_schnittstellen`, `get_modul_schnittstelle`, `suche_modul_schnittstellen` — meant for an LLM
 planning new features from the building blocks that are already there.
+Every interface, implementation and user carries an `ebene` (card 1438): `root` for jars named
+`plaintext-root-*` or `plaintext-admin-*`, `modul` for everything else; list and search take an optional
+`ebene` filter, and the module page expands each module into "offers / implements / uses". All catalog
+texts are English: `PlaintextKatalogSpracheTest` (archtests, run in each webapp) fails on German purpose
+or `@ModulApiUmsetzung` texts.
 ### plaintext-admin-mailtemplate
 
 Editable mail templates with per-mandate overrides (`MailTemplateService`,

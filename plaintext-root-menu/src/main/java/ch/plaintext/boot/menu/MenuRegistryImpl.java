@@ -26,9 +26,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ModulApiUmsetzung(beschreibung = "Liefert alle mit MenuAnnotation registrierten Menüpunkte samt Titel, Rollen und Reihenfolge.",
+@ModulApiUmsetzung(beschreibung = "Returns all menu items registered with MenuAnnotation, with title, roles and order.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Sichtbarkeit je Mandant entscheidet MenuVisibilityProvider"},
+        hinweise = {"MenuVisibilityProvider decides the visibility per tenant"},
         beispiele = {})
 public class MenuRegistryImpl implements MenuRegistry {
 

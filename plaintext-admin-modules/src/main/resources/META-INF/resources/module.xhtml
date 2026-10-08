@@ -17,10 +17,27 @@
             <p:growl id="messages" showDetail="true" life="3000"/>
 
             <p:fieldset legend="🧩 Modul-Verwaltung" style="margin-bottom: 20px;">
-                <p:dataTable id="tbl" var="m" value="#{modulesBackingBean.module}" styleClass="mobile-safe"
+                <!-- Karte 1438: root (Framework aus plaintext-root) oder Modul (Fachmodul der App); filtert beide Listen -->
+                <div style="display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-bottom:.6rem;">
+                    <p:selectOneButton id="ebene" value="#{modulesBackingBean.ebene}">
+                        <f:selectItem itemLabel="Alle" itemValue=""/>
+                        <f:selectItem itemLabel="root" itemValue="root"/>
+                        <f:selectItem itemLabel="Module" itemValue="modul"/>
+                        <p:ajax process="@this" update=":fm:tbl :fm:schnittstellen"/>
+                    </p:selectOneButton>
+                    <span style="font-size:.85em; color:var(--pt-text-color-secondary);">root = Funktionen aus plaintext-root, Modul = Fachmodul dieser Anwendung</span>
+                </div>
+                <p:dataTable id="tbl" var="m" value="#{modulesBackingBean.moduleGefiltert}" styleClass="mobile-safe"
+                             rowKey="#{m.moduleId}" rowExpandMode="multiple"
                              emptyMessage="Keine Module gemeldet — Feature-Module erscheinen hier, sobald sie eine ModuleDescriptor-Bean bereitstellen.">
+                    <p:column style="width:2.5rem">
+                        <p:rowToggler/>
+                    </p:column>
                     <p:column headerText="Modul" sortBy="#{m.displayName}">
                         <h:outputText value="#{m.displayName}"/>
+                        <p:tag value="#{modulesBackingBean.ebeneText(m.ebene)}" severity="#{modulesBackingBean.ebeneSchwere(m.ebene)}"
+                               style="margin-left:.4rem;"/>
+                        <div style="font-size:.8em; color:var(--pt-text-color-secondary);">#{m.jar}</div>
                     </p:column>
                     <p:column headerText="Id" style="width:180px;">
                         <h:outputText value="#{m.moduleId}" style="color:var(--pt-text-color-secondary);"/>
@@ -49,6 +66,52 @@
                                          update=":fm:dlgClear" oncomplete="PF('dlgClear').show()"
                                          styleClass="ui-button-danger"/>
                     </p:column>
+
+                    <!-- Karte 1438: was das Modul anbietet, umsetzt und nutzt (aus Katalog und laufenden Beans) -->
+                    <p:rowExpansion>
+                        <ui:param name="bild" value="#{modulesBackingBean.modulBild(m)}"/>
+                        <div style="display:flex; flex-wrap:wrap; gap:1.5rem; padding:.4rem .6rem;">
+                            <div style="min-width:14rem;">
+                                <b>Bietet an</b>
+                                <h:outputText value=" nichts" style="color:var(--pt-text-color-secondary);"
+                                              rendered="#{empty bild.bietetAn()}"/>
+                                <ui:repeat value="#{bild.bietetAn()}" var="n">
+                                    <div style="margin:.2rem 0 0 .4rem;">
+                                        <span title="#{n}">#{modulesBackingBean.kurzVon(n)}</span>
+                                        <p:tag value="#{modulesBackingBean.ebeneText(modulesBackingBean.ebeneVon(n))}"
+                                               severity="#{modulesBackingBean.ebeneSchwere(modulesBackingBean.ebeneVon(n))}"
+                                               style="margin-left:.3rem;"/>
+                                    </div>
+                                </ui:repeat>
+                            </div>
+                            <div style="min-width:14rem;">
+                                <b>Setzt um</b>
+                                <h:outputText value=" nichts" style="color:var(--pt-text-color-secondary);"
+                                              rendered="#{empty bild.setztUm()}"/>
+                                <ui:repeat value="#{bild.setztUm()}" var="n">
+                                    <div style="margin:.2rem 0 0 .4rem;">
+                                        <span title="#{n}">#{modulesBackingBean.kurzVon(n)}</span>
+                                        <p:tag value="#{modulesBackingBean.ebeneText(modulesBackingBean.ebeneVon(n))}"
+                                               severity="#{modulesBackingBean.ebeneSchwere(modulesBackingBean.ebeneVon(n))}"
+                                               style="margin-left:.3rem;"/>
+                                    </div>
+                                </ui:repeat>
+                            </div>
+                            <div style="min-width:14rem;">
+                                <b>Nutzt</b>
+                                <h:outputText value=" nichts" style="color:var(--pt-text-color-secondary);"
+                                              rendered="#{empty bild.nutzt()}"/>
+                                <ui:repeat value="#{bild.nutzt()}" var="n">
+                                    <div style="margin:.2rem 0 0 .4rem;">
+                                        <span title="#{n}">#{modulesBackingBean.kurzVon(n)}</span>
+                                        <p:tag value="#{modulesBackingBean.ebeneText(modulesBackingBean.ebeneVon(n))}"
+                                               severity="#{modulesBackingBean.ebeneSchwere(modulesBackingBean.ebeneVon(n))}"
+                                               style="margin-left:.3rem;"/>
+                                    </div>
+                                </ui:repeat>
+                            </div>
+                        </div>
+                    </p:rowExpansion>
                 </p:dataTable>
                 <p:outputPanel style="display:block; margin-top:10px; font-size:0.85em; color:var(--pt-text-color-secondary);">
                     Hinweis: Deaktivierte Module blenden ihr Menü aus; die funktionale Deaktivierung
@@ -81,6 +144,8 @@
                     </p:column>
                     <p:column headerText="Schnittstelle">
                         <b title="#{s.name()}">#{s.kurz()}</b>
+                        <p:tag value="#{modulesBackingBean.ebeneText(s.ebene())}" severity="#{modulesBackingBean.ebeneSchwere(s.ebene())}"
+                               style="margin-left:.4rem;"/>
                         <div style="font-size:.8em; color:var(--pt-text-color-secondary);">#{s.modul()} · #{s.herkunft()}#{s.typ() == 'record' ? ' · Record' : ''}</div>
                     </p:column>
                     <p:column headerText="Art" style="width:8rem">
@@ -118,6 +183,7 @@
                                 <ui:repeat value="#{modulesBackingBean.nutzer(s)}" var="n">
                                     <div style="margin:.2rem 0 0 .6rem;">
                                         <code>#{n.klasse()}</code> (#{n.modul()})
+                                        <p:tag value="#{modulesBackingBean.ebeneText(n.ebene())}" severity="#{modulesBackingBean.ebeneSchwere(n.ebene())}"/>
                                         <p:tag value="#{n.optional() ? 'optional' : 'Pflicht'}" severity="#{n.optional() ? 'secondary' : 'warning'}"/>
                                     </div>
                                 </ui:repeat>
@@ -129,6 +195,7 @@
                                 <ui:repeat value="#{s.umsetzer()}" var="u">
                                     <div style="margin:.3rem 0 0 .6rem;">
                                         <code>#{u.klasse()}</code> (#{u.modul()})
+                                        <p:tag value="#{modulesBackingBean.ebeneText(u.ebene())}" severity="#{modulesBackingBean.ebeneSchwere(u.ebene())}"/>
                                         <h:panelGroup layout="block" rendered="#{u.beschreibung() != null}" style="margin:.2rem 0 0 .6rem;">
                                             <p:tag value="#{u.beschreibung().seiteneffekte()}"
                                                    severity="#{modulesBackingBean.seiteneffekteSchwere(u.beschreibung().seiteneffekte())}"/>

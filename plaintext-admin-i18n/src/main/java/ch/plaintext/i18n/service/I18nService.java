@@ -36,9 +36,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Übersetzt Oberflächentexte aus der Tabelle der Übersetzungen, im Speicher zwischengespeichert; fehlende Einträge fallen auf den deutschen Text zurück.",
+@ModulApiUmsetzung(beschreibung = "Translates UI texts from the translation table, cached in memory; missing entries fall back to the German default text.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
-        hinweise = {"Saat-Dateien füllen beim Start nur fehlende Schlüssel", "Ob übersetzt wird, steht je Mandant in den Einstellungen"},
+        hinweise = {"Seed files only fill in missing keys at startup", "Whether texts are translated is a per-tenant setting"},
         beispiele = {"translate(\"Speichern\", \"en\") -> Save"})
 public class I18nService implements I18nProvider {
 

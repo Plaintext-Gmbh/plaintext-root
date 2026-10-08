@@ -30,9 +30,9 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@ModulApiUmsetzung(beschreibung = "Liest einen unter Root → Secrets gepflegten Wert zur Laufzeit aus dem jeweiligen Backend, ausschliesslich für technische Verbraucher.",
+@ModulApiUmsetzung(beschreibung = "Reads a value maintained under \"Root → Secrets\" at runtime from whichever backend holds it, for technical consumers only.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Nie für die Oberfläche: die Anzeige bleibt Einweg", "Unbekannter Name ergibt ein leeres Optional"},
+        hinweise = {"Never for the UI: the page stays write-only", "An unknown name yields an empty Optional"},
         beispiele = {})
 public class SecretService implements SecretResolver {
 

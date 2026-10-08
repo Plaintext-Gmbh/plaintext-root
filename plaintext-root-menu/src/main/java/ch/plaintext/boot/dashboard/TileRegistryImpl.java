@@ -25,9 +25,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ModulApiUmsetzung(beschreibung = "Liefert alle mit @DashboardTile annotierten Kacheln als TileItem, gelesen beim Start aus den Beans.",
+@ModulApiUmsetzung(beschreibung = "Returns all tiles annotated with @DashboardTile as TileItem, read from the beans at startup.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Die Rollen stehen am TileItem, gefiltert wird beim Aufrufer"},
+        hinweise = {"The roles are on the TileItem, the caller filters"},
         beispiele = {})
 public class TileRegistryImpl implements TileRegistry {
 

@@ -29,9 +29,9 @@ import java.util.List;
  * Teile und absolute Pfade werden abgewiesen, ein Zugriff bleibt immer unter der Wurzel. Keine
  * Weiterleitungen (sonst schickte ein Server die Anmeldung woandershin).</p>
  */
-@ModulApiUmsetzung(beschreibung = "Speichert, liest, listet und löscht Dateien in einem Nextcloud-Ordner über WebDAV, ohne dass der Aufrufer Server oder Zugang kennt.",
+@ModulApiUmsetzung(beschreibung = "Stores, reads, lists and deletes files in a Nextcloud folder over WebDAV, without the caller knowing the server or the credentials.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.AUSSEN,
-        hinweise = {"Pfade bleiben unter der Wurzel, Punkt-Segmente werden abgewiesen", "Keine Weiterleitungen", "Das App-Passwort liegt verschlüsselt"},
+        hinweise = {"Paths stay below the root folder, dot segments are rejected", "No redirects are followed", "The app password is stored encrypted", "Reads at most 50 MB per file"},
         beispiele = {"schreibe(\"diagramme/a.drawio\", bytes)"})
 public final class NextcloudAblage implements DateiAblage {
 

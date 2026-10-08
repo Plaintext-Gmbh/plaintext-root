@@ -1,0 +1,1 @@
+{"modul":"plaintext-attrappe","schnittstellen":[{"name":"ch.plaintext.attrappe.IAttrappe","kurz":"IAttrappe","zweck":"Deutsche Attrappe für den Sprach-Wächter (Karte 1438): darf nur im Testklassenpfad liegen.","typ":"interface","annotiert":false,"art":"","stabilitaet":"","seit":"","ersatz":"","herkunft":"interfaces-Modul","erweitert":[],"methoden":[]}],"umsetzungen":[]}

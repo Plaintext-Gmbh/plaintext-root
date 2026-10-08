@@ -43,9 +43,9 @@ import java.util.Optional;
  */
 @Slf4j
 @Service
-@ModulApiUmsetzung(beschreibung = "Kennt die Sidecars aus der Konfiguration und die von Hand ergänzten, fragt sie nach dem Sidecar-Protokoll ab und vermittelt eine Fähigkeit an den passenden, erreichbaren Sidecar.",
+@ModulApiUmsetzung(beschreibung = "Knows the sidecars from the configuration and those added by hand, polls them using the sidecar protocol and routes a capability to a matching, reachable sidecar.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.AUSSEN,
-        hinweise = {"Nur freigegebene Hosts werden abgefragt", "Bei mehreren Anbietern gewinnt der mit Status ok und kürzester Antwortzeit"},
+        hinweise = {"Only allowed hosts are polled", "Sidecars with status \"fehler\" are skipped; among several providers the one with status ok and the shortest response time wins"},
         beispiele = {"fuer(\"bild.vorschau\")"})
 public class SidecarService implements SidecarRegister {
 

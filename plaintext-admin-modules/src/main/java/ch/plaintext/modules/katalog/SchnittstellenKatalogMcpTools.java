@@ -44,17 +44,21 @@ public class SchnittstellenKatalogMcpTools {
     @McpTool(name = "list_modul_schnittstellen", description = "Listet die öffentlichen Schnittstellen (Verträge) der "
             + "geladenen Module dieser Anwendung: Modul, Name, Zweck in einem Satz, Art (SCHNITTSTELLE = Dienst, DTO = "
             + "übergebenes Model, ERWEITERUNG = Erweiterungspunkt des Frameworks, leer = nicht mit @ModulApi markiert), Stabilität (STABIL/NEU/VERALTET), Herkunft "
-            + "(interfaces-Modul oder im Modul), Anzahl Methoden und welche Module sie umsetzen. Grundlage, um neue Funktionen aus vorhandenen Bausteinen zu planen; Details mit "
+            + "(interfaces-Modul oder im Modul), Ebene (root = Framework-Funktionalität aus plaintext-root, modul = Fachmodul "
+            + "der Anwendung), Anzahl Methoden und welche Module sie umsetzen. Optional auf eine Ebene gefiltert. Grundlage, um neue "
+            + "Funktionen aus vorhandenen Bausteinen zu planen; Details mit "
             + "get_modul_schnittstelle. Erfordert die Rolle ADMIN oder ROOT.")
-    public String listModulSchnittstellen() {
+    public String listModulSchnittstellen(@McpToolParam(description = "Ebene: root oder modul; leer = alle",
+            required = false) String ebene) {
         String v = pruefe("list_modul_schnittstellen");
         if (v != null) {
             return v;
         }
         ArrayNode a = JSON.createArrayNode();
-        for (SchnittstellenKatalog.Schnittstelle s : katalog.alle()) {
+        for (SchnittstellenKatalog.Schnittstelle s : SchnittstellenKatalog.nachEbene(katalog.alle(), ebene)) {
             ObjectNode o = a.addObject();
             o.put("modul", s.modul());
+            o.put("ebene", s.ebene());
             o.put("name", s.name());
             o.put("zweck", s.zweckKurz());
             // Karte 1422: Art (SCHNITTSTELLE/DTO), Stabilität und Herkunft aus @ModulApi
@@ -64,13 +68,15 @@ public class SchnittstellenKatalogMcpTools {
             o.put("methoden", s.methoden().size());
             ArrayNode u = o.putArray("umgesetztIn");
             s.umsetzer().stream().map(SchnittstellenKatalog.Umsetzer::modul).distinct().forEach(u::add);
+            ArrayNode ue = o.putArray("umgesetztInEbene");
+            s.umsetzer().stream().map(SchnittstellenKatalog.Umsetzer::ebene).distinct().sorted().forEach(ue::add);
         }
         return a.toPrettyString();
     }
 
     @PreAuthorize("hasAuthority('SCOPE_READ')")
     @McpTool(name = "get_modul_schnittstelle", description = "Vollständige Beschreibung einer Schnittstelle: Zweck "
-            + "(Javadoc), Art, Stabilität, seit, Ersatz, erweiterte Schnittstellen, jede Methode mit Rückgabe, Parametern "
+            + "(Javadoc), Ebene (root oder modul), Art, Stabilität, seit, Ersatz, erweiterte Schnittstellen, jede Methode mit Rückgabe, Parametern "
             + "und Zweck sowie die umsetzenden Beans mit Klasse, Modul und — falls vorhanden — der Beschreibung der "
             + "Umsetzung (@ModulApiUmsetzung: Verhalten, Seiteneffekte KEINE/INTERN/AUSSEN, Hinweise, Beispiele). Name voll (ch.plaintext…) oder kurz. Erfordert die Rolle ADMIN oder ROOT.")
     public String getModulSchnittstelle(@McpToolParam(description = "Name der Schnittstelle, voll oder kurz") String name) {
@@ -89,7 +95,7 @@ public class SchnittstellenKatalogMcpTools {
 
     @PreAuthorize("hasAuthority('SCOPE_READ')")
     @McpTool(name = "analysiere_module", description = "Analysiert das Zusammenspiel der Module DIESER laufenden "
-            + "Version aus Schnittstellen-Katalog und Spring-Beans: je Modul, was es anbietet, umsetzt und nutzt; je "
+            + "Version aus Schnittstellen-Katalog und Spring-Beans: je Modul (mit Ebene root oder modul), was es anbietet, umsetzt und nutzt; je "
             + "Schnittstelle Art, Stabilität, Umsetzer-Module und Nutzer (Pflicht = direkt injiziert, optional = über "
             + "ObjectProvider/Optional/List); DTOs mit den Verträgen, die sie übergeben; genutzte Schnittstellen ohne "
             + "Umsetzer; und welche Nutzer brechen, wenn ein Modul fehlt, das den einzigen Umsetzer stellt. Optional "
@@ -130,16 +136,18 @@ public class SchnittstellenKatalogMcpTools {
 
     @PreAuthorize("hasAuthority('SCOPE_READ')")
     @McpTool(name = "suche_modul_schnittstellen", description = "Sucht im Schnittstellen-Katalog nach Text in Name, Zweck "
-            + "und Methoden (z. B. 'mail', 'kalender', 'rechnung', 'foto'). Liefert Modul, Name und Zweck in einem Satz. "
-            + "Erfordert die Rolle ADMIN oder ROOT.")
-    public String sucheModulSchnittstellen(@McpToolParam(description = "Suchtext") String text) {
+            + "und Methoden (z. B. 'mail', 'kalender', 'rechnung', 'foto'). Liefert Modul, Ebene (root oder modul), Name und "
+            + "Zweck in einem Satz, optional auf eine Ebene gefiltert. Erfordert die Rolle ADMIN oder ROOT.")
+    public String sucheModulSchnittstellen(@McpToolParam(description = "Suchtext") String text,
+            @McpToolParam(description = "Ebene: root oder modul; leer = alle", required = false) String ebene) {
         String v = pruefe("suche_modul_schnittstellen");
         if (v != null) {
             return v;
         }
-        List<SchnittstellenKatalog.Schnittstelle> l = katalog.suche(text);
+        List<SchnittstellenKatalog.Schnittstelle> l = SchnittstellenKatalog.nachEbene(katalog.suche(text), ebene);
         ArrayNode a = JSON.createArrayNode();
-        l.forEach(s -> a.addObject().put("modul", s.modul()).put("name", s.name()).put("zweck", s.zweckKurz()));
+        l.forEach(s -> a.addObject().put("modul", s.modul()).put("ebene", s.ebene()).put("name", s.name())
+                .put("zweck", s.zweckKurz()));
         return a.toPrettyString();
     }
 

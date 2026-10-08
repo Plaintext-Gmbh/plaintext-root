@@ -30,9 +30,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Rendert Betreff und Text einer Mail: die Vorlage des Mandanten aus der Datenbank, sonst den vom Aufrufer mitgegebenen Standardtext, mit Platzhaltern in geschweiften Klammern.",
+@ModulApiUmsetzung(beschreibung = "Renders subject and body of a mail: the tenant's template from the database, otherwise the default text passed in by the caller, with placeholders in curly braces.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
-        hinweise = {"Vorlagen liegen im Speicher und werden beim Speichern aktualisiert", "Unbekannte Platzhalter bleiben stehen"},
+        hinweise = {"Templates are cached in memory and refreshed when one is saved", "Unknown placeholders are left as they are"},
         beispiele = {"render(mandat, \"notif.x\", betreff, text, Map.of(\"name\", n))"})
 public class MailTemplateService implements IMailTemplateProvider {
 
