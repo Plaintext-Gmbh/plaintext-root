@@ -449,11 +449,28 @@ public class MyUserBackingBean implements Serializable {
         // `selected` that may already have been overwritten by the JSF model update) — the basis for the role allowlist,
         // so that existing data stays editable while a non-ROOT cannot grant a privileged role ANEW.
         Set<String> persistedRoles = new HashSet<>();
+        String persistedUsername = null;
+        Boolean persistedPasswordless = null;
         if (selected.getId() != null) {
             MyUserEntity persisted = repo.findById(selected.getId()).orElse(null);
             if (persisted != null && persisted.getRoles() != null) {
                 persistedRoles = new HashSet<>(persisted.getRoles());
             }
+            if (persisted != null) {
+                persistedUsername = persisted.getUsername();
+                persistedPasswordless = persisted.isPasswordless();
+            }
+        }
+
+        // SECURITY (card 1451, S-1): a root account is administered by ROOT only. The role allowlist
+        // below guards the roles, not the account: an ADMIN could set the password of a root account
+        // of their tenant (or untick "Ohne Passwort" on an OIDC root) and then log in as ROOT.
+        if (!isRoot() && istRootKonto(persistedRoles)) {
+            log.warn("SECURITY (Karte 1451, S-1): Nicht-ROOT-Akteur '{}' versuchte, das ROOT-Konto '{}' "
+                    + "zu aendern — abgelehnt.", Log.mail(handelnderBenutzer()), Log.mail(persistedUsername));
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, ROOT_KONTO_NUR_ROOT);
+            context.validationFailed();
+            return;
         }
 
         // Validate the password for new users or when the password has been changed
@@ -511,6 +528,7 @@ public class MyUserBackingBean implements Serializable {
         // TRACEABILITY (forensics 23.08.2026): log only after the write has succeeded —
         // otherwise the log claims a change that may never have happened.
         protokolliereRollenaenderung(persistedRoles, selected.getRoles());
+        protokolliereAnmeldedatenAenderung(persistedUsername, persistedPasswordless, passwordChanged);
         saveZusatzMandate();
         selected = null;
         resetRollenEntzug();
@@ -680,6 +698,16 @@ public class MyUserBackingBean implements Serializable {
         }
 
         Long id = selected.getId();
+        Set<String> gespeicherteRollen = repo.findById(id).map(MyUserEntity::getRoles).orElse(Set.of());
+        if (!isRoot() && istRootKonto(gespeicherteRollen)) {
+            log.warn("SECURITY (Karte 1451, S-1): Nicht-ROOT-Akteur '{}' versuchte, das ROOT-Konto id={} "
+                    + "zu loeschen — abgelehnt.", Log.mail(handelnderBenutzer()), id);
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, ROOT_KONTO_NUR_ROOT);
+            selected = null;
+            resetRollenEntzug();
+            init();
+            return;
+        }
         String username = selected.getUsername();
         String mandat = selected.getMandat();
         Set<String> rollen = selected.getRoles() == null ? new TreeSet<>() : new TreeSet<>(selected.getRoles());
@@ -706,6 +734,50 @@ public class MyUserBackingBean implements Serializable {
     }
 
     /** The logged-in (resp. impersonating) user who triggers the change. */
+    /** Message when a non-ROOT tries to change or delete a root account (card 1451, S-1). */
+    private static final String ROOT_KONTO_NUR_ROOT = "Ein ROOT-Konto kann nur ROOT bearbeiten oder loeschen.";
+
+    /** Whether the (persisted) roles contain the root role, in any spelling (card 1451, S-1). */
+    private static boolean istRootKonto(Set<String> rollen) {
+        return rollen != null && rollen.stream()
+                .filter(Objects::nonNull)
+                .map(r -> r.trim().toLowerCase(Locale.ROOT))
+                .anyMatch(r -> r.equals("root") || r.equals("role_root"));
+    }
+
+    /**
+     * Audit entry when login, password or "Ohne Passwort" of ANOTHER existing account changed
+     * (card 1451, from review AR-1): until now only role changes reached the audit, so taking over
+     * an account left no lasting trace. A user changing their own data is not recorded here.
+     */
+    private void protokolliereAnmeldedatenAenderung(String bisherLogin, Boolean bisherOhnePasswort,
+                                                    boolean passwortGeaendert) {
+        if (bisherLogin == null || auditService == null) {
+            return; // new account: nothing changed on an existing one
+        }
+        String akteur = handelnderBenutzer();
+        if (bisherLogin.equalsIgnoreCase(akteur)) {
+            return;
+        }
+        List<String> geaendert = new ArrayList<>();
+        if (passwortGeaendert) {
+            geaendert.add("Passwort");
+        }
+        if (!bisherLogin.equalsIgnoreCase(selected.getUsername())) {
+            geaendert.add("Login '" + bisherLogin + "' -> '" + selected.getUsername() + "'");
+        }
+        if (bisherOhnePasswort != null && bisherOhnePasswort != selected.isPasswordless()) {
+            geaendert.add("Ohne Passwort " + bisherOhnePasswort + " -> " + selected.isPasswordless());
+        }
+        if (geaendert.isEmpty()) {
+            return;
+        }
+        auditService.logDestructiveAction("UI", "USER_CREDENTIALS_CHANGE", "MyUserEntity",
+                String.valueOf(selected.getId()),
+                kuerze("Anmeldedaten von '" + bisherLogin + "' geaendert: " + String.join(", ", geaendert)
+                        + "; durch: " + akteur));
+    }
+
     private String handelnderBenutzer() {
         if (plaintextSecurity == null) {
             return "unbekannt";

@@ -41,6 +41,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -60,6 +61,8 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
     private static final String SESSION_ORIGINAL_USER_ID = "impersonation.originalUserId";
     private static final String SESSION_ORIGINAL_AUTH = "impersonation.originalAuth";
     private static final String SYSTEM_USER = "SYSTEM";
+    /** The one authority that names the session tenant (card 1451). */
+    private static final String MANDAT_PREFIX = "PROPERTY_MANDAT_";
 
     private static PlaintextSecurityImpl instance;
 
@@ -165,10 +168,14 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
             if (auth == null) {
                 return "NO_AUTH";
             }
-            for(GrantedAuthority role: auth.getAuthorities()){
-                if(role.toString().toLowerCase().contains("mandat")){
-                    String result = role.toString().toLowerCase().split("_")[role.toString().split("_").length - 1];
-                    return result;
+            // Card 1451 (S-2): only the exact tenant prefix counts, read like MyUserEntity.getMandat.
+            // The former "first authority containing 'mandat', part after the last '_'" let an
+            // imported role "mandat_b" (authority MANDAT_B sorts before PROPERTY_MANDAT_A) decide
+            // the tenant, and cut tenant names containing '_'.
+            for (GrantedAuthority role : auth.getAuthorities()) {
+                String authority = role.getAuthority();
+                if (authority != null && authority.toUpperCase(Locale.ROOT).startsWith(MANDAT_PREFIX)) {
+                    return authority.substring(MANDAT_PREFIX.length()).toLowerCase(Locale.ROOT);
                 }
             }
             return "default";

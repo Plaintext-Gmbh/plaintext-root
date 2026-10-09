@@ -283,7 +283,37 @@ class PlaintextSecurityImplTest {
         String mandat = plaintextSecurity.getMandat();
 
         // Then
-        assertEquals("mandat", mandat); // Last part after split
+        // Card 1451: the full name after the prefix, like MyUserEntity.getMandat. The former
+        // "part after the last '_'" returned "mandat" here and cut every tenant name with '_'.
+        assertEquals("some_complex_mandat", mandat);
+    }
+
+    @Test
+    void getMandat_ignoriertMandatRolleOhnePropertyPraefix() {
+        // Card 1451 (review 1449, S-2): an imported role "mandat_b" becomes the authority MANDAT_B and
+        // sorts before PROPERTY_MANDAT_A. The old code returned "b" - the account worked in tenant B.
+        List<GrantedAuthority> authorities = Arrays.asList(
+                new SimpleGrantedAuthority("MANDAT_B"),
+                new SimpleGrantedAuthority("PROPERTY_MANDAT_A"),
+                new SimpleGrantedAuthority("ROLE_USER")
+        );
+        Authentication auth = new UsernamePasswordAuthenticationToken("testuser", "password", authorities);
+        when(securityContext.getAuthentication()).thenReturn(auth);
+
+        assertEquals("a", plaintextSecurity.getMandat());
+    }
+
+    @Test
+    void getMandat_liefertDefault_wennNurMandatRolleOhnePraefixDa() {
+        // Without the real tenant authority the foreign role must not step in either.
+        List<GrantedAuthority> authorities = Arrays.asList(
+                new SimpleGrantedAuthority("MANDAT_B"),
+                new SimpleGrantedAuthority("ROLE_USER")
+        );
+        Authentication auth = new UsernamePasswordAuthenticationToken("testuser", "password", authorities);
+        when(securityContext.getAuthentication()).thenReturn(auth);
+
+        assertEquals("default", plaintextSecurity.getMandat());
     }
 
     @Test
