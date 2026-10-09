@@ -68,6 +68,10 @@ class MyUserBackingBeanTest {
     @Mock
     private ch.plaintext.audit.DestructiveActionAuditService auditService;
 
+    /** Card 1451: the password tests need an encoder; the other tests keep a stored hash. */
+    @Mock
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private MyUserBackingBean backingBean;
 
@@ -748,4 +752,151 @@ class MyUserBackingBeanTest {
         verify(auditService, never()).logDestructiveAction(any(), any(), any(), any(), any());
     }
 
+    // ---- Card 1451 (review 1449, S-1): an ADMIN must not take over a root account of their tenant ----
+
+    /** Persisted root account of the actor's tenant, as the repository returns it. */
+    private MyUserEntity gespeichertesRootKonto() {
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setPasswordless(true);
+        persisted.setRoles(new HashSet<>(Arrays.asList("root", "admin", "user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        return persisted;
+    }
+
+    @Test
+    void save_lehntPasswortAmRootKontoAb_wennAkteurNichtRootIst() {
+        // Actor = ADMIN (setUp). Attack: untick "Ohne Passwort" and set an own password on the root account.
+        testUser.setRoles(new HashSet<>(Arrays.asList("root", "admin", "user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        testUser.setPasswordless(false);
+        testUser.setPassword("Uebernahme-2026!");
+        backingBean.setSelected(testUser);
+        when(repo.findById(1L)).thenReturn(Optional.of(gespeichertesRootKonto()));
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(facesContext).validationFailed();
+    }
+
+    @Test
+    void save_erlaubtPasswortAmRootKonto_wennAkteurRootIst() {
+        // Positive control: the same change by ROOT goes through.
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        when(plaintextSecurity.getUser()).thenReturn("root2@example.com");
+        testUser.setRoles(new HashSet<>(Arrays.asList("root", "admin", "user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        testUser.setPasswordless(false);
+        testUser.setPassword("Neu-2026!");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("root", "admin", "user")));
+        when(repo.findById(1L)).thenReturn(Optional.of(gespeichertesRootKonto()));
+        when(passwordEncoder.encode("Neu-2026!")).thenReturn("$2a$12$neu");
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+        // The takeover path is now audited (review AR-1): password and "Ohne Passwort" of a foreign account.
+        ArgumentCaptor<String> detail = ArgumentCaptor.forClass(String.class);
+        verify(auditService).logDestructiveAction(eq("UI"), eq("USER_CREDENTIALS_CHANGE"),
+                eq("MyUserEntity"), eq("1"), detail.capture());
+        assertTrue(detail.getValue().contains("Passwort"), detail.getValue());
+        assertTrue(detail.getValue().contains("Ohne Passwort true -> false"), detail.getValue());
+        assertTrue(detail.getValue().contains("root2@example.com"), detail.getValue());
+    }
+
+    @Test
+    void save_erlaubtPasswortAmUserKonto_fuerAdmin() {
+        // Negative control of the lock: an ordinary account of the tenant stays administrable by ADMIN.
+        when(plaintextSecurity.getUser()).thenReturn("admin@example.com");
+        testUser.setPassword("Neu-2026!");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user")));
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(passwordEncoder.encode("Neu-2026!")).thenReturn("$2a$12$neu");
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+        verify(auditService).logDestructiveAction(eq("UI"), eq("USER_CREDENTIALS_CHANGE"),
+                eq("MyUserEntity"), eq("1"), anyString());
+    }
+
+    @Test
+    void save_schreibtKeinAnmeldedatenAudit_beiEigenemKonto() {
+        // A user changing their own password is not an account takeover.
+        when(plaintextSecurity.getUser()).thenReturn("test@example.com");
+        testUser.setPassword("Neu-2026!");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user")));
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        when(repo.findById(1L)).thenReturn(Optional.of(persisted));
+        when(passwordEncoder.encode("Neu-2026!")).thenReturn("$2a$12$neu");
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(auditService, never()).logDestructiveAction(anyString(), eq("USER_CREDENTIALS_CHANGE"),
+                anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void delete_lehntRootKontoAb_wennAkteurNichtRootIst() {
+        backingBean.setSelected(testUser);
+        when(repo.findById(1L)).thenReturn(Optional.of(gespeichertesRootKonto()));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.delete();
+        }
+
+        verify(repo, never()).delete(any(MyUserEntity.class));
+    }
+
+    @Test
+    void delete_erlaubtRootKonto_wennAkteurRootIst() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        backingBean.setSelected(testUser);
+        when(repo.findById(1L)).thenReturn(Optional.of(gespeichertesRootKonto()));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.delete();
+        }
+
+        verify(repo).delete(testUser);
+    }
 }

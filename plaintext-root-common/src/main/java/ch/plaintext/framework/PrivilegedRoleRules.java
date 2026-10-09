@@ -22,6 +22,9 @@ import java.util.Set;
  *       separation would be nothing but decoration.</li>
  *   <li>every {@code PROPERTY_*} role: it controls side entrances such as switching the tenant
  *       and therefore takes effect beyond the own tenant.</li>
+ *   <li>every role whose name contains {@code mandat} (card 1451, S-2): the authority builders
+ *       pass such a role on unprefixed, and a role like {@code mandat_b} next to
+ *       {@code PROPERTY_MANDAT_A} used to decide the session tenant.</li>
  * </ul>
  *
  * <p><b>Existing assignments stay untouched.</b> The rule applies to <i>newly assigning</i> a
@@ -39,6 +42,9 @@ public final class PrivilegedRoleRules {
     /** Prefix of the roles that take effect beyond the own tenant. */
     private static final String QUERZUGRIFF_PREFIX = "property_";
 
+    /** Name part of the roles that carry a tenant (card 1451, S-2). */
+    private static final String MANDAT_TEIL = "mandat";
+
     private PrivilegedRoleRules() {
     }
 
@@ -53,7 +59,8 @@ public final class PrivilegedRoleRules {
         if (normalized.isEmpty()) {
             return false;
         }
-        return NUR_ROOT.contains(normalized) || normalized.startsWith(QUERZUGRIFF_PREFIX);
+        return NUR_ROOT.contains(normalized) || normalized.startsWith(QUERZUGRIFF_PREFIX)
+                || normalized.contains(MANDAT_TEIL);
     }
 
     /**

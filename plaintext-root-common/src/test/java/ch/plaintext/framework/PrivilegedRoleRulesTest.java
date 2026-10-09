@@ -40,6 +40,13 @@ class PrivilegedRoleRulesTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"mandat_b", "MANDAT_B", "ROLE_MANDAT_B", "zusatzmandat"})
+    @DisplayName("Karte 1451: Rollen mit 'mandat' im Namen sind privilegiert — sie entscheiden den Mandanten")
+    void mandatRollenSindPrivilegiert(String rolle) {
+        assertTrue(PrivilegedRoleRules.isPrivileged(rolle));
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"wiki", "ROLE_WIKI", "finanzen", "postkonto", "user", "ROLE_USER",
             "mail", "privatausgaben", "MENU_CRON"})
     @DisplayName("Modul-Rollen sind NICHT privilegiert — sie darf admin vergeben")
