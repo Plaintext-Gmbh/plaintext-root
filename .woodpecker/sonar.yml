@@ -82,7 +82,7 @@ services:
 steps:
   # ── 1. SonarQube ───────────────────────────────────────────────────────────────
   sonarqube:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     # A run without build cache takes around 25 minutes (measured on all four projects);
     # with 24 modules root is the biggest of them. Woodpecker knows no step timeout in the
     # YAML; the time limit is a REPO setting in the UI (Settings -> Timeout,
@@ -138,7 +138,7 @@ steps:
 
   # ── 2. OWASP-Dependency-Check (CVE) ────────────────────────────────────────────
   owasp-cve:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     # DER GRUND, WARUM DIESES REPO IN WOODPECKER `trusted.volumes = true` BRAUCHT.
     # Nur dieser eine Step haengt das Volume ein — Sonar, SpotBugs und das Gate kommen ohne
     # aus, und ein Mount, den niemand braucht, ist ein Mount, den irgendwann jemand
@@ -325,7 +325,7 @@ steps:
   # Bewertung also nicht verhindern, deshalb faengt der Aufruf seinen eigenen Fehler ab.
   # Das ist der Unterschied zum OWASP-Step: dort ist der Ausfall selbst der Befund.
   spotbugs:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     environment:
       MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
       JAVA_TOOL_OPTIONS: "-XX:MaxRAM=4g -XX:ActiveProcessorCount=2"
@@ -338,7 +338,7 @@ steps:
 
   # ── 4. Quality-Gate bewerten und zurueckcommitten ──────────────────────────────
   quality-gate:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     environment:
       SONAR_HOST_URL: https://sonarqube.plaintext.ch
       SONAR_TOKEN:
@@ -449,7 +449,7 @@ steps:
 
   # ── 5. Meldung, wenn die Analyse NICHT durchgelaufen ist ───────────────────────
   meldung-bei-analyse-ausfall:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     when:
       - status: [failure]
     environment:
