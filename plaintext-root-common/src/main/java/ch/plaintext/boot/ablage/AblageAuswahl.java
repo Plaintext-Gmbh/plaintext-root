@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.ablage;
 
+import ch.plaintext.arch.StabileApi;
 import ch.plaintext.PlaintextRoles;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.ablagen.AblageEintrag;
@@ -10,6 +11,7 @@ import ch.plaintext.ablagen.DateiAblage;
 import ch.plaintext.ablagen.DateiAblagenRegister;
 import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import lombok.Getter;
+import lombok.Setter;
 import org.primefaces.event.FileUploadEvent;
 import org.primefaces.model.DefaultStreamedContent;
 import org.primefaces.model.StreamedContent;
@@ -18,6 +20,7 @@ import org.primefaces.model.file.UploadedFile;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.DirectoryNotEmptyException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +32,8 @@ import java.util.stream.Collectors;
 /**
  * Die Dateiablage als Oberfläche (Karte 1440): Ablage wählen, Ordner durchsuchen, Datei öffnen,
  * herunterladen, hochladen und speichern, über die in root eingerichteten Speicher-Ablagen
- * ({@link DateiAblagenRegister}).
+ * ({@link DateiAblagenRegister}); dazu Ordner anlegen, umbenennen/verschieben und löschen (Karte 1475,
+ * im Tag mit {@code ordnerVerwaltung="true"}).
  *
  * <p><b>Wie {@code TableSettings} kein Spring-Bean:</b> die Backing-Bean des Einsatzorts hält ein
  * Exemplar mit ihrem {@link AblageEinsatz}, reicht ihm Register und Security über {@link #init} und
@@ -55,6 +59,7 @@ import java.util.stream.Collectors;
  * möglich. Heruntergeladen wird immer als {@code attachment} mit {@code application/octet-stream},
  * nie inline (eine HTML-Datei aus der Ablage läuft so nicht im Ursprung der Anwendung).</p>
  */
+@StabileApi("Java-Seite des Tags pt:dateiAblage für Module der Fremd-Repos, z.B. draw.io in app (Karte 1475)")
 public class AblageAuswahl implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -80,6 +85,28 @@ public class AblageAuswahl implements Serializable {
     private transient byte[] inhalt;
     @Getter
     private transient StreamedContent download;
+
+    /** Ordnerverwaltung (Karte 1475): Eintrag im aktuellen Ordner, der verschoben oder gelöscht werden soll. */
+    @Getter
+    private String markiert;
+    /** {@value #VERSCHIEBEN} oder {@value #LOESCHEN}, solange {@link #markiert} gesetzt ist. */
+    @Getter
+    private String aktion;
+    /** Neuer Pfad ab der Wurzel des Einsatzes beim Verschieben, z.B. {@code archiv/a.drawio}. */
+    @Getter
+    @Setter
+    private String ziel;
+    /** Ausdrückliche Bestätigung, einen nicht leeren Ordner mit Inhalt zu löschen. */
+    @Getter
+    @Setter
+    private boolean mitInhalt;
+    /** Name des neuen Ordners im Formular. */
+    @Getter
+    @Setter
+    private String neuerOrdner;
+
+    public static final String VERSCHIEBEN = "verschieben";
+    public static final String LOESCHEN = "loeschen";
 
     /** Ein Eintrag im aktuellen Ordner (in EL mit Methodensyntax lesen: {@code e.name()}). */
     public record Eintrag(String name, boolean ordner, long groesse) implements Serializable {
@@ -270,6 +297,128 @@ public class AblageAuswahl implements Serializable {
         }
     }
 
+    // ---------- Ordnerverwaltung (Karte 1475, für Module und das Tag) ----------
+
+    /**
+     * Legt einen Ordner im aktuellen Ordner an; einen bestehenden lässt sie stehen.
+     *
+     * @throws SecurityException        ohne Schreibrecht
+     * @throws IllegalArgumentException bei ungültigem Namen
+     */
+    public void legeOrdnerAn(String name) throws IOException {
+        DateiAblage a = zugriff(true);
+        a.legeOrdnerAn(voll(pruefeName(name)));
+        laden();
+    }
+
+    /**
+     * Verschiebt oder benennt einen Eintrag des aktuellen Ordners um.
+     *
+     * @param zielPfad neuer Pfad ab der Wurzel des Einsatzes, mit Namen ({@code archiv/a.drawio})
+     * @throws SecurityException        ohne Schreibrecht
+     * @throws IllegalArgumentException bei ungültigem Ziel, nicht erlaubtem Dateityp im Ziel oder einem Ordner in sich selbst
+     */
+    public void verschiebe(String name, String zielPfad) throws IOException {
+        DateiAblage a = zugriff(true);
+        Eintrag e = eintrag(name);
+        String z = zielPfad == null ? "" : zielPfad.strip();
+        if (z.isEmpty()) {
+            throw new IllegalArgumentException("Das Ziel fehlt.");
+        }
+        pruefePfad(z);
+        if (!e.ordner()) {
+            pruefeDatei(z.substring(z.lastIndexOf('/') + 1));
+        }
+        String von = voll(name);
+        String nach = verbinde(einsatz.wurzel(), z);
+        if ((nach + "/").startsWith(von + "/")) {
+            throw new IllegalArgumentException("«" + name + "» lässt sich nicht in sich selbst verschieben.");
+        }
+        a.verschiebe(von, nach);
+        laden();
+    }
+
+    /**
+     * Löscht eine Datei oder einen Ordner des aktuellen Ordners.
+     *
+     * @param mitInhalt ausdrückliche Bestätigung, einen nicht leeren Ordner samt Inhalt zu löschen
+     * @throws SecurityException          ohne Schreibrecht
+     * @throws DirectoryNotEmptyException bei einem nicht leeren Ordner ohne {@code mitInhalt}
+     */
+    public void loesche(String name, boolean mitInhalt) throws IOException {
+        DateiAblage a = zugriff(true);
+        if (eintrag(name).ordner()) {
+            a.loescheOrdner(voll(name), mitInhalt);
+        } else {
+            pruefeDatei(name);
+            a.loesche(voll(name));
+        }
+        laden();
+    }
+
+    /** @return der Eintrag nach frischem Laden, damit Datei und Ordner nicht verwechselt werden */
+    private Eintrag eintrag(String name) {
+        pruefeName(name);
+        laden();
+        return eintraege.stream().filter(e -> e.name().equals(name)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("«" + name + "» gibt es in diesem Ordner nicht."));
+    }
+
+    /** Knopf «Neuer Ordner». */
+    public void ordnerAnlegen() {
+        try {
+            legeOrdnerAn(neuerOrdner == null ? "" : neuerOrdner.strip());
+            FacesMessages.info("Ordner «" + neuerOrdner.strip() + "» angelegt.");
+            neuerOrdner = null;
+        } catch (IOException | RuntimeException e) {
+            FacesMessages.error("Ordner anlegen nicht möglich", e.getMessage());
+        }
+    }
+
+    /** Merkt einen Eintrag für {@link #bestaetige()} vor; {@code aktion} ist {@value #VERSCHIEBEN} oder {@value #LOESCHEN}. */
+    public void markiere(String name, String aktion) {
+        abbrechen();
+        if (VERSCHIEBEN.equals(aktion) || LOESCHEN.equals(aktion)) {
+            markiert = name;
+            this.aktion = aktion;
+            ziel = verbinde(ordner, name);
+        }
+    }
+
+    public void abbrechen() {
+        markiert = null;
+        aktion = null;
+        ziel = null;
+        mitInhalt = false;
+    }
+
+    /** @return {@code true}, wenn der vorgemerkte Eintrag ein Ordner ist */
+    public boolean isMarkiertOrdner() {
+        return markiert != null && eintraege.stream().anyMatch(e -> e.ordner() && e.name().equals(markiert));
+    }
+
+    /** Führt die vorgemerkte Aktion aus; Rechte und Pfade prüfen {@link #verschiebe} und {@link #loesche}. */
+    public void bestaetige() {
+        if (markiert == null) {
+            return;
+        }
+        try {
+            if (VERSCHIEBEN.equals(aktion)) {
+                verschiebe(markiert, ziel);
+                FacesMessages.info("«" + markiert + "» verschoben nach /" + ziel.strip() + ".");
+            } else {
+                loesche(markiert, mitInhalt);
+                FacesMessages.info("«" + markiert + "» gelöscht.");
+            }
+            abbrechen();
+        } catch (DirectoryNotEmptyException e) {
+            FacesMessages.error("Der Ordner «" + markiert + "» ist nicht leer",
+                    "Zum Löschen samt Inhalt «Mit gesamtem Inhalt löschen» ankreuzen.");
+        } catch (IOException | RuntimeException e) {
+            FacesMessages.error((VERSCHIEBEN.equals(aktion) ? "Verschieben" : "Löschen") + " nicht möglich", e.getMessage());
+        }
+    }
+
     // ---------- Angaben für das Tag ----------
 
     public long getMaxBytes() {
@@ -293,6 +442,7 @@ public class AblageAuswahl implements Serializable {
         gewaehlt = null;
         inhalt = null;
         download = null;
+        abbrechen();
     }
 
     private void pruefeDatei(String name) {

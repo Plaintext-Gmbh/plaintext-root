@@ -35,7 +35,7 @@ Shared utilities used across modules.
 | `PlaintextRole` | Declared role: technical name plus human-readable description |
 | `PlaintextRoleRegistry` | Collects all declared roles (union, deduplicated) for selection UIs |
 | `TableSettings` / `TableColumn` (`ch.plaintext.boot.table`) | Java side of `pt:tableSettings`: column visibility, widths and named profiles of one table (Karte 1077; until 1.668.0 in `plaintext-root-web`) |
-| `AblageAuswahl` / `AblageEinsatz` (`ch.plaintext.boot.ablage`) | Java side of `pt:dateiAblage`: choose a file store, browse folders, open, download, upload and save, configured per place of use (stores with read/write roles, root folder, file types, size limit); every check runs here, not in the tag (Karte 1440) |
+| `AblageAuswahl` / `AblageEinsatz` (`ch.plaintext.boot.ablage`) | Java side of `pt:dateiAblage`: choose a file store, browse folders, open, download, upload and save, with `ordnerVerwaltung="true"` also create, rename/move and delete folders (Karte 1475), configured per place of use (stores with read/write roles, root folder, file types, size limit); every check runs here, not in the tag (Karte 1440) |
 | `TableState` / `TableColumnProfile` | What a user set up on a table — plain data, stored as JSON |
 | `TableStateStore` / `UserPreferenceTableStateStore` | Storage seam and the shipped implementation: per user and tenant in `UserPreference.tabellenStaende` |
 
@@ -176,6 +176,9 @@ app password). Every write or delete is a commit authored by the signed-in user,
 force; a rejected push is reported as a conflict. The local working clones live under
 `plaintext.ablagen.git.verzeichnis` (default `${java.io.tmpdir}/plaintext-git-ablagen`); `.git` path
 segments are rejected and symlinks are checked out as plain files.
+
+Folders (Karte 1475): `legeOrdnerAn`, `verschiebe` and `loescheOrdner` for both kinds. Git keeps an
+otherwise empty folder with a `.gitkeep` that `liste` hides; one commit per operation.
 
 ### plaintext-admin-modules
 

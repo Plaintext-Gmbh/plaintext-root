@@ -97,6 +97,20 @@ class AblageAusprobierenPlaywrightIT {
             return new ArrayList<>(l.values());
         }
         @Override public void loesche(String pfad) { dateien.remove(pfad); }
+        @Override public void legeOrdnerAn(String pfad) { dateien.put(pfad + "/.keep", new byte[0]); }
+        @Override public void verschiebe(String von, String nach) throws IOException {
+            List<String> weg = dateien.keySet().stream().filter(k -> k.equals(von) || k.startsWith(von + "/")).toList();
+            if (weg.isEmpty() || dateien.keySet().stream().anyMatch(k -> k.equals(nach) || k.startsWith(nach + "/"))) {
+                throw new IOException("verschieben: " + von + " -> " + nach);
+            }
+            weg.forEach(k -> dateien.put(nach + k.substring(von.length()), dateien.remove(k)));
+        }
+        @Override public void loescheOrdner(String pfad, boolean rekursiv) throws IOException {
+            List<String> drin = dateien.keySet().stream().filter(k -> k.startsWith(pfad + "/")).toList();
+            if (drin.isEmpty()) throw new IOException("kein Ordner: " + pfad);
+            if (!rekursiv && drin.stream().anyMatch(k -> !k.equals(pfad + "/.keep"))) throw new java.nio.file.DirectoryNotEmptyException(pfad);
+            drin.forEach(dateien::remove);
+        }
     }
 
     static final Speicher SPEICHER = new Speicher();
@@ -283,6 +297,57 @@ class AblageAusprobierenPlaywrightIT {
         ruhig();
         assertTrue(SPEICHER.dateien.keySet().stream().noneMatch(p -> p.contains("boese.txt")), "Traversal: " + SPEICHER.dateien.keySet());
 
+        assertTrue(ajaxFehler.isEmpty(), "Fehler in Teilantworten: " + ajaxFehler);
+    }
+
+    @Test
+    @DisplayName("Karte 1475: Ordner anlegen, Ordner verschieben, nicht leeren Ordner erst mit Häkchen löschen (geklickt)")
+    void ordnerverwaltung() {
+        SPEICHER.dateien.put(WURZEL + "ordner-test/drin.txt", "drin".getBytes(StandardCharsets.UTF_8));
+        List<String> ajaxFehler = new CopyOnWriteArrayList<>();
+        page.onRequestFinished(anfrage -> {
+            if (!"POST".equals(anfrage.method())) return;
+            try {
+                Response antwort = anfrage.response();
+                String rumpf = antwort == null ? "" : antwort.text();
+                if (rumpf.startsWith("<?xml") && (rumpf.contains("<error-name>") || rumpf.contains("Exception"))) {
+                    ajaxFehler.add(rumpf.length() > 400 ? rumpf.substring(0, 400) : rumpf);
+                }
+            } catch (RuntimeException _) {
+                // Rumpf nicht mehr abrufbar: kein Befund.
+            }
+        });
+        anmelden(ROOT_USER);
+        page.navigate(url("/ablage-ausprobieren.html"));
+        page.waitForLoadState();
+
+        // Anlegen
+        page.fill("#fm\\:abl-ordnername", "neuer-ordner");
+        page.click("#fm\\:abl-ordner-anlegen");
+        page.waitForCondition(() -> liste().innerText().contains("neuer-ordner"));
+        assertTrue(SPEICHER.dateien.containsKey(WURZEL + "neuer-ordner/.keep"), "Ordner nicht angelegt: " + SPEICHER.dateien.keySet());
+
+        // Verschieben eines Ordners in den neuen
+        liste().locator("tr:has-text('ordner-test') .pt-ablage-verschieben").click();
+        page.locator("#fm\\:abl-ziel").waitFor();
+        page.fill("#fm\\:abl-ziel", "neuer-ordner/verschoben");
+        page.click("#fm\\:abl-bestaetigen");
+        page.waitForCondition(() -> SPEICHER.dateien.containsKey(WURZEL + "neuer-ordner/verschoben/drin.txt"));
+        assertFalse(SPEICHER.dateien.containsKey(WURZEL + "ordner-test/drin.txt"));
+
+        // Löschen: ohne Häkchen abgelehnt, mit Häkchen samt Inhalt
+        page.waitForCondition(() -> !liste().innerText().contains("ordner-test"));
+        liste().locator("tr:has-text('neuer-ordner') .pt-ablage-loeschen").click();
+        page.locator("#fm\\:abl-bestaetigen").waitFor();
+        page.click("#fm\\:abl-bestaetigen");
+        page.waitForCondition(() -> page.locator("#fm\\:abl-meldungen").innerText().contains("nicht leer"));
+        ruhig();
+        assertTrue(SPEICHER.dateien.containsKey(WURZEL + "neuer-ordner/verschoben/drin.txt"), "ohne Häkchen gelöscht");
+        page.locator("#fm\\:abl-mitInhalt .ui-chkbox-box").click();
+        page.click("#fm\\:abl-bestaetigen");
+        page.waitForCondition(() -> SPEICHER.dateien.keySet().stream().noneMatch(k -> k.startsWith(WURZEL + "neuer-ordner")));
+        ruhig();
+        assertFalse(liste().innerText().contains("neuer-ordner"), "Liste: " + liste().innerText());
         assertTrue(ajaxFehler.isEmpty(), "Fehler in Teilantworten: " + ajaxFehler);
     }
 

@@ -21,11 +21,15 @@
         ablageId        Praefix der Komponenten-IDs; Vorgabe "abl". Nur bei zwei Ablagen auf einer Seite.
         oeffnen         true zeigt an jeder Datei den Knopf "Oeffnen" (AblageAuswahl.oeffne); Vorgabe false.
                         Danach stehen gewaehlt und inhalt an AblageAuswahl; das Formular wird neu gezeichnet.
+        ordnerVerwaltung true zeigt mit Schreibrecht "Neuer Ordner" und an jedem Eintrag "Umbenennen oder
+                        verschieben" und "Loeschen" (Karte 1475); Vorgabe false. Ein nicht leerer Ordner wird
+                        nur mit dem Haekchen "Mit gesamtem Inhalt loeschen" geloescht.
 
       Die Knoepfe in den Tabellenzeilen aktualisieren @form: aus einer Zeile heraus findet eine
       relative ID den Bereich ausserhalb der Tabelle nicht sicher.
     -->
     <c:set var="ptAblId" value="#{empty ablageId ? 'abl' : ablageId}"/>
+    <c:set var="ptAblOrdner" value="#{ordnerVerwaltung and auswahl.schreibbar}"/>
 
     <h:panelGroup layout="block" id="#{ptAblId}" styleClass="pt-ablage">
         <!-- Eigene Meldungen: der globale Growl des Templates wird von Ajax-Antworten nicht neu gezeichnet. -->
@@ -66,7 +70,7 @@
                     <f:convertNumber groupingUsed="true"/>
                 </h:outputText>
             </p:column>
-            <p:column style="width:190px;">
+            <p:column style="width:#{ptAblOrdner ? '270px' : '190px'};">
                 <p:commandButton icon="pi pi-download" title="Herunterladen" ajax="false"
                                  actionListener="#{auswahl.herunterladen(ptAblE.name())}"
                                  rendered="#{not ptAblE.ordner()}" styleClass="ui-button-secondary pt-ablage-herunterladen">
@@ -76,8 +80,44 @@
                                  action="#{auswahl.oeffne(ptAblE.name())}" process="@this"
                                  update="@form"
                                  rendered="#{oeffnen and not ptAblE.ordner()}" styleClass="pt-ablage-oeffnen"/>
+                <p:commandButton icon="pi pi-pencil" title="Umbenennen oder verschieben" style="margin-left:6px;"
+                                 action="#{auswahl.markiere(ptAblE.name(), 'verschieben')}" process="@this" update="@form"
+                                 rendered="#{ptAblOrdner}" styleClass="ui-button-secondary pt-ablage-verschieben"/>
+                <p:commandButton icon="pi pi-trash" title="Löschen" style="margin-left:6px;"
+                                 action="#{auswahl.markiere(ptAblE.name(), 'loeschen')}" process="@this" update="@form"
+                                 rendered="#{ptAblOrdner}" styleClass="ui-button-danger pt-ablage-loeschen"/>
             </p:column>
         </p:dataTable>
+
+        <h:panelGroup layout="block" id="#{ptAblId}-aktion" rendered="#{ptAblOrdner and not empty auswahl.markiert}"
+                      style="margin-top:8px; padding:8px; border:1px solid var(--surface-border); border-radius:6px;
+                             display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <h:panelGroup rendered="#{auswahl.aktion eq 'verschieben'}">
+                <h:outputLabel for="#{ptAblId}-ziel" value="«#{auswahl.markiert}» umbenennen oder verschieben nach /"/>
+                <p:inputText id="#{ptAblId}-ziel" value="#{auswahl.ziel}" style="min-width:240px;"/>
+            </h:panelGroup>
+            <h:panelGroup rendered="#{auswahl.aktion eq 'loeschen'}">
+                <h:outputText value="«#{auswahl.markiert}» löschen?"/>
+                <h:panelGroup rendered="#{auswahl.markiertOrdner}" style="margin-left:8px;">
+                    <p:selectBooleanCheckbox id="#{ptAblId}-mitInhalt" value="#{auswahl.mitInhalt}"
+                                             itemLabel="Mit gesamtem Inhalt löschen"/>
+                </h:panelGroup>
+            </h:panelGroup>
+            <p:commandButton id="#{ptAblId}-bestaetigen" value="#{auswahl.aktion eq 'loeschen' ? 'Löschen' : 'Verschieben'}"
+                             icon="#{auswahl.aktion eq 'loeschen' ? 'pi pi-trash' : 'pi pi-check'}"
+                             action="#{auswahl.bestaetige()}" process="#{ptAblId}-aktion" update="#{ptAblId}"
+                             styleClass="#{auswahl.aktion eq 'loeschen' ? 'ui-button-danger' : ''}"/>
+            <p:commandButton id="#{ptAblId}-abbrechen" value="Abbrechen" action="#{auswahl.abbrechen()}"
+                             process="@this" update="#{ptAblId}" styleClass="ui-button-secondary"/>
+        </h:panelGroup>
+
+        <h:panelGroup layout="block" id="#{ptAblId}-neu-ordner" rendered="#{ptAblOrdner}"
+                      style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <p:inputText id="#{ptAblId}-ordnername" value="#{auswahl.neuerOrdner}" placeholder="Neuer Ordner"/>
+            <p:commandButton id="#{ptAblId}-ordner-anlegen" value="Ordner anlegen" icon="pi pi-folder-plus"
+                             action="#{auswahl.ordnerAnlegen()}" process="#{ptAblId}-neu-ordner" update="#{ptAblId}"
+                             styleClass="ui-button-secondary"/>
+        </h:panelGroup>
 
         <h:panelGroup layout="block" rendered="#{auswahl.schreibbar}" style="margin-top:8px;">
             <p:fileUpload id="#{ptAblId}-upload" listener="#{auswahl.hochladen}" mode="advanced" auto="true"

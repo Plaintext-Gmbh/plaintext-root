@@ -40,4 +40,25 @@ public interface DateiAblage {
 
     /** Deletes a file; with Nextcloud it ends up in the trash bin. */
     void loesche(String pfad) throws IOException;
+
+    /**
+     * Creates a folder, missing parent folders included; an existing folder is no error (card 1475).
+     * Git knows no empty folders: there the folder holds a {@code .gitkeep}, which {@link #liste} hides.
+     */
+    void legeOrdnerAn(String pfad) throws IOException;
+
+    /**
+     * Moves or renames a file or a folder; missing parent folders of the target are created (card 1475).
+     *
+     * @throws IOException if the source is missing, the target exists or lies inside the source
+     */
+    void verschiebe(String von, String nach) throws IOException;
+
+    /**
+     * Deletes a folder (card 1475); with Nextcloud it ends up in the trash bin.
+     *
+     * @param rekursiv {@code false} deletes only an empty folder
+     * @throws java.nio.file.DirectoryNotEmptyException if the folder is not empty and {@code rekursiv} is false
+     */
+    void loescheOrdner(String pfad, boolean rekursiv) throws IOException;
 }

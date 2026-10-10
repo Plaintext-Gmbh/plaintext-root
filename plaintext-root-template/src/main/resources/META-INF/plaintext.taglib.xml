@@ -63,7 +63,8 @@
         <source>tags/tableSettings.xhtml</source>
     </tag>
 
-    <!-- Karte 1440: Dateiablage (Ablage waehlen, Ordner, oeffnen, herunterladen, hochladen).
+    <!-- Karte 1440: Dateiablage (Ablage waehlen, Ordner, oeffnen, herunterladen, hochladen);
+         Karte 1475: Ordnerverwaltung (anlegen, umbenennen/verschieben, loeschen) mit ordnerVerwaltung="true".
          Gegenpart ch.plaintext.boot.ablage.AblageAuswahl aus plaintext-root-common. -->
     <tag>
         <tag-name>dateiAblage</tag-name>

@@ -68,4 +68,55 @@ class NextcloudAblageTest {
             assertThat(s.aufrufe).as("kein einziger Aufruf für einen ungültigen Pfad").isEmpty();
         }
     }
+
+    @Test
+    @DisplayName("Karte 1475: Ordner anlegen, verschieben (MOVE ohne Überschreiben), leer/rekursiv löschen")
+    void ordner() throws Exception {
+        String w = "/remote.php/dav/files/anna/Projekte/drawio/";
+        try (TestWebDav s = new TestWebDav()) {
+            NextcloudAblage a = ablage(s, TestWebDav.PASSWORT);
+            a.legeOrdnerAn("neu/tief");
+            assertThat(s.dateien).containsKeys(w + "neu/", w + "neu/tief/");
+            a.legeOrdnerAn("neu"); // gibt es schon: kein Fehler
+
+            a.schreibe("neu/tief/a b.drawio", new byte[]{1}, null);
+            a.verschiebe("neu/tief/a b.drawio", "neu/umbenannt.drawio");
+            assertThat(s.aufrufe).contains("MOVE /remote.php/dav/files/anna/Projekte/drawio/neu/tief/a%20b.drawio");
+            assertThat(s.dateien).containsKey(w + "neu/umbenannt.drawio").doesNotContainKey(w + "neu/tief/a b.drawio");
+
+            a.verschiebe("neu", "archiv/2026/neu"); // Elternordner des Ziels werden angelegt
+            assertThat(s.dateien).containsKeys(w + "archiv/2026/neu/tief/", w + "archiv/2026/neu/umbenannt.drawio")
+                    .doesNotContainKey(w + "neu/");
+
+            a.legeOrdnerAn("zweiter");
+            assertThatThrownBy(() -> a.verschiebe("zweiter", "archiv")).hasMessageContaining("gibt es schon");
+            int vorher = s.aufrufe.size();
+            assertThatThrownBy(() -> a.verschiebe("archiv", "archiv/2026/drin")).hasMessageContaining("in sich selbst");
+            assertThatThrownBy(() -> a.verschiebe("archiv", "archiv")).hasMessageContaining("in sich selbst");
+            assertThat(s.aufrufe).as("kein Aufruf beim Verschieben in sich selbst").hasSize(vorher);
+
+            assertThatThrownBy(() -> a.loescheOrdner("archiv", false)).isInstanceOf(java.nio.file.DirectoryNotEmptyException.class);
+            assertThat(s.dateien).containsKey(w + "archiv/2026/neu/umbenannt.drawio");
+            assertThatThrownBy(() -> a.loescheOrdner("archiv/2026/neu/umbenannt.drawio", true)).isInstanceOf(IOException.class);
+            assertThat(s.dateien).as("eine Datei ist kein Ordner").containsKey(w + "archiv/2026/neu/umbenannt.drawio");
+            a.loescheOrdner("zweiter", false);
+            a.loescheOrdner("archiv", true);
+            assertThat(s.dateien.keySet()).noneMatch(k -> k.startsWith(w + "archiv") || k.startsWith(w + "zweiter"));
+        }
+    }
+
+    @Test
+    @DisplayName("Karte 1475: Ordner-Operationen halten die Pfadgrenzen ein, ohne einen Aufruf")
+    void ordnerPfadgrenzen() throws Exception {
+        try (TestWebDav s = new TestWebDav()) {
+            NextcloudAblage a = ablage(s, TestWebDav.PASSWORT);
+            for (String boese : new String[]{"../geheim", "a/../../x", "/etc", "a//b", ".", "a\\b", "", "a/./b"}) {
+                assertThatThrownBy(() -> a.legeOrdnerAn(boese)).as(boese).hasMessageContaining("Ungültiger Pfad");
+                assertThatThrownBy(() -> a.loescheOrdner(boese, true)).as(boese).hasMessageContaining("Ungültiger Pfad");
+                assertThatThrownBy(() -> a.verschiebe("x", boese)).as(boese).hasMessageContaining("Ungültiger Pfad");
+                assertThatThrownBy(() -> a.verschiebe(boese, "x")).as(boese).hasMessageContaining("Ungültiger Pfad");
+            }
+            assertThat(s.aufrufe).isEmpty();
+        }
+    }
 }

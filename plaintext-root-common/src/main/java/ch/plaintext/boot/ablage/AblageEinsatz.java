@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.ablage;
 
+import ch.plaintext.arch.StabileApi;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
  * @param dateitypen erlaubte Endungen ohne Punkt, z.B. {@code drawio}; leer = alle (nur ohne Schreibrecht erlaubt)
  * @param maxBytes   Grössengrenze für Lesen, Herunterladen, Hochladen und Speichern; höchstens {@value #MAX_BYTES}
  */
+@StabileApi("Freigaben und Grenzen eines Einsatzorts von pt:dateiAblage, von Modulen der Fremd-Repos gesetzt (Karte 1475)")
 public record AblageEinsatz(List<Freigabe> freigaben, String wurzel, Set<String> dateitypen, long maxBytes)
         implements Serializable {
 

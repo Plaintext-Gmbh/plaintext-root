@@ -13,6 +13,17 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **Folder management in `DateiAblage` and `pt:dateiAblage`** (Karte 1475). The interface gets `legeOrdnerAn`,
+  `verschiebe` (move or rename a file or folder; target must not exist or lie inside the source) and
+  `loescheOrdner(pfad, rekursiv)` (non-empty without `rekursiv` → `DirectoryNotEmptyException`). Nextcloud uses
+  MKCOL/MOVE (`Overwrite: F`)/DELETE; Git makes one commit per operation and keeps an otherwise empty folder with a
+  hidden `.gitkeep` (moving or deleting the last file of a folder without it removes the folder, Git has no empty
+  folders). **Breaking for own implementations of `DateiAblage`** (none outside root). `AblageAuswahl` offers
+  `legeOrdnerAn`, `verschiebe`, `loesche` with server-side write check; the tag shows them only with
+  `ordnerVerwaltung="true"` (default off) and write right; a non-empty folder is deleted only with the
+  explicit tick «Mit gesamtem Inhalt löschen».
+- `AblageAuswahl` and `AblageEinsatz` are now `@StabileApi` (Karte 1475): the draw.io module in app uses both;
+  the constructor `AblageAuswahl(AblageEinsatz)` is unchanged, folder management stays off unless the tag enables it.
 - **`pt:dateiAblage`, a reusable UI for the file stores** (Karte 1440), tag file in `plaintext-root-template`,
   Java side `ch.plaintext.boot.ablage.AblageAuswahl` in `plaintext-root-common`: choose a store (only those the
   user may read), browse folders below a fixed root, open, download, upload and save. Each place of use passes an

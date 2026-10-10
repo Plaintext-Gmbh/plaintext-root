@@ -8,6 +8,7 @@ import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
@@ -93,7 +94,35 @@ public final class TestWebDav implements AutoCloseable {
                     antworte(ex, 200, "HEAD".equals(m) ? null : d);
                 }
             }
-            case "DELETE" -> antworte(ex, dateien.remove(p) != null ? 204 : 404, null);
+            case "DELETE" -> {
+                String o = p.endsWith("/") ? p : p + "/";
+                if (dateien.containsKey(o)) {
+                    dateien.keySet().removeIf(k -> k.startsWith(o));
+                    antworte(ex, 204, null);
+                } else {
+                    antworte(ex, dateien.remove(p) != null ? 204 : 404, null);
+                }
+            }
+            case "MOVE" -> {
+                String ziel = URI.create(ex.getRequestHeaders().getFirst("Destination")).getPath();
+                boolean ordner = dateien.containsKey(p + "/");
+                if (!ordner && !dateien.containsKey(p)) {
+                    antworte(ex, 404, null);
+                } else if (dateien.containsKey(ziel) || dateien.containsKey(ziel + "/")) {
+                    antworte(ex, "F".equals(ex.getRequestHeaders().getFirst("Overwrite")) ? 412 : 204, null);
+                } else if (!dateien.containsKey(ziel.substring(0, ziel.lastIndexOf('/') + 1))) {
+                    antworte(ex, 409, null);
+                } else {
+                    String von = ordner ? p + "/" : p;
+                    String nach = ordner ? ziel + "/" : ziel;
+                    for (String k : List.copyOf(dateien.keySet())) {
+                        if (ordner ? k.startsWith(von) : k.equals(von)) {
+                            dateien.put(nach + k.substring(von.length()), dateien.remove(k));
+                        }
+                    }
+                    antworte(ex, 201, null);
+                }
+            }
             default -> antworte(ex, 405, null);
         }
     }
