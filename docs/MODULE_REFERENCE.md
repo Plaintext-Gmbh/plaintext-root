@@ -35,6 +35,7 @@ Shared utilities used across modules.
 | `PlaintextRole` | Declared role: technical name plus human-readable description |
 | `PlaintextRoleRegistry` | Collects all declared roles (union, deduplicated) for selection UIs |
 | `TableSettings` / `TableColumn` (`ch.plaintext.boot.table`) | Java side of `pt:tableSettings`: column visibility, widths and named profiles of one table (Karte 1077; until 1.668.0 in `plaintext-root-web`) |
+| `AblageAuswahl` / `AblageEinsatz` (`ch.plaintext.boot.ablage`) | Java side of `pt:dateiAblage`: choose a file store, browse folders, open, download, upload and save, configured per place of use (stores with read/write roles, root folder, file types, size limit); every check runs here, not in the tag (Karte 1440) |
 | `TableState` / `TableColumnProfile` | What a user set up on a table — plain data, stored as JSON |
 | `TableStateStore` / `UserPreferenceTableStateStore` | Storage seam and the shipped implementation: per user and tenant in `UserPreference.tabellenStaende` |
 
