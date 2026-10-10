@@ -32,6 +32,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -61,6 +62,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         properties = {"spring.docker.compose.enabled=false"})
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+// Eigener Kontext (Test-Register): danach schliessen, sonst hält sein Verbindungspool die CI-Postgres
+// voll und der nächste IT bekommt «too many clients already» (Pipeline 480, RootPagesPlaywrightIT).
+@DirtiesContext
 class AblageAusprobierenPlaywrightIT {
 
     private static final String ADMIN_USER = "pw-ablage-admin";
