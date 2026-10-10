@@ -8,12 +8,19 @@ package ch.plaintext.apitoken;
 
 import ch.plaintext.apitoken.IApiTokenService.ApiTokenValidationResult;
 import ch.plaintext.apitoken.JwtTokenService.JwtValidationResult;
+import ch.plaintext.McpUserRoles;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -44,10 +51,37 @@ class ApiTokenValidatorServiceImplTest {
 
     private final ApiTokenService apiTokenService = mock(ApiTokenService.class);
     private final JwtTokenService jwtTokenService = mock(JwtTokenService.class);
+    private final McpUserRoles mcpUserRoles = mock(McpUserRoles.class);
     private final ApiTokenValidatorServiceImpl validator =
-            new ApiTokenValidatorServiceImpl(apiTokenService, jwtTokenService);
+            new ApiTokenValidatorServiceImpl(apiTokenService, jwtTokenService, mcpUserRoles, new ApiTokenScopeDeckel());
 
     private static final String PATH = "/api/test";
+
+    /** The controllers run inside an MVC request; the plain cases below are reads (GET). */
+    @BeforeEach
+    void getAnfrage() {
+        anfrage("GET", PATH);
+    }
+
+    @AfterEach
+    void anfrageWeg() {
+        RequestContextHolder.resetRequestAttributes();
+    }
+
+    private static void anfrage(String methode, String pfad) {
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(new MockHttpServletRequest(methode, pfad)));
+    }
+
+    /** Token user 7 with the given scope claim; the owner holds {@code rollen}. */
+    private String gueltigesToken(String scope, String... rollen) {
+        String token = tokenWithPayload("{\"userId\":7}");
+        JwtValidationResult jwt = new JwtValidationResult(7L, "plaintext", "u@x.ch", "cli", Instant.now().plusSeconds(3600), scope, null);
+        when(jwtTokenService.validateToken(token)).thenReturn(Optional.of(jwt));
+        when(apiTokenService.validateVerifiedToken(token, jwt)).thenReturn(Optional.of(
+                new ApiTokenValidationResult(7L, "plaintext", "u@x.ch", "cli", jwt.expiresAt(), scope)));
+        when(mcpUserRoles.rolesForUser(7L)).thenReturn(Set.of(rollen));
+        return token;
+    }
 
     /** Builds a JWT-shaped token (header.payload.sig) with the given payload JSON. */
     private static String tokenWithPayload(String payloadJson) {
@@ -188,5 +222,86 @@ class ApiTokenValidatorServiceImplTest {
 
         assertFalse(outcome.hasError());
         assertEquals(result, outcome.getValidation());
+    }
+
+    /**
+     * Card 1485 (M1 from review 1450): a READ token must not write. Writing ways of the REST
+     * controllers (gear packing lists, {@code /nosec/root/upload}) are POST/PUT/DELETE; they need
+     * WRITE, like the write tools at {@code /mcp} — even if the owner is an admin.
+     */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+            "POST, /nosec/root/upload",
+            "POST, /api/gear/packing-lists",
+            "PUT, /api/gear/packing-lists/1",
+            "DELETE, /api/gear/packing-lists/1/items/2",
+            "PATCH, /api/gear/packing-lists/1"})
+    void readTokenDarfNichtSchreiben(String methode, String pfad) {
+        anfrage(methode, pfad);
+        String token = gueltigesToken("READ", "ADMIN");
+
+        ITokenValidationOutcome outcome = validator.validateRequest("Bearer " + token, pfad);
+
+        ApiErrorResponse error = errorBody(outcome);
+        assertEquals(403, error.status());
+        assertEquals("INSUFFICIENT_SCOPE", error.error());
+        assertNull(outcome.getValidation());
+    }
+
+    /** A token without scope claim counts as READ (as at /mcp without legacy switch). */
+    @Test
+    void tokenOhneScopeDarfNichtSchreiben() {
+        anfrage("POST", "/nosec/root/upload");
+        String token = gueltigesToken(null, "ADMIN");
+
+        assertEquals(403, errorBody(validator.validateRequest("Bearer " + token, "/nosec/root/upload")).status());
+    }
+
+    /** Scope cap (cards 1363/1365): a WRITE claim of a plain USER is worth READ. */
+    @Test
+    void writeClaimEinesUsersWirdGedeckelt() {
+        anfrage("POST", "/api/gear/packing-lists");
+        String token = gueltigesToken("WRITE", "USER");
+
+        assertEquals("INSUFFICIENT_SCOPE", errorBody(validator.validateRequest("Bearer " + token, "/api/gear/packing-lists")).error());
+    }
+
+    /** Without a bound request the method is unknown: fail closed, treat it as a write. */
+    @Test
+    void ohneAnfrageGiltSchreiben() {
+        RequestContextHolder.resetRequestAttributes();
+        String token = gueltigesToken("READ", "ADMIN");
+
+        assertEquals(403, errorBody(validator.validateRequest("Bearer " + token, PATH)).status());
+    }
+
+    /** Counter-check: the legitimate ways keep working. */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+            "POST, /nosec/root/upload, WRITE, ADMIN",
+            "DELETE, /api/gear/packing-lists/1, ADMIN, ROOT",
+            "POST, /api/gear/packing-lists, EINTRAGEN, ADMIN",
+            "GET, /api/gear/items, READ, USER",
+            "HEAD, /api/kontakte, READ, USER",
+            "GET, /nosec/root/upload/services, , USER"})
+    void legitimerWegGehtWeiter(String methode, String pfad, String scope, String rolle) {
+        anfrage(methode, pfad);
+        String token = gueltigesToken(scope, rolle);
+
+        ITokenValidationOutcome outcome = validator.validateRequest("Bearer " + token, pfad);
+
+        assertFalse(outcome.hasError());
+        assertEquals(7L, outcome.getValidation().userId());
+    }
+
+    /** If the app restricts tokens to some roles (lese-rollen), others get 403 even for reads — like /mcp. */
+    @Test
+    void ohneLeseRolleKeinZugriff() {
+        ApiTokenScopeDeckel deckel = new ApiTokenScopeDeckel();
+        deckel.setLeseRollen(java.util.List.of("API"));
+        ApiTokenValidatorServiceImpl streng = new ApiTokenValidatorServiceImpl(apiTokenService, jwtTokenService, mcpUserRoles, deckel);
+        String token = gueltigesToken("READ", "USER");
+
+        assertEquals(403, errorBody(streng.validateRequest("Bearer " + token, PATH)).status());
     }
 }
