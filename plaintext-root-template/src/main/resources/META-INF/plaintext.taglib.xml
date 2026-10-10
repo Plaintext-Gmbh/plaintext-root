@@ -71,4 +71,11 @@
         <source>tags/dateiAblage.xhtml</source>
     </tag>
 
+    <!-- Karte 1476: Freigabe-Links ohne Anmeldung (r/rw, Ablauf, Widerruf, Teil) zu einem Objekt.
+         Gegenpart freigabeLinkBean aus plaintext-root-freigabe. -->
+    <tag>
+        <tag-name>freigabeLinks</tag-name>
+        <source>tags/freigabeLinks.xhtml</source>
+    </tag>
+
 </facelet-taglib>

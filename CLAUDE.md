@@ -19,7 +19,7 @@ Java version in `<java.version>`).
 |---|---|
 | Core | `plaintext-root-interfaces` (contracts, no implementation), `plaintext-root-common`, `plaintext-root-flyway`, `plaintext-root-jpa` (`SuperModel`, tenant, audit, soft delete) |
 | Menu/access | `plaintext-root-menu` (`@MenuAnnotation`, `MenuRegistry`), `plaintext-root-menu-visibility` (per-tenant visibility, menu diagnostics), `plaintext-root-pageguard` (Page Access Guard), `plaintext-root-role-assignment` |
-| Web | `plaintext-root-web` (`UrlRewriteConfig` `.html`→`.xhtml`, `SpringSecurityProvider`, `MenuBean`), `plaintext-root-template` (layout, CSS, JS), `plaintext-root-webapp` (the runnable root app: `PlaintextSecurityConfig`, login, `application.yml`) |
+| Web | `plaintext-root-web` (`UrlRewriteConfig` `.html`→`.xhtml`, `SpringSecurityProvider`, `MenuBean`), `plaintext-root-template` (layout, CSS, JS), `plaintext-root-webapp` (the runnable root app: `PlaintextSecurityConfig`, login, `application.yml`), `plaintext-root-freigabe` (share links without login: `FreigabeQuelle`, `/nosec/freigabe/{token}`, tag `pt:freigabeLinks`, Karte 1476) |
 | Quality | `plaintext-root-archtests` (ArchUnit rules as a **main** jar, so that the applications can run them) |
 | Admin | `plaintext-admin-requirements`, `-cron`, `-sessions`, `-settings`, `-i18n`, `-oidc`, `-apitoken`, `-secrets`, `-modules`, `-mailtemplate`, `-webhooks`, `-notifications` |
 
