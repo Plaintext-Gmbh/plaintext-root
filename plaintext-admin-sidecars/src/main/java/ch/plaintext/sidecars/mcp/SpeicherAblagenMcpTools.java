@@ -43,8 +43,8 @@ public class SpeicherAblagenMcpTools {
     private final SpeicherAblageService service;
 
     @PreAuthorize("hasAuthority('SCOPE_READ')")
-    @McpTool(name = "list_speicher_ablagen", description = "Listet die Speicher-Ablagen (heute Nextcloud): Name, Adresse, "
-            + "Benutzer, Pfad, letzte Prüfung und Ergebnis. Module legen darüber Dateien ab (Schnittstelle DateiAblage). "
+    @McpTool(name = "list_speicher_ablagen", description = "Listet die Speicher-Ablagen (Nextcloud oder Git): Name, Art, Adresse, "
+            + "Benutzer, Pfad, Zweig (Git), letzte Prüfung und Ergebnis. Module legen darüber Dateien ab (Schnittstelle DateiAblage). "
             + "Ohne Passwort. Erfordert die Rolle ROOT.")
     public String listSpeicherAblagen() {
         String v = pruefe("list_speicher_ablagen", false);
@@ -59,6 +59,7 @@ public class SpeicherAblagenMcpTools {
             o.put("url", s.getUrl());
             o.put("benutzer", s.getBenutzer());
             o.put("pfad", s.getPfad());
+            o.put("zweig", s.getZweig());
             o.put("passwortHinterlegt", s.hatPasswort());
             o.put("ok", s.getOk());
             o.put("meldung", s.getMeldung());
@@ -84,21 +85,26 @@ public class SpeicherAblagenMcpTools {
     }
 
     @PreAuthorize("hasAuthority('SCOPE_ADMIN')")
-    @McpTool(name = "set_speicher_ablage", description = "Richtet eine Speicher-Ablage ein oder ändert sie (Nextcloud): "
-            + "name (a-z, 0-9, -), url (z. B. https://home.plaintext.ch), benutzer, passwort (App-Passwort, nur schreiben; "
-            + "leer = unverändert, beim Anlegen Pflicht), pfad (Ordner in der Nextcloud). Prüft danach sofort. "
+    @McpTool(name = "set_speicher_ablage", description = "Richtet eine Speicher-Ablage ein oder ändert sie: "
+            + "name (a-z, 0-9, -), url (Nextcloud-Adresse, z. B. https://home.plaintext.ch, bzw. https-Adresse des Git-Repos), "
+            + "benutzer, passwort (App-Passwort bzw. Git-Token, nur schreiben; leer = unverändert, beim Anlegen Pflicht), "
+            + "pfad (Ordner in der Nextcloud bzw. Unterordner im Repo, bei Git leer = Wurzel), art (NEXTCLOUD = Standard, GIT), "
+            + "zweig (nur GIT, z. B. main). Bei GIT ist jedes Schreiben ein Commit mit dem angemeldeten Benutzer als Autor "
+            + "und ein Push ohne Force; ein abgelehnter Push wird als Konflikt gemeldet. Prüft danach sofort. "
             + "Erfordert scope=ADMIN und die Rolle ROOT.")
     public String setSpeicherAblage(@McpToolParam(description = "Name der Ablage") String name,
-                                    @McpToolParam(description = "Nextcloud-Adresse") String url,
+                                    @McpToolParam(description = "Nextcloud-Adresse bzw. https-Adresse des Git-Repos") String url,
                                     @McpToolParam(description = "Benutzer") String benutzer,
-                                    @McpToolParam(required = false, description = "App-Passwort; leer = unverändert") String passwort,
-                                    @McpToolParam(description = "Ordner in der Nextcloud, z. B. Projekte/drawio") String pfad) {
+                                    @McpToolParam(required = false, description = "App-Passwort bzw. Git-Token; leer = unverändert") String passwort,
+                                    @McpToolParam(required = false, description = "Ordner in der Nextcloud bzw. Unterordner im Repo, z. B. Projekte/drawio") String pfad,
+                                    @McpToolParam(required = false, description = "NEXTCLOUD (Standard) oder GIT") String art,
+                                    @McpToolParam(required = false, description = "Nur GIT: Zweig, z. B. main") String zweig) {
         String v = pruefe("set_speicher_ablage", true);
         if (v != null) {
             return v;
         }
         try {
-            SpeicherAblage s = service.speichere(name, url, benutzer, passwort, pfad);
+            SpeicherAblage s = service.speichere(name, art, url, benutzer, passwort, pfad, zweig);
             return (Boolean.TRUE.equals(s.getOk()) ? "OK: " : "GESPEICHERT, ABER NICHT ERREICHBAR: ") + s.getMeldung();
         } catch (IllegalArgumentException e) {
             return FEHLER + e.getMessage();

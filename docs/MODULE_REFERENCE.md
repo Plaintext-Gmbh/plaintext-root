@@ -171,6 +171,12 @@ checked with `ch.plaintext.boot.plugins.netz.AusgehendesZiel` (moved up from pla
 public hosts or those in `plaintext.ausgehend.erlaubte-hosts`. MCP: `list_speicher_ablagen`,
 `pruefe_speicher_ablage`, `set_speicher_ablage`.
 
+Second kind `GIT` (Karte 1471, `GitAblage`, JGit): repo URL, branch, subfolder, token (encrypted like the
+app password). Every write or delete is a commit authored by the signed-in user, then a push without
+force; a rejected push is reported as a conflict. The local working clones live under
+`plaintext.ablagen.git.verzeichnis` (default `${java.io.tmpdir}/plaintext-git-ablagen`); `.git` path
+segments are rejected and symlinks are checked out as plain files.
+
 ### plaintext-admin-modules
 
 Module registry and activation per application (`ModuleService`, `ModuleConfig`,

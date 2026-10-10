@@ -4,14 +4,17 @@
 package ch.plaintext.sidecars.service;
 
 import ch.plaintext.ablagen.DateiAblage;
+import ch.plaintext.sidecars.ablage.GitAblage;
 import ch.plaintext.sidecars.ablage.NextcloudAblage;
 import ch.plaintext.sidecars.ablage.TestWebDav;
 import ch.plaintext.sidecars.entity.SpeicherAblage;
 import ch.plaintext.sidecars.repository.SpeicherAblageRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -28,6 +31,8 @@ class SpeicherAblageServiceTest {
 
     final List<SpeicherAblage> db = new ArrayList<>();
     final AtomicLong ids = new AtomicLong();
+    @TempDir
+    Path klone;
 
     SpeicherAblageService service(String erlaubt) {
         SpeicherAblageRepository repo = mock(SpeicherAblageRepository.class);
@@ -42,7 +47,7 @@ class SpeicherAblageServiceTest {
         when(repo.findByDeletedFalseOrderByNameAsc()).thenAnswer(i -> db.stream().filter(s -> !Boolean.TRUE.equals(s.getDeleted())).toList());
         when(repo.findFirstByNameAndDeletedFalse(anyString())).thenAnswer(i -> db.stream()
                 .filter(s -> !Boolean.TRUE.equals(s.getDeleted()) && s.getName().equals(i.getArgument(0))).findFirst());
-        return new SpeicherAblageService(repo, new SidecarCrypto(), erlaubt, NextcloudAblage.standardClient());
+        return new SpeicherAblageService(repo, new SidecarCrypto(), erlaubt, NextcloudAblage.standardClient(), klone);
     }
 
     @Test
@@ -97,5 +102,38 @@ class SpeicherAblageServiceTest {
         assertThatThrownBy(() -> svc.speichere("a", "http://127.0.0.1:1", "a", null, "x")).hasMessageContaining("App-Passwort");
         assertThatThrownBy(() -> svc.speichere("a", "http://u:p@127.0.0.1:1", "a", "p", "x")).hasMessageContaining("Zugangsdaten");
         assertThatThrownBy(() -> svc.speichere("a", "http://127.0.0.1:1", "a", "p", "../x")).hasMessageContaining("Pfad");
+    }
+
+    @Test
+    @DisplayName("Karte 1471: GIT wird mit Zweig und verschlüsseltem Token gespeichert, geprüft und als GitAblage geöffnet")
+    void gitEinrichten() {
+        SpeicherAblageService svc = service("127.0.0.1");
+        // Port 1 auf localhost: niemand hört zu, die Prüfung scheitert lokal, ohne Netz.
+        SpeicherAblage a = svc.speichere("git-praesentation", "git", "http://127.0.0.1:1/repo.git", "x-access-token", "tok-123", "folien", "main");
+        assertThat(a.getArt()).isEqualTo(SpeicherAblage.ART_GIT);
+        assertThat(a.getZweig()).isEqualTo("main");
+        assertThat(a.getPasswortEncrypted()).isNotBlank().doesNotContain("tok-123");
+        assertThat(a.getOk()).isFalse();
+        assertThat(a.getMeldung()).startsWith("Git:").doesNotContain("tok-123");
+        assertThat(svc.ablage("git-praesentation")).get().isInstanceOf(GitAblage.class);
+        assertThat(klone).isDirectoryContaining(p -> p.getFileName().toString().startsWith("git-praesentation-"));
+
+        SpeicherAblage wurzel = svc.speichere("git-wurzel", "GIT", "http://127.0.0.1:1/repo.git", "u", "t", " ", "main");
+        assertThat(wurzel.getPfad()).as("bei Git ist der Unterordner optional").isEmpty();
+    }
+
+    @Test
+    @DisplayName("Karte 1471: GIT-Pflichtangaben und dieselbe Adressprüfung wie Nextcloud")
+    void gitPflicht() {
+        SpeicherAblageService svc = service("127.0.0.1");
+        assertThatThrownBy(() -> svc.speichere("g", "GIT", "http://127.0.0.1:1/r.git", "u", "t", "", " ")).hasMessageContaining("Zweig");
+        assertThatThrownBy(() -> svc.speichere("g", "GIT", "http://127.0.0.1:1/r.git", "u", "t", "", "a..b")).hasMessageContaining("Zweig");
+        assertThatThrownBy(() -> svc.speichere("g", "GIT", "http://127.0.0.1:1/r.git", "u", null, "", "main")).hasMessageContaining("Token");
+        assertThatThrownBy(() -> svc.speichere("g", "GIT", "http://127.0.0.1:1/r.git", "u", "t", "../x", "main")).hasMessageContaining("Pfad");
+        assertThatThrownBy(() -> svc.speichere("g", "SVN", "http://127.0.0.1:1/r.git", "u", "t", "", "main")).hasMessageContaining("Art");
+        assertThatThrownBy(() -> svc.speichere("g", "GIT", "file:///tmp/r.git", "u", "t", "", "main")).hasMessageContaining("Adresse");
+        assertThatThrownBy(() -> service("").speichere("g", "GIT", "http://127.0.0.1:1/r.git", "u", "t", "", "main"))
+                .hasMessageContaining("interne Adresse");
+        assertThat(db).isEmpty();
     }
 }

@@ -180,6 +180,9 @@ public class SidecarsBackingBean implements Serializable {
     @Getter @Setter private String abBenutzer;
     @Getter @Setter private String abPasswort;
     @Getter @Setter private String abPfad;
+    /** Karte 1471: NEXTCLOUD oder GIT, bei GIT der Zweig. */
+    @Getter @Setter private String abArt = SpeicherAblage.ART_NEXTCLOUD;
+    @Getter @Setter private String abZweig;
     /** Karte 1413: der Dialog ändert eine bestehende Ablage (Name fest) statt eine neue einzurichten. */
     @Getter private boolean ablageBestehend;
 
@@ -250,6 +253,8 @@ public class SidecarsBackingBean implements Serializable {
         abUrl = a.getUrl();
         abBenutzer = a.getBenutzer();
         abPfad = a.getPfad();
+        abArt = a.getArt();
+        abZweig = a.getZweig();
         abPasswort = null;
         ablageBestehend = true;
     }
@@ -260,12 +265,14 @@ public class SidecarsBackingBean implements Serializable {
         abBenutzer = null;
         abPasswort = null;
         abPfad = null;
+        abArt = SpeicherAblage.ART_NEXTCLOUD;
+        abZweig = null;
         ablageBestehend = false;
     }
 
     public void ablageSpeichern() {
         try {
-            SpeicherAblage a = ablagen.speichere(abName, abUrl, abBenutzer, abPasswort, abPfad);
+            SpeicherAblage a = ablagen.speichere(abName, abArt, abUrl, abBenutzer, abPasswort, abPfad, abZweig);
             if (Boolean.TRUE.equals(a.getOk())) {
                 FacesMessages.info(ABLAGE_ANFANG + a.getName() + "» gespeichert. " + a.getMeldung());
             } else {
@@ -297,7 +304,7 @@ public class SidecarsBackingBean implements Serializable {
     public void ablageEntfernen(String name) {
         try {
             ablagen.entferne(name);
-            FacesMessages.info(ABLAGE_ANFANG + name + "» entfernt. Die Dateien in der Nextcloud bleiben.");
+            FacesMessages.info(ABLAGE_ANFANG + name + "» entfernt. Die Dateien in der Nextcloud bzw. im Repo bleiben.");
         } catch (NoSuchElementException e) {
             FacesMessages.error(e.getMessage());
         }
