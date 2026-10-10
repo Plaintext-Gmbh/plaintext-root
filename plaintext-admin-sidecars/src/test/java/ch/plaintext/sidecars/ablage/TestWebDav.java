@@ -73,8 +73,10 @@ public final class TestWebDav implements AutoCloseable {
             }
             case "MKCOL" -> {
                 String o = p.endsWith("/") ? p : p + "/";
-                antworte(ex, dateien.containsKey(o) ? 405 : 201, null);
+                // erst ablegen, dann antworten: sonst prüft der Test, bevor der Server-Thread geschrieben hat
+                boolean neu = !dateien.containsKey(o);
                 dateien.putIfAbsent(o, null);
+                antworte(ex, neu ? 201 : 405, null);
             }
             case "PUT" -> {
                 String eltern = p.substring(0, p.lastIndexOf('/') + 1);
