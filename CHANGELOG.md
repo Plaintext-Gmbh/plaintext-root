@@ -13,6 +13,14 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **`pt:dateiAblage`, a reusable UI for the file stores** (Karte 1440), tag file in `plaintext-root-template`,
+  Java side `ch.plaintext.boot.ablage.AblageAuswahl` in `plaintext-root-common`: choose a store (only those the
+  user may read), browse folders below a fixed root, open, download, upload and save. Each place of use passes an
+  `AblageEinsatz`: stores with read and write roles (`*` = every configured store), root folder, allowed file
+  types (required as soon as writing is allowed) and a size limit. Rights, names, types and size are checked
+  server side on every access; names are single segments, so nothing leaves the root; downloads are always
+  `attachment` with `application/octet-stream`. Try it under Root → Ablage ausprobieren (ROOT only, folder
+  `ablage-demo/<mandat>`).
 - **`@ModulApi` and `@ModulApiUmsetzung`** (Karte 1422, Daniel 04.10.2026), in
   `plaintext-root-interfaces` (`ch.plaintext.modules`). `@ModulApi(art = SCHNITTSTELLE | DTO,
   stabilitaet = STABIL | NEU | VERALTET, seit, ersatz)` marks a contract other modules may use; a DTO's

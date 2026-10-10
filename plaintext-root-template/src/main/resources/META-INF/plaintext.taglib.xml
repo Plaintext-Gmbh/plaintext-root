@@ -63,4 +63,11 @@
         <source>tags/tableSettings.xhtml</source>
     </tag>
 
+    <!-- Karte 1440: Dateiablage (Ablage waehlen, Ordner, oeffnen, herunterladen, hochladen).
+         Gegenpart ch.plaintext.boot.ablage.AblageAuswahl aus plaintext-root-common. -->
+    <tag>
+        <tag-name>dateiAblage</tag-name>
+        <source>tags/dateiAblage.xhtml</source>
+    </tag>
+
 </facelet-taglib>

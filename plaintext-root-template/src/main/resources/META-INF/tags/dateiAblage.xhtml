@@ -1,0 +1,90 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:c="jakarta.tags.core"
+                xmlns:p="http://primefaces.org/ui">
+    <!--
+      pt:dateiAblage (Karte 1440): Ablage waehlen, Ordner durchsuchen, Datei oeffnen, herunterladen
+      und hochladen, ueber die unter Root, Sidecars eingerichteten Speicher-Ablagen.
+
+      DER GEGENPART IN JAVA: ch.plaintext.boot.ablage.AblageAuswahl aus plaintext-root-common. Das
+      Tag rendert nur und blendet aus; Rechte, Namen, Dateitypen und Groesse prueft AblageAuswahl bei
+      jedem Zugriff. Was ein Einsatzort erlaubt, steht in seinem AblageEinsatz.
+
+      Das Tag steht in einem Formular der Seite (h:form id="fm" mit dem _csrf-Feld).
+      Keine EL in diesem Kommentar: Facelets wertet sie aus und die Seite endet in HTTP 500.
+
+      PFLICHT:
+        auswahl         das AblageAuswahl-Objekt der Backing-Bean
+      OPTIONAL:
+        ablageId        Praefix der Komponenten-IDs; Vorgabe "abl". Nur bei zwei Ablagen auf einer Seite.
+        oeffnen         true zeigt an jeder Datei den Knopf "Oeffnen" (AblageAuswahl.oeffne); Vorgabe false.
+                        Danach stehen gewaehlt und inhalt an AblageAuswahl; das Formular wird neu gezeichnet.
+
+      Die Knoepfe in den Tabellenzeilen aktualisieren @form: aus einer Zeile heraus findet eine
+      relative ID den Bereich ausserhalb der Tabelle nicht sicher.
+    -->
+    <c:set var="ptAblId" value="#{empty ablageId ? 'abl' : ablageId}"/>
+
+    <h:panelGroup layout="block" id="#{ptAblId}" styleClass="pt-ablage">
+        <!-- Eigene Meldungen: der globale Growl des Templates wird von Ajax-Antworten nicht neu gezeichnet. -->
+        <p:messages id="#{ptAblId}-meldungen" showDetail="true" closable="true"/>
+        <h:panelGroup layout="block" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+            <p:selectOneMenu id="#{ptAblId}-wahl" value="#{auswahl.ablage}" rendered="#{not empty auswahl.ablagen}"
+                             style="min-width:200px;">
+                <f:selectItem itemLabel="Ablage wählen" itemValue="" noSelectionOption="true"/>
+                <f:selectItems value="#{auswahl.ablagen}"/>
+                <p:ajax process="@this" update="#{ptAblId}"/>
+            </p:selectOneMenu>
+            <h:outputText value="Keine Ablage verfügbar." rendered="#{empty auswahl.ablagen}"/>
+            <p:commandButton id="#{ptAblId}-hoch" value="Hoch" icon="pi pi-arrow-up"
+                             action="#{auswahl.hoch()}" process="@this" update="#{ptAblId}"
+                             disabled="#{auswahl.obersterOrdner}" rendered="#{not empty auswahl.ablage}"
+                             styleClass="ui-button-secondary"/>
+            <p:commandButton id="#{ptAblId}-neu" icon="pi pi-refresh" title="Neu laden"
+                             action="#{auswahl.laden()}" process="@this" update="#{ptAblId}"
+                             rendered="#{not empty auswahl.ablage}" styleClass="ui-button-secondary"/>
+            <h:outputText id="#{ptAblId}-pfad" value="/#{auswahl.ordner}" rendered="#{not empty auswahl.ablage}"
+                          style="font-family:monospace; overflow-wrap:anywhere;"/>
+        </h:panelGroup>
+
+        <p:dataTable id="#{ptAblId}-liste" value="#{auswahl.eintraege}" var="ptAblE"
+                     rendered="#{not empty auswahl.ablage}" emptyMessage="Der Ordner ist leer."
+                     styleClass="mobile-safe">
+            <p:column headerText="Name">
+                <p:commandLink rendered="#{ptAblE.ordner()}" action="#{auswahl.oeffneOrdner(ptAblE.name())}"
+                               process="@this" update="@form" styleClass="pt-ablage-ordner">
+                    <i class="pi pi-folder" style="margin-right:6px;"/>#{ptAblE.name()}
+                </p:commandLink>
+                <h:panelGroup rendered="#{not ptAblE.ordner()}" styleClass="pt-ablage-datei">
+                    <i class="pi pi-file" style="margin-right:6px;"/>#{ptAblE.name()}
+                </h:panelGroup>
+            </p:column>
+            <p:column headerText="Grösse" style="width:110px; text-align:right;">
+                <h:outputText value="#{ptAblE.groesse()}" rendered="#{not ptAblE.ordner() and ptAblE.groesse() ge 0}">
+                    <f:convertNumber groupingUsed="true"/>
+                </h:outputText>
+            </p:column>
+            <p:column style="width:190px;">
+                <p:commandButton icon="pi pi-download" title="Herunterladen" ajax="false"
+                                 actionListener="#{auswahl.herunterladen(ptAblE.name())}"
+                                 rendered="#{not ptAblE.ordner()}" styleClass="ui-button-secondary pt-ablage-herunterladen">
+                    <p:fileDownload value="#{auswahl.download}"/>
+                </p:commandButton>
+                <p:commandButton value="Öffnen" icon="pi pi-folder-open" style="margin-left:6px;"
+                                 action="#{auswahl.oeffne(ptAblE.name())}" process="@this"
+                                 update="@form"
+                                 rendered="#{oeffnen and not ptAblE.ordner()}" styleClass="pt-ablage-oeffnen"/>
+            </p:column>
+        </p:dataTable>
+
+        <h:panelGroup layout="block" rendered="#{auswahl.schreibbar}" style="margin-top:8px;">
+            <p:fileUpload id="#{ptAblId}-upload" listener="#{auswahl.hochladen}" mode="advanced" auto="true"
+                          sizeLimit="#{auswahl.maxBytes}" allowTypes="#{auswahl.allowTypes}"
+                          update="#{ptAblId}" label="Hochladen" chooseIcon="pi pi-upload"/>
+            <h:outputText value="Erlaubt: #{auswahl.dateitypenText}, höchstens #{auswahl.maxBytes} Bytes."
+                          style="font-size:.85rem; color:var(--text-color-secondary);"/>
+        </h:panelGroup>
+    </h:panelGroup>
+</ui:composition>

@@ -1,0 +1,46 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:pt="http://plaintext.ch/ui"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <!-- Karte 1440: Testseite fuer das Ablage-UI pt:dateiAblage (Gegenpart AblageAuswahl). -->
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{ablageAusprobierenBean.seitenaufruf()}"/>
+    </f:metadata>
+
+    <ui:define name="title">Ablage ausprobieren</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <div class="card">
+                <h3>Ablage ausprobieren</h3>
+                <p style="color:var(--text-color-secondary);">
+                    Das Ablage-UI aus root (pt:dateiAblage) auf den unter Root → Sidecars eingerichteten Speicher-Ablagen.
+                    Gearbeitet wird im Ordner ablage-demo/&lt;Mandat&gt; der gewählten Ablage.
+                </p>
+
+                <pt:dateiAblage auswahl="#{ablageAusprobierenBean.ablage}" oeffnen="true"/>
+
+                <p:fieldset legend="Text speichern" style="margin-top:16px;" rendered="#{ablageAusprobierenBean.ablage.schreibbar}">
+                    <h:panelGroup layout="block" style="display:flex; flex-direction:column; gap:6px; max-width:640px;">
+                        <p:inputText id="dateiname" value="#{ablageAusprobierenBean.dateiname}" placeholder="Dateiname"/>
+                        <p:inputTextarea id="text" value="#{ablageAusprobierenBean.text}" rows="6" autoResize="false"/>
+                        <p:commandButton id="speichern" value="Speichern" icon="pi pi-save"
+                                         action="#{ablageAusprobierenBean.speichern()}"
+                                         process="@this dateiname text" update="@form" style="align-self:flex-start;"/>
+                    </h:panelGroup>
+                </p:fieldset>
+
+                <h:panelGroup id="vorschau" layout="block" style="margin-top:16px;">
+                    <h:panelGroup rendered="#{not empty ablageAusprobierenBean.ablage.gewaehlt}">
+                        <h4>Geöffnet: <h:outputText value="#{ablageAusprobierenBean.ablage.gewaehlt}"/></h4>
+                        <pre style="white-space:pre-wrap; overflow-wrap:anywhere; max-height:400px; overflow:auto;"><h:outputText id="vorschauText" value="#{ablageAusprobierenBean.vorschau}"/></pre>
+                    </h:panelGroup>
+                </h:panelGroup>
+            </div>
+        </h:form>
+    </ui:define>
+</ui:composition>
