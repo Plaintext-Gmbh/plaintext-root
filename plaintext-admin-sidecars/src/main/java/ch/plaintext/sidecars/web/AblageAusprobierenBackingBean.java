@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sidecars.web;
 
+import ch.plaintext.PlaintextRoles;
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.ablagen.DateiAblagenRegister;
 import ch.plaintext.boot.ablage.AblageAuswahl;
@@ -24,9 +25,10 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Seite Admin → Ablage ausprobieren (Karte 1440): {@code pt:dateiAblage} auf allen eingerichteten
- * Ablagen, Lesen und Schreiben für ADMIN und ROOT, unter {@code ablage-demo/<mandat>}. Ablagen sind
- * instanzweit; der Mandats-Unterordner verhindert, dass ein ADMIN die Dateien eines anderen Mandats sieht.
+ * Seite Root → Ablage ausprobieren (Karte 1440): {@code pt:dateiAblage} auf allen eingerichteten
+ * Ablagen, Lesen und Schreiben nur für ROOT, unter {@code ablage-demo/<mandat>}. Nur ROOT, weil es in
+ * app und schuetu ADMINs gibt, die nicht Betreiber sind (Review 1449); die Bean prüft das selbst,
+ * nicht nur Menü und Page-Guard.
  */
 @Component("ablageAusprobierenBean")
 @Scope("session")
@@ -35,7 +37,7 @@ public class AblageAusprobierenBackingBean implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    static final Set<String> ROLLEN = Set.of("ADMIN", "ROOT");
+    static final Set<String> ROLLEN = Set.of("ROOT");
     static final Set<String> TYPEN = Set.of("txt", "md", "csv", "json", "xml", "drawio", "svg", "png", "jpg", "pdf");
     private static final int VORSCHAU = 10_000;
 
@@ -56,6 +58,7 @@ public class AblageAusprobierenBackingBean implements Serializable {
 
     /** preRenderView; baut die Auswahl neu, wenn das Mandat gewechselt hat (läuft auch bei Ajax-Postbacks). */
     public void seitenaufruf() {
+        nurRoot();
         String m = security.getMandat();
         if (ablage == null || !Objects.equals(m, mandat)) {
             mandat = m;
@@ -67,11 +70,18 @@ public class AblageAusprobierenBackingBean implements Serializable {
     }
 
     public void speichern() {
+        nurRoot();
         try {
             ablage.speichere(dateiname == null ? "" : dateiname.strip(), (text == null ? "" : text).getBytes(StandardCharsets.UTF_8));
             FacesMessages.info("«" + dateiname + "» gespeichert.");
         } catch (IOException | RuntimeException e) {
             FacesMessages.error("Speichern nicht möglich", e.getMessage());
+        }
+    }
+
+    private void nurRoot() {
+        if (!PlaintextRoles.isRoot(security)) {
+            throw new SecurityException("Ablage ausprobieren ist nur für ROOT.");
         }
     }
 

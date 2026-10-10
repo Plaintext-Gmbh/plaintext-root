@@ -5,14 +5,14 @@ package ch.plaintext.sidecars;
 
 import ch.plaintext.boot.menu.MenuAnnotation;
 
-/** Karte 1440: Testseite für das Ablage-UI {@code pt:dateiAblage}, ADMIN und ROOT. */
+/** Karte 1440: Testseite für das Ablage-UI {@code pt:dateiAblage}, nur ROOT (Entscheid worker 10.10.2026: in app und schuetu gibt es ADMINs, die nicht Betreiber sind). */
 @MenuAnnotation(
     title = "Ablage ausprobieren",
     link = "ablage-ausprobieren.html",
     order = 97,
-    parent = "Admin",
+    parent = "Root",
     icon = "pi pi-folder-open",
-    roles = {"ADMIN", "ROOT"},
+    roles = {"ROOT"},
     moduleId = "sidecars"
 )
 public class AblageAusprobierenMenu {

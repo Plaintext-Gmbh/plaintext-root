@@ -19,7 +19,7 @@ exhaustive.
   `AblageEinsatz`: stores with read and write roles (`*` = every configured store), root folder, allowed file
   types (required as soon as writing is allowed) and a size limit. Rights, names, types and size are checked
   server side on every access; names are single segments, so nothing leaves the root; downloads are always
-  `attachment` with `application/octet-stream`. Try it under Admin → Ablage ausprobieren (ADMIN/ROOT, folder
+  `attachment` with `application/octet-stream`. Try it under Root → Ablage ausprobieren (ROOT only, folder
   `ablage-demo/<mandat>`).
 - **`@ModulApi` and `@ModulApiUmsetzung`** (Karte 1422, Daniel 04.10.2026), in
   `plaintext-root-interfaces` (`ch.plaintext.modules`). `@ModulApi(art = SCHNITTSTELLE | DTO,

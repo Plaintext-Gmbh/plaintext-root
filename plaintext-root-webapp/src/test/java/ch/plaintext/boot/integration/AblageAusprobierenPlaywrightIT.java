@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Karte 1440: das Ablage-UI {@code pt:dateiAblage} auf der Seite Admin → Ablage ausprobieren, im
+ * Karte 1440: das Ablage-UI {@code pt:dateiAblage} auf der Seite Root → Ablage ausprobieren, im
  * echten Browser gegen eine Ablage im Speicher. Ein Test, der klickt: eine Seite kann tadellos
  * rendern und trotzdem lautlos keinen Knopf ausführen.
  *
@@ -67,8 +67,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DirtiesContext
 class AblageAusprobierenPlaywrightIT {
 
+    private static final String ROOT_USER = "pw-ablage-root";
     private static final String ADMIN_USER = "pw-ablage-admin";
-    private static final String USER = "pw-ablage-user";
     private static final String PASSWORT = "Playwright-2026!";
     private static final String WURZEL = "ablage-demo/default/";
 
@@ -141,8 +141,8 @@ class AblageAusprobierenPlaywrightIT {
         } catch (RuntimeException e) {
             org.junit.jupiter.api.Assumptions.assumeTrue(false, "Chromium not installed: " + e.getMessage());
         }
+        benutzerAnlegen(ROOT_USER, "ROOT", "ADMIN", "USER");
         benutzerAnlegen(ADMIN_USER, "ADMIN", "USER");
-        benutzerAnlegen(USER, "USER");
     }
 
     private void benutzerAnlegen(String name, String... rollen) {
@@ -195,7 +195,7 @@ class AblageAusprobierenPlaywrightIT {
     }
 
     @Test
-    @DisplayName("ADMIN: Ordner durchsuchen, öffnen, herunterladen (attachment + nosniff), hochladen, speichern")
+    @DisplayName("ROOT: Ordner durchsuchen, öffnen, herunterladen (attachment + nosniff), hochladen, speichern")
     void durchgang() {
         SPEICHER.dateien.put(WURZEL + "hallo.txt", "Hallo Ablage".getBytes(StandardCharsets.UTF_8));
         SPEICHER.dateien.put(WURZEL + "boese.exe", new byte[]{1});
@@ -222,7 +222,7 @@ class AblageAusprobierenPlaywrightIT {
             }
         });
 
-        anmelden(ADMIN_USER);
+        anmelden(ROOT_USER);
         Response seite = page.navigate(url("/ablage-ausprobieren.html"));
         page.waitForLoadState();
         assertEquals(200, seite.status(), "ablage-ausprobieren.html antwortet nicht mit 200: " + page.url());
@@ -287,12 +287,12 @@ class AblageAusprobierenPlaywrightIT {
     }
 
     @Test
-    @DisplayName("USER ohne ADMIN: die Seite ist gesperrt")
-    void userGesperrt() {
-        anmelden(USER);
+    @DisplayName("ADMIN ohne ROOT: die Seite ist gesperrt (Entscheid worker 10.10.2026)")
+    void adminGesperrt() {
+        anmelden(ADMIN_USER);
         Response seite = page.navigate(url("/ablage-ausprobieren.html"));
         page.waitForLoadState();
-        assertFalse(page.content().contains("abl-liste"), "USER sieht das Ablage-UI");
+        assertFalse(page.content().contains("abl-liste"), "ADMIN sieht das Ablage-UI");
         assertTrue(seite.status() == 403 || page.url().contains("access-denied") || !page.url().contains("ablage-ausprobieren"),
                 "erwartet gesperrt, war " + seite.status() + " " + page.url());
     }
