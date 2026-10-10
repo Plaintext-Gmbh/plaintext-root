@@ -23,6 +23,7 @@ import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -44,8 +45,12 @@ import java.util.stream.Stream;
  * ist {@code .git} als Segment verboten (sonst ließen sich Hooks oder die Konfiguration schreiben)
  * und Symlinks werden als Dateien ausgecheckt ({@code core.symlinks=false}), damit kein Pfad aus dem
  * Klon herausführt.</p>
+ *
+ * <p>Ordner (Karte 1475): Git kennt keine leeren Ordner. {@link #legeOrdnerAn} legt deshalb eine leere
+ * {@value #PLATZHALTER} hinein, die {@link #liste} ausblendet. Wird die letzte Datei eines Ordners ohne
+ * Platzhalter verschoben oder gelöscht, verschwindet der Ordner mit ihr.</p>
  */
-@ModulApiUmsetzung(beschreibung = "Stores, reads, lists and deletes files in a folder of a Git branch; every write is a commit by the signed-in user and a push.",
+@ModulApiUmsetzung(beschreibung = "Stores, reads, lists, moves and deletes files and folders in a folder of a Git branch; every write is a commit by the signed-in user and a push.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.AUSSEN,
         hinweise = {"Paths stay below the folder, dot segments and .git are rejected", "A rejected push is reported as a conflict, never forced",
                 "No redirects are followed", "The access token is stored encrypted", "Reads at most 50 MB per file"},
@@ -55,6 +60,8 @@ public final class GitAblage implements DateiAblage {
     private static final Map<Path, Object> SPERREN = new ConcurrentHashMap<>();
     private static final int ZEIT_SEKUNDEN = (int) NextcloudAblage.ZEIT.toSeconds();
     private static final String UNGUELTIG = "Ungültiger Pfad.";
+    /** Hält einen sonst leeren Ordner im Repo (Git kennt keine leeren Ordner); {@link #liste} blendet ihn aus. */
+    static final String PLATZHALTER = ".gitkeep";
 
     private final String name;
     private final String url;
@@ -306,7 +313,8 @@ public final class GitAblage implements DateiAblage {
         }
         try (Stream<Path> s = Files.list(d)) {
             for (Path p : s.sorted().toList()) {
-                if (p.getFileName().toString().equals(".git")) {
+                String n = p.getFileName().toString();
+                if (n.equals(".git") || n.equals(PLATZHALTER)) {
                     continue;
                 }
                 boolean istOrdner = Files.isDirectory(p);
@@ -326,6 +334,81 @@ public final class GitAblage implements DateiAblage {
             }
             git.rm().addFilepattern(r).call();
             sichere(git, "Ablage " + name + ": " + r + " gelöscht");
+            return null;
+        });
+    }
+
+    /** Nimmt alle Änderungen im Klon auf (neu, geändert, gelöscht); der Klon ist vor jeder Arbeit sauber. */
+    private static boolean nimmAuf(Git git) throws GitAPIException {
+        git.add().addFilepattern(".").call();
+        git.add().setUpdate(true).addFilepattern(".").call();
+        return !git.status().call().isClean();
+    }
+
+    @Override
+    public void legeOrdnerAn(String pfad) throws IOException {
+        String r = imRepo(pfad, false);
+        Path d = datei(r);
+        arbeite(git -> {
+            if (Files.exists(d) && !Files.isDirectory(d)) {
+                throw new IOException("Es gibt schon eine Datei mit diesem Namen.");
+            }
+            if (!Files.isDirectory(d)) {
+                Files.createDirectories(d);
+                Files.write(d.resolve(PLATZHALTER), new byte[0]);
+                nimmAuf(git);
+                sichere(git, "Ablage " + name + ": Ordner " + r + " angelegt");
+            }
+            return null;
+        });
+    }
+
+    @Override
+    public void verschiebe(String von, String nach) throws IOException {
+        String rv = imRepo(von, false);
+        String rn = imRepo(nach, false);
+        if ((rn + "/").startsWith(rv + "/")) {
+            throw new IOException("Ein Ordner lässt sich nicht in sich selbst verschieben.");
+        }
+        Path q = datei(rv);
+        Path z = datei(rn);
+        arbeite(git -> {
+            if (!Files.exists(q)) {
+                throw new IOException("Quelle nicht gefunden.");
+            }
+            if (Files.exists(z)) {
+                throw new IOException("Das Ziel gibt es schon.");
+            }
+            Files.createDirectories(z.getParent());
+            Files.move(q, z);
+            nimmAuf(git);
+            sichere(git, "Ablage " + name + ": " + rv + " nach " + rn + " verschoben");
+            return null;
+        });
+    }
+
+    @Override
+    public void loescheOrdner(String pfad, boolean rekursiv) throws IOException {
+        String r = imRepo(pfad, false);
+        Path d = datei(r);
+        arbeite(git -> {
+            if (!Files.isDirectory(d)) {
+                throw new IOException("Ordner nicht gefunden.");
+            }
+            if (!rekursiv) {
+                try (Stream<Path> s = Files.list(d)) {
+                    if (s.anyMatch(p -> !p.getFileName().toString().equals(PLATZHALTER))) {
+                        throw new DirectoryNotEmptyException(pfad);
+                    }
+                }
+            }
+            try (Stream<Path> s = Files.walk(d)) {
+                for (Path p : s.sorted(Comparator.reverseOrder()).toList()) {
+                    Files.delete(p);
+                }
+            }
+            nimmAuf(git);
+            sichere(git, "Ablage " + name + ": Ordner " + r + " gelöscht");
             return null;
         });
     }

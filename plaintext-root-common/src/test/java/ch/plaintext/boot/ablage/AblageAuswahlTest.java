@@ -71,6 +71,20 @@ class AblageAuswahlTest {
             return new ArrayList<>(l.values());
         }
         @Override public void loesche(String pfad) { dateien.remove(pfad); }
+        @Override public void legeOrdnerAn(String pfad) { dateien.put(pfad + "/.keep", new byte[0]); }
+        @Override public void verschiebe(String von, String nach) throws IOException {
+            List<String> weg = dateien.keySet().stream().filter(k -> k.equals(von) || k.startsWith(von + "/")).toList();
+            if (weg.isEmpty() || dateien.keySet().stream().anyMatch(k -> k.equals(nach) || k.startsWith(nach + "/"))) {
+                throw new IOException("verschieben: " + von + " -> " + nach);
+            }
+            weg.forEach(k -> dateien.put(nach + k.substring(von.length()), dateien.remove(k)));
+        }
+        @Override public void loescheOrdner(String pfad, boolean rekursiv) throws IOException {
+            List<String> drin = dateien.keySet().stream().filter(k -> k.startsWith(pfad + "/")).toList();
+            if (drin.isEmpty()) throw new IOException("kein Ordner: " + pfad);
+            if (!rekursiv && drin.stream().anyMatch(k -> !k.equals(pfad + "/.keep"))) throw new java.nio.file.DirectoryNotEmptyException(pfad);
+            drin.forEach(dateien::remove);
+        }
     }
 
     private final Speicher offen = new Speicher("offen");
@@ -283,5 +297,78 @@ class AblageAuswahlTest {
         assertThat(a.getDownload()).isNull();
         a.herunterladen("../a.txt");
         assertThat(a.getDownload()).isNull();
+    }
+
+    // ---------- Ordnerverwaltung (Karte 1475) ----------
+
+    @Test
+    @DisplayName("Ordner: ADMIN legt an, benennt um, verschiebt Datei und Ordner, löscht leer und mit Bestätigung")
+    void ordnerverwaltung() throws IOException {
+        AblageAuswahl a = auswahl("ADMIN");
+        a.legeOrdnerAn("archiv");
+        assertThat(a.getEintraege()).extracting(AblageAuswahl.Eintrag::name).contains("archiv");
+        a.verschiebe("a.txt", "archiv/umbenannt.txt");
+        a.verschiebe("unter", "archiv/unter");
+        assertThat(offen.dateien).containsKeys("wurzel/m1/archiv/umbenannt.txt", "wurzel/m1/archiv/unter/c.drawio")
+                .doesNotContainKeys("wurzel/m1/a.txt", "wurzel/m1/unter/c.drawio");
+
+        assertThatThrownBy(() -> a.loesche("archiv", false)).isInstanceOf(java.nio.file.DirectoryNotEmptyException.class);
+        a.legeOrdnerAn("leer");
+        a.loesche("leer", false);
+        a.loesche("gross.txt", false);
+        assertThat(offen.dateien).doesNotContainKeys("wurzel/m1/leer/.keep", "wurzel/m1/gross.txt");
+
+        // Oberfläche: rekursives Löschen erst mit dem Häkchen
+        a.markiere("archiv", AblageAuswahl.LOESCHEN);
+        assertThat(a.isMarkiertOrdner()).isTrue();
+        a.bestaetige();
+        assertThat(offen.dateien).containsKey("wurzel/m1/archiv/umbenannt.txt");
+        assertThat(a.getMarkiert()).as("bleibt vorgemerkt").isEqualTo("archiv");
+        a.setMitInhalt(true);
+        a.bestaetige();
+        assertThat(offen.dateien.keySet()).noneMatch(k -> k.startsWith("wurzel/m1/archiv"));
+        assertThat(a.getMarkiert()).isNull();
+        assertThat(offen.dateien).as("nichts ausserhalb der Wurzel angefasst").containsKeys("wurzel/m2/fremd.txt", "ausserhalb.txt");
+    }
+
+    @Test
+    @DisplayName("Ordner: ohne Schreibrecht weder anlegen, verschieben noch löschen, auch nicht am Tag vorbei")
+    void ordnerOhneSchreibrecht() {
+        AblageAuswahl a = auswahl("USER");
+        assertThatThrownBy(() -> a.legeOrdnerAn("neu")).isInstanceOf(SecurityException.class);
+        assertThatThrownBy(() -> a.verschiebe("a.txt", "b.txt")).isInstanceOf(SecurityException.class);
+        assertThatThrownBy(() -> a.loesche("a.txt", true)).isInstanceOf(SecurityException.class);
+        a.markiere("a.txt", AblageAuswahl.LOESCHEN);
+        a.bestaetige();
+        assertThat(offen.dateien).containsKey("wurzel/m1/a.txt").doesNotContainKey("wurzel/m1/neu/.keep");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"../m2/a.txt", "../../a.txt", "/abs.txt", "a//b.txt", "unter/../../x.txt", "x\\y.txt", "", " ",
+            "unter/./a.txt", "unter/"})
+    @DisplayName("Ordner: Verschieben an ein ungültiges Ziel wird abgelehnt, bevor die Ablage es sieht")
+    void verschiebenTraversal(String ziel) {
+        AblageAuswahl a = auswahl("ADMIN");
+        offen.zugriffe.clear();
+        assertThatThrownBy(() -> a.verschiebe("a.txt", ziel)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(offen.dateien).containsKey("wurzel/m1/a.txt");
+        assertThat(offen.zugriffe).allMatch(p -> p.equals("wurzel/m1"));
+    }
+
+    @Test
+    @DisplayName("Ordner: nicht in sich selbst, kein verbotener Typ im Ziel, keine ungültigen Namen")
+    void ordnerGrenzen() {
+        AblageAuswahl a = auswahl("ADMIN");
+        assertThatThrownBy(() -> a.verschiebe("unter", "unter/tiefer")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("in sich selbst");
+        assertThatThrownBy(() -> a.verschiebe("unter", "unter")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> a.verschiebe("a.txt", "a.html")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> a.verschiebe("b.exe", "b.txt")).as("unsichtbarer Typ").isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> a.loesche("b.exe", false)).isInstanceOf(IllegalArgumentException.class);
+        for (String n : List.of("..", ".", "a/b", "", "a\\b")) {
+            assertThatThrownBy(() -> a.legeOrdnerAn(n)).as(n).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> a.loesche(n, true)).as(n).isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(offen.dateien).containsKeys("wurzel/m1/unter/c.drawio", "wurzel/m1/a.txt", "wurzel/m1/b.exe");
     }
 }

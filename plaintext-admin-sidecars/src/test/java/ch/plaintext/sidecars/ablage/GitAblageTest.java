@@ -195,4 +195,68 @@ class GitAblageTest {
         assertThat(GitAblage.meldung(new IOException("kaputt"))).isEqualTo("Git: kaputt");
         assertThat(Repository.isValidRefName("refs/heads/main")).isTrue();
     }
+
+    @Test
+    @DisplayName("Karte 1475: Ordner anlegen (.gitkeep), verschieben, umbenennen, löschen: je ein Commit, für einen frischen Klon sichtbar")
+    void ordner() throws Exception {
+        GitAblage a = ablage("klon-a", "", "anna@example.ch");
+        a.legeOrdnerAn("leer");
+        a.legeOrdnerAn("leer"); // gibt es schon: kein Commit
+        GitAblage frisch = ablage("klon-b", "", "bert@example.ch");
+        assertThat(frisch.liste("")).extracting(AblageEintrag::pfad, AblageEintrag::ordner)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("leer", true));
+        assertThat(frisch.liste("leer")).as(".gitkeep ist ausgeblendet").isEmpty();
+        assertThat(commits()).hasSize(1);
+
+        a.schreibe("alt/x.txt", b("x"), null);
+        a.verschiebe("alt", "leer/neu");
+        a.verschiebe("leer/neu/x.txt", "leer/neu/y.txt");
+        assertThat(frisch.lies("leer/neu/y.txt")).isEqualTo(b("x"));
+        assertThat(frisch.existiert("alt")).isFalse();
+        assertThat(commits().get(1).getFullMessage()).isEqualTo("Ablage test: alt nach leer/neu verschoben");
+
+        assertThatThrownBy(() -> a.verschiebe("leer/neu/y.txt", "leer/neu/y.txt")).hasMessageContaining("in sich selbst");
+        assertThatThrownBy(() -> a.verschiebe("leer", "leer/neu/tiefer")).hasMessageContaining("in sich selbst");
+        a.schreibe("z.txt", b("z"), null);
+        assertThatThrownBy(() -> a.verschiebe("z.txt", "leer/neu/y.txt")).hasMessageContaining("gibt es schon");
+        assertThatThrownBy(() -> a.verschiebe("fehlt.txt", "w.txt")).hasMessageContaining("nicht gefunden");
+        assertThatThrownBy(() -> a.legeOrdnerAn("z.txt")).hasMessageContaining("Datei");
+        assertThat(frisch.lies("z.txt")).isEqualTo(b("z"));
+
+        assertThatThrownBy(() -> frisch.loescheOrdner("leer", false)).isInstanceOf(java.nio.file.DirectoryNotEmptyException.class);
+        assertThatThrownBy(() -> frisch.loescheOrdner("z.txt", true)).hasMessageContaining("nicht gefunden");
+        frisch.legeOrdnerAn("nur-platzhalter");
+        frisch.loescheOrdner("nur-platzhalter", false); // nur .gitkeep = leer
+        frisch.loescheOrdner("leer", true);
+        assertThat(a.liste("")).extracting(AblageEintrag::pfad).containsExactly("z.txt");
+        assertThat(commits()).hasSize(8);
+        assertThat(commits().get(0).getAuthorIdent().getName()).isEqualTo("bert@example.ch");
+        assertThat(commits().get(0).getFullMessage()).isEqualTo("Ablage test: Ordner leer gelöscht");
+    }
+
+    @Test
+    @DisplayName("Karte 1475: Ordner-Operationen lehnen Traversal und .git ab, ohne Commit; Konflikt wird gemeldet")
+    void ordnerPfadeUndKonflikt() throws Exception {
+        GitAblage a = ablage("klon-a", "ordner", "anna@example.ch");
+        for (String p : List.of("../x", "/etc", "a/../../x", ".git", "a/.GIT/hooks", "a\\b", "", "a//b", "./x")) {
+            assertThatThrownBy(() -> a.legeOrdnerAn(p)).as(p).hasMessageContaining("Ungültiger Pfad");
+            assertThatThrownBy(() -> a.loescheOrdner(p, true)).as(p).hasMessageContaining("Ungültiger Pfad");
+            assertThatThrownBy(() -> a.verschiebe("x", p)).as(p).hasMessageContaining("Ungültiger Pfad");
+            assertThatThrownBy(() -> a.verschiebe(p, "x")).as(p).hasMessageContaining("Ungültiger Pfad");
+        }
+        assertThat(commits()).isEmpty();
+
+        GitAblage b = ablage("klon-b", "ordner", "bert@example.ch");
+        a.schreibe("start.txt", b("1"), null);
+        a.vorPush = () -> {
+            try {
+                b.legeOrdnerAn("von-bert");
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        };
+        assertThatThrownBy(() -> a.verschiebe("start.txt", "weg.txt")).hasMessageContaining("Konflikt");
+        assertThat(b.existiert("start.txt")).isTrue();
+        assertThat(b.existiert("weg.txt")).isFalse();
+    }
 }

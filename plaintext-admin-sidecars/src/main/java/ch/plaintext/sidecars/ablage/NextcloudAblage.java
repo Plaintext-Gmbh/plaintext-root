@@ -16,6 +16,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryNotEmptyException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -29,7 +30,7 @@ import java.util.List;
  * Teile und absolute Pfade werden abgewiesen, ein Zugriff bleibt immer unter der Wurzel. Keine
  * Weiterleitungen (sonst schickte ein Server die Anmeldung woandershin).</p>
  */
-@ModulApiUmsetzung(beschreibung = "Stores, reads, lists and deletes files in a Nextcloud folder over WebDAV, without the caller knowing the server or the credentials.",
+@ModulApiUmsetzung(beschreibung = "Stores, reads, lists, moves and deletes files and folders in a Nextcloud folder over WebDAV, without the caller knowing the server or the credentials.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.AUSSEN,
         hinweise = {"Paths stay below the root folder, dot segments are rejected", "No redirects are followed", "The app password is stored encrypted", "Reads at most 50 MB per file"},
         beispiele = {"schreibe(\"diagramme/a.drawio\", bytes)"})
@@ -151,29 +152,14 @@ public final class NextcloudAblage implements DateiAblage {
      * @return Meldung für die Oberfläche
      */
     public String pruefe() throws IOException {
-        HttpResponse<String> r = sende(anfrage(wurzel).header("Depth", "1").header(CONTENT_TYPE, "application/xml; charset=utf-8")
-                .method("PROPFIND", HttpRequest.BodyPublishers.ofString(PROPFIND)).build(), HttpResponse.BodyHandlers.ofString());
-        if (r.statusCode() != 207) {
-            throw fehler(r.statusCode(), ORDNER);
-        }
-        int n = Math.max(0, WebDavAntwort.lies(r.body()).size() - 1);
+        int n = Math.max(0, propfind(wurzel).size() - 1);
         return "Verbindung in Ordnung, " + n + " Einträge im Ordner.";
     }
 
     @Override
     public void schreibe(String pfad, byte[] daten, String inhaltTyp) throws IOException {
         URI ziel = datei(pfad);
-        String k = kodiere(pfad, false);
-        String[] teile = k.substring(0, k.length() - 1).split("/");
-        StringBuilder rel = new StringBuilder();
-        for (int i = 0; i < teile.length - 1; i++) {
-            rel.append(teile[i]).append('/');
-            HttpResponse<Void> m = sende(anfrage(URI.create(wurzel + rel.toString())).method("MKCOL", HttpRequest.BodyPublishers.noBody()).build(),
-                    HttpResponse.BodyHandlers.discarding());
-            if (m.statusCode() != 201 && m.statusCode() != 405) {
-                throw fehler(m.statusCode(), ORDNER);
-            }
-        }
+        ordnerAnlegen(kodiere(pfad, false), false);
         HttpResponse<Void> r = sende(anfrage(ziel).header(CONTENT_TYPE, inhaltTyp == null ? "application/octet-stream" : inhaltTyp)
                 .PUT(HttpRequest.BodyPublishers.ofByteArray(daten)).build(), HttpResponse.BodyHandlers.discarding());
         if (r.statusCode() != 201 && r.statusCode() != 204) {
@@ -212,15 +198,10 @@ public final class NextcloudAblage implements DateiAblage {
     @Override
     public List<AblageEintrag> liste(String ordner) throws IOException {
         URI u = URI.create(wurzel + kodiere(ordner == null ? "" : ordner, true));
-        HttpResponse<String> r = sende(anfrage(u).header("Depth", "1").header(CONTENT_TYPE, "application/xml; charset=utf-8")
-                .method("PROPFIND", HttpRequest.BodyPublishers.ofString(PROPFIND)).build(), HttpResponse.BodyHandlers.ofString());
-        if (r.statusCode() != 207) {
-            throw fehler(r.statusCode(), ORDNER);
-        }
         String basis = wurzel.getPath();
         String selbst = u.getPath();
         List<AblageEintrag> l = new ArrayList<>();
-        for (WebDavAntwort.Eintrag e : WebDavAntwort.lies(r.body())) {
+        for (WebDavAntwort.Eintrag e : propfind(u)) {
             String p = e.pfad();
             if (p == null || !p.startsWith(basis) || p.equals(selbst) || (p + "/").equals(selbst)) {
                 continue;
@@ -239,6 +220,78 @@ public final class NextcloudAblage implements DateiAblage {
     @Override
     public void loesche(String pfad) throws IOException {
         HttpResponse<Void> r = sende(anfrage(datei(pfad)).DELETE().build(), HttpResponse.BodyHandlers.discarding());
+        if (r.statusCode() != 204 && r.statusCode() != 200) {
+            throw fehler(r.statusCode(), "Löschen");
+        }
+    }
+
+    /** Antworten eines PROPFIND mit Tiefe 1: der Ordner selbst und seine direkten Einträge. */
+    private List<WebDavAntwort.Eintrag> propfind(URI u) throws IOException {
+        HttpResponse<String> r = sende(anfrage(u).header("Depth", "1").header(CONTENT_TYPE, "application/xml; charset=utf-8")
+                .method("PROPFIND", HttpRequest.BodyPublishers.ofString(PROPFIND)).build(), HttpResponse.BodyHandlers.ofString());
+        if (r.statusCode() != 207) {
+            throw fehler(r.statusCode(), ORDNER);
+        }
+        return WebDavAntwort.lies(r.body());
+    }
+
+    /**
+     * MKCOL je Segment eines kodierten Pfads ({@code a/b/c/}); 405 = gibt es schon.
+     *
+     * @param letztes auch das letzte Segment anlegen (sonst nur die Elternordner)
+     */
+    private void ordnerAnlegen(String kodiert, boolean letztes) throws IOException {
+        String[] teile = kodiert.substring(0, kodiert.length() - 1).split("/");
+        StringBuilder rel = new StringBuilder();
+        for (int i = 0; i < teile.length - (letztes ? 0 : 1); i++) {
+            rel.append(teile[i]).append('/');
+            HttpResponse<Void> m = sende(anfrage(URI.create(wurzel + rel.toString())).method("MKCOL", HttpRequest.BodyPublishers.noBody()).build(),
+                    HttpResponse.BodyHandlers.discarding());
+            if (m.statusCode() != 201 && m.statusCode() != 405) {
+                throw fehler(m.statusCode(), ORDNER);
+            }
+        }
+    }
+
+    @Override
+    public void legeOrdnerAn(String pfad) throws IOException {
+        datei(pfad);
+        ordnerAnlegen(kodiere(pfad, false), true);
+    }
+
+    @Override
+    public void verschiebe(String von, String nach) throws IOException {
+        URI quelle = datei(von);
+        URI ziel = datei(nach);
+        String kv = kodiere(von, false);
+        String kn = kodiere(nach, false);
+        // kodiere() hängt an JEDES Segment "/" an (kv = "archiv/", kn = "archiv2/"): ein Präfix ist hier immer ein ganzes Segment
+        if (kn.startsWith(kv)) {
+            throw new IOException("Ein Ordner lässt sich nicht in sich selbst verschieben.");
+        }
+        ordnerAnlegen(kn, false);
+        HttpResponse<Void> r = sende(anfrage(quelle).header("Destination", ziel.toString()).header("Overwrite", "F")
+                .method("MOVE", HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.discarding());
+        if (r.statusCode() == 412) {
+            throw new IOException("Das Ziel gibt es schon.");
+        }
+        if (r.statusCode() != 201 && r.statusCode() != 204) {
+            throw fehler(r.statusCode(), "Verschieben");
+        }
+    }
+
+    @Override
+    public void loescheOrdner(String pfad, boolean rekursiv) throws IOException {
+        URI u = URI.create(datei(pfad) + "/");
+        List<WebDavAntwort.Eintrag> l = propfind(u);
+        boolean ordner = l.stream().anyMatch(e -> e.ordner() && (u.getPath().equals(e.pfad()) || u.getPath().equals(e.pfad() + "/")));
+        if (!ordner) {
+            throw new IOException("Kein Ordner.");
+        }
+        if (!rekursiv && l.size() > 1) {
+            throw new DirectoryNotEmptyException(pfad);
+        }
+        HttpResponse<Void> r = sende(anfrage(u).DELETE().build(), HttpResponse.BodyHandlers.discarding());
         if (r.statusCode() != 204 && r.statusCode() != 200) {
             throw fehler(r.statusCode(), "Löschen");
         }
