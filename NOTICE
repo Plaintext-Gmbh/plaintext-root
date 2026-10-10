@@ -49,6 +49,14 @@ unmodified (or with only path adjustments for JSF resource loading).
    the JSF resource mechanism (#{resource[...]}). The adaptation is limited
    to the url() references; the MIT license continues to apply.
 
+5) github-markdown-css (light theme)
+   File:    plaintext-admin-requirements/src/main/resources/META-INF/
+            resources/css/github-markdown-light.min.css
+   Version: 5.5.x (byte-identical with the cdnjs build of 5.5.0/5.5.1)
+   License: MIT
+   Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+   https://github.com/sindresorhus/github-markdown-css
+
 --------------------------------------------------------------------------
 Runtime dependencies
 --------------------------------------------------------------------------
