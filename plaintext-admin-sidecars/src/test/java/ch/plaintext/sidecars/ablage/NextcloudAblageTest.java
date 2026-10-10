@@ -119,4 +119,19 @@ class NextcloudAblageTest {
             assertThat(s.aufrufe).isEmpty();
         }
     }
+
+    @Test
+    @DisplayName("Karte 1475 Abnahme: Umbenennen auf einen Namen mit gleichem Anfang ist nicht «in sich selbst»")
+    void gleicherAnfangIstNichtInSichSelbst() throws Exception {
+        String w = "/remote.php/dav/files/anna/Projekte/drawio/";
+        try (TestWebDav s = new TestWebDav()) {
+            NextcloudAblage a = ablage(s, TestWebDav.PASSWORT);
+            a.legeOrdnerAn("archiv");
+            a.schreibe("a.txt", new byte[]{1}, null);
+            a.verschiebe("archiv", "archiv2");
+            a.verschiebe("a.txt", "a.txt.bak");
+            assertThat(s.dateien).containsKeys(w + "archiv2/", w + "a.txt.bak").doesNotContainKeys(w + "archiv/", w + "a.txt");
+            assertThatThrownBy(() -> a.verschiebe("archiv2", "archiv2/x")).hasMessageContaining("in sich selbst");
+        }
+    }
 }

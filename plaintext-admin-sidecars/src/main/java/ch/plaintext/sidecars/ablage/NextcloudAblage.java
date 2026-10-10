@@ -265,6 +265,7 @@ public final class NextcloudAblage implements DateiAblage {
         URI ziel = datei(nach);
         String kv = kodiere(von, false);
         String kn = kodiere(nach, false);
+        // kodiere() hängt an JEDES Segment "/" an (kv = "archiv/", kn = "archiv2/"): ein Präfix ist hier immer ein ganzes Segment
         if (kn.startsWith(kv)) {
             throw new IOException("Ein Ordner lässt sich nicht in sich selbst verschieben.");
         }
