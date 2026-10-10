@@ -150,4 +150,43 @@ class ApiTokenValidatorServiceImplTest {
         assertEquals("TOKEN_MISSING", errorBody(outcome).error());
         verify(jwtTokenService, never()).validateToken(any());
     }
+
+    /**
+     * Card 1484 (M1 from review 1450): a {@code ui:} token (watch link, Bieler viewer link) is a
+     * browser credential. At the REST controllers that use this validator — {@code /nosec/root/upload},
+     * the gear REST, {@code /api/kontakte} — it must be rejected like at {@code /mcp}.
+     */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+            "ui:watch-handy-link, /nosec/root/upload/services",
+            "ui:Bieler-Public: Zuschauer, /api/gear/items",
+            "UI:Gross geschrieben, /api/kontakte"})
+    void uiTokenWirdAnDerRestApiAbgewiesen(String tokenName, String pfad) {
+        String token = tokenWithPayload("{\"userId\":7}");
+        JwtValidationResult jwt = new JwtValidationResult(7L, "plaintext", "u@x.ch", tokenName, Instant.now().plusSeconds(3600), "READ", null);
+        when(jwtTokenService.validateToken(token)).thenReturn(Optional.of(jwt));
+        when(apiTokenService.validateVerifiedToken(token, jwt)).thenReturn(Optional.of(
+                new ApiTokenValidationResult(7L, "plaintext", "u@x.ch", tokenName, jwt.expiresAt(), "READ")));
+
+        ITokenValidationOutcome outcome = validator.validateRequest("Bearer " + token, pfad);
+
+        ApiErrorResponse error = errorBody(outcome);
+        assertEquals(401, error.status());
+        assertNull(outcome.getValidation(), "ein ui:-Token darf keinen Mandanten/User an den Controller liefern");
+    }
+
+    /** A token whose name merely contains "ui:" further on is a normal API token. */
+    @Test
+    void normalerTokenMitUiImNamenBleibtGueltig() {
+        String token = tokenWithPayload("{\"userId\":7}");
+        JwtValidationResult jwt = new JwtValidationResult(7L, "plaintext", "u@x.ch", "upload-cli (kein ui:)", Instant.now().plusSeconds(3600), null, null);
+        ApiTokenValidationResult result = new ApiTokenValidationResult(7L, "plaintext", "u@x.ch", "upload-cli (kein ui:)", jwt.expiresAt());
+        when(jwtTokenService.validateToken(token)).thenReturn(Optional.of(jwt));
+        when(apiTokenService.validateVerifiedToken(token, jwt)).thenReturn(Optional.of(result));
+
+        ITokenValidationOutcome outcome = validator.validateRequest("Bearer " + token, "/nosec/root/upload/services");
+
+        assertFalse(outcome.hasError());
+        assertEquals(result, outcome.getValidation());
+    }
 }

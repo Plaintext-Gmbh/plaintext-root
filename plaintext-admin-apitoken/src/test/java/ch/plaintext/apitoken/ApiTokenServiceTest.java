@@ -158,6 +158,23 @@ class ApiTokenServiceTest {
     }
 
     /**
+     * Card 1484: the page path of a {@code ui:} token (watch link via WatchTokenAnmeldeController /
+     * WatchTokenSitzungFilter, Bieler viewer page) validates with {@code validateToken} and must keep
+     * working. Only the REST validator ({@code ApiTokenValidatorServiceImpl}) and /mcp reject it.
+     */
+    @Test
+    void uiTokenGiltAufSeinerSeiteWeiter() {
+        when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(new JwtValidationResult(
+                7L, "plaintext", "u@x.ch", "ui:watch-handy-link", Instant.now().plusSeconds(3600), "READ", null)));
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.of(storedToken()));
+
+        Optional<ApiTokenValidationResult> res = service.validateToken(TOKEN);
+
+        assertTrue(res.isPresent());
+        assertEquals("ui:watch-handy-link", res.get().tokenName());
+    }
+
+    /**
      * The usage statistic is explicitly <b>best effort</b> (card 659): if the counter update fails,
      * the access stays valid. Otherwise a blocked write access to
      * {@code api_token} would reject every bearer call — an outage caused by a statistics row.

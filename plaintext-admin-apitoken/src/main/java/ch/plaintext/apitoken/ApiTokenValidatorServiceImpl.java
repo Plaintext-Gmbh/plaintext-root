@@ -70,6 +70,14 @@ public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
         Optional<ApiTokenValidationResult> result = apiTokenService.validateVerifiedToken(token, jwtResult.get());
 
         if (result.isPresent()) {
+            // SECURITY (card 1484): a ui: token (watch link, viewer link) is a browser credential
+            // for its own page, which validates it via IApiTokenService.validateToken. At a REST
+            // controller it is worth nothing, same rule as McpBearerTokenFilter at /mcp.
+            if (McpBearerTokenFilter.istNurFuerDieOberflaeche(result.get().tokenName())) {
+                log.warn("API request to {} rejected: token '{}' (userId={}) is a UI credential",
+                        requestPath, result.get().tokenName(), result.get().userId());
+                return errorOutcome(ApiErrorResponse.tokenInvalid(requestPath));
+            }
             return new TokenValidationOutcome(null, result.get());
         }
 
