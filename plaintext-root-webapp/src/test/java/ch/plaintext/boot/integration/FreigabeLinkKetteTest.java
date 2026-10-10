@@ -37,6 +37,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -63,9 +64,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Karte 1476: Freigabe-Links durch die echte Kette (Security, CSRF, Rate-Limit, Controller, Service, Flyway-Schema
  * auf PostgreSQL) mit einer Test-{@link FreigabeQuelle}. Positiv- und Negativproben je Eigenschaft: Hash, Ablauf,
  * Widerruf, r gegen rw, Teil, GET ändert nichts, Token nie am /mcp.
+ *
+ * <p>{@code @DirtiesContext} wie {@code StartseitenSchleifeChainTest}: ein eigener Kontext (Profil) hielte sonst seinen
+ * Verbindungspool bis zum Ende der JVM offen, und die CI-Datenbank antwortet der nächsten Testklasse mit „too many
+ * clients" (Woodpecker root #494, {@code FlywayMigrationTest}).</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "karte1476"})
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class FreigabeLinkKetteTest {
 
     @DynamicPropertySource
