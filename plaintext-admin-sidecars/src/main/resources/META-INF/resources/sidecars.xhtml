@@ -160,7 +160,7 @@
                 <!-- Karte 1406: Speicher-Ablagen -->
                 <p:tab title="Speicher-Ablagen (#{sidecarsBean.speicherAblagen.size()})">
                     <p class="sc-einleitung">
-                        Eine Ablage ist ein Ordner auf einem Speicher (heute Nextcloud), in dem Module Dateien ablegen,
+                        Eine Ablage ist ein Ordner auf einem Speicher (Nextcloud oder ein Git-Zweig), in dem Module Dateien ablegen,
                         z. B. Draw.io seine Diagramme. Erlaubt sind öffentliche Adressen und die in
                         <code>plaintext.ausgehend.erlaubte-hosts</code> freigegebenen.
                     </p>
@@ -185,16 +185,16 @@
                                   title="#{a.ok == null ? 'nicht geprüft' : (a.ok ? 'erreichbar' : 'nicht erreichbar')}"></span>
                         </p:column>
                         <p:column headerText="Name"><span class="sc-name">#{a.name}</span></p:column>
-                        <p:column headerText="Art">Nextcloud</p:column>
+                        <p:column headerText="Art">#{a.art == 'GIT' ? 'Git' : 'Nextcloud'}</p:column>
                         <p:column headerText="Adresse"><span class="sc-klein">#{a.url}</span></p:column>
                         <p:column headerText="Benutzer">#{a.benutzer}</p:column>
-                        <p:column headerText="Pfad"><code>#{a.pfad}</code></p:column>
+                        <p:column headerText="Pfad"><code>#{a.pfad}</code><h:outputText value=" (Zweig #{a.zweig})" rendered="#{not empty a.zweig}"/></p:column>
                         <p:column headerText="Geprüft">#{sidecarsBean.zeit(a.letztePruefung)}</p:column>
 
                         <p:rowExpansion>
                             <div class="sc-details">
                                 <h:outputText value="#{a.meldung}" styleClass="#{a.ok ? 'sc-klein' : 'sc-fehler'}" rendered="#{not empty a.meldung}"/>
-                                <div class="sc-klein">App-Passwort #{a.hatPasswort() ? 'hinterlegt (verschlüsselt)' : 'fehlt'}</div>
+                                <div class="sc-klein">#{a.art == 'GIT' ? 'Token' : 'App-Passwort'} #{a.hatPasswort() ? 'hinterlegt (verschlüsselt)' : 'fehlt'}</div>
                                 <div class="sc-leiste">
                                     <p:commandButton value="Prüfen" icon="pi pi-refresh" styleClass="ui-button-flat"
                                                      action="#{sidecarsBean.ablagePruefen(a.name)}" process="@this" update=":fm"/>
@@ -203,7 +203,7 @@
                                                      update=":fm:dlgAblage" oncomplete="PF('dlgAblage').show()"/>
                                     <p:commandButton value="Entfernen" icon="pi pi-trash" styleClass="ui-button-flat ui-button-danger"
                                                      action="#{sidecarsBean.ablageEntfernen(a.name)}" process="@this" update=":fm">
-                                        <p:confirm header="Ablage entfernen" message="Die Ablage «#{a.name}» entfernen? Die Dateien in der Nextcloud bleiben."
+                                        <p:confirm header="Ablage entfernen" message="Die Ablage «#{a.name}» entfernen? Die Dateien in der Nextcloud bzw. im Repo bleiben."
                                                    icon="pi pi-exclamation-triangle"/>
                                     </p:commandButton>
                                 </div>
@@ -238,15 +238,22 @@
                     <p:outputLabel for="abName" value="Name (a-z, 0-9, -)"/>
                     <p:inputText id="abName" value="#{sidecarsBean.abName}" placeholder="nextcloud-drawio"
                                  disabled="#{sidecarsBean.ablageBestehend}"/>
-                    <p:outputLabel for="abUrl" value="Nextcloud-Adresse"/>
+                    <p:outputLabel for="abArt" value="Art"/>
+                    <p:selectOneMenu id="abArt" value="#{sidecarsBean.abArt}">
+                        <f:selectItem itemLabel="Nextcloud" itemValue="NEXTCLOUD"/>
+                        <f:selectItem itemLabel="Git (Commit + Push)" itemValue="GIT"/>
+                    </p:selectOneMenu>
+                    <p:outputLabel for="abUrl" value="Adresse (Nextcloud bzw. https-Adresse des Repos)"/>
                     <p:inputText id="abUrl" value="#{sidecarsBean.abUrl}" placeholder="https://home.plaintext.ch"/>
                     <p:outputLabel for="abBenutzer" value="Benutzer"/>
                     <p:inputText id="abBenutzer" value="#{sidecarsBean.abBenutzer}" autocomplete="off"/>
                     <p:outputLabel for="abPasswort"
-                                   value="#{sidecarsBean.ablageBestehend ? 'App-Passwort (leer lassen = unverändert)' : 'App-Passwort'}"/>
+                                   value="#{sidecarsBean.ablageBestehend ? 'App-Passwort bzw. Token (leer lassen = unverändert)' : 'App-Passwort bzw. Token'}"/>
                     <p:password id="abPasswort" value="#{sidecarsBean.abPasswort}" redisplay="false" feedback="false" autocomplete="new-password"/>
-                    <p:outputLabel for="abPfad" value="Pfad (Ordner in der Nextcloud)"/>
+                    <p:outputLabel for="abPfad" value="Pfad (Ordner in der Nextcloud bzw. im Repo, bei Git leer = Wurzel)"/>
                     <p:inputText id="abPfad" value="#{sidecarsBean.abPfad}" placeholder="z. B. Projekte/drawio"/>
+                    <p:outputLabel for="abZweig" value="Zweig (nur Git)"/>
+                    <p:inputText id="abZweig" value="#{sidecarsBean.abZweig}" placeholder="main"/>
                 </h:panelGroup>
                 <f:facet name="footer">
                     <p:commandButton id="ablageSpeichern" value="Speichern und prüfen" icon="pi pi-check"
