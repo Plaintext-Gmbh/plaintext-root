@@ -1,0 +1,84 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:c="jakarta.tags.core"
+                xmlns:p="http://primefaces.org/ui">
+    <!--
+      pt:freigabeLinks (Karte 1476): Freigabe-Links ohne Anmeldung zu einem Objekt anlegen, auflisten und
+      widerrufen. Recht r oder rw, Ablauf in Tagen (0 = unbefristet), optional ein Teil des Objekts.
+
+      DER GEGENPART IN JAVA: freigabeLinkBean und FreigabeLinkService aus plaintext-root-freigabe. Rechte
+      prueft der Service ueber die FreigabeQuelle des Moduls; das Tag blendet nur aus.
+
+      Das Tag steht in einem Formular der Seite (h:form id="fm" mit dem _csrf-Feld).
+      Keine EL in diesem Kommentar: Facelets wertet sie aus und die Seite endet in HTTP 500.
+
+      OPTIONAL:
+        typ        FreigabeQuelle.typ() des Moduls, z.B. drawio; leer = alle Typen (Uebersicht)
+        objektId   Id des Objekts; leer = alle Objekte, dann ohne "Link anlegen"
+        teil       Teil des Objekts (z.B. Seite eines Diagramms); leer = ganzes Objekt
+        freigabeId Praefix der Komponenten-IDs; Vorgabe "frg". Nur bei zwei Bausteinen auf einer Seite.
+    -->
+    <c:set var="ptFrgId" value="#{empty freigabeId ? 'frg' : freigabeId}"/>
+
+    <h:panelGroup layout="block" id="#{ptFrgId}" styleClass="pt-freigabe">
+        <p:messages id="#{ptFrgId}-meldungen" showDetail="true" closable="true"/>
+
+        <h:panelGroup layout="block" rendered="#{not empty objektId}"
+                      style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+            <p:selectOneMenu id="#{ptFrgId}-recht" value="#{freigabeLinkBean.recht}">
+                <f:selectItem itemLabel="nur lesen (r)" itemValue="r"/>
+                <f:selectItem itemLabel="lesen und schreiben (rw)" itemValue="rw"/>
+            </p:selectOneMenu>
+            <p:outputLabel for="#{ptFrgId}-tage" value="Tage (0 = unbefristet)"/>
+            <p:inputNumber id="#{ptFrgId}-tage" value="#{freigabeLinkBean.tage}" minValue="0" maxValue="3650"
+                           decimalPlaces="0" style="width:6em;"/>
+            <p:inputText id="#{ptFrgId}-zweck" value="#{freigabeLinkBean.zweck}" placeholder="Zweck" maxlength="500"/>
+            <p:commandButton id="#{ptFrgId}-neu" value="Link anlegen" icon="pi pi-link"
+                             action="#{freigabeLinkBean.erzeuge(typ, objektId, teil)}"
+                             process="#{ptFrgId}" update="#{ptFrgId}"/>
+        </h:panelGroup>
+
+        <h:panelGroup layout="block" rendered="#{not empty freigabeLinkBean.neueUrl}"
+                      style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <p:inputText id="#{ptFrgId}-url" value="#{freigabeLinkBean.neueUrl}" readonly="true"
+                         style="flex:1; font-family:monospace;"/>
+            <p:commandButton id="#{ptFrgId}-url-weg" icon="pi pi-times" title="Adresse ausblenden"
+                             action="#{freigabeLinkBean.verwerfeUrl()}" process="@this" update="#{ptFrgId}"
+                             styleClass="ui-button-secondary"/>
+        </h:panelGroup>
+
+        <p:dataTable id="#{ptFrgId}-liste" value="#{freigabeLinkBean.liste(typ, objektId)}" var="ptFrgL"
+                     emptyMessage="Keine Freigabe-Links." styleClass="mobile-safe" reflow="true">
+            <p:column headerText="Objekt" rendered="#{empty objektId}">
+                <h:outputText value="#{ptFrgL.typ()} #{ptFrgL.objektId()}"/>
+            </p:column>
+            <p:column headerText="Teil">
+                <h:outputText value="#{empty ptFrgL.teil() ? 'ganz' : ptFrgL.teil()}"/>
+            </p:column>
+            <p:column headerText="Recht">
+                <h:outputText value="#{ptFrgL.recht()}"/>
+            </p:column>
+            <p:column headerText="Zweck">
+                <h:outputText value="#{ptFrgL.zweck()}"/>
+            </p:column>
+            <p:column headerText="Gültig bis">
+                <h:outputText value="#{ptFrgL.gueltigBis()}#{ptFrgL.abgelaufen() ? ' (abgelaufen)' : ''}"/>
+            </p:column>
+            <p:column headerText="Aufrufe">
+                <h:outputText value="#{ptFrgL.aufrufe()}"/>
+            </p:column>
+            <p:column headerText="Zuletzt">
+                <h:outputText value="#{ptFrgL.zuletztAufgerufen()}"/>
+            </p:column>
+            <p:column headerText="">
+                <p:commandButton id="widerrufen" icon="pi pi-ban" title="Widerrufen"
+                                 action="#{freigabeLinkBean.widerrufe(ptFrgL.id())}" process="@this" update="@form"
+                                 styleClass="ui-button-danger">
+                    <p:confirm header="Widerrufen" message="Den Link sofort ungültig machen?" icon="pi pi-exclamation-triangle"/>
+                </p:commandButton>
+            </p:column>
+        </p:dataTable>
+    </h:panelGroup>
+</ui:composition>

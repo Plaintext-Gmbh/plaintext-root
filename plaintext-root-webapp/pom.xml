@@ -186,6 +186,15 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Karte 1476: Freigabe-Links ohne Anmeldung (/nosec/freigabe/{token}, Tag pt:freigabeLinks, MCP).
+             Ueber das Aggregat bekommen die Apps das Modul mit dem root-Bump; ohne registrierte
+             FreigabeQuelle antwortet jede Adresse mit 404. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-freigabe</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Nur fuer die MCP-Annotationen der Benutzerverwaltung (BenutzerMcpTools). optional=true wie
              in plaintext-admin-apitoken: das Bean haengt an @ConditionalOnClass und laedt ausschliesslich
              in Apps mit eigenem MCP-Server (app/guild/schuetu/iot). plaintext-root selbst hat keinen und
