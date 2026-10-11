@@ -4,7 +4,6 @@
 package ch.plaintext.geo;
 
 import ch.plaintext.arch.StabileApi;
-import ch.plaintext.modules.ModulApi;
 
 /**
  * The minimum {@link AbstractHoehenService} needs from a track point: WGS84 coordinates.
@@ -17,7 +16,6 @@ import ch.plaintext.modules.ModulApi;
  * @author info@plaintext.ch
  * @since 2026
  */
-@ModulApi(art = ModulApi.Art.DTO)
 @StabileApi("Koordinate fuer Hoehendienste (Karte 1504, aus app-interfaces)")
 public interface ILatLon {
 

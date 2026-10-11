@@ -4,7 +4,6 @@
 package ch.plaintext.auswertung;
 
 import ch.plaintext.arch.StabileApi;
-import ch.plaintext.modules.ModulApi;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -46,7 +45,6 @@ import java.util.Optional;
  * @author info@plaintext.ch
  * @since 2026
  */
-@ModulApi(art = ModulApi.Art.DTO)
 @StabileApi("Auswertungszeitraum fuer Fachmodule (Karte 1504, aus app-interfaces)")
 public record Auswertungszeitraum(LocalDate von, LocalDate bis) {
 
