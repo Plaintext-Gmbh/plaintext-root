@@ -83,7 +83,7 @@ class UseradminSpaltenauswahlTest {
                 user(4L, "ohne@x.ch", null)));
         when(store.load(anyString(), anyList())).thenReturn(new TableState());
         bean = new MyUserBackingBean(null, repo, null, rememberMeRepo, plaintextSecurity,
-                null, null, null, store);
+                null, null, null, store, null);
     }
 
     // ------------------------------------------------------------- Default setting / loading
@@ -167,7 +167,7 @@ class UseradminSpaltenauswahlTest {
     @DisplayName("Ohne Ablage wird nichts gespeichert und nichts geworfen")
     void ohneAblageKeinFehler() {
         MyUserBackingBean ohne = new MyUserBackingBean(null, repo, null, rememberMeRepo, plaintextSecurity,
-                null, null, null, null);
+                null, null, null, null, null);
         ohne.init();
 
         ohne.spaltenGeaendert();

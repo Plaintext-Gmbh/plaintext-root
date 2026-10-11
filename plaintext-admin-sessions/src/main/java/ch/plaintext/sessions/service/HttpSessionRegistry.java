@@ -98,12 +98,28 @@ public class HttpSessionRegistry {
      * @return number of invalidated sessions
      */
     public int invalidateSessionsOfUser(String username) {
+        return invalidateSessionsOfUser(username, null);
+    }
+
+    /**
+     * Like {@link #invalidateSessionsOfUser(String)}, but leaves the session with the id
+     * {@code exceptSessionId} alive (card 1495, S-5): whoever changes their own password or turns on
+     * 2FA stays logged in in the session they did it from; every other session of the account ends.
+     *
+     * @param username        the user name whose sessions are to be terminated
+     * @param exceptSessionId id of the session to keep, or {@code null}
+     * @return number of invalidated sessions
+     */
+    public int invalidateSessionsOfUser(String username, String exceptSessionId) {
         if (username == null || username.isBlank()) {
             return 0;
         }
         int invalidated = 0;
         for (Map.Entry<String, HttpSession> entry : sessionMap.entrySet()) {
             HttpSession session = entry.getValue();
+            if (entry.getKey().equals(exceptSessionId)) {
+                continue;
+            }
             try {
                 Object ctx = session.getAttribute(SPRING_SECURITY_CONTEXT_KEY);
                 if (!(ctx instanceof SecurityContext securityContext)) {
@@ -115,12 +131,15 @@ public class HttpSessionRegistry {
                 }
                 session.invalidate();
                 invalidated++;
+                sessionMap.remove(entry.getKey());
             } catch (RuntimeException e) {
                 // Session already invalidated/expired -> drop it from the registry and carry on.
                 log.debug("Session {} konnte nicht invalidiert werden: {}", entry.getKey(), e.toString());
-            } finally {
                 sessionMap.remove(entry.getKey());
             }
+            // Card 1495: sessions of OTHER users stay registered. The former `finally` removed every
+            // visited entry, so one password change emptied the registry and a later invalidation
+            // (or the ROOT session view) no longer saw anybody's sessions.
         }
         if (invalidated > 0) {
             log.info("{} aktive Session(s) von '{}' nach Passwortwechsel invalidiert", invalidated, Log.mail(username));

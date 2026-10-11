@@ -9,6 +9,7 @@ import ch.plaintext.boot.plugins.security.PlaintextSecurityProperties;
 import ch.plaintext.boot.plugins.security.magiclink.MagicLinkService;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
+import ch.plaintext.boot.plugins.security.service.AnmeldedatenWiderruf;
 import ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService;
 import ch.plaintext.boot.plugins.security.totp.TotpService;
 import ch.plaintext.settings.ISetupConfigService;
@@ -77,6 +78,8 @@ public class MyUserInfoBackingBean implements Serializable {
     private transient PlaintextSecurityProperties securityProperties;
     @Autowired
     private transient MagicLinkService magicLinkService;
+    @Autowired
+    private transient AnmeldedatenWiderruf anmeldedatenWiderruf;
 
     /**
      * SECURITY (card 314, item 7): the central {@link PasswordEncoder} bean instead of a local
@@ -321,6 +324,8 @@ public class MyUserInfoBackingBean implements Serializable {
         // Card 306: a possibly forced change (root initial password) is hereby done.
         user.setMustChangePassword(false);
         userRepository.save(user);
+        // Card 1495 (S-5): whoever knew the old password must not stay logged in elsewhere.
+        anmeldedatenWiderruf.widerrufe(username);
 
         // Clear fields
         currentPassword = null;
@@ -390,6 +395,9 @@ public class MyUserInfoBackingBean implements Serializable {
             addTotpMessage(context, FacesMessage.SEVERITY_ERROR, "Der Code ist nicht korrekt. Bitte erneut versuchen.");
             return;
         }
+        // Card 1495 (S-5): logins made with the password alone (remember-me, other sessions) end here,
+        // otherwise they would keep the account open without the second factor.
+        anmeldedatenWiderruf.widerrufe(getUsername());
         // Setup completed successfully.
         this.generatedRecoveryCodes = codes;
         this.totpSetupSecret = null;

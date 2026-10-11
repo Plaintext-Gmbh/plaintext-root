@@ -18,6 +18,7 @@ import ch.plaintext.boot.plugins.security.model.UserMandate;
 import ch.plaintext.boot.plugins.security.persistence.MyRememberMeRepository;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
 import ch.plaintext.boot.plugins.security.persistence.UserMandateRepository;
+import ch.plaintext.boot.plugins.security.service.AnmeldedatenWiderruf;
 import ch.plaintext.framework.PlaintextRole;
 import ch.plaintext.framework.PlaintextRoleRegistry;
 import ch.plaintext.framework.PrivilegedRoleRules;
@@ -97,6 +98,9 @@ public class MyUserBackingBean implements Serializable {
      */
     private transient DestructiveActionAuditService auditService;
 
+    /** Card 1495 (S-5): ends remember-me logins and sessions after a password change; optional like the audit. */
+    private transient AnmeldedatenWiderruf anmeldedatenWiderruf;
+
     /**
      * SECURITY (forensics 23.08.2026): the confirmation prompt shown when privileged roles are
      * revoked by a root actor. {@code null} = no prompt pending.
@@ -123,6 +127,7 @@ public class MyUserBackingBean implements Serializable {
      * @param magicLinkService sending of the magic links
      * @param auditService    audit log for role changes/deletions; optional, may be {@code null}
      * @param tableStateStore storage of the column selection (Karte 1077); optional, may be {@code null}
+     * @param anmeldedatenWiderruf ends logins after a password change (Karte 1495); optional, may be {@code null}
      */
     @Autowired
     public MyUserBackingBean(PasswordEncoder passwordEncoder,
@@ -133,7 +138,8 @@ public class MyUserBackingBean implements Serializable {
                              UserMandateRepository userMandateRepo,
                              MagicLinkService magicLinkService,
                              @Nullable DestructiveActionAuditService auditService,
-                             @Nullable TableStateStore tableStateStore) {
+                             @Nullable TableStateStore tableStateStore,
+                             @Nullable AnmeldedatenWiderruf anmeldedatenWiderruf) {
         this.passwordEncoder = passwordEncoder;
         this.repo = repo;
         this.roleRegistry = roleRegistry;
@@ -143,6 +149,7 @@ public class MyUserBackingBean implements Serializable {
         this.magicLinkService = magicLinkService;
         this.auditService = auditService;
         this.tableStateStore = tableStateStore;
+        this.anmeldedatenWiderruf = anmeldedatenWiderruf;
     }
 
     /** Additional tenants of the selected user (multi-tenant), editable in the dialog. */
@@ -525,6 +532,10 @@ public class MyUserBackingBean implements Serializable {
             selected.setPassword(myUserPw);
         }
         repo.save(selected);
+        // Card 1495 (S-5): a password set by the admin ends the account's remember-me logins and sessions.
+        if (passwordChanged && persistedUsername != null && anmeldedatenWiderruf != null) {
+            anmeldedatenWiderruf.widerrufe(persistedUsername);
+        }
         // TRACEABILITY (forensics 23.08.2026): log only after the write has succeeded —
         // otherwise the log claims a change that may never have happened.
         protokolliereRollenaenderung(persistedRoles, selected.getRoles());

@@ -6,8 +6,8 @@ package ch.plaintext.boot.plugins.security.selfservice;
 import ch.plaintext.SystemMailSender;
 import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
-import ch.plaintext.boot.plugins.security.persistence.MyRememberMeRepository;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
+import ch.plaintext.boot.plugins.security.service.AnmeldedatenWiderruf;
 import ch.plaintext.mailtemplate.IMailTemplateProvider;
 import ch.plaintext.mailtemplate.IMailTemplateProvider.RenderedMail;
 import ch.plaintext.settings.ISetupConfigService;
@@ -46,18 +46,13 @@ public class PasswordResetService {
 
     private final PasswordResetTokenRepository tokenRepository;
     private final MyUserRepository userRepository;
-    private final MyRememberMeRepository rememberMeRepository;
     private final ISetupConfigService setupConfigService;
     private final ObjectProvider<SystemMailSender> systemMailSenderProvider;
     private final PasswordEncoder passwordEncoder;
     private final SelfServiceProperties properties;
     private final IMailTemplateProvider mailTemplateProvider;
-    /**
-     * SECURITY (card 314, item 9): registry of the active HTTP sessions. As an
-     * {@link ObjectProvider}, because the module plaintext-admin-sessions is optional — if it is
-     * missing, the reset stays functional and only the session invalidation is dropped.
-     */
-    private final ObjectProvider<ch.plaintext.sessions.service.HttpSessionRegistry> sessionRegistryProvider;
+    /** Card 1495: remember-me tokens and sessions end in one place for every credential change. */
+    private final AnmeldedatenWiderruf anmeldedatenWiderruf;
 
     @Transactional
     public ResetOutcome startReset(String username, String mandat, String publicBaseUrl) {
@@ -115,25 +110,9 @@ public class PasswordResetService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        // SECURITY (card 307, K2.3): after the password reset, invalidate the persistent auto-login tokens
-        // (remember-me / PERSISTENT_LOGINS) of the user, so that a previously stolen
-        // remember-me cookie does not live on across the reset. (HTTP sessions are short-lived
-        // and not enumerable without a session registry; the persistent vector is remember-me.)
-        rememberMeRepository.deleteAllByUsername(token.getUsername());
-
-        // SECURITY (card 314, item 9): additionally terminate the still ACTIVE HTTP sessions.
-        // Until now only the persistent remember-me tokens were deleted — whoever already had an
-        // open session on the account (exactly the case in which an affected person resets their
-        // password) kept their access until the session timeout, and the reset
-        // was ineffective as a recovery measure.
-        ch.plaintext.sessions.service.HttpSessionRegistry sessionRegistry =
-                sessionRegistryProvider.getIfAvailable();
-        if (sessionRegistry != null) {
-            sessionRegistry.invalidateSessionsOfUser(token.getUsername());
-        } else {
-            log.warn("Session-Registry nicht verfuegbar — aktive Sessions von '{}' konnten nach dem "
-                    + "Passwort-Reset nicht invalidiert werden.", Log.mail(token.getUsername()));
-        }
+        // SECURITY (card 307 K2.3, card 314 item 9): a stolen remember-me cookie or an open session
+        // must not outlive the reset — since card 1495 the same place as every other credential change.
+        anmeldedatenWiderruf.widerrufe(token.getUsername());
 
         log.info("Password reset completed for {} on mandat={}", Log.mail(token.getUsername()), token.getMandat());
         return ResetResult.success(token.getUsername());
