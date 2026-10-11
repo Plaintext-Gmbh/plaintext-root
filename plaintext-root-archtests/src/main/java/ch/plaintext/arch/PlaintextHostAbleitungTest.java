@@ -41,8 +41,6 @@ public class PlaintextHostAbleitungTest {
 
     /** Class names (simple, without package) that still derive the host from the request. */
     static final Set<String> BEKANNTE_ALTFAELLE = Set.of(
-            // root: documented fallback without forwarded headers, behind a configured public-base-url
-            "MagicLinkService",
             // root: request wrapper that only rewrites the path part of getRequestURL()
             "PathParameterConfig",
             // app (Karte 1069 A-01)
