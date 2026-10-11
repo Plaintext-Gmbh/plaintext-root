@@ -84,7 +84,7 @@ services:
 
 steps:
   release:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     environment:
       # ── THE MOST IMPORTANT LINE OF THIS FILE ───────────────────────────────────
       # Woodpecker sets CI=woodpecker on its own. tui-build-logic.sh, however, checks in
@@ -444,7 +444,7 @@ steps:
         esac
 
   aufraeumen:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     when:
       - status: [success, failure]
     commands:
@@ -468,7 +468,7 @@ steps:
   # Eigener Container, also eigener git-Stand: `git describe --tags` zeigt hier den
   # Tag, den der Release-Schritt gerade gepusht hat — das ist die richtige Version.
   vollstaendigkeit:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     when:
       - status: [success, failure]
     environment:

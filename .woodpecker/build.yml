@@ -119,7 +119,7 @@ steps:
     # Dasselbe Bild wie build-und-test: es liegt auf dem Agenten ohnehin im Cache und bringt
     # bash und git mit. Ein eigenes, kleineres Bild waere ein zusaetzlicher Pull fuer 3 Sekunden
     # Arbeit.
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     commands:
       - . .woodpecker/waechter.sh
 
@@ -148,7 +148,7 @@ steps:
       - bash /tmp/werkzeuge/quality/flyway-dubletten-lint.sh . --basis origin/master
 
   build-und-test:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     # NO Docker socket. plaintext-app needs one because it has Testcontainers tests in
     # its normal Surefire run — plaintext-root does NOT have those, and deliberately
     # so: card 451 (Daniel's decision of 02.08.2026) replaced Testcontainers here
@@ -237,7 +237,7 @@ steps:
         fi
 
   coverage-uebersicht:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     # `status: [success, failure]` = the counterpart of `if: always()`. The coverage figures
     # are interesting precisely after a red run — and in root a red run is
     # more often than not exactly a JaCoCo gate violation, whose module is visible here.
@@ -260,7 +260,7 @@ steps:
         done'
 
   testbericht:
-    image: maven:3.9-eclipse-temurin-25
+    image: maven:3.10-eclipse-temurin-25
     # `status: [success, failure]`, same as the step above. The report matters MORE after a
     # red run than after a green one — that is exactly when you want to know WHICH test
     # fails, and today that only exists as a .txt excerpt in the log (which lies about
