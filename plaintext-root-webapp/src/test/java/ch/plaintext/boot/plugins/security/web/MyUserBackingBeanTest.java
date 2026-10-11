@@ -72,6 +72,10 @@ class MyUserBackingBeanTest {
     @Mock
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
+    /** Card 1495 (S-5): ends remember-me logins and sessions after a password set by the admin. */
+    @Mock
+    private ch.plaintext.boot.plugins.security.service.AnmeldedatenWiderruf anmeldedatenWiderruf;
+
     @InjectMocks
     private MyUserBackingBean backingBean;
 
@@ -750,6 +754,8 @@ class MyUserBackingBeanTest {
 
         verify(repo).save(any(MyUserEntity.class));
         verify(auditService, never()).logDestructiveAction(any(), any(), any(), any(), any());
+        // Card 1495: no password change -> the account's logins stay.
+        verify(anmeldedatenWiderruf, never()).widerrufe(any());
     }
 
     // ---- Card 1451 (review 1449, S-1): an ADMIN must not take over a root account of their tenant ----
@@ -840,6 +846,8 @@ class MyUserBackingBeanTest {
         verify(facesContext, never()).validationFailed();
         verify(auditService).logDestructiveAction(eq("UI"), eq("USER_CREDENTIALS_CHANGE"),
                 eq("MyUserEntity"), eq("1"), anyString());
+        // Card 1495 (S-5): the new password ends remember-me tokens and sessions of the account.
+        verify(anmeldedatenWiderruf).widerrufe("test@example.com");
     }
 
     @Test

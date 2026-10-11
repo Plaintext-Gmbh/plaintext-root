@@ -39,8 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p><b>Was diese Regel tut.</b> Jede Migrationsdatei im Reactor, die NICHT auf der festen Liste
  * der bekannten Altdateien und nicht unter den Baseline-Ausnahmen steht, muss dem Muster
- * {@code V17\d{8}__...} folgen (10-stellige
- * Unix-Epoch-Sekunden, Stand 2026 beginnt das mit "17"). Die Liste ist in dieser Klasse fest
+ * {@code V1[7-9]\d{8}__...} folgen (10-stellige
+ * Unix-Epoch-Sekunden, 2023 bis 2033; Karte 1495). Die Liste ist in dieser Klasse fest
  * einprogrammiert statt ueber {@link ArchAllowlist} (Datei {@code plaintext-arch-allowlist.txt}):
  * root fuehrt selbst keine solche Datei (siehe deren Klassenkommentar — "das Framework muss die
  * eigenen Regeln ohne Ausnahme bestehen"), diese Regel braucht die Ausnahme aber genau dort fuer
@@ -64,8 +64,14 @@ class PlaintextFlywayVersionSchemaTest {
 
     private static final String MIGRATION_SUFFIX = "src/main/resources/db/migration";
 
-    /** Neues Schema: 10-stellige Unix-Epoch-Sekunden, Stand 2026 beginnt das mit "17". */
-    private static final Pattern NEUES_SCHEMA = Pattern.compile("V17\\d{8}__.*\\.sql");
+    /**
+     * Neues Schema: genau 10-stellige Unix-Epoch-Sekunden im plausiblen Bereich 1'700'000'000 bis
+     * 1'999'999'999 (14.11.2023 bis 18.05.2033). Bis Karte 1495 stand hier {@code V17}: ab
+     * 15.01.2027 08:00 UTC beginnt {@code date +%s} mit 18, und jede neue Migration haette jeden
+     * Build in allen Apps rot gemacht. Die alte 9-stellige Nummer und 11-stellige Tippfehler
+     * bleiben verboten.
+     */
+    static final Pattern NEUES_SCHEMA = Pattern.compile("V1[7-9]\\d{8}__.*\\.sql");
 
     /**
      * Feste Liste der 86 bereits vorhandenen Altdateien (Stand 06.09.2026, Karte 1069; die beiden
@@ -226,7 +232,7 @@ class PlaintextFlywayVersionSchemaTest {
     );
 
     @Test
-    @DisplayName("Neue Flyway-Migrationen tragen Unix-Epoch-Nummern (V17..........__...), nur bekannte Altdateien und Baselines ausgenommen")
+    @DisplayName("Neue Flyway-Migrationen tragen Unix-Epoch-Nummern (V17/V18/V19........__...), nur bekannte Altdateien und Baselines ausgenommen")
     void neueMigrationenFolgenDemEpochSchema() {
         List<String> fehler = new ArrayList<>();
         int geprueft = 0;
@@ -250,7 +256,7 @@ class PlaintextFlywayVersionSchemaTest {
         int gesamt = geprueft;
         assertTrue(fehler.isEmpty(), () -> fehler.size() + " von " + gesamt + " Migrationsdatei(en) "
                 + "folgen weder dem alten Schema (bekannt und auf der Allowlist) noch dem neuen "
-                + "Unix-Epoch-Schema V17..........__... (CLAUDE.md: `date +%s`, NICHT \"Sekunden seit "
+                + "Unix-Epoch-Schema V1[7-9]........__... (10 Ziffern; CLAUDE.md: `date +%s`, NICHT \"Sekunden seit "
                 + "2000\"):\n  " + String.join("\n  ", fehler)
                 + "\n\nNeue Migration: mit `./getflywaynr` im Projekt-Root eine gueltige Nummer ziehen. "
                 + "Falls diese Datei tatsaechlich alt ist und nur vom Scan noch nicht erfasst wurde: "

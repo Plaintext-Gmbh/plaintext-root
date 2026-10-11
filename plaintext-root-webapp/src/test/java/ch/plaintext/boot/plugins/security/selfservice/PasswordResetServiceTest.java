@@ -60,9 +60,10 @@ class PasswordResetServiceTest {
         properties.setPasswordResetTokenTtl(Duration.ofHours(1));
         properties.setDefaultMandat("default");
         service = new PasswordResetService(
-                tokenRepository, userRepository, rememberMeRepository, setupConfigService,
+                tokenRepository, userRepository, setupConfigService,
                 systemMailSenderProvider, passwordEncoder, properties, mailTemplateProvider,
-                sessionRegistryProvider);
+                new ch.plaintext.boot.plugins.security.service.AnmeldedatenWiderruf(
+                        rememberMeRepository, sessionRegistryProvider));
 
         when(systemMailSenderProvider.getIfAvailable()).thenReturn(systemMailSender);
         when(setupConfigService.getSystemMailAccountId()).thenReturn(1L);
@@ -157,7 +158,7 @@ class PasswordResetServiceTest {
 
         assertTrue(service.completeReset("good", "new-strong-pw").ok());
 
-        verify(sessionRegistry).invalidateSessionsOfUser("u@example.com");
+        verify(sessionRegistry).invalidateSessionsOfUser("u@example.com", null);
     }
 
     /**

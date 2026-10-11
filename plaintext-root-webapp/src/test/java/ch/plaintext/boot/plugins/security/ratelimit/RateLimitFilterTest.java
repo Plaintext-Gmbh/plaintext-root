@@ -546,4 +546,29 @@ class RateLimitFilterTest {
         verify(filterChain, times(2)).doFilter(request, response);
         verify(response).setStatus(429);
     }
+
+    /**
+     * Card 1495 (S-4 from review 1449): the login, TOTP and magic-link limits compared the RAW URI
+     * exactly. {@code POST /login;x=1} missed the branch, PathParameterFilter then stripped the
+     * parameter and Spring Security processed a normal login — password spraying without a brake.
+     */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "/login;x=1", "/login;jsessionid=ABC", "/log%69n", "/login/",
+            "/login/totp;x=1", "/login;a=b/totp", "/ott/generate;x=1", "/ott/generate/"})
+    @DisplayName("Karte 1495 (S-4): Pfadvarianten der Anmeldepfade umgehen das Limit nicht")
+    void pfadvarianteUmgehtLoginLimitNicht(String uri) throws Exception {
+        when(request.getRequestURI()).thenReturn(uri);
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("10.0.0.99");
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        for (int i = 0; i < 4; i++) {
+            filter.doFilter(request, response, filterChain);
+        }
+
+        verify(filterChain, times(3)).doFilter(request, response);
+        verify(response).setStatus(429);
+    }
 }
+

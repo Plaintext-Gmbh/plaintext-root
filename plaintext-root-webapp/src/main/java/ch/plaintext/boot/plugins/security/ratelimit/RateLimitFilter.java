@@ -13,11 +13,14 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.web.util.UriUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 /**
  * Rate limiting filter for REST API endpoints.
@@ -35,6 +38,9 @@ import java.io.IOException;
 @Component
 @AllowRawScheduled // System guard: cleanup of rate-limit buckets on a sub-minute interval, no cron expression possible
 public class RateLimitFilter implements Filter {
+
+    /** Card 1495 (S-4): a path parameter ({@code ;x=1}) up to the end of its segment. */
+    private static final Pattern PFAD_PARAMETER = Pattern.compile(";[^/]*");
 
     private final RateLimiter apiLimiter;
     private final RateLimiter loginLimiter;
@@ -140,7 +146,16 @@ public class RateLimitFilter implements Filter {
             return;
         }
 
-        String path = request.getRequestURI();
+        // Card 1495 (S-4): compare the path the way Spring Security and MVC will see it, not the raw URI.
+        // `POST /login;x=1` (path parameter) or `/log%69n` (encoded letter) used to miss every exact
+        // branch below, while PathParameterFilter and Spring's matcher still treated them as /login —
+        // the login, TOTP and magic-link limits were bypassed. Hence: strip `;…` in every segment,
+        // then percent-decode (encoded `/`, `;`, `%`, `.` are refused later by the StrictHttpFirewall anyway).
+        // For the exact login endpoints one trailing slash is dropped as well (fail-closed; the
+        // prefix branches keep it, `/nosec/caldav/` must stay a DAV path). The client IP is still
+        // read raw (getClientIp).
+        String path = UriUtils.decode(PFAD_PARAMETER.matcher(request.getRequestURI()).replaceAll(""), StandardCharsets.UTF_8);
+        String endpunkt = path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
 
         if (path.startsWith("/api/")) {
             String clientIp = getClientIp(request);
@@ -238,7 +253,7 @@ public class RateLimitFilter implements Filter {
             }
         }
 
-        if (path.equals("/login") && "POST".equalsIgnoreCase(request.getMethod())) {
+        if (endpunkt.equals("/login") && "POST".equalsIgnoreCase(request.getMethod())) {
             String clientIp = getClientIp(request);
             if (!loginLimiter.tryConsume(clientIp)) {
                 rejectLogin(response, path, clientIp);
@@ -264,7 +279,7 @@ public class RateLimitFilter implements Filter {
         // failed attempts per account; this branch additionally throttles per address, so that an attacker
         // who has the password cannot try the six digits second by second. No
         // refund: a legitimate user needs exactly one attempt.
-        if (path.equals("/login/totp") && "POST".equalsIgnoreCase(request.getMethod())) {
+        if (endpunkt.equals("/login/totp") && "POST".equalsIgnoreCase(request.getMethod())) {
             String clientIp = getClientIp(request);
             if (!loginLimiter.tryConsume(clientIp)) {
                 rejectLogin(response, path, clientIp);
@@ -272,7 +287,7 @@ public class RateLimitFilter implements Filter {
             }
         }
 
-        if (path.equals("/ott/generate") && "POST".equalsIgnoreCase(request.getMethod())) {
+        if (endpunkt.equals("/ott/generate") && "POST".equalsIgnoreCase(request.getMethod())) {
             String clientIp = getClientIp(request);
             if (!loginLimiter.tryConsume(clientIp)) {
                 rejectLogin(response, path, clientIp);

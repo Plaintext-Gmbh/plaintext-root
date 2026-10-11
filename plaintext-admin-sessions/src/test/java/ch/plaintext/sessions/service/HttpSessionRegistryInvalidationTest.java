@@ -56,6 +56,21 @@ class HttpSessionRegistryInvalidationTest {
         assertEquals(1, count);
         verify(victim).invalidate();
         verify(other, never()).invalidate();
+        // Card 1495: the other user's session stays registered (the old `finally` dropped it).
+        assertEquals(java.util.List.of("s2"), registry.getAllSessionIds());
+    }
+
+    @Test
+    void keepsTheExceptedSessionOfTheSameUser() {
+        HttpSession own = sessionOf("opfer@example.invalid");
+        HttpSession foreign = sessionOf("opfer@example.invalid");
+        registry.registerSession("eigene", own);
+        registry.registerSession("fremde", foreign);
+
+        assertEquals(1, registry.invalidateSessionsOfUser("opfer@example.invalid", "eigene"));
+        verify(own, never()).invalidate();
+        verify(foreign).invalidate();
+        assertEquals(java.util.List.of("eigene"), registry.getAllSessionIds());
     }
 
     @Test

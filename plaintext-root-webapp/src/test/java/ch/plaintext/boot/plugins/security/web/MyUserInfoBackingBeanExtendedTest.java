@@ -73,6 +73,13 @@ class MyUserInfoBackingBeanExtendedTest {
     @org.mockito.Spy
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    /** Card 1495 (S-5): ends remember-me logins and the other sessions. */
+    @Mock
+    private ch.plaintext.boot.plugins.security.service.AnmeldedatenWiderruf anmeldedatenWiderruf;
+
+    @Mock
+    private ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService totpAuthenticationService;
+
     @InjectMocks
     private MyUserInfoBackingBean bean;
 
@@ -234,6 +241,8 @@ class MyUserInfoBackingBeanExtendedTest {
             bean.changePassword();
 
             verify(userRepository).save(user);
+            // Card 1495 (S-5): whoever knew the old password is logged out everywhere else.
+            verify(anmeldedatenWiderruf).widerrufe("test@example.com");
             verify(facesContext).addMessage(eq("passwordMessages"), argThat(msg ->
                     msg.getSeverity() == FacesMessage.SEVERITY_INFO));
             // Fields should be cleared
@@ -340,5 +349,45 @@ class MyUserInfoBackingBeanExtendedTest {
         SecurityContextHolder.setContext(context);
 
         assertEquals("simpleUsername", bean.getUsername());
+    }
+
+    // ==================== Card 1495 (S-5): switching on 2FA ends the password-only logins ====================
+
+    private void totpVerfuegbar() {
+        setupAuthentication(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+        ch.plaintext.boot.plugins.security.PlaintextSecurityProperties props =
+                new ch.plaintext.boot.plugins.security.PlaintextSecurityProperties();
+        props.getTotp().setEnabled(true);
+        org.springframework.test.util.ReflectionTestUtils.setField(bean, "securityProperties", props);
+        when(userRepository.findByUsername("test@example.com")).thenReturn(new MyUserEntity());
+        bean.setTotpSetupSecret("JBSWY3DPEHPK3PXP");
+        bean.setTotpConfirmationCode("123456");
+    }
+
+    @Test
+    void confirmTotpSetup_beendetRememberMeUndUebrigeSitzungen() {
+        try (MockedStatic<FacesContext> mocked = mockStatic(FacesContext.class)) {
+            mocked.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            totpVerfuegbar();
+            when(totpAuthenticationService.confirmAndEnable("test@example.com", "JBSWY3DPEHPK3PXP", "123456"))
+                    .thenReturn(List.of("code-1"));
+
+            bean.confirmTotpSetup();
+
+            verify(anmeldedatenWiderruf).widerrufe("test@example.com");
+        }
+    }
+
+    @Test
+    void confirmTotpSetup_falscherCode_laesstAnmeldungenStehen() {
+        try (MockedStatic<FacesContext> mocked = mockStatic(FacesContext.class)) {
+            mocked.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            totpVerfuegbar();
+            when(totpAuthenticationService.confirmAndEnable(any(), any(), any())).thenReturn(null);
+
+            bean.confirmTotpSetup();
+
+            verify(anmeldedatenWiderruf, never()).widerrufe(any());
+        }
     }
 }
