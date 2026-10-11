@@ -1,0 +1,15 @@
+<ui:composition xmlns:h="jakarta.faces.html"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:pt="http://plaintext.ch/ui"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Freigabe-Links</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p>Links ohne Anmeldung auf Objekte, die du freigeben darfst. Angelegt werden sie im jeweiligen Modul.</p>
+            <pt:freigabeLinks/>
+        </h:form>
+    </ui:define>
+</ui:composition>

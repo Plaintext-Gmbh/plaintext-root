@@ -13,6 +13,18 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **Share links without login, for every module** (Karte 1476): new module `plaintext-root-freigabe` (comes with
+  `plaintext-root-webapp`). A module registers a `FreigabeQuelle` (`plaintext-root-interfaces`, package
+  `ch.plaintext.freigabe`: `typ`, `darfFreigeben`, `zeige`, optional `schreibe`); root handles the token (24 bytes
+  `SecureRandom`, only the SHA-256 is stored), right `r` or `rw`, expiry, revocation, call counter and an optional
+  part (stored with the link, not in the address). `GET /nosec/freigabe/{token}` only renders, `POST` only with an
+  `rw` link (`r` → 403); unknown, expired and revoked all answer 404. The module runs with an empty
+  SecurityContext, so the token is the only credential (no CSRF surface under `/nosec`). Default CSP
+  `FreigabeInhalt.STRENG` with `sandbox`, `no-store`, `no-referrer`, `noindex`. Management through the tag
+  `pt:freigabeLinks typ objektId teil`, the page *Admin → Freigabe-Links* and the MCP tools
+  `erstelle_freigabe_link`, `list_freigabe_links`, `widerrufe_freigabe_link` (consumers: raise
+  `mindestens.werkzeuge` in `mcp-scope-vertrag.properties` by 3 on the bump). Flyway `V1791641837` (table
+  `freigabe_link`). Without a registered `FreigabeQuelle` every address answers 404.
 - **Folder management in `DateiAblage` and `pt:dateiAblage`** (Karte 1475). The interface gets `legeOrdnerAn`,
   `verschiebe` (move or rename a file or folder; target must not exist or lie inside the source) and
   `loescheOrdner(pfad, rekursiv)` (non-empty without `rekursiv` → `DirectoryNotEmptyException`). Nextcloud uses
