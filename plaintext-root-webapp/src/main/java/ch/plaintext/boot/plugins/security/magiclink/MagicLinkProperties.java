@@ -21,9 +21,9 @@ public class MagicLinkProperties {
 
     /**
      * Public base URL for the sent link (e.g. {@code https://app.example.com}).
-     * Should be configured in every environment. Empty = fallback to scheme/server name/port of the
-     * incoming request - deliberately WITHOUT {@code X-Forwarded-*} headers (host header injection),
-     * with a WARN log entry.
+     * Empty = the own address from {@code EigeneAdresse} ({@code app.ownhost},
+     * {@code plaintext.app.ownhost}, {@code plaintext.baseurl}). Never taken from the request
+     * (host header injection, Karte 1501); with nothing configured no mail is sent.
      */
     private String publicBaseUrl = "";
 }

@@ -6,6 +6,7 @@ package ch.plaintext.boot.plugins.security.magiclink;
 import ch.plaintext.SystemMailSender;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
+import ch.plaintext.framework.EigeneAdresse;
 import ch.plaintext.mailtemplate.repository.MailTemplateRepository;
 import ch.plaintext.mailtemplate.service.MailTemplateService;
 import ch.plaintext.settings.ISetupConfigService;
@@ -21,12 +22,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.filter.ForwardedHeaderFilter;
 import org.springframework.security.authentication.ott.DefaultOneTimeToken;
 import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -54,6 +59,8 @@ class MagicLinkServiceTest {
     private MagicLinkProperties properties;
     @Mock
     private HttpServletRequest request;
+    @Mock
+    private EigeneAdresse eigeneAdresse;
     @Spy
     private MailTemplateService mailTemplateProvider = new MailTemplateService(mock(MailTemplateRepository.class));
 
@@ -68,6 +75,7 @@ class MagicLinkServiceTest {
         when(request.getScheme()).thenReturn("https");
         when(request.getServerName()).thenReturn("app.example.com");
         when(request.getServerPort()).thenReturn(443);
+        when(eigeneAdresse.basis(anyString())).thenReturn("https://app.example.com");
 
         when(systemMailSenderProvider.getIfAvailable()).thenReturn(systemMailSender);
         when(setupConfigService.isMagicLinkEnabled(anyString())).thenReturn(true);
@@ -135,17 +143,50 @@ class MagicLinkServiceTest {
         assertThat(result).isFalse();
     }
 
+    /**
+     * Karte 1501 (S-6): the request runs through the real {@link ForwardedHeaderFilter}, as with
+     * {@code forward-headers-strategy: FRAMEWORK} in every app — so {@code getServerName()} IS the
+     * forged host. The old test stubbed only {@code getHeader} and therefore passed while the
+     * service still put the forwarded host into the link.
+     */
     @Test
-    void sendForExistingToken_ignoriertXForwardedHost_ohneKonfigurierteBaseUrl() {
-        // X-Forwarded headers must NOT end up in the magic link (phishing vector)
-        when(request.getHeader("X-Forwarded-Host")).thenReturn("evil.com");
+    void sendForExistingToken_fremderXForwardedHost_landetNichtImLink() throws Exception {
+        MockHttpServletRequest roh = new MockHttpServletRequest("POST", "/ott/generate");
+        roh.addHeader("X-Forwarded-Host", "evil.example");
+        roh.addHeader("X-Forwarded-Proto", "https");
+        AtomicReference<HttpServletRequest> gefiltert = new AtomicReference<>();
+        new ForwardedHeaderFilter().doFilter(roh, new MockHttpServletResponse(),
+                (req, res) -> gefiltert.set((HttpServletRequest) req));
+        assertThat(gefiltert.get().getServerName()).as("Vorbedingung: Filter uebernimmt den Kopf").isEqualTo("evil.example");
 
-        service.sendForExistingToken(userWithMandat(), "abc123", request);
+        assertThat(service.sendForExistingToken(userWithMandat(), "abc123", gefiltert.get())).isTrue();
 
         ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
         verify(systemMailSender).sendSystemMail(anyLong(), anyString(), anyString(), bodyCaptor.capture(), eq(false));
-        assertThat(bodyCaptor.getValue()).doesNotContain("evil.com");
+        assertThat(bodyCaptor.getValue()).doesNotContain("evil.example");
         assertThat(bodyCaptor.getValue()).contains("https://app.example.com/login/ott?token=abc123");
+    }
+
+    @Test
+    void sendForExistingToken_nutztEigeneAdresse_mitPlaintextBaseurlAlsVorgabe() {
+        when(eigeneAdresse.basis(anyString())).thenReturn("https://konfiguriert.example.com/");
+
+        service.sendForExistingToken(userWithMandat(), "abc123", request);
+
+        verify(eigeneAdresse).basis(anyString());
+        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(systemMailSender).sendSystemMail(anyLong(), anyString(), anyString(), bodyCaptor.capture(), eq(false));
+        assertThat(bodyCaptor.getValue()).contains("https://konfiguriert.example.com/login/ott?token=abc123");
+        assertThat(bodyCaptor.getValue()).doesNotContain("app.example.com");
+    }
+
+    @Test
+    void sendForExistingToken_ohneEigeneAdresse_keineMail() {
+        when(eigeneAdresse.basis(anyString())).thenReturn("");
+
+        assertThat(service.sendForExistingToken(userWithMandat(), "abc123", request)).isFalse();
+
+        verify(systemMailSender, never()).sendSystemMail(any(), any(), any(), any(), anyBoolean());
     }
 
     @Test

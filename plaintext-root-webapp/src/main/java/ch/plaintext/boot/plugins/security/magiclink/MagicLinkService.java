@@ -7,6 +7,7 @@ import ch.plaintext.SystemMailSender;
 import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
+import ch.plaintext.framework.EigeneAdresse;
 import ch.plaintext.mailtemplate.IMailTemplateProvider;
 import ch.plaintext.mailtemplate.IMailTemplateProvider.RenderedMail;
 import ch.plaintext.settings.ISetupConfigService;
@@ -14,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.ott.GenerateOneTimeTokenRequest;
 import org.springframework.security.authentication.ott.OneTimeToken;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
@@ -37,6 +39,11 @@ public class MagicLinkService {
     private final ISetupConfigService setupConfigService;
     private final MagicLinkProperties properties;
     private final IMailTemplateProvider mailTemplateProvider;
+    private final EigeneAdresse eigeneAdresse;
+
+    /** Last fallback of {@link EigeneAdresse}, the same one {@code SelfServiceController.basisUrl} passes. */
+    @Value("${plaintext.baseurl:}")
+    private String plaintextBaseurl;
 
     /**
      * Sends the finished magic link to the user via system mail.
@@ -87,10 +94,18 @@ public class MagicLinkService {
 
     /**
      * Builds the magic link for an already generated token and sends it by mail.
+     * Without a configured own address nothing is sent: a login link must never point to a host
+     * the request named (Karte 1501, S-6).
      */
     public boolean sendForExistingToken(MyUserEntity user, String rawToken, HttpServletRequest request) {
-        String link = buildMagicLink(request, rawToken);
-        return sendMagicLinkEmail(user, link);
+        String base = basisUrl();
+        if (base.isBlank()) {
+            log.warn("MagicLink: Mail nicht gesendet, keine eigene Adresse konfiguriert "
+                    + "(plaintext.magiclink.public-base-url, app.ownhost, plaintext.app.ownhost oder plaintext.baseurl). "
+                    + "Aus dem Request wird sie bewusst NICHT abgeleitet (Karte 1501).");
+            return false;
+        }
+        return sendMagicLinkEmail(user, base + request.getContextPath() + "/login/ott?token=" + rawToken);
     }
 
     /**
@@ -107,30 +122,16 @@ public class MagicLinkService {
         return sendForExistingToken(user, ott.getTokenValue(), request);
     }
 
-    private String buildMagicLink(HttpServletRequest request, String token) {
-        String base = properties.getPublicBaseUrl().isBlank()
-                ? extractBaseUrl(request)
-                : properties.getPublicBaseUrl();
-        if (base.endsWith("/")) {
-            base = base.substring(0, base.length() - 1);
-        }
-        return base + request.getContextPath() + "/login/ott?token=" + token;
-    }
-
     /**
-     * Fallback base URL when {@code plaintext.magiclink.public-base-url} is not configured.
-     * Deliberately uses NO {@code X-Forwarded-*} headers: those can be set by the client and
-     * would otherwise allow phishing links with a real token pointing to foreign hosts (host header injection).
+     * Base of the link — from configuration only, never from the request. Behind the
+     * {@code ForwardedHeaderFilter} the request host is whatever {@code X-Forwarded-Host} says.
+     * {@code public-base-url} stays the first choice, then the address every other outgoing link uses.
      */
-    private static String extractBaseUrl(HttpServletRequest request) {
-        log.warn("MagicLink: plaintext.magiclink.public-base-url ist nicht konfiguriert – "
-                + "Fallback auf Server-Namen '{}' (keine Forwarded-Header). "
-                + "Bitte public-base-url konfigurieren, damit Links hinter dem Reverse-Proxy stimmen.",
-                request.getServerName());
-        String scheme = request.getScheme();
-        String host = request.getServerName();
-        int port = request.getServerPort();
-        boolean defaultPort = ("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443);
-        return scheme + "://" + host + (defaultPort ? "" : ":" + port);
+    private String basisUrl() {
+        String base = properties.getPublicBaseUrl();
+        if (base == null || base.isBlank()) {
+            base = eigeneAdresse.basis(plaintextBaseurl == null ? "" : plaintextBaseurl);
+        }
+        return base == null ? "" : EigeneAdresse.ohneEndSlash(base);
     }
 }
