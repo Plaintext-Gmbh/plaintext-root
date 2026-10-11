@@ -95,6 +95,18 @@ public record ApiErrorResponse(
         );
     }
 
+    /** Card 1485: valid token, but its (capped) scope does not allow this request. */
+    public static ApiErrorResponse insufficientScope(String path) {
+        return new ApiErrorResponse(
+                403,
+                "INSUFFICIENT_SCOPE",
+                "The provided token lacks the required scope for this request.",
+                Instant.now(),
+                null,
+                path
+        );
+    }
+
     public static ApiErrorResponse notFound(String resource, String path) {
         return new ApiErrorResponse(
                 404,

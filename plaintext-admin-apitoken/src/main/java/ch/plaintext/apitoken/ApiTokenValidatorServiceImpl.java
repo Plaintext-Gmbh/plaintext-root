@@ -6,6 +6,7 @@
  */
 package ch.plaintext.apitoken;
 
+import ch.plaintext.McpUserRoles;
 import ch.plaintext.modules.ModulApiUmsetzung;
 
 import ch.plaintext.apitoken.IApiTokenService.ApiTokenValidationResult;
@@ -14,10 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Centralized Bearer token validation for all REST API controllers.
@@ -29,16 +33,20 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Checks the bearer header of a REST call (signature, expiry and revocation) and returns either the outcome or an RFC 7807 error response.",
+@ModulApiUmsetzung(beschreibung = "Checks the bearer header of a REST call (signature, expiry, revocation and scope) and returns either the outcome or an RFC 7807 error response.",
         seiteneffekte = ModulApiUmsetzung.Seiteneffekte.KEINE,
-        hinweise = {"Reads only, writes nothing", "A missing, invalid, expired or revoked token yields an error response (hasError)"},
+        hinweise = {"Reads only, writes nothing", "A missing, invalid, expired or revoked token yields an error response (hasError)",
+                "A request other than GET/HEAD/OPTIONS needs the scope WRITE, capped by the owner's roles (ApiTokenScopeDeckel); otherwise 403 INSUFFICIENT_SCOPE"},
         beispiele = {"validateRequest(request).hasError() -> return the error response"})
 public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
 
     private final ApiTokenService apiTokenService;
     private final JwtTokenService jwtTokenService;
+    private final McpUserRoles mcpUserRoles;
+    private final ApiTokenScopeDeckel scopeDeckel;
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final Set<String> LESENDE_METHODEN = Set.of("GET", "HEAD", "OPTIONS");
 
     @Override
     public ITokenValidationOutcome validateRequest(String authorizationHeader, String requestPath) {
@@ -78,12 +86,34 @@ public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
                         requestPath, result.get().tokenName(), result.get().userId());
                 return errorOutcome(ApiErrorResponse.tokenInvalid(requestPath));
             }
-            return new TokenValidationOutcome(null, result.get());
+            // SECURITY (card 1485, M1 from review 1450): same scope rule as /mcp. Effective scope =
+            // min(claim, what the owner's CURRENT roles allow); a write (any method but
+            // GET/HEAD/OPTIONS) needs WRITE. Before, a READ token wrote packing lists and uploads.
+            ApiTokenValidationResult v = result.get();
+            Set<String> rollen = mcpUserRoles.rolesForUser(v.userId());
+            String claim = v.scope() == null || v.scope().isBlank() ? ApiTokenScopeDeckel.READ : v.scope();
+            Optional<String> wirksam = scopeDeckel.deckeln(claim, rollen == null ? Set.of() : rollen, v.tokenName());
+            boolean schreibend = istSchreibend();
+            if (wirksam.isEmpty() || (schreibend
+                    && ApiTokenScopeDeckel.stufe(wirksam.get()) < ApiTokenScopeDeckel.stufe(ApiTokenScopeDeckel.WRITE))) {
+                log.warn("API request to {} rejected: token '{}' (userId={}) has scope {} (claim {}), write={}",
+                        requestPath, v.tokenName(), v.userId(), wirksam.orElse("none"), claim, schreibend);
+                return errorOutcome(ApiErrorResponse.insufficientScope(requestPath));
+            }
+            return new TokenValidationOutcome(null, v);
         }
 
         // JWT is valid, but not (any longer) in the DB or invalidated → revoked
         log.warn("API request with revoked token to {} for userId={}", requestPath, jwtResult.get().userId());
         return errorOutcome(ApiErrorResponse.tokenRevoked(requestPath));
+    }
+
+    /** Method of the current MVC request; without a bound request it fails closed (= write). */
+    private static boolean istSchreibend() {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes a) {
+            return !LESENDE_METHODEN.contains(a.getRequest().getMethod());
+        }
+        return true;
     }
 
     private String extractBearerToken(String authHeader) {
