@@ -331,7 +331,22 @@ class PlaintextLayeringTest {
         return jars;
     }
 
+    /**
+     * The reactor's main classes, imported once per test JVM and shared by every rule that scans them
+     * (Layering, Modulgrenzen, RootCommonApi, Vertragsort). Each used to hold its own import in a static
+     * field; in a consumer's surefire fork that meant four copies of the whole reactor, which ran the
+     * app fork out of its ~1 GB heap (card 1522).
+     */
     static JavaClasses importiereReactorKlassen() {
+        return GeteilterImport.KLASSEN;
+    }
+
+    /** Holder idiom: imported lazily on first use, thread-safe through class initialisation. */
+    private static final class GeteilterImport {
+        private static final JavaClasses KLASSEN = importiereEinmal();
+    }
+
+    private static JavaClasses importiereEinmal() {
         List<Path> roots = new ArrayList<>(ReactorLayout.sourceRoots(KLASSEN_SUFFIX));
         roots.addAll(jarsOhneKlassenverzeichnis(roots));
         JavaClasses alle = new ClassFileImporter()
