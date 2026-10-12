@@ -66,5 +66,42 @@
       "depNameTemplate": "org.webjars:swagger-ui",
       "datasourceTemplate": "maven"
     }
+  ],
+  "packageRules": [
+    {
+      "description": [
+        "Karte 1507 (12.10.2026): CDI 5 (Jakarta EE 12) NICHT uebernehmen, weder als Major noch als Renovate-Ersatz auf jakarta.cdi:jakarta.cdi(-el)-api.",
+        "WARUM: CDI 5 hat BeanManager.getELResolver() entfernt (liegt jetzt nur noch in ELAwareBeanManager aus cdi-el-api). Mojarra 4.1.x (Faces 4.1) ruft die Methode beim Start auf:",
+        "guild#380 brach mit NoSuchMethodError 'jakarta.el.ELResolver jakarta.enterprise.inject.spi.BeanManager.getELResolver()' in com.sun.faces.config.ConfigureListener ab, app#871 mit demselben Kontextabbruch in allen Playwright-ITs.",
+        "Dazu zieht jakarta.cdi-api 5 kein jakarta.el-api mehr transitiv mit (root#216: pageguard-Tests, ClassNotFoundException jakarta.el.ELContext).",
+        "Wieder freigeben erst mit Faces 5 / Mojarra 5 (Jakarta EE 12) - dann zusammen mit Faces heben."
+      ],
+      "matchPackageNames": [
+        "jakarta.enterprise:jakarta.enterprise.cdi-api",
+        "jakarta.enterprise:jakarta.enterprise.cdi-el-api",
+        "jakarta.cdi:jakarta.cdi-api",
+        "jakarta.cdi:jakarta.cdi-el-api"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "replacement"
+      ],
+      "enabled": false
+    },
+    {
+      "description": [
+        "Karte 1507 (12.10.2026): PrimeFaces 16 (Major) bis auf Weiteres nicht vorschlagen.",
+        "WARUM: Die Familie (root/app/guild/schuetu/iot) muss PrimeFaces gemeinsam heben - root liefert Templates und Komponenten, die in jeder App mitlaufen.",
+        "PF 16 entfernt p:separator, baut das Dialog-Markup um, liefert kein -jakarta-Classifier-Jar mehr (schuetu#303: 'Could not find artifact org.primefaces:primefaces:jar:jakarta:16.0.0').",
+        "Die Migration ist ein eigener Schnitt, beginnend in root (Analyse in Karte 1507). Patch/Minor von 15.x laufen weiter."
+      ],
+      "matchPackageNames": [
+        "org.primefaces:primefaces"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    }
   ]
 }
