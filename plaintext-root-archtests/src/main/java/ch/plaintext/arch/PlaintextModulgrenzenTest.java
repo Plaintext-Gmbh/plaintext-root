@@ -29,8 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The first rule that guards a module boundary (card 1299, finding 5 of the refactoring
- * analysis 1274): no specialist module reaches into another specialist module except through an
- * {@code …-interfaces} module.
+ * analysis 1274): no specialist module reaches into another specialist module except through the
+ * provider's {@code …-api} module (card 1504; before that: any {@code …-interfaces} module).
  *
  * <p><b>Why now, and why with a frozen list.</b> Until 22.09.2026 not a single rule in the six
  * repositories checked a module or package boundary; {@link PlaintextLayeringTest} records why a
@@ -53,7 +53,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p><b>What is allowed without an entry.</b>
  * <ul>
- *   <li>Targets in a module whose name ends with {@code -interfaces} — the declared contracts.</li>
+ *   <li>Targets in a module whose name ends with {@code -api} — the contract jar a provider releases
+ *       with itself (decision Daniel, card 1502) — and in {@link #VERTRAGSMODULE}: root's shell API and
+ *       the frozen {@code plaintext-app-interfaces}. Until card 1504 every {@code -interfaces} module was
+ *       free, and the failure message said "lift the type into the -interfaces module" — the rule
+ *       itself fed the shared collection pot that card 1503 (modules as jars at runtime) cannot load
+ *       piecewise. A new {@code -interfaces} module is now a specialist module like any other.</li>
  *   <li>Targets in a <em>base module</em> ({@link #istBasis(String)}): the platform layer of
  *       root ({@link #ROOT_BASIS}) and a repository's own {@code …-common} module. They are the
  *       floor every specialist module stands on; which of their types a foreign repository may
@@ -105,6 +110,15 @@ class PlaintextModulgrenzenTest {
     private static final String EIGENES_BASISPAKET = "ch.plaintext.";
 
     /**
+     * Shared contract modules a specialist module may target without an entry. {@code
+     * plaintext-root-interfaces} is the shell's own API (what the empty shell offers or collects);
+     * {@code plaintext-app-interfaces} is frozen as it is and shrinks into its providers' {@code -api}
+     * modules (card 1502). No new name belongs here — {@link PlaintextVertragsortTest} says where a
+     * contract goes instead.
+     */
+    static final Set<String> VERTRAGSMODULE = Set.of("plaintext-root-interfaces", "plaintext-app-interfaces");
+
+    /**
      * root's platform layer: modules every application stands on and that carry no specialist
      * logic. Named explicitly instead of by pattern, because {@code plaintext-root-watch},
      * {@code -role-assignment} and {@code -menu-visibility} carry the same prefix and ARE
@@ -134,7 +148,7 @@ class PlaintextModulgrenzenTest {
     private static final JavaClasses KLASSEN = PlaintextLayeringTest.importiereReactorKlassen();
 
     @Test
-    @DisplayName("Kein Fachmodul greift an einem -interfaces-Modul vorbei in ein anderes Fachmodul")
+    @DisplayName("Kein Fachmodul greift am -api-Modul des Anbieters vorbei in ein anderes Fachmodul")
     void keinFachmodulGreiftInEinAnderes() {
         Map<String, String> modulJeKlasse = modulJeKlasse(KLASSEN);
         Set<String> module = new TreeSet<>(modulJeKlasse.values());
@@ -161,9 +175,10 @@ class PlaintextModulgrenzenTest {
                 () -> "\n\n=== Modulgrenze: Fachmodul greift in ein anderes Fachmodul (%d) ===\n  "
                         .formatted(verstoesse.size())
                         + String.join("\n  ", verstoesse.stream().sorted().toList())
-                        + "\n\nEin Fachmodul spricht mit einem anderen nur ueber dessen -interfaces-Modul.\n"
-                        + "Loesung: den benutzten Typ (oder ein Interface dafuer) ins -interfaces-Modul heben\n"
-                        + "und dagegen programmieren. Begruendete Ausnahme (Ist-Zustand einfrieren, nicht\n"
+                        + "\n\nEin Fachmodul spricht mit einem anderen nur ueber dessen -api-Modul.\n"
+                        + "Loesung: den benutzten Typ (oder ein Interface dafuer) ins -api-Modul des Anbieters heben\n"
+                        + "(<anbieter>-api, wird mit ihm released) und dagegen programmieren. KEIN gemeinsames\n"
+                        + "-interfaces-Modul (Karte 1503/1504). Begruendete Ausnahme (Ist-Zustand einfrieren, nicht\n"
                         + "Neues erlauben): '" + REGEL + " <Quellklasse> -> <Zielklasse>  # <Karte, Grund>' in "
                         + ArchAllowlist.DATEINAME + ".\n");
     }
@@ -207,6 +222,8 @@ class PlaintextModulgrenzenTest {
         assertTrue(istErlaubtesZiel("plaintext-root-interfaces"));
         assertTrue(istErlaubtesZiel("plaintext-root-common"));
         assertTrue(istErlaubtesZiel("plaintext-guild-common"));
+        assertTrue(istErlaubtesZiel("plaintext-z-mailbox-api"), "Vertrag des Anbieters");
+        assertFalse(istErlaubtesZiel("plaintext-guild-interfaces"), "neues -interfaces-Modul ist kein Freibrief mehr");
         assertFalse(istErlaubtesZiel("plaintext-z-kontakte"), "Fachmodul als Ziel");
         assertFalse(istErlaubtesZiel("plaintext-admin-settings"), "root-Fachmodul als Ziel");
         assertFalse(istErlaubtesZiel("plaintext-root-watch"), "root-Praefix macht noch keine Basis");
@@ -259,7 +276,7 @@ class PlaintextModulgrenzenTest {
     }
 
     static boolean istErlaubtesZiel(String modul) {
-        return modul.endsWith("-interfaces") || istBasis(modul);
+        return VERTRAGSMODULE.contains(modul) || modul.endsWith("-api") || istBasis(modul);
     }
 
     static boolean istBasis(String modul) {
@@ -271,7 +288,7 @@ class PlaintextModulgrenzenTest {
         return i < 0 ? klasse : klasse.substring(0, i);
     }
 
-    private static Map<String, String> modulJeKlasse(JavaClasses klassen) {
+    static Map<String, String> modulJeKlasse(JavaClasses klassen) {
         Map<String, String> m = new HashMap<>();
         for (JavaClass k : klassen) {
             k.getSource().ifPresent(s -> {

@@ -13,6 +13,11 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **`MailSender` is a contract of the shell** (Karte 1504): `ch.plaintext.mailversand.MailSender`, `MailAccountRef`,
+  `MailAttachment` in `plaintext-root-interfaces`, `AutomatischerVersand` in `plaintext-root-common`. New package on
+  purpose: app still has `ch.plaintext.mail.*` and switches in its own PR. Helper code from app-interfaces now in
+  `plaintext-root-common` under the same names (`@StabileApi`): `Auswertungszeitraum`, `AbstractHoehenService`,
+  `ILatLon`, `McpLiterale`, `AbstractGcmPasswordCipher`, `Telefonnummern` — app deletes its copies on the bump.
 - **Share links without login, for every module** (Karte 1476): new module `plaintext-root-freigabe` (comes with
   `plaintext-root-webapp`). A module registers a `FreigabeQuelle` (`plaintext-root-interfaces`, package
   `ch.plaintext.freigabe`: `typ`, `darfFreigeben`, `zeige`, optional `schreibe`); root handles the token (24 bytes
@@ -78,6 +83,14 @@ exhaustive.
   `PlaintextModulApiVertragTest` until it carries `@ModulApiUmsetzung` — add it with the bump.
 
 ### Changed
+- **Contracts live with their provider** (Karte 1504, decisions in Karte 1502). New ArchUnit rule `vertragsort`
+  (`PlaintextVertragsortTest`): an interface implemented only in another module and not used in its own belongs in
+  that provider's `<modul>-api` jar; root's shell (`plaintext-root-interfaces` + platform layer) is exempt.
+  `modulgrenze` no longer frees every `-interfaces` module: allowed targets are `-api` modules, root-interfaces and
+  the frozen `plaintext-app-interfaces`. **Consumers on the bump:** freeze the current `vertragsort` hits in
+  `plaintext-arch-allowlist.txt` (the failure message prints the lines).
+- **Removed dead interfaces** `TileRegistry` (with `TileItem`), `apitoken.IApiErrorResponse`,
+  `sessions.ISessionAuditService` — no consumer in any repository; `TileRegistryImpl` is gone with them.
 - **All watch pages of root on the mobile framework** (Karte 1387, Daniel 01.10.2026: «bitte alles
   umstellen»). `WatchHomePage` (tiles from `WatchWidget`) and `WatchTestPage` (page switches plus a
   gallery of the building blocks) implement `MobilWatchPage`; `home.xhtml`, `elemente.xhtml`,

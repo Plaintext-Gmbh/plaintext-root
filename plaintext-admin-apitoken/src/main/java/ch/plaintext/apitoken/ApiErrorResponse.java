@@ -24,24 +24,18 @@ public record ApiErrorResponse(
         Instant timestamp,
         Instant expiredAt,
         String path
-) implements IApiErrorResponse {
+) {
 
-    @Override
     public int getStatus() { return status; }
 
-    @Override
     public String getError() { return error; }
 
-    @Override
     public String getMessage() { return message; }
 
-    @Override
     public Instant getTimestamp() { return timestamp; }
 
-    @Override
     public Instant getExpiredAt() { return expiredAt; }
 
-    @Override
     public String getPath() { return path; }
     public ApiErrorResponse(int status, String error, String message) {
         this(status, error, message, Instant.now(), null, null);

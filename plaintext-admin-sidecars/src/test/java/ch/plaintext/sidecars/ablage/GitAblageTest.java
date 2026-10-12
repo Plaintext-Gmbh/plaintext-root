@@ -36,7 +36,12 @@ class GitAblageTest {
     @BeforeEach
     void bareRepo() throws Exception {
         bare = tmp.resolve("repo.git");
-        Git.init().setBare(true).setInitialBranch("main").setDirectory(bare.toFile()).call().close();
+        try (Git g = Git.init().setBare(true).setInitialBranch("main").setDirectory(bare.toFile()).call()) {
+            // Auto-GC nach dem Push schreibt gc.log.lock nebenher; rechte() laeuft mit Files.walk darueber
+            // und brach lokal in 2 von 4 Laeufen mit NoSuchFileException ab (Karte 1504).
+            g.getRepository().getConfig().setBoolean("receive", null, "autogc", false);
+            g.getRepository().getConfig().save();
+        }
         url = bare.toUri().toString();
     }
 

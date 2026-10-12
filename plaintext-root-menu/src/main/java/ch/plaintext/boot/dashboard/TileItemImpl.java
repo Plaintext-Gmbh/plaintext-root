@@ -4,7 +4,6 @@
 package ch.plaintext.boot.dashboard;
 
 import ch.plaintext.MenuVisibilityProvider;
-import ch.plaintext.TileRegistry;
 import ch.plaintext.boot.menu.ModuleRoleService;
 import ch.plaintext.boot.menu.SecurityProvider;
 import lombok.Data;
@@ -23,7 +22,7 @@ import java.util.List;
  */
 @Data
 @Slf4j
-public class TileItemImpl implements TileRegistry.TileItem {
+public class TileItemImpl {
 
     private String id = "";
     private String title = "";
@@ -72,7 +71,6 @@ public class TileItemImpl implements TileRegistry.TileItem {
         return visible;
     }
 
-    @Override
     public boolean isOn() {
         // First check the role-based visibility
         if (roles != null && !roles.isEmpty() && securityProvider != null) {

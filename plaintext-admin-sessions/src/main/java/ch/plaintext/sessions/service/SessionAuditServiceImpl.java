@@ -3,10 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.sessions.service;
 
-import ch.plaintext.modules.ModulApiUmsetzung;
-
 import ch.plaintext.boot.plugins.log.Log;
-import ch.plaintext.sessions.ISessionAuditService;
 import ch.plaintext.sessions.entity.UserSession;
 import ch.plaintext.sessions.repository.UserSessionRepository;
 import jakarta.inject.Named;
@@ -21,11 +18,7 @@ import java.util.List;
 @Service
 @Named("sessionAuditService")
 @Slf4j
-@ModulApiUmsetzung(beschreibung = "Keeps one session row per sign-in up to date with user, tenant and browser identifier, and closes it at sign-out.",
-        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
-        hinweise = {"Write errors are logged and do not interrupt the sign-in"},
-        beispiele = {})
-public class SessionAuditServiceImpl implements ISessionAuditService {
+public class SessionAuditServiceImpl {
 
     private final UserSessionRepository repository;
 
@@ -33,7 +26,6 @@ public class SessionAuditServiceImpl implements ISessionAuditService {
         this.repository = repository;
     }
 
-    @Override
     @Transactional
     public void updateOrCreate(Long userId, String sessionId, Authentication authentication, String userAgent) {
         if (userId == null || sessionId == null) {
@@ -62,7 +54,6 @@ public class SessionAuditServiceImpl implements ISessionAuditService {
         }
     }
 
-    @Override
     @Transactional
     public void commit(Long userId) {
         if (userId == null) {
