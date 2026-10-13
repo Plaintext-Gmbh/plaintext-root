@@ -10,6 +10,8 @@ import ch.plaintext.apitoken.ApiTokenRepository;
 import ch.plaintext.apitoken.ApiTokenRevocationLookup;
 import ch.plaintext.boot.plugins.security.model.MyUserEntity;
 import ch.plaintext.boot.plugins.security.persistence.MyUserRepository;
+import ch.plaintext.boot.plugins.security.model.UserMandate;
+import ch.plaintext.boot.plugins.security.persistence.UserMandateRepository;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -66,6 +68,9 @@ class ApiTokenRevocationVertragIT {
 
     @Autowired
     private MyUserRepository userRepository;
+
+    @Autowired
+    private UserMandateRepository userMandateRepository;
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
@@ -281,5 +286,38 @@ class ApiTokenRevocationVertragIT {
         userRepository.flush();
         assertTrue(lookup.isUserDeleted(id), "nach dem Loeschen muss der Benutzer als geloescht gelten");
         assertTrue(lookup.isUserDeleted(Long.MAX_VALUE), "nie vergebene Id gilt als geloescht");
+    }
+
+    /**
+     * Card 1449 S-7: the tenant check reads the real tables. Home tenant and an active
+     * {@code user_mandate} grant access; deactivating the additional tenant withdraws it; ROOT
+     * may use every tenant.
+     */
+    @Test
+    void mandatpruefungLiestHeimmandantUndZusatzmandate() {
+        MyUserEntity u = new MyUserEntity();
+        u.setUsername("karte1449-" + System.nanoTime() + "@test.ch");
+        u.addRole("user");
+        u.setMandat("heim");
+        u = userRepository.saveAndFlush(u);
+        long id = u.getId();
+
+        assertTrue(lookup.hasMandatAccess(id, "heim"), "Heimmandant muss gelten");
+        assertFalse(lookup.hasMandatAccess(id, "zusatz"), "ohne user_mandate kein Zugang");
+
+        UserMandate um = new UserMandate();
+        um.setUsername(u.getUsername());
+        um.setMandat("zusatz");
+        um = userMandateRepository.saveAndFlush(um);
+        assertTrue(lookup.hasMandatAccess(id, "ZUSATZ"), "aktives Zusatzmandat muss gelten");
+
+        um.setActive(false);
+        userMandateRepository.saveAndFlush(um);
+        assertFalse(lookup.hasMandatAccess(id, "zusatz"), "entzogenes Zusatzmandat darf nicht gelten");
+
+        u.addRole("root");
+        userRepository.saveAndFlush(u);
+        assertTrue(lookup.hasMandatAccess(id, "zusatz"), "ROOT darf jeden Mandanten");
+        assertFalse(lookup.hasMandatAccess(Long.MAX_VALUE, "heim"), "unbekannter Benutzer hat keinen Zugang");
     }
 }

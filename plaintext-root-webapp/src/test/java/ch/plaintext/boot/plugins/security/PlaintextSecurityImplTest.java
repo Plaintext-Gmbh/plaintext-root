@@ -177,6 +177,33 @@ class PlaintextSecurityImplTest {
         verify(securityContext, never()).setAuthentication(any());
     }
 
+    /**
+     * Card 1449 S-14: the session-only switch (deep link) swaps the authority but writes nothing —
+     * and the DB home tenant stays selectable to switch back.
+     */
+    @Test
+    void switchActiveMandatFuerSitzung_schreibtNichtsInDieDb() {
+        authWith("u@x.ch", "ROLE_USER", "PROPERTY_MANDAT_alpha", "PROPERTY_MYUSERID_5");
+        UserMandate beta = new UserMandate();
+        beta.setUsername("u@x.ch");
+        beta.setMandat("beta");
+        beta.setActive(true);
+        when(userMandateRepo.findByUsernameAndActiveTrue("u@x.ch")).thenReturn(List.of(beta));
+        MyUserEntity user = new MyUserEntity();
+        user.setId(5L);
+        user.setMandat("alpha");
+        when(userRepository.findById(5L)).thenReturn(Optional.of(user));
+
+        plaintextSecurity.switchActiveMandatFuerSitzung("beta");
+
+        Authentication updated = SecurityContextHolder.getContext().getAuthentication();
+        assertTrue(updated.getAuthorities().stream()
+                .anyMatch(x -> "PROPERTY_MANDAT_beta".equals(x.getAuthority())), "Sitzung steht auf beta");
+        verify(userRepository, never()).save(any());
+        verify(userMandateRepo, never()).save(any());
+        assertTrue(plaintextSecurity.getAllowedMandate().contains("alpha"), "Heimmandant bleibt waehlbar");
+    }
+
     @Test
     void switchActiveMandat_persistiertInDb_undSichertVorigesMandat() {
         // "remember permanently": the chosen tenant is persisted in the DB role (robust against

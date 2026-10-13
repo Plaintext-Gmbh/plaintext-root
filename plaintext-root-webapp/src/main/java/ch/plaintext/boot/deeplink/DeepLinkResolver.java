@@ -35,6 +35,9 @@ import java.util.Set;
  * into a tenant that the user would be allowed to select via the topbar anyway. If the check turns
  * out negative, the previous tenant is restored, so that a dead link does not silently move the
  * user into another context.
+ *
+ * <p>Card 1449 S-14: the switch is for the session only. A deep link is a GET, so a foreign page
+ * could trigger it with an {@code <img src>}; it must not rewrite the home tenant in the database.
  */
 @Service
 @Slf4j
@@ -78,7 +81,7 @@ public class DeepLinkResolver {
         String vorherigesMandat = plaintextSecurity.getMandat();
         boolean gewechselt = false;
         if (!m.equalsIgnoreCase(vorherigesMandat)) {
-            plaintextSecurity.switchActiveMandat(m);
+            plaintextSecurity.switchActiveMandatFuerSitzung(m);
             gewechselt = true;
         }
 
@@ -93,7 +96,7 @@ public class DeepLinkResolver {
 
         if (!erlaubt) {
             if (gewechselt) {
-                plaintextSecurity.switchActiveMandat(vorherigesMandat);
+                plaintextSecurity.switchActiveMandatFuerSitzung(vorherigesMandat);
             }
             log.warn("Deep-Link auf nicht zugaenglichen Datensatz abgelehnt (Benutzer {}, Typ {}, Mandat {})",
                     plaintextSecurity.getUser(), t, m);

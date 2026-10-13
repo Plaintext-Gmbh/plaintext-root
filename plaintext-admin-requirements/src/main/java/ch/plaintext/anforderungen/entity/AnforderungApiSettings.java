@@ -44,17 +44,18 @@ public class AnforderungApiSettings implements Serializable {
     private Boolean claudeAutomationEnabled;
 
     /**
-     * Keeps the hash consistent with the cleartext token on save: transitional phase — the
-     * cleartext is (still) the source of truth (the settings UI shows/sets it). If the
-     * token is cleared, the hash is cleared as well, otherwise the old token would stay valid.
-     * Follow-up: drop the cleartext column, show the token only once.
+     * Keeps the hash consistent with a legacy cleartext token on save.
+     *
+     * <p>Card 1449 S-12: the settings UI no longer writes cleartext — it stores only the hash and
+     * shows a new token once. A row WITHOUT cleartext therefore keeps its hash (before, an empty
+     * cleartext wiped the hash). {@code V1791865750} (Daniel's OK, 13.10.2026) first derives the
+     * missing hash from the legacy cleartext in SQL, then empties the cleartext of every row; the
+     * token keeps working through the hash.</p>
      */
     @PrePersist
     @PreUpdate
     void syncApiTokenHash() {
-        if (apiToken == null || apiToken.isBlank()) {
-            apiTokenHash = null;
-        } else {
+        if (apiToken != null && !apiToken.isBlank()) {
             apiTokenHash = ApiTokenHasher.sha256Hex(apiToken);
         }
     }

@@ -62,20 +62,17 @@ class AnforderungApiSettingsTest {
                 .isEqualTo(ApiTokenHasher.sha256Hex("new-token"));
     }
 
+    /**
+     * Card 1449 S-12: the settings UI stores only the hash. A row without cleartext must keep its
+     * hash on save — before, the empty cleartext wiped it and the token stopped working.
+     */
     @Test
-    void syncApiTokenHashClearsHashWhenTokenCleared() {
+    void syncApiTokenHashKeepsHashOfHashOnlyRow() {
         AnforderungApiSettings settings = new AnforderungApiSettings();
-        settings.setApiToken("token-123");
-        settings.syncApiTokenHash();
-        assertThat(settings.getApiTokenHash()).isNotNull();
-
+        settings.setApiTokenHash(ApiTokenHasher.sha256Hex("token-123"));
         settings.setApiToken(null);
         settings.syncApiTokenHash();
-        assertThat(settings.getApiTokenHash()).isNull();
-
-        settings.setApiToken("   ");
-        settings.setApiTokenHash("stale");
-        settings.syncApiTokenHash();
-        assertThat(settings.getApiTokenHash()).isNull();
+        assertThat(settings.getApiTokenHash()).isEqualTo(ApiTokenHasher.sha256Hex("token-123"));
+        assertThat(settings.getApiToken()).isNull();
     }
 }

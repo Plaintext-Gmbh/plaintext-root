@@ -42,10 +42,11 @@ class WebhookEndpointServiceTest {
     private final WebhookEndpointRepository endpointRepo = mock(WebhookEndpointRepository.class);
     private final WebhookDeliveryRepository deliveryRepo = mock(WebhookDeliveryRepository.class);
     private final WebhookDispatchService dispatchService = mock(WebhookDispatchService.class);
+    private final WebhookHttpClient httpClient = mock(WebhookHttpClient.class);
     private final WebhookCrypto crypto = new WebhookCrypto(new MockEnvironment());
 
     private final WebhookEndpointService service =
-            new WebhookEndpointService(endpointRepo, deliveryRepo, crypto, dispatchService);
+            new WebhookEndpointService(endpointRepo, deliveryRepo, crypto, dispatchService, httpClient);
 
     private WebhookEndpoint gespeichert() {
         ArgumentCaptor<WebhookEndpoint> captor = ArgumentCaptor.forClass(WebhookEndpoint.class);
@@ -141,5 +142,17 @@ class WebhookEndpointServiceTest {
         ArgumentCaptor<String> payload = ArgumentCaptor.forClass(String.class);
         verify(dispatchService).dispatch(eq(endpoint), eq("webhook.test"), payload.capture());
         assertTrue(payload.getValue().contains("\"eventType\":\"webhook.test\""));
+    }
+
+    /** Card 1449 S-11: an internal target is rejected when saving, before anything is stored. */
+    @Test
+    @DisplayName("create lehnt ein internes Ziel ab und speichert nichts")
+    void createLehntInternesZielAb() {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("intern"))
+                .when(httpClient).pruefeZiel("http://192.168.1.10/hook");
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> service.create("demo", "Ziel", "http://192.168.1.10/hook", true, "x"));
+        org.mockito.Mockito.verify(endpointRepo, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
     }
 }

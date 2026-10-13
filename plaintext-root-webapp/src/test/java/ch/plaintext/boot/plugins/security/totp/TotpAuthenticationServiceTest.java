@@ -21,6 +21,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -152,6 +153,22 @@ class TotpAuthenticationServiceTest {
         String secret = totpService.generateSecret();
         when(userRepository.findByUsername("alice")).thenReturn(userWithTotp(secret, null));
         assertTrue(service.verifySecondFactor("alice", validCode(secret)));
+    }
+
+    /** Card 1449 S-10 (RFC 6238 §5.2): the same code is accepted only once per user. */
+    @Test
+    void verifySecondFactor_lehntWiederverwendetenTotpCodeAb() throws Exception {
+        String secret = totpService.generateSecret();
+        when(userRepository.findByUsername(anyString())).thenAnswer(i -> {
+            MyUserEntity u = userWithTotp(secret, null);
+            u.setUsername(i.getArgument(0));
+            return u;
+        });
+        String code = validCode(secret);
+        assertTrue(service.verifySecondFactor("alice", code));
+        assertFalse(service.verifySecondFactor("alice", code), "Replay im Zeitfenster muss abgewiesen werden");
+        // Positive control: the block is per user, not global.
+        assertTrue(service.verifySecondFactor("bob", code));
     }
 
     @Test

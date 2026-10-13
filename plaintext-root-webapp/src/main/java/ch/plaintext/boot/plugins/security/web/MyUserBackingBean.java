@@ -346,8 +346,9 @@ public class MyUserBackingBean implements Serializable {
      */
     public void newUser() {
         selected = new MyUserEntity();
-        // Set default mandate for new user (can be changed in the dialog)
-        selected.setMandat("default");
+        // Card 1449 S-8: the tenant field is disabled (not submitted) for a non-ROOT, so a fixed
+        // "default" put the ADMIN's new account into a foreign tenant. ROOT picks it in the dialog.
+        selected.setMandat(isRoot() ? "default" : plaintextSecurity.getMandat());
         select();
     }
 
@@ -557,7 +558,8 @@ public class MyUserBackingBean implements Serializable {
      */
     private boolean pruefeRollenAllowlist(FacesContext context, Set<String> persistedRoles) {
         for (String role : selected.getRoles()) {
-            if (role == null || !PrivilegedRoleRules.isPrivileged(role) || persistedRoles.contains(role)) {
+            if (role == null || !PrivilegedRoleRules.isPrivileged(role) || persistedRoles.contains(role)
+                    || istEigeneMandatRolle(role)) {
                 continue;
             }
             log.warn("SECURITY (Karte 307, K1): Nicht-ROOT-Akteur versuchte, privilegierte Rolle '{}' "
@@ -567,6 +569,12 @@ public class MyUserBackingBean implements Serializable {
             return false;
         }
         return true;
+    }
+
+    /** Card 1449 S-8: the actor's own tenant role is what a new account of their tenant needs. */
+    private boolean istEigeneMandatRolle(String role) {
+        String eigen = plaintextSecurity.getMandat();
+        return eigen != null && !eigen.isBlank() && role.equalsIgnoreCase("PROPERTY_MANDAT_" + eigen);
     }
 
     /**

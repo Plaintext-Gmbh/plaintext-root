@@ -515,6 +515,20 @@ public class ApiTokenService implements IApiTokenService {
             return Optional.empty();
         }
 
+        // Card 1449 S-7: the tenant claim lives up to 365 days; a withdrawn tenant must end the
+        // token's access there. Fail-closed like the user check above.
+        boolean mandatZugang;
+        try {
+            mandatZugang = revocationLookup.hasMandatAccess(jwt.userId(), jwt.mandat());
+        } catch (RuntimeException e) {
+            log.warn("Mandantenpruefung fuer Token id={} nicht moeglich, weise ab: {}", t.id(), e.toString());
+            return Optional.empty();
+        }
+        if (!mandatZugang) {
+            log.warn("JWT token of userId={} for mandat={} without tenant access - rejected", jwt.userId(), jwt.mandat());
+            return Optional.empty();
+        }
+
         // Step 3: Update last used timestamp and use count (best effort, likewise via JDBC).
         // An error here must not overturn the access decision already taken: the numbers
         // are statistics, not part of the validation.

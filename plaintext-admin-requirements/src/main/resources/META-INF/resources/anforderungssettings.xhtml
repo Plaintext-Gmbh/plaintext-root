@@ -31,7 +31,9 @@
                     </p:panelGrid>
 
                     <h:outputText value=""/>
-                    <h:outputText value="Kopiere diesen Token in das watch-claude.sh Script"
+                    <h:outputText value="#{anforderungSettingsBackingBean.tokenVorhanden and empty anforderungSettingsBackingBean.apiToken
+                                          ? 'Ein Token ist gesetzt. Er wird nur beim Erzeugen angezeigt.'
+                                          : 'Kopiere diesen Token in das watch-claude.sh Script - er wird nur einmal angezeigt.'}"
                                   style="font-size: 0.9em; color: #666;"/>
 
                     <h:outputText value="Claude Automation Enabled:"/>

@@ -21,7 +21,39 @@ import static org.mockito.Mockito.when;
 class WebhookHttpClientTest {
 
     private final HttpClient jdkClient = mock(HttpClient.class);
-    private final WebhookHttpClient client = new WebhookHttpClient(jdkClient);
+    /** Name resolution without DNS: example.com public, intern.lan private. */
+    private static java.net.InetAddress[] aufloesen(String host) throws java.net.UnknownHostException {
+        if (Character.isDigit(host.charAt(0))) {
+            return new java.net.InetAddress[]{java.net.InetAddress.getByName(host)}; // IP literal, no DNS
+        }
+        byte[] ip = host.equals("intern.lan") ? new byte[]{(byte) 192, (byte) 168, 1, 10} : new byte[]{93, (byte) 184, (byte) 215, 14};
+        return new java.net.InetAddress[]{java.net.InetAddress.getByAddress(host, ip)};
+    }
+
+    private final WebhookHttpClient client =
+            new WebhookHttpClient(jdkClient, java.util.Set.of(), WebhookHttpClientTest::aufloesen);
+
+    /** Card 1449 S-11: an internal target is never contacted; the positive control is post_2xx_liefertErfolg. */
+    @Test
+    void post_internesZiel_wirdNichtAngefragt() throws Exception {
+        WebhookHttpClient.DeliveryResult result = client.post("http://intern.lan/admin", Map.of(), "{}");
+
+        assertFalse(result.success());
+        assertTrue(result.responseSnippet().startsWith("Ziel nicht erlaubt"));
+        org.mockito.Mockito.verifyNoInteractions(jdkClient);
+        assertFalse(client.post("http://127.0.0.1:8080/", Map.of(), "{}").success());
+        org.mockito.Mockito.verifyNoInteractions(jdkClient);
+    }
+
+    /** Card 1449 S-11: an internal host in the allowlist stays reachable (e.g. a LAN receiver). */
+    @Test
+    void post_internesZielInDerAllowlist_wirdAngefragt() throws Exception {
+        HttpResponse<String> resp = response(200, "ok");
+        when(jdkClient.<String>send(any(), any())).thenReturn(resp);
+        WebhookHttpClient erlaubt = new WebhookHttpClient(jdkClient, java.util.Set.of("intern.lan"), WebhookHttpClientTest::aufloesen);
+
+        assertTrue(erlaubt.post("http://intern.lan/hook", Map.of(), "{}").success());
+    }
 
     @SuppressWarnings("unchecked")
     private HttpResponse<String> response(int statusCode, String body) {

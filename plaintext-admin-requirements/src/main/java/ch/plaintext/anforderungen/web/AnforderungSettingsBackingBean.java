@@ -8,6 +8,7 @@ import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.anforderungen.entity.AnforderungApiSettings;
 import ch.plaintext.anforderungen.entity.ClaudePrompt;
 import ch.plaintext.anforderungen.repository.AnforderungApiSettingsRepository;
+import ch.plaintext.anforderungen.security.ApiTokenHasher;
 import ch.plaintext.anforderungen.service.ClaudeAutomationService;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
@@ -59,7 +60,10 @@ public class AnforderungSettingsBackingBean implements Serializable {
     private PlaintextSecurity security;
 
     private Long settingsId;
+    /** Card 1449 S-12: only a freshly generated token, shown once; never read back from the DB. */
     private String apiToken;
+    /** Whether the tenant already has a token (hash or legacy cleartext). */
+    private boolean tokenVorhanden;
     private Boolean claudeAutomationEnabled = false;
 
     private List<ClaudePrompt> promptHistory;
@@ -100,7 +104,8 @@ public class AnforderungSettingsBackingBean implements Serializable {
         try {
             apiSettingsRepository.findById(id).ifPresent(settings -> {
                 this.settingsId = settings.getId();
-                this.apiToken = settings.getApiToken();
+                this.apiToken = null;
+                this.tokenVorhanden = settings.getApiTokenHash() != null || settings.getApiToken() != null;
                 this.claudeAutomationEnabled = settings.getClaudeAutomationEnabled();
             });
 
@@ -116,7 +121,7 @@ public class AnforderungSettingsBackingBean implements Serializable {
 
     public void generateToken() {
         this.apiToken = claudeAutomationService.generateApiToken();
-        addMessage("Token Generated", "New API token generated. Please save settings.");
+        addMessage("Token Generated", "New API token generated. Copy it now and save settings - it is shown only once.");
     }
 
     public void save() {
@@ -138,7 +143,12 @@ public class AnforderungSettingsBackingBean implements Serializable {
             }
 
             // Update fields
-            settings.setApiToken(this.apiToken);
+            if (this.apiToken != null && !this.apiToken.isBlank()) {
+                // Card 1449 S-12: store the hash only; the cleartext is shown once and not kept.
+                settings.setApiTokenHash(ApiTokenHasher.sha256Hex(this.apiToken));
+                settings.setApiToken(null);
+                this.tokenVorhanden = true;
+            }
             settings.setClaudeAutomationEnabled(this.claudeAutomationEnabled);
 
             // Save
