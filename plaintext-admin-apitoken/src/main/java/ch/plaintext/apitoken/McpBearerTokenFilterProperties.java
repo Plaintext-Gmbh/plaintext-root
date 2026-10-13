@@ -25,6 +25,8 @@ import java.util.List;
  *       url-patterns:                # Default: /mcp/*
  *         - /mcp/*
  *         - /api/turnier/*
+ *       ui-token-url-patterns:       # Default: empty = ui: tokens nowhere; never /mcp
+ *         - /api/turnier/*
  *       order: 1                     # Default 1 (after the security chain, permitAll paths)
  * }</pre>
  *
@@ -40,6 +42,14 @@ public class McpBearerTokenFilterProperties {
 
     /** Servlet URL patterns the filter applies to. Empty => default {@code /mcp/*}. */
     private List<String> urlPatterns = new ArrayList<>(List.of("/mcp/*"));
+
+    /**
+     * Patterns (servlet syntax, a subset of {@link #urlPatterns}) on which a {@code ui:} token
+     * ({@link IApiTokenService#UI_TOKEN_NAME_PREFIX}) is accepted, card 1492. Default empty: a
+     * {@code ui:} token is rejected on every pattern of the filter. A pattern that reaches
+     * {@code /mcp} aborts the start ({@link McpBearerTokenFilterConfig}).
+     */
+    private List<String> uiTokenUrlPatterns = new ArrayList<>();
 
     /**
      * Validation strategy, see {@link Validation}.

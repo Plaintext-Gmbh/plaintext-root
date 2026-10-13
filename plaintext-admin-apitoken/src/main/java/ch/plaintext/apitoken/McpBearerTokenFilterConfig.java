@@ -69,6 +69,16 @@ public class McpBearerTokenFilterConfig {
             filter.setScopeDeckel(scopeDeckel);
         }
 
+        // Card 1492: where a ui: token counts. /mcp stays closed to it, whatever the app configures.
+        List<String> uiMuster = properties.getUiTokenUrlPatterns() == null ? List.of() : properties.getUiTokenUrlPatterns();
+        for (String muster : uiMuster) {
+            if (McpBearerTokenFilter.passt("/mcp", muster) || McpBearerTokenFilter.passt("/mcp/x", muster)) {
+                throw new IllegalStateException("plaintext.mcp.bearer-filter.ui-token-url-patterns: '" + muster
+                        + "' oeffnet /mcp fuer ui:-Tokens (Karte 1492)");
+            }
+        }
+        filter.setUiTokenUrlPatterns(List.copyOf(uiMuster));
+
         // NEVER pass an empty pattern list on to the registration: a FilterRegistrationBean without
         // patterns maps to /* and would put the WHOLE app behind bearer auth.
         List<String> patterns = properties.getUrlPatterns();
@@ -79,8 +89,8 @@ public class McpBearerTokenFilterConfig {
         FilterRegistrationBean<McpBearerTokenFilter> registration = new FilterRegistrationBean<>(filter);
         registration.addUrlPatterns(patterns.toArray(String[]::new));
         registration.setOrder(properties.getOrder());
-        log.info("Zentraler McpBearerTokenFilter registriert: validation={}, patterns={}, order={}",
-                properties.getValidation(), patterns, properties.getOrder());
+        log.info("Zentraler McpBearerTokenFilter registriert: validation={}, patterns={}, ui-patterns={}, order={}",
+                properties.getValidation(), patterns, uiMuster, properties.getOrder());
         ApiTokenScopeDeckel wirksam = scopeDeckel != null ? scopeDeckel : new ApiTokenScopeDeckel();
         log.info("MCP: Scope-Deckel enabled={} lese-rollen={} schreib-rollen={} admin-rollen={} service-tokens={}",
                 wirksam.isEnabled(), wirksam.getLeseRollen(), wirksam.getSchreibRollen(),
