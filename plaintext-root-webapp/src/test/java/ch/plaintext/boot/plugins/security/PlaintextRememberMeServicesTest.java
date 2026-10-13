@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security;
 
+import ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -26,6 +27,8 @@ import java.util.Date;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Card 898: a series/token mismatch must not produce an HTTP 500.
@@ -64,6 +67,23 @@ class PlaintextRememberMeServicesTest {
                 .authorities(AuthorityUtils.createAuthorityList("ROLE_USER")).build();
     }
 
+    private static TotpAuthenticationService totp(boolean verlangt) {
+        TotpAuthenticationService service = mock(TotpAuthenticationService.class);
+        when(service.isTotpRequired("mad")).thenReturn(verlangt);
+        return service;
+    }
+
+    /** Repository with a matching token; records removals. */
+    private static final class PassendesRepository implements PersistentTokenRepository {
+        private final List<String> entfernt = new ArrayList<>();
+        @Override public void createNewToken(PersistentRememberMeToken token) { }
+        @Override public void updateToken(String series, String tokenValue, Date lastUsed) { }
+        @Override public PersistentRememberMeToken getTokenForSeries(String seriesId) {
+            return new PersistentRememberMeToken("mad", seriesId, "gleiches-token", new Date());
+        }
+        @Override public void removeUserTokens(String username) { entfernt.add(username); }
+    }
+
     /** Cookie format of Spring Security: base64("serie:token"). */
     private static MockHttpServletRequest anfrageMitCookie(String serie, String token) {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/login.html");
@@ -90,7 +110,7 @@ class PlaintextRememberMeServicesTest {
     @DisplayName("unsere Ableitung liefert null statt zu werfen, und loescht das Cookie")
     void ableitung_liefert_null_und_loescht_das_cookie() {
         MismatchRepository repository = new MismatchRepository();
-        PlaintextRememberMeServices unsere = new PlaintextRememberMeServices(KEY, nutzer(), repository);
+        PlaintextRememberMeServices unsere = new PlaintextRememberMeServices(KEY, nutzer(), repository, totp(false));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         Authentication ergebnis = unsere.autoLogin(anfrageMitCookie(SERIE, "mitgebrachtes-token"), response);
@@ -119,7 +139,7 @@ class PlaintextRememberMeServicesTest {
                 fail("bei passendem Token darf nichts entfernt werden");
             }
         };
-        PlaintextRememberMeServices unsere = new PlaintextRememberMeServices(KEY, nutzer(), passend);
+        PlaintextRememberMeServices unsere = new PlaintextRememberMeServices(KEY, nutzer(), passend, totp(false));
 
         Authentication ergebnis = unsere.autoLogin(
                 anfrageMitCookie(SERIE, "gleiches-token"), new MockHttpServletResponse());
@@ -132,9 +152,40 @@ class PlaintextRememberMeServicesTest {
     @DisplayName("ohne Cookie bleibt es beim bisherigen Verhalten: null, kein Fehler")
     void ohne_cookie_kein_fehler() {
         PlaintextRememberMeServices unsere =
-                new PlaintextRememberMeServices(KEY, nutzer(), new MismatchRepository());
+                new PlaintextRememberMeServices(KEY, nutzer(), new MismatchRepository(), totp(false));
 
         assertNull(unsere.autoLogin(new MockHttpServletRequest("GET", "/login.html"),
                 new MockHttpServletResponse()));
+    }
+
+    @Test
+    @DisplayName("Karte 1530 POSITIVPROBE: Konto ohne TOTP behaelt Remember-Me")
+    void konto_ohne_totp_behaelt_remember_me() {
+        PassendesRepository repository = new PassendesRepository();
+        PlaintextRememberMeServices unsere = new PlaintextRememberMeServices(KEY, nutzer(), repository, totp(false));
+
+        Authentication ergebnis = unsere.autoLogin(
+                anfrageMitCookie(SERIE, "gleiches-token"), new MockHttpServletResponse());
+
+        assertNotNull(ergebnis);
+        assertEquals("mad", ergebnis.getName());
+        assertTrue(repository.entfernt.isEmpty(), "ohne TOTP bleiben die Tokens bestehen");
+    }
+
+    @Test
+    @DisplayName("Karte 1530 NEGATIVPROBE: Konto mit TOTP wird abgelehnt, Tokens weg, Cookie geloescht")
+    void konto_mit_totp_wird_abgelehnt() {
+        PassendesRepository repository = new PassendesRepository();
+        PlaintextRememberMeServices unsere = new PlaintextRememberMeServices(KEY, nutzer(), repository, totp(true));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        Authentication ergebnis = unsere.autoLogin(anfrageMitCookie(SERIE, "gleiches-token"), response);
+
+        assertNull(ergebnis, "null = kein Auto-Login, der Benutzer landet auf der Anmeldeseite (mit TOTP)");
+        assertTrue(repository.entfernt.contains("mad"), "die Remember-Me-Tokens des Kontos sind verworfen");
+        Cookie[] cookies = response.getCookies();
+        Cookie letztes = cookies[cookies.length - 1];
+        assertEquals("remember-me", letztes.getName());
+        assertEquals(0, letztes.getMaxAge(), "das zuletzt gesetzte Cookie loescht remember-me");
     }
 }

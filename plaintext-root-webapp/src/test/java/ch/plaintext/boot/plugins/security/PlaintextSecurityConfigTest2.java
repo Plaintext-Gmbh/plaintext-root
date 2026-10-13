@@ -59,6 +59,7 @@ class PlaintextSecurityConfigTest2 {
                 tokenRepository, userDetail, authenticationSuccessHandler,
                 securityProperties, clientRegistrationRepository, oidcUserService,
                 hashedOneTimeTokenService, magicLinkGenerationSuccessHandler,
+                org.mockito.Mockito.mock(ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService.class),
                 new org.springframework.mock.env.MockEnvironment());
     }
 

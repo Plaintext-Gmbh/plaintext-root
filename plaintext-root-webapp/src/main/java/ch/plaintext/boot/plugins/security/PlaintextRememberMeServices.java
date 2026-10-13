@@ -5,12 +5,15 @@ package ch.plaintext.boot.plugins.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.rememberme.CookieTheftException;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
+import org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationException;
 
 /**
  * Remember-me service that does not let a series/token mismatch run into an HTTP 500.
@@ -42,13 +45,45 @@ import org.springframework.security.web.authentication.rememberme.PersistentToke
  * database reset produce it just as well. That is why a WARN line with series and identifier stays
  * in place — the difference between harmless and attack lies in the accumulation, not in the single
  * case, and the accumulation is only visible if every case is logged.
+ *
+ * <h2>No remember-me for accounts with TOTP (card 1530, decision from card 1495)</h2>
+ * A remember-me login skips the {@code PlaintextAuthenticationSuccessHandler} and with it the
+ * TOTP step. If {@link TotpAuthenticationService#isTotpRequired(String)} is true for the account,
+ * {@link #processAutoLoginCookie} therefore refuses: the user's persistent tokens are removed, the
+ * cookie is cancelled by {@code autoLogin}, and the user logs in normally with the second factor.
+ * This also closes the case "tenant switches TOTP off and on again": tokens issued in between no
+ * longer work. Accounts without TOTP keep remember-me unchanged.
  */
 @Slf4j
 public class PlaintextRememberMeServices extends PersistentTokenBasedRememberMeServices {
 
+    private final PersistentTokenRepository tokenRepository;
+    private final TotpAuthenticationService totpAuthenticationService;
+
     public PlaintextRememberMeServices(String key, UserDetailsService userDetailsService,
-                                       PersistentTokenRepository tokenRepository) {
+                                       PersistentTokenRepository tokenRepository,
+                                       TotpAuthenticationService totpAuthenticationService) {
         super(key, userDetailsService, tokenRepository);
+        this.tokenRepository = tokenRepository;
+        this.totpAuthenticationService = totpAuthenticationService;
+    }
+
+    /**
+     * Like {@code super}, but refuses accounts that require TOTP (card 1530). The
+     * {@link RememberMeAuthenticationException} is caught by {@code autoLogin}, which cancels the
+     * cookie and returns {@code null} — the request continues anonymously to the login page.
+     */
+    @Override
+    protected UserDetails processAutoLoginCookie(String[] cookieTokens, HttpServletRequest request,
+                                                 HttpServletResponse response) {
+        UserDetails user = super.processAutoLoginCookie(cookieTokens, request, response);
+        if (totpAuthenticationService.isTotpRequired(user.getUsername())) {
+            tokenRepository.removeUserTokens(user.getUsername());
+            log.info("SECURITY: remember-me fuer {} abgelehnt — Konto verlangt TOTP, "
+                    + "Anmeldung mit zweitem Faktor noetig (Karte 1530)", user.getUsername());
+            throw new RememberMeAuthenticationException("Remember-me not allowed for accounts with TOTP");
+        }
+        return user;
     }
 
     /**

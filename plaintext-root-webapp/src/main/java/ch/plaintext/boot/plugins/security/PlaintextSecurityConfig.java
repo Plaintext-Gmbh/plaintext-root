@@ -11,6 +11,7 @@ import ch.plaintext.boot.plugins.security.magiclink.MagicLinkGenerationSuccessHa
 import ch.plaintext.boot.plugins.security.oidc.JdbcClientRegistrationRepository;
 import ch.plaintext.boot.plugins.security.oidc.PlaintextOidcUserService;
 import ch.plaintext.boot.plugins.security.service.MyRememberMeRepositoryRepository;
+import ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService;
 import ch.plaintext.boot.plugins.security.service.MyUserDetailsService;
 import ch.plaintext.boot.deeplink.DeepLinkService;
 import ch.plaintext.boot.security.PageAccessGuardFilter;
@@ -56,6 +57,7 @@ public class PlaintextSecurityConfig {
     private final PlaintextOidcUserService oidcUserService;
     private final HashedOneTimeTokenService hashedOneTimeTokenService;
     private final MagicLinkGenerationSuccessHandler magicLinkGenerationSuccessHandler;
+    private final TotpAuthenticationService totpAuthenticationService;
 
     // Framework defaults: ignore CSRF.
     // ATTENTION: JSF pages (*.xhtml/*.html) are deliberately NOT ignored. The JSF view state is
@@ -177,6 +179,7 @@ public class PlaintextSecurityConfig {
                                    PlaintextOidcUserService oidcUserService,
                                    HashedOneTimeTokenService hashedOneTimeTokenService,
                                    MagicLinkGenerationSuccessHandler magicLinkGenerationSuccessHandler,
+                                   TotpAuthenticationService totpAuthenticationService,
                                    org.springframework.core.env.Environment environment) {
         this.tokenRepository = tokenRepository;
         this.userDetail = detail;
@@ -186,6 +189,7 @@ public class PlaintextSecurityConfig {
         this.oidcUserService = oidcUserService;
         this.hashedOneTimeTokenService = hashedOneTimeTokenService;
         this.magicLinkGenerationSuccessHandler = magicLinkGenerationSuccessHandler;
+        this.totpAuthenticationService = totpAuthenticationService;
         this.rememberMeSigningKey = resolveRememberMeKey(securityProperties.getRememberMeKey(),
                 isProduction(environment));
     }
@@ -500,7 +504,8 @@ public class PlaintextSecurityConfig {
         // measured in card 892). The theft protection is untouched: removeUserTokens runs
         // in processAutoLoginCookie BEFORE the throw, the cookie is deleted via cancelCookie.
         PersistentTokenBasedRememberMeServices services =
-                new PlaintextRememberMeServices(rememberMeSigningKey, userDetail, tokenRepository);
+                new PlaintextRememberMeServices(rememberMeSigningKey, userDetail, tokenRepository,
+                        totpAuthenticationService);
         // On an OAuth/OIDC login there is no 'remember-me' form parameter. For
         // PlaintextAuthenticationSuccessHandler#loginSuccess to issue a persistent
         // cookie nonetheless, alwaysRemember has to be true (otherwise loginSuccess checks the
