@@ -26,8 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Card 1449 S-12: the migration empties the cleartext of the Claude automation token and leaves
- * the hash alone; the token stays valid through the hash. A row WITHOUT hash keeps its cleartext,
- * otherwise its token would silently stop working.
+ * the hash alone; the token stays valid through the hash. A row WITHOUT hash (app-prod, 13.10.2026:
+ * both rows) first gets the hash from its cleartext — the same computation as
+ * {@code ApiTokenHasher.sha256Hex} — and then loses the cleartext as well.
  *
  * <p>The migration belongs to {@code plaintext-admin-requirements}, which this webapp does not
  * include (the consumer apps do). The test therefore builds the table in the shape the module's
@@ -84,7 +85,9 @@ class ClaudeTokenKlartextMigrationIT {
         assertEquals(List.of("k1449a"), mandantUeberHash(jdbc, mitHash), "Token gilt ueber den Hash weiter");
 
         Map<String, Object> b = jdbc.queryForMap(
-                "SELECT api_token FROM anforderung_api_settings WHERE mandat = 'k1449b'");
-        assertEquals(ohneHash, b.get("api_token"), "ohne Hash bleibt der Klartext, sonst waere der Token tot");
+                "SELECT api_token, api_token_hash FROM anforderung_api_settings WHERE mandat = 'k1449b'");
+        assertEquals(sha256Hex(ohneHash), b.get("api_token_hash"), "Hash muss aus dem Klartext ergaenzt sein");
+        assertNull(b.get("api_token"), "Klartext muss auch ohne vorherigen Hash geleert sein");
+        assertEquals(List.of("k1449b"), mandantUeberHash(jdbc, ohneHash), "Token gilt ueber den neuen Hash");
     }
 }

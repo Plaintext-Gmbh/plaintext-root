@@ -48,9 +48,9 @@ public class AnforderungApiSettings implements Serializable {
      *
      * <p>Card 1449 S-12: the settings UI no longer writes cleartext — it stores only the hash and
      * shows a new token once. A row WITHOUT cleartext therefore keeps its hash (before, an empty
-     * cleartext wiped the hash). {@code V1791865750} empties the legacy cleartext of every row
-     * that has a hash (Daniel's OK, 13.10.2026); a row without hash keeps it until its token is
-     * regenerated, otherwise that token would silently stop working.</p>
+     * cleartext wiped the hash). {@code V1791865750} (Daniel's OK, 13.10.2026) first derives the
+     * missing hash from the legacy cleartext in SQL, then empties the cleartext of every row; the
+     * token keeps working through the hash.</p>
      */
     @PrePersist
     @PreUpdate
