@@ -48,8 +48,9 @@ public class AnforderungApiSettings implements Serializable {
      *
      * <p>Card 1449 S-12: the settings UI no longer writes cleartext — it stores only the hash and
      * shows a new token once. A row WITHOUT cleartext therefore keeps its hash (before, an empty
-     * cleartext wiped the hash). Emptying the legacy cleartext column needs a Flyway migration
-     * and Daniel's OK for the data change in PROD; until then legacy rows keep matching.</p>
+     * cleartext wiped the hash). {@code V1791865750} empties the legacy cleartext of every row
+     * that has a hash (Daniel's OK, 13.10.2026); a row without hash keeps it until its token is
+     * regenerated, otherwise that token would silently stop working.</p>
      */
     @PrePersist
     @PreUpdate
