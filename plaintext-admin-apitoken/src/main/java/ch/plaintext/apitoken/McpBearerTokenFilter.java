@@ -25,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -162,6 +163,15 @@ public class McpBearerTokenFilter implements Filter {
     private ApiTokenScopeDeckel scopeDeckel = new ApiTokenScopeDeckel();
 
     /**
+     * Servlet URL patterns on which a {@code ui:} token is accepted (card 1492), from
+     * {@code plaintext.mcp.bearer-filter.ui-token-url-patterns}. Default empty = nowhere, the
+     * behaviour before. {@link McpBearerTokenFilterConfig} refuses any pattern that reaches
+     * {@code /mcp}.
+     */
+    @Setter
+    private List<String> uiTokenUrlPatterns = List.of();
+
+    /**
      * @param tokenValidator    validation strategy for the raw bearer token (without prefix)
      * @param mcpUserRoles      leak-free role lookup for the token user
      * @param revocationChecker optional jti blocklist check (never {@code null} — no-op default
@@ -251,7 +261,7 @@ public class McpBearerTokenFilter implements Filter {
         // back to READ, which HERE is read access to the whole application with the owner's
         // roles. The name prefix says it instead, and this is where it is enforced: such a token
         // is worth nothing at the API, no matter what its scope claims.
-        if (istNurFuerDieOberflaeche(validation.tokenName())) {
+        if (istNurFuerDieOberflaeche(validation.tokenName()) && !uiTokenErlaubt(httpRequest)) {
             log.warn("MCP request rejected: token '{}' (userId={}, mandat={}) is a UI credential ('{}')",
                     validation.tokenName(), validation.userId(), validation.mandat(),
                     IApiTokenService.UI_TOKEN_NAME_PREFIX);
@@ -414,6 +424,22 @@ public class McpBearerTokenFilter implements Filter {
         return tokenName != null
                 && tokenName.trim().toLowerCase(java.util.Locale.ROOT)
                         .startsWith(IApiTokenService.UI_TOKEN_NAME_PREFIX);
+    }
+
+    /** Whether the request path lies on one of {@link #uiTokenUrlPatterns} (card 1492). */
+    private boolean uiTokenErlaubt(HttpServletRequest request) {
+        // servletPath + pathInfo: decoded and normalized by the container, unlike getRequestURI().
+        String pfad = Objects.toString(request.getServletPath(), "") + Objects.toString(request.getPathInfo(), "");
+        return uiTokenUrlPatterns.stream().anyMatch(muster -> passt(pfad, muster));
+    }
+
+    /** Servlet URL pattern match: {@code /x/*} covers {@code /x} and everything below, otherwise exact. */
+    static boolean passt(String pfad, String muster) {
+        if (muster.endsWith("/*")) {
+            String basis = muster.substring(0, muster.length() - 2);
+            return pfad.equals(basis) || pfad.startsWith(basis + "/");
+        }
+        return pfad.equals(muster);
     }
 
     /**
