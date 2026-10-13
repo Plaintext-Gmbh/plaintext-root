@@ -186,6 +186,18 @@ public interface PlaintextSecurity {
     }
 
     /**
+     * Card 1449 S-14: switches the active tenant for the running session only — the home tenant in
+     * the database stays. For switches that a GET can trigger (deep link), so that a foreign page
+     * cannot move a user's home tenant with an {@code <img src>}.
+     * <p>Default implementation: no action.
+     *
+     * @param mandat target tenant, must be contained in {@link #getAllowedMandate()}
+     */
+    default void switchActiveMandatFuerSitzung(String mandat) {
+        // Default: no action – only the real implementation switches the tenant.
+    }
+
+    /**
      * Returns all usernames that have access to the tenant — either as their home tenant OR as an
      * assigned (active) additional tenant.
      * <p>Default implementation: only the users of the home tenant

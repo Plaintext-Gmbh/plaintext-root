@@ -13,7 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Link between the pure {@link TotpService} and the user persistence. Encapsulates the
@@ -40,6 +42,14 @@ public class TotpAuthenticationService {
     private final MyUserRepository userRepository;
     private final PlaintextSecurityProperties securityProperties;
     private final ISetupConfigService setupConfigService;
+
+    /**
+     * Card 1449 S-10 (RFC 6238 §5.2): accepted codes per user until they leave the time window, so
+     * that a code read over the shoulder cannot log in a second time within ~90 s.
+     * ponytail: in memory, per instance and lost on restart; a second instance or a restart within
+     * the window lets one replay through. Upgrade to a DB column if apps run more than one instance.
+     */
+    private final Map<String, Long> verbrauchteCodes = new ConcurrentHashMap<>();
 
     /**
      * Whether the TOTP feature is globally armed. Active as soon as EITHER the static property
@@ -87,11 +97,23 @@ public class TotpAuthenticationService {
 
         // 1) Normal 6-digit TOTP code (time-window tolerant).
         if (totpService.verifyCode(user.getTotpSecret(), trimmed)) {
-            return true;
+            return verbraucheCode(username, trimmed);
         }
 
         // 2) Fallback: recovery code (redeemed atomically). Case- and hyphen-tolerant.
         return redeemRecoveryCode(user, trimmed);
+    }
+
+    /** {@code true} only for the first use of this code by this user within its validity window. */
+    private boolean verbraucheCode(String username, String code) {
+        long jetzt = System.currentTimeMillis();
+        verbrauchteCodes.values().removeIf(ablauf -> ablauf < jetzt);
+        long fenster = (2L * Math.max(0, securityProperties.getTotp().getAllowedTimePeriodDiscrepancy()) + 2) * 30_000L;
+        if (verbrauchteCodes.putIfAbsent(username + ":" + code, jetzt + fenster) != null) {
+            log.warn("TOTP: bereits verwendeter Code fuer '{}' abgewiesen", Log.mail(username));
+            return false;
+        }
+        return true;
     }
 
     /**

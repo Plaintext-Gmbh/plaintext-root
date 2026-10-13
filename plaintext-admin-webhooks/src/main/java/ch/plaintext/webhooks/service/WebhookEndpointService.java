@@ -35,6 +35,7 @@ public class WebhookEndpointService {
     private final WebhookDeliveryRepository deliveryRepo;
     private final WebhookCrypto crypto;
     private final WebhookDispatchService dispatchService;
+    private final WebhookHttpClient httpClient;
 
     public List<WebhookEndpoint> findAll(String mandat) {
         return endpointRepo.findByMandatAndDeletedFalseOrderByNameAsc(mandat);
@@ -47,6 +48,7 @@ public class WebhookEndpointService {
     /** Creates a new endpoint; generates the signing secret and returns it in plain text exactly once. */
     @Transactional
     public String create(String mandat, String name, String url, boolean enabled, String eventTypes) {
+        httpClient.pruefeZiel(url); // Card 1449 S-11: reject internal targets when saving already
         String secret = generateSecret();
         WebhookEndpoint endpoint = new WebhookEndpoint();
         endpoint.setMandat(mandat);
@@ -63,6 +65,7 @@ public class WebhookEndpointService {
     /** Updates the master data (NOT the secret — use {@link #rotateSecret} for that). */
     @Transactional
     public void update(WebhookEndpoint endpoint) {
+        httpClient.pruefeZiel(endpoint.getUrl());
         endpointRepo.save(endpoint);
     }
 

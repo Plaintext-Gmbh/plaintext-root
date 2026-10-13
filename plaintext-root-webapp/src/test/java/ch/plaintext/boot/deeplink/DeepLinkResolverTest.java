@@ -100,7 +100,7 @@ class DeepLinkResolverTest {
             assertEquals(DeepLinkResolution.Ergebnis.MANDAT_VERWEIGERT, ergebnis.ergebnis());
             assertNull(ergebnis.zielPfad());
             // No switch, not even "briefly for display purposes".
-            verify(security, never()).switchActiveMandat(anyString());
+            verify(security, never()).switchActiveMandatFuerSitzung(anyString());
             // And the module is not even asked about the record.
             assertFalse(ziel.gefragt, "Bei fehlendem Mandat-Zugriff darf das Modul nicht befragt werden");
         }
@@ -115,7 +115,9 @@ class DeepLinkResolverTest {
             DeepLinkResolution ergebnis = resolver.resolve("auszahlung", "alpha", "42");
 
             assertTrue(ergebnis.erlaubt());
-            verify(security).switchActiveMandat("alpha");
+            verify(security).switchActiveMandatFuerSitzung("alpha");
+            // Card 1449 S-14: never the persisting switch from a GET.
+            verify(security, never()).switchActiveMandat(anyString());
             assertEquals("alpha", ziel.gefragtesMandat, "Das Modul muss im Ziel-Mandat gefragt werden");
         }
 
@@ -127,8 +129,8 @@ class DeepLinkResolverTest {
             DeepLinkResolution ergebnis = resolver.resolve("auszahlung", "alpha", "999");
 
             assertEquals(DeepLinkResolution.Ergebnis.DATENSATZ_VERWEIGERT, ergebnis.ergebnis());
-            verify(security).switchActiveMandat("alpha");
-            verify(security).switchActiveMandat("beta");
+            verify(security).switchActiveMandatFuerSitzung("alpha");
+            verify(security).switchActiveMandatFuerSitzung("beta");
         }
     }
 
@@ -167,7 +169,7 @@ class DeepLinkResolverTest {
             DeepLinkResolution ergebnis = resolver.resolve("gibtsnicht", "alpha", "42");
 
             assertEquals(DeepLinkResolution.Ergebnis.UNBEKANNTER_TYP, ergebnis.ergebnis());
-            verify(security, never()).switchActiveMandat(anyString());
+            verify(security, never()).switchActiveMandatFuerSitzung(anyString());
         }
 
         @ParameterizedTest(name = "Id \"{0}\" wird abgelehnt")

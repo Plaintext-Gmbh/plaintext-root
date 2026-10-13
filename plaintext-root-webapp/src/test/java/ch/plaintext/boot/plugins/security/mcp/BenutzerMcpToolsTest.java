@@ -184,6 +184,28 @@ class BenutzerMcpToolsTest {
         assertTrue(neu.isMustChangePassword());
     }
 
+    /**
+     * Card 1449 S-13: an existing account of ANOTHER tenant is not completed. Positive control is
+     * {@link #bestehendesKontoWirdNichtUeberschrieben()} — same account in the target tenant.
+     */
+    @Test
+    void kontoEinesFremdenMandantenWirdNichtErgaenzt() {
+        authAdmin();
+        MyUserEntity fremd = benutzer("fremd@x.ch", "plaintext");
+        when(userRepository.findByUsername("fremd@x.ch")).thenReturn(fremd);
+
+        String bericht = tools.importBenutzer(datei("""
+                {"username":"fremd@x.ch","vorname":"Neu","nachname":"Name","startpage":"x.html"}"""));
+
+        assertNull(fremd.getVorname());
+        assertNull(fremd.getNachname());
+        assertFalse(bericht.contains("ergaenzt"));
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<MyUserEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(userRepository).saveAll(captor.capture());
+        assertTrue(captor.getValue().isEmpty(), "Nichts darf geschrieben werden.");
+    }
+
     @Test
     void bestehendesKontoWirdNichtUeberschrieben() {
         authAdmin();

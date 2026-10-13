@@ -11,6 +11,8 @@ import javax.sql.DataSource;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -88,5 +90,29 @@ public class ApiTokenRevocationLookupJdbc implements ApiTokenRevocationLookup {
         Integer treffer = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM my_user_entity WHERE id = ?", Integer.class, userId);
         return treffer == null || treffer == 0;
+    }
+
+    @Override
+    public boolean hasMandatAccess(long userId, String mandat) {
+        if (mandat == null || mandat.isBlank()) {
+            return false;
+        }
+        List<Map<String, Object>> benutzer = jdbc.queryForList(
+                "SELECT username, roles FROM my_user_entity WHERE id = ?", userId);
+        if (benutzer.isEmpty()) {
+            return false;
+        }
+        String username = (String) benutzer.get(0).get("username");
+        Object roh = benutzer.get(0).get("roles");
+        // roles is a flat XStream list of <string> elements (see McpUserRolesImpl.zerlege).
+        String rollen = roh == null ? "" : roh.toString().toUpperCase(Locale.ROOT);
+        if (rollen.contains("<STRING>ROOT</STRING>")
+                || rollen.contains("<STRING>PROPERTY_MANDAT_" + mandat.toUpperCase(Locale.ROOT) + "</STRING>")) {
+            return true;
+        }
+        Integer treffer = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM user_mandate WHERE username = ? AND LOWER(mandat) = ? AND active = TRUE",
+                Integer.class, username, mandat.toLowerCase(Locale.ROOT));
+        return treffer != null && treffer > 0;
     }
 }

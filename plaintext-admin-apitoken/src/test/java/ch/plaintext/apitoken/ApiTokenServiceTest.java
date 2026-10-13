@@ -51,6 +51,39 @@ class ApiTokenServiceTest {
 
     private static final String TOKEN = "eyJ.header.sig";
 
+    /** Card 1449 S-7: a mock answers false for the default method; the owner normally has access. */
+    @org.junit.jupiter.api.BeforeEach
+    void mandatZugangVorhanden() {
+        when(lookup.hasMandatAccess(anyLong(), any())).thenReturn(true);
+    }
+
+    /**
+     * Card 1449 S-7: a token whose tenant was withdrawn from its owner is rejected. Positive
+     * control is {@link #gueltigerTokenGibtResultUndAktualisiertLastUsed()} — same token with access.
+     */
+    @Test
+    void tokenOhneMandatZugangGibtEmpty() {
+        when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.of(storedToken()));
+        when(lookup.hasMandatAccess(7L, "plaintext")).thenReturn(false);
+
+        assertTrue(service.validateToken(TOKEN).isEmpty());
+        verify(lookup).hasMandatAccess(7L, "plaintext");
+        verify(lookup, never()).markUsed(anyLong());
+    }
+
+    /** Card 1449 S-7: the tenant check fails CLOSED, like the user check. */
+    @Test
+    void fehlerBeiDerMandatpruefungWeistAb() {
+        when(jwt.validateToken(TOKEN)).thenReturn(Optional.of(jwtOk()));
+        when(lookup.findForValidation(anyString())).thenReturn(Optional.of(storedToken()));
+        when(lookup.hasMandatAccess(7L, "plaintext"))
+                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("DB weg"));
+
+        assertTrue(service.validateToken(TOKEN).isEmpty());
+        verify(lookup, never()).markUsed(anyLong());
+    }
+
     private JwtValidationResult jwtOk() {
         return new JwtValidationResult(7L, "plaintext", "u@x.ch", "cli", Instant.now().plusSeconds(3600), null, null);
     }

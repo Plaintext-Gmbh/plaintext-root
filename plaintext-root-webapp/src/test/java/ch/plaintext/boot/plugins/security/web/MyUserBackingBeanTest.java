@@ -130,9 +130,45 @@ class MyUserBackingBeanTest {
         // Then
         assertNotNull(backingBean.getSelected());
         assertNull(backingBean.getSelected().getId(), "Die neue Entity darf noch keine ID haben");
-        assertEquals("default", backingBean.getSelected().getMandat());
+        // Card 1449 S-8: a non-ROOT gets their own tenant, not "default".
+        assertEquals("test_mandat", backingBean.getSelected().getMandat());
         verify(repo, never()).save(any(MyUserEntity.class));
         verify(repo, never()).findAll();
+    }
+
+    /** Card 1449 S-8: ROOT keeps "default" as the preset and chooses the tenant in the dialog. */
+    @Test
+    void newUser_alsRoot_behaeltDefaultVorgabe() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        backingBean.newUser();
+        assertEquals("default", backingBean.getSelected().getMandat());
+    }
+
+    /**
+     * Card 1449 S-8: an ADMIN creates a new account in their OWN tenant and the role allowlist lets
+     * that tenant role through. Before, the account landed in "default" (or the allowlist rejected it).
+     */
+    @Test
+    void save_neuerBenutzerDesAdminsLandetImEigenenMandanten() {
+        backingBean.newUser();
+        MyUserEntity neu = backingBean.getSelected();
+        neu.setUsername("neu@example.com");
+        neu.setPassword("geheim-123");
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user")));
+        when(passwordEncoder.encode(any())).thenReturn("$2a$10$encoded");
+        when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        lenient().when(repo.findAll()).thenReturn(new ArrayList<>());
+        lenient().when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+
+        verify(facesContext, never()).validationFailed();
+        org.mockito.ArgumentCaptor<MyUserEntity> gespeichert = org.mockito.ArgumentCaptor.forClass(MyUserEntity.class);
+        verify(repo).save(gespeichert.capture());
+        assertEquals("test_mandat", gespeichert.getValue().getMandat());
     }
 
     @Test

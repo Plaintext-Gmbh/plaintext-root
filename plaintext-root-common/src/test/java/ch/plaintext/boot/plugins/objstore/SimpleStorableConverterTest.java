@@ -127,4 +127,14 @@ class SimpleStorableConverterTest {
         // An exception here would tear down every query that loads the column.
         assertNull(converter.convertToEntityAttribute("{kein gueltiges json"));
     }
+
+    @Test
+    @DisplayName("Karte 1449 S-15: ein ch.*-Typ ausserhalb von ch.plaintext wird nicht erzeugt")
+    void fremderChTypWirdAbgewiesen() {
+        String json = "{\"@class\":\"ch.fremd.FremdePref\",\"uniqueId\":\"x\"}";
+
+        assertNull(converter.convertToEntityAttribute(json));
+        // Positive control: the same shape with a ch.plaintext type is read (jsonRoundtrip).
+        assertNotNull(converter.convertToEntityAttribute(converter.convertToDatabaseColumn(pref())));
+    }
 }

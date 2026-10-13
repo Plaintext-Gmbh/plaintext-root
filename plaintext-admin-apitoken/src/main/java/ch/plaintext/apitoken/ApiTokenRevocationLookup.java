@@ -92,6 +92,26 @@ public interface ApiTokenRevocationLookup {
     }
 
     /**
+     * Card 1449 S-7: may the owner still work in the tenant the token was issued for? A token
+     * carries its tenant as a claim for up to 365 days; without this check, withdrawing an
+     * additional tenant ({@code user_mandate}) left the user working there via {@code /mcp}.
+     *
+     * <p>Access means: the user is ROOT (may switch to every tenant), or the tenant is the home
+     * tenant ({@code PROPERTY_MANDAT_} role), or an active {@code user_mandate} row exists — the
+     * same three sources as {@code PlaintextSecurityImpl.getAllowedMandate()}.
+     *
+     * <p>Default {@code true} for the same reason as {@link #isUserDeleted(long)}: hand-written
+     * stubs keep compiling; {@link ApiTokenRevocationLookupJdbc} overrides it.
+     *
+     * @param userId {@code user_id} of the token
+     * @param mandat tenant claim of the token
+     * @return {@code true} only if the user still has access to {@code mandat}
+     */
+    default boolean hasMandatAccess(long userId, String mandat) {
+        return true;
+    }
+
+    /**
      * The fields of a token that are read for the access decision.
      *
      * @param id          primary key, for {@link #markUsed(long)}

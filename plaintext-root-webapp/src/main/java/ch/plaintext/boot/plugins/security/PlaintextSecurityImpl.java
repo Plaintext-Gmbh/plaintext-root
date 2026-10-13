@@ -320,6 +320,15 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         if (home != null && !home.trim().isEmpty()) {
             allowed.add(home.toLowerCase());
         }
+        // Card 1449 S-14: after a session-only switch the authority holds the visited tenant; the
+        // home tenant from the database must stay selectable to switch back.
+        Long id = getId();
+        if (id != null && id > 0) {
+            String dbHome = getMandatForUser(id);
+            if (dbHome != null && !dbHome.isBlank()) {
+                allowed.add(dbHome.toLowerCase());
+            }
+        }
         try {
             String username = getUser();
             if (username != null && !SYSTEM_USER.equals(username)) {
@@ -368,6 +377,23 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         }
         verwerfeSessionBeans();
         log.info("Aktiver Mandant dauerhaft gewechselt zu {} (Benutzer {})", target, getUser());
+    }
+
+    @Override
+    public void switchActiveMandatFuerSitzung(String mandat) {
+        if (mandat == null || mandat.trim().isEmpty()) {
+            return;
+        }
+        String target = mandat.toLowerCase();
+        if (!getAllowedMandate().contains(target)) {
+            log.warn("Sitzungs-Mandatwechsel auf nicht erlaubten Mandanten '{}' abgelehnt (Benutzer {})",
+                    target, getUser());
+            return;
+        }
+        if (applyMandatAuthority(target)) {
+            verwerfeSessionBeans();
+            log.info("Aktiver Mandant fuer die Sitzung gewechselt zu {} (Benutzer {})", target, getUser());
+        }
     }
 
     /**

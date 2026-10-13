@@ -67,7 +67,8 @@ public class SimpleStorableConverter implements AttributeConverter<SimpleStorabl
      */
     private static PolymorphicTypeValidator typeValidator() {
         return BasicPolymorphicTypeValidator.builder()
-                .allowIfSubType("ch.")
+                // Card 1449 S-15: "ch." also admitted ch.qos.logback.* and any other ch.* library.
+                .allowIfSubType("ch.plaintext.")
                 .allowIfSubType("java.util.")
                 .build();
     }

@@ -260,6 +260,12 @@ public class BenutzerMcpTools {
             }
             MyUserEntity vorhanden = userRepository.findByUsername(login);
             if (vorhanden != null) {
+                // Card 1449 S-13: the login lookup is global; an account of another tenant is not
+                // the caller's to complete. Counted as unchanged; a new account cannot be created anyway.
+                if (!gehoertZumMandanten(vorhanden, zielMandat)) {
+                    b.unveraendert++;
+                    continue;
+                }
                 if (ergaenzeNamen(vorhanden, s, b)) {
                     zuSpeichern.add(vorhanden);
                     b.aktualisiert++;
@@ -413,6 +419,13 @@ public class BenutzerMcpTools {
                         || ueberZusatzMandat.contains(u.getUsername().toLowerCase(Locale.ROOT)))
                 .sorted((a, c) -> a.getUsername().compareToIgnoreCase(c.getUsername()))
                 .toList();
+    }
+
+    /** Home tenant or an active additional tenant — the same two sources as {@link #benutzerDesMandanten}. */
+    private boolean gehoertZumMandanten(MyUserEntity u, String mandat) {
+        return mandat.equalsIgnoreCase(u.getMandat())
+                || userMandateRepository.findByUsernameAndActiveTrue(u.getUsername()).stream()
+                        .anyMatch(um -> mandat.equalsIgnoreCase(um.getMandat()));
     }
 
     private String zusatzMandateText(String username, String hauptmandat) {
