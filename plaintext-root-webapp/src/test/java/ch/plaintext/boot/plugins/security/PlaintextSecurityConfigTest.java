@@ -62,7 +62,8 @@ class PlaintextSecurityConfigTest {
         return new PlaintextSecurityConfig(
                 tokenRepository, userDetailsService, successHandler,
                 securityProperties, clientRegistrationRepository, oidcUserService,
-                hashedOneTimeTokenService, magicLinkGenerationSuccessHandler, environment);
+                hashedOneTimeTokenService, magicLinkGenerationSuccessHandler,
+                org.mockito.Mockito.mock(ch.plaintext.boot.plugins.security.totp.TotpAuthenticationService.class), environment);
     }
 
     private static org.springframework.core.env.Environment prodEnvironment() {
