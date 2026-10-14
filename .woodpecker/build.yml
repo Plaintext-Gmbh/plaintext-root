@@ -159,6 +159,11 @@ steps:
     # single Java class imports the library. Whoever ever adds a socket mount here
     # reverts that card.
     environment:
+      # Karte 1542: eigenes lokales Repository je Lauf. install schreibt NUR nach
+      # /woodpecker/m2-pipeline (Workspace dieses Laufs); das geteilte /root/.m2 ist nur
+      # noch lesender Schwanz. Ein PR-Zwischenstand mit Release-Version hatte dort das
+      # Release-Artefakt root 1.769.0 ueberschrieben, und app-prod lief damit.
+      MAVEN_ARGS: "-Dmaven.repo.local=/woodpecker/m2-pipeline -Dmaven.repo.local.tail=/root/.m2/repository -Dmaven.build.cache.location=/root/.m2/build-cache"
       # The agent mounts the Maven cache globally as a volume (woodpecker-m2 -> /root/.m2),
       # hence no separate mount here. The build cache of the maven-build-cache-extension
       # lives inside it under ~/.m2/build-cache and therefore survives the run.
@@ -238,6 +243,12 @@ steps:
 
   coverage-uebersicht:
     image: maven:3.10-eclipse-temurin-25
+    environment:
+      # Karte 1542: eigenes lokales Repository je Lauf. install schreibt NUR nach
+      # /woodpecker/m2-pipeline (Workspace dieses Laufs); das geteilte /root/.m2 ist nur
+      # noch lesender Schwanz. Ein PR-Zwischenstand mit Release-Version hatte dort das
+      # Release-Artefakt root 1.769.0 ueberschrieben, und app-prod lief damit.
+      MAVEN_ARGS: "-Dmaven.repo.local=/woodpecker/m2-pipeline -Dmaven.repo.local.tail=/root/.m2/repository -Dmaven.build.cache.location=/root/.m2/build-cache"
     # `status: [success, failure]` = the counterpart of `if: always()`. The coverage figures
     # are interesting precisely after a red run — and in root a red run is
     # more often than not exactly a JaCoCo gate violation, whose module is visible here.
