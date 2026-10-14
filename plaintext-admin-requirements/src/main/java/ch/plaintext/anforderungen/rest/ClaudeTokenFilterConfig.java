@@ -5,7 +5,6 @@ package ch.plaintext.anforderungen.rest;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -22,14 +21,12 @@ import org.springframework.context.annotation.Configuration;
 public class ClaudeTokenFilterConfig {
 
     @Bean
-    FilterRegistrationBean<ClaudeTokenRequestFilter> claudeTokenRequestFilterRegistration(
-            @Value("${plaintext.claude.url-token-fallback:false}") boolean urlTokenFallback) {
+    FilterRegistrationBean<ClaudeTokenRequestFilter> claudeTokenRequestFilterRegistration() {
         FilterRegistrationBean<ClaudeTokenRequestFilter> registration =
-                new FilterRegistrationBean<>(new ClaudeTokenRequestFilter(urlTokenFallback));
+                new FilterRegistrationBean<>(new ClaudeTokenRequestFilter());
         registration.addUrlPatterns("/nosec/api/claude/*");
         registration.setOrder(10);
-        log.info("ClaudeTokenRequestFilter registriert für /nosec/api/claude/* (Header-Auth; "
-                + "URL-Token {})", urlTokenFallback ? "UEBERGANGSWEISE erlaubt" : "abgelehnt");
+        log.info("ClaudeTokenRequestFilter registriert für /nosec/api/claude/* (nur Authorization: Bearer)");
         return registration;
     }
 }

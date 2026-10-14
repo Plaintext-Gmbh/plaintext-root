@@ -192,6 +192,9 @@ public class WatchTokenAnmeldeController {
      * roles decide <em>what is visible</em>, the confinement decides <em>where the session may
      * go</em>. Trying to do both with the role set was tried first and does not work — it makes
      * the watch blank.</p>
+     *
+     * <p>Exception (card 1460, N-4): {@code ROOT} and {@code ADMIN} are replaced by {@code USER}.
+     * They only matter outside the watch (admin pages, all tenants, module-role bypass).</p>
      */
     private Set<GrantedAuthority> rechte(ApiTokenValidationResult r) {
         Set<GrantedAuthority> rechte = new LinkedHashSet<>();
@@ -208,7 +211,14 @@ public class WatchTokenAnmeldeController {
             if (rolle == null || rolle.isBlank()) {
                 continue;
             }
-            String gross = rolle.toUpperCase(java.util.Locale.ROOT);
+            String gross = rolle.trim().toUpperCase(java.util.Locale.ROOT);
+            // SECURITY (card 1460, N-4): a phone link never carries ROOT or ADMIN. No watch page
+            // asks for them (measured 14.10.2026: all five app watch menus admit USER, none has a
+            // module role); ROOT would also open every tenant (getAllowedMandate). USER instead,
+            // so an owner without an explicit user role keeps the watch.
+            if (gross.equals("ROOT") || gross.equals("ADMIN")) {
+                gross = "USER";
+            }
             rechte.add(new SimpleGrantedAuthority(gross.startsWith("PROPERTY_") ? gross : "ROLE_" + gross));
         }
         return rechte;

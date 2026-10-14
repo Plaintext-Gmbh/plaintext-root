@@ -19,7 +19,7 @@ geschuetzt    /actuator/prometheus
 geschuetzt    /api/preferences/save
 geschuetzt    /api/i18n/export
 geschuetzt    /debug/menu-scan
-geschuetzt    /carddav/daniel/addressbooks/default/
+geschuetzt    /carddav/beispiel/addressbooks/default/
 geschuetzt    /.well-known/acme-challenge/token
 # Karte 1355: Mobil-Framework — Seiten und Aktionen liegen hinter der Anmeldung (bzw. dem Handy-Link)
 geschuetzt    /watch/m/alkohol
