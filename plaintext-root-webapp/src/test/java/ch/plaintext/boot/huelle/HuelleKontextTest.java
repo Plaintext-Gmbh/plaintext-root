@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContext;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -25,9 +26,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Karte 1512: root als Huelle startet ohne Instanz-Konfig im PV (/data/config fehlt) wie bisher und
  * bringt den MCP-Server fest mit. /mcp bleibt ohne Anmeldung zu, solange die Instanz-Konfig den
  * Bearer-Filter nicht einschaltet.
+ *
+ * <p>{@code @DirtiesContext} wie in StartseitenSchleifeChainTest: ein weiterer gecachter Kontext
+ * haelt seinen Pool offen, und der CI-Postgres lief damit in "too many clients" (CI-Lauf 562).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class HuelleKontextTest {
 
     @DynamicPropertySource
