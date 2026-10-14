@@ -195,10 +195,13 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Nur fuer die MCP-Annotationen der Benutzerverwaltung (BenutzerMcpTools). optional=true wie
-             in plaintext-admin-apitoken: das Bean haengt an @ConditionalOnClass und laedt ausschliesslich
-             in Apps mit eigenem MCP-Server (app/guild/schuetu/iot). plaintext-root selbst hat keinen und
-             bleibt unberuehrt; nicht-transitiv, damit kein Consumer die Abhaengigkeit ungefragt erbt. -->
+        <!-- MCP-Server. optional=true wie in plaintext-admin-apitoken: nicht-transitiv, damit kein
+             Consumer die Abhaengigkeit ungefragt erbt (app/guild/schuetu/iot bringen ihn selbst mit,
+             fwtool hat keinen). Die MCP-Beans haengen an @ConditionalOnClass.
+             Karte 1512 (Laufzeit-Module, Schritt 1): Das Exec-Jar von root ist die Huelle, in die
+             spaeter Module geladen werden; es bringt den MCP-Server darum FEST mit
+             (includeOptional im spring-boot-maven-plugin unten). /mcp bleibt in root hinter der
+             Anmeldung, solange die Instanz-Konfig den Bearer-Filter nicht einschaltet. -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
@@ -542,6 +545,9 @@
                 <configuration>
                     <mainClass>ch.RootBootApplication</mainClass>
                     <classifier>exec</classifier>
+                    <!-- Karte 1512: Boot 4 laesst optionale Abhaengigkeiten sonst aus dem Exec-Jar weg.
+                         Einzige optionale Abhaengigkeit hier ist der MCP-Server (siehe oben). -->
+                    <includeOptional>true</includeOptional>
                     <!-- Fat-Jar (exec) NICHT ins Maven-Repo deployen (126 MB/Release): es ist ein
                          Deploy-Artefakt (Jar-Staging/Docker), kein Consumable. Das plain Jar bleibt
                          publiziert — die Consumer haengen als Maven-Dependency daran. -->
