@@ -125,6 +125,9 @@ class FreigabeLinkKetteTest {
     private FreigabeLinkService service;
     @Autowired
     private FreigabeLinkRepository repository;
+    /** Karte 1498: der Vertrag aus root-interfaces, so wie ein Modul ihn bekommt. */
+    @Autowired
+    private ch.plaintext.freigabe.FreigabeLinks vertrag;
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
@@ -271,6 +274,36 @@ class FreigabeLinkKetteTest {
         assertEquals(2, zeile.getAufrufe());
         assertNotNull(zeile.getZuletztAufgerufen());
         assertNull(zeile.getGueltigBis(), "0 Tage = unbefristet");
+    }
+
+    @Test
+    @DisplayName("Karte 1498: Vertrag FreigabeLinks – Ablauf vom Modul gesetzt, widerrufeAlle wirkt sofort; Nachbarobjekt bleibt")
+    void vertragAusModul() {
+        String bis = vertrag.erzeugeAdresseBis("test1476", 17L, null, FreigabeRecht.SCHREIBEN, LocalDate.now().plusDays(2), "Desk");
+        String tage = vertrag.erzeugeAdresse("test1476", 17L, null, null, null, null);
+        String nachbar = vertrag.erzeugeAdresse("test1476", 18L, null, null, 1, null);
+        String t = bis.substring(bis.lastIndexOf('/') + 1);
+        assertEquals(LocalDate.now().plusDays(2), repository.findByTokenHashAndDeletedFalse(
+                HexFormat.of().formatHex(sha256(t))).orElseThrow().getGueltigBis());
+        assertEquals(200, ruf(HttpMethod.GET, t, null).getStatusCode().value());
+        assertEquals(200, ruf(HttpMethod.POST, t, "neu").getStatusCode().value());
+
+        assertEquals(2, vertrag.widerrufeAlle("test1476", 17L));
+        assertEquals(404, ruf(HttpMethod.GET, t, null).getStatusCode().value());
+        assertEquals(404, ruf(HttpMethod.POST, t, "nochmal").getStatusCode().value());
+        assertEquals(404, ruf(HttpMethod.GET, tage.substring(tage.lastIndexOf('/') + 1), null).getStatusCode().value());
+        assertEquals(200, ruf(HttpMethod.GET, nachbar.substring(nachbar.lastIndexOf('/') + 1), null).getStatusCode().value(),
+                "Gegenprobe: der Link des Nachbarobjekts gilt weiter");
+        org.junit.jupiter.api.Assertions.assertThrows(java.util.NoSuchElementException.class,
+                () -> vertrag.erzeugeAdresseBis("test1476", 999L, null, null, LocalDate.now(), null));
+    }
+
+    private static byte[] sha256(String s) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test
