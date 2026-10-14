@@ -193,4 +193,29 @@ class WatchTokenAnmeldeControllerTest {
 
         assertEquals(HttpServletResponse.SC_FORBIDDEN, einstieg(JWT).getStatus());
     }
+
+    @Test
+    @DisplayName("Karte 1460 N-4: der Handy-Link eines ROOT traegt weder ROOT noch ADMIN, aber USER und Modulrollen")
+    void rootBesitzerOhneRootRechte() throws IOException {
+        McpUserRoles rollen = mock(McpUserRoles.class);
+        when(rollen.rolesForUser(7L)).thenReturn(Set.of("root", "admin", "zeiterfassung"));
+        controller = new WatchTokenAnmeldeController(liefert(tokenDienst), liefert(rollen), sicherheit, zustand);
+        tokenIstGueltig(WatchHandyLinkService.TOKEN_NAME);
+        when(zustand.handyLinkAktivFuer(BENUTZER)).thenReturn(true);
+
+        einstieg(JWT);
+
+        SecurityContext kontext = (SecurityContext) letzteAnfrage.getSession(false).getAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        var anmeldung = kontext.getAuthentication();
+        var rechte = anmeldung.getAuthorities().stream().map(a -> a.getAuthority()).toList();
+        assertTrue(rechte.contains("ROLE_USER"), rechte.toString());
+        assertTrue(rechte.contains("ROLE_ZEITERFASSUNG"), "Modulrollen bleiben, sonst ist die Uhr leer: " + rechte);
+        assertTrue(rechte.stream().noneMatch(r -> r.equals("ROLE_ROOT") || r.equals("ROLE_ADMIN")), rechte.toString());
+        // What a ROOT/ADMIN page asks (hasRole) is refused, what a watch page asks (USER) is granted.
+        assertTrue(!org.springframework.security.authorization.AuthorityAuthorizationManager.hasAnyRole("ROOT", "ADMIN")
+                .authorize(() -> anmeldung, null).isGranted(), "ROOT-/ADMIN-Seite muss abweisen");
+        assertTrue(org.springframework.security.authorization.AuthorityAuthorizationManager.hasAnyRole("USER", "ADMIN", "ROOT")
+                .authorize(() -> anmeldung, null).isGranted(), "Watch-Menue (USER, ADMIN, ROOT) muss offen bleiben");
+    }
 }

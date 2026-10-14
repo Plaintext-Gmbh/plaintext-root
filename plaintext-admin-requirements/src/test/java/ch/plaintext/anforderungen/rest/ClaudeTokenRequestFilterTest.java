@@ -17,9 +17,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Header auth for {@code /nosec/api/claude/**}: {@code Authorization: Bearer} respectively
- * {@code X-Claude-Token} are passed on to the controller as the {@code token} parameter;
- * the legacy URL token remains functional during the transitional phase.
+ * Header auth for {@code /nosec/api/claude/**}: only {@code Authorization: Bearer} is passed on to
+ * the controller as the {@code token} parameter; a {@code token} parameter is rejected (card 1460, N-2).
  */
 @DisplayName("ClaudeTokenRequestFilter Header-Auth")
 class ClaudeTokenRequestFilterTest {
@@ -55,49 +54,32 @@ class ClaudeTokenRequestFilterTest {
     }
 
     @Test
-    void xClaudeTokenHeaderIsExposedAsTokenParameter() throws Exception {
+    void xClaudeTokenHeaderWirdIgnoriert() throws Exception {
+        // Card 1460 (N-2): only the Authorization header counts.
         request.addHeader("X-Claude-Token", "secret-token-456");
 
         ServletRequest downstream = filteredRequest();
 
-        assertThat(downstream.getParameter("token")).isEqualTo("secret-token-456");
+        assertThat(downstream).isSameAs(request);
+        assertThat(downstream.getParameter("token")).isNull();
     }
 
     @Test
-    void bearerHeaderWinsOverXClaudeTokenHeader() throws Exception {
-        request.addHeader("Authorization", "Bearer from-bearer");
-        request.addHeader("X-Claude-Token", "from-x-header");
-
-        ServletRequest downstream = filteredRequest();
-
-        assertThat(downstream.getParameter("token")).isEqualTo("from-bearer");
-    }
-
-    @Test
-    void headerTokenOverridesLegacyUrlToken() throws Exception {
+    void urlTokenNebenBearerHeaderWirdAbgelehnt() throws Exception {
+        // Card 1460 (N-2): the URL token leaks into the logs even if a header is present as well.
         request.setParameter("token", "legacy-url-token");
         request.addHeader("Authorization", "Bearer header-token");
+        jakarta.servlet.FilterChain chainOhneAufruf = (req, res) -> {
+            throw new AssertionError("Kette darf bei URL-Token nicht laufen");
+        };
 
-        ServletRequest downstream = filteredRequest();
+        filter.doFilter(request, response, chainOhneAufruf);
 
-        assertThat(downstream.getParameter("token")).isEqualTo("header-token");
-        assertThat(downstream.getParameterValues("token")).containsExactly("header-token");
+        assertThat(response.getStatus()).isEqualTo(401);
     }
 
     @Test
-    void legacyUrlTokenNurMitFallbackSchalter() throws Exception {
-        // Status report 29.08.2026: transitional phase over — only with an explicit switch.
-        filter = new ClaudeTokenRequestFilter(true);
-        request.setParameter("token", "legacy-url-token");
-
-        ServletRequest downstream = filteredRequest();
-
-        assertThat(downstream).isSameAs(request);
-        assertThat(downstream.getParameter("token")).isEqualTo("legacy-url-token");
-    }
-
-    @Test
-    void urlTokenOhneSchalterWirdAbgelehnt() throws Exception {
+    void urlTokenWirdAbgelehnt() throws Exception {
         request.setParameter("token", "legacy-url-token");
         jakarta.servlet.FilterChain chainOhneAufruf = (req, res) -> {
             throw new AssertionError("Kette darf bei abgelehntem URL-Token nicht laufen");
@@ -129,14 +111,12 @@ class ClaudeTokenRequestFilterTest {
 
     @Test
     void emptyBearerHeaderIsIgnored() throws Exception {
-        // An empty Bearer does not count as a header token; the URL token only applies with the fallback switch.
-        filter = new ClaudeTokenRequestFilter(true);
         request.addHeader("Authorization", "Bearer ");
-        request.setParameter("token", "legacy-url-token");
 
         ServletRequest downstream = filteredRequest();
 
-        assertThat(downstream.getParameter("token")).isEqualTo("legacy-url-token");
+        assertThat(downstream).isSameAs(request);
+        assertThat(downstream.getParameter("token")).isNull();
     }
 
     @Test
