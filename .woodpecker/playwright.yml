@@ -148,6 +148,11 @@ steps:
   browser-smoke:
     image: mcr.microsoft.com/playwright/java:v1.63.0-noble
     environment:
+      # Karte 1542: eigenes lokales Repository je Lauf. install schreibt NUR nach
+      # /woodpecker/m2-pipeline (Workspace dieses Laufs); das geteilte /root/.m2 ist nur
+      # noch lesender Schwanz. Ein PR-Zwischenstand mit Release-Version hatte dort das
+      # Release-Artefakt root 1.769.0 ueberschrieben, und app-prod lief damit.
+      MAVEN_ARGS: "-Dmaven.repo.local=/woodpecker/m2-pipeline -Dmaven.repo.local.tail=/root/.m2/repository -Dmaven.build.cache.location=/root/.m2/build-cache"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plaintext_root
       SPRING_DATASOURCE_USERNAME: plaintext
       SPRING_DATASOURCE_PASSWORD: plaintext
