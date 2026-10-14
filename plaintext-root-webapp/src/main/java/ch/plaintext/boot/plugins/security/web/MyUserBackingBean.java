@@ -480,6 +480,16 @@ public class MyUserBackingBean implements Serializable {
             context.validationFailed();
             return;
         }
+        // SECURITY (card 1460, N-1): same for an account with an additional tenant outside the actor's
+        // tenant: with its password the ADMIN would switch into that tenant. The new login counts too,
+        // because user_mandate is keyed by login (rename onto a login that still has rows).
+        if (!isRoot() && (hatFremdesZusatzmandat(persistedUsername) || hatFremdesZusatzmandat(selected.getUsername()))) {
+            log.warn("SECURITY (Karte 1460, N-1): Nicht-ROOT-Akteur '{}' versuchte, das Mehrmandanten-Konto '{}' "
+                    + "zu aendern — abgelehnt.", Log.mail(handelnderBenutzer()), Log.mail(selected.getUsername()));
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, MEHRMANDANTEN_KONTO_NUR_ROOT);
+            context.validationFailed();
+            return;
+        }
 
         // Validate the password for new users or when the password has been changed
         boolean isNewUser = myUserPw == null || myUserPw.isEmpty();
@@ -717,11 +727,21 @@ public class MyUserBackingBean implements Serializable {
         }
 
         Long id = selected.getId();
-        Set<String> gespeicherteRollen = repo.findById(id).map(MyUserEntity::getRoles).orElse(Set.of());
+        Optional<MyUserEntity> gespeichert = repo.findById(id);
+        Set<String> gespeicherteRollen = gespeichert.map(MyUserEntity::getRoles).orElse(Set.of());
         if (!isRoot() && istRootKonto(gespeicherteRollen)) {
             log.warn("SECURITY (Karte 1451, S-1): Nicht-ROOT-Akteur '{}' versuchte, das ROOT-Konto id={} "
                     + "zu loeschen — abgelehnt.", Log.mail(handelnderBenutzer()), id);
             FacesMessages.error(FacesMessages.TITEL_FEHLER, ROOT_KONTO_NUR_ROOT);
+            selected = null;
+            resetRollenEntzug();
+            init();
+            return;
+        }
+        if (!isRoot() && hatFremdesZusatzmandat(gespeichert.map(MyUserEntity::getUsername).orElse(null))) {
+            log.warn("SECURITY (Karte 1460, N-1): Nicht-ROOT-Akteur '{}' versuchte, das Mehrmandanten-Konto id={} "
+                    + "zu loeschen — abgelehnt.", Log.mail(handelnderBenutzer()), id);
+            FacesMessages.error(FacesMessages.TITEL_FEHLER, MEHRMANDANTEN_KONTO_NUR_ROOT);
             selected = null;
             resetRollenEntzug();
             init();
@@ -755,6 +775,21 @@ public class MyUserBackingBean implements Serializable {
     /** The logged-in (resp. impersonating) user who triggers the change. */
     /** Message when a non-ROOT tries to change or delete a root account (card 1451, S-1). */
     private static final String ROOT_KONTO_NUR_ROOT = "Ein ROOT-Konto kann nur ROOT bearbeiten oder loeschen.";
+
+    /** Message when a non-ROOT tries to change or delete an account with a foreign additional tenant (card 1460, N-1). */
+    private static final String MEHRMANDANTEN_KONTO_NUR_ROOT =
+            "Ein Konto mit Zusatzmandanten ausserhalb Ihres Mandanten kann nur ROOT bearbeiten oder loeschen.";
+
+    /** Whether the login has an active additional tenant other than the actor's tenant (card 1460, N-1). */
+    private boolean hatFremdesZusatzmandat(String login) {
+        if (login == null || login.isBlank()) {
+            return false;
+        }
+        String eigener = plaintextSecurity == null ? null : plaintextSecurity.getMandat();
+        return userMandateRepo.findByUsernameAndActiveTrue(login).stream()
+                .map(UserMandate::getMandat)
+                .anyMatch(m -> m != null && !m.isBlank() && !m.trim().equalsIgnoreCase(eigener));
+    }
 
     /** Whether the (persisted) roles contain the root role, in any spelling (card 1451, S-1). */
     private static boolean istRootKonto(Set<String> rollen) {

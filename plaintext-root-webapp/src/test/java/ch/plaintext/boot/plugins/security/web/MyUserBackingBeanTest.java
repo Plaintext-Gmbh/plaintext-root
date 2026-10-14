@@ -943,4 +943,125 @@ class MyUserBackingBeanTest {
 
         verify(repo).delete(testUser);
     }
+
+    // ---- Card 1460 (review 2, N-1): an ADMIN must not take over an account with a foreign additional tenant ----
+
+    /** Active additional tenant of the login, as user_mandate returns it. */
+    private static ch.plaintext.boot.plugins.security.model.UserMandate zusatzmandat(String login, String mandat) {
+        ch.plaintext.boot.plugins.security.model.UserMandate um = new ch.plaintext.boot.plugins.security.model.UserMandate();
+        um.setUsername(login);
+        um.setMandat(mandat);
+        um.setActive(true);
+        return um;
+    }
+
+    /** Persisted ordinary account of the actor's tenant (test_mandat). */
+    private MyUserEntity gespeichertesUserKonto() {
+        MyUserEntity persisted = new MyUserEntity();
+        persisted.setId(1L);
+        persisted.setUsername("test@example.com");
+        persisted.setRoles(new HashSet<>(Arrays.asList("user", "PROPERTY_MANDAT_TEST_MANDAT")));
+        return persisted;
+    }
+
+    /** Runs save() as ADMIN (setUp) with a new password on the persisted ordinary account. */
+    private void speichereNeuesPasswortAlsAdmin() {
+        lenient().when(plaintextSecurity.getUser()).thenReturn("admin@example.com");
+        testUser.setPassword("Uebernahme-2026!");
+        backingBean.setSelected(testUser);
+        backingBean.setSelectedRolesList(new ArrayList<>(Arrays.asList("user")));
+        when(repo.findById(1L)).thenReturn(Optional.of(gespeichertesUserKonto()));
+        lenient().when(passwordEncoder.encode("Uebernahme-2026!")).thenReturn("$2a$12$neu");
+        lenient().when(repo.save(any(MyUserEntity.class))).thenAnswer(i -> i.getArgument(0));
+        lenient().when(repo.findAll()).thenReturn(new ArrayList<>());
+        lenient().when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.save();
+        }
+    }
+
+    @Test
+    void save_lehntPasswortAmMehrmandantenKontoAb_wennAkteurNichtRootIst() {
+        when(userMandateRepo.findByUsernameAndActiveTrue("test@example.com"))
+                .thenReturn(List.of(zusatzmandat("test@example.com", "fremd_b")));
+
+        speichereNeuesPasswortAlsAdmin();
+
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(facesContext).validationFailed();
+    }
+
+    @Test
+    void save_lehntUmbenennungAufLoginMitFremdemZusatzmandatAb() {
+        // user_mandate is keyed by login: renaming onto a login that still has rows would inherit them.
+        lenient().when(userMandateRepo.findByUsernameAndActiveTrue("test@example.com")).thenReturn(List.of());
+        when(userMandateRepo.findByUsernameAndActiveTrue("altkonto@example.com"))
+                .thenReturn(List.of(zusatzmandat("altkonto@example.com", "fremd_b")));
+        testUser.setUsername("altkonto@example.com");
+
+        speichereNeuesPasswortAlsAdmin();
+
+        verify(repo, never()).save(any(MyUserEntity.class));
+        verify(facesContext).validationFailed();
+    }
+
+    @Test
+    void save_erlaubtKonto_mitZusatzmandatNurImEigenenMandanten() {
+        // Negative control: a row for the actor's own tenant opens nothing new.
+        when(userMandateRepo.findByUsernameAndActiveTrue("test@example.com"))
+                .thenReturn(List.of(zusatzmandat("test@example.com", "TEST_MANDAT")));
+
+        speichereNeuesPasswortAlsAdmin();
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+    }
+
+    @Test
+    void save_erlaubtMehrmandantenKonto_wennAkteurRootIst() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        lenient().when(userMandateRepo.findByUsernameAndActiveTrue("test@example.com"))
+                .thenReturn(List.of(zusatzmandat("test@example.com", "fremd_b")));
+
+        speichereNeuesPasswortAlsAdmin();
+
+        verify(repo).save(any(MyUserEntity.class));
+        verify(facesContext, never()).validationFailed();
+    }
+
+    @Test
+    void delete_lehntMehrmandantenKontoAb_wennAkteurNichtRootIst() {
+        backingBean.setSelected(testUser);
+        when(repo.findById(1L)).thenReturn(Optional.of(gespeichertesUserKonto()));
+        when(userMandateRepo.findByUsernameAndActiveTrue("test@example.com"))
+                .thenReturn(List.of(zusatzmandat("test@example.com", "fremd_b")));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.delete();
+        }
+
+        verify(repo, never()).delete(any(MyUserEntity.class));
+    }
+
+    @Test
+    void delete_erlaubtMehrmandantenKonto_wennAkteurRootIst() {
+        when(plaintextSecurity.ifGranted("ROLE_root")).thenReturn(true);
+        backingBean.setSelected(testUser);
+        when(repo.findById(1L)).thenReturn(Optional.of(gespeichertesUserKonto()));
+        lenient().when(userMandateRepo.findByUsernameAndActiveTrue("test@example.com"))
+                .thenReturn(List.of(zusatzmandat("test@example.com", "fremd_b")));
+        when(repo.findAll()).thenReturn(new ArrayList<>());
+        when(rememberMeRepo.findAll()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<FacesContext> facesContextMock = mockStatic(FacesContext.class)) {
+            facesContextMock.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            backingBean.delete();
+        }
+
+        verify(repo).delete(testUser);
+    }
 }
