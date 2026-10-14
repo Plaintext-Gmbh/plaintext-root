@@ -13,6 +13,11 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **Share links from module code** (Karte 1498): contract `ch.plaintext.freigabe.FreigabeLinks` in
+  `plaintext-root-interfaces` (`erzeugeAdresse` with days, `erzeugeAdresseBis` with a fixed last day set by the
+  module, `widerrufeAlle`), implemented by `FreigabeLinkService` with the same tenant and `darfFreigeben` checks.
+  Modules no longer need a compile dependency on `plaintext-root-freigabe` (app: drop the allowlist exception for
+  `WikiFreigabeLinks`). Additive, nothing breaks.
 - **`MailSender` is a contract of the shell** (Karte 1504): `ch.plaintext.mailversand.MailSender`, `MailAccountRef`,
   `MailAttachment` in `plaintext-root-interfaces`, `AutomatischerVersand` in `plaintext-root-common`. New package on
   purpose: app still has `ch.plaintext.mail.*` and switches in its own PR. Helper code from app-interfaces now in

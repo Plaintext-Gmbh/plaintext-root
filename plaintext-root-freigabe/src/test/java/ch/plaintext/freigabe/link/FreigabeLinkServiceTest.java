@@ -258,6 +258,61 @@ class FreigabeLinkServiceTest {
         assertEquals("Keine Freigabe-Links.", m.listFreigabeLinks("t", null));
     }
 
+    private static String tokenAus(String url) {
+        return url.substring(url.lastIndexOf('/') + 1);
+    }
+
+    @Test
+    @DisplayName("Karte 1498: erzeugeAdresseBis setzt den Tag des Moduls, nie unbefristet; gestern/leer/zu weit abgewiesen")
+    void adresseBis() {
+        LocalDate heute = LocalDate.now();
+        String url = service.erzeugeAdresseBis("t", 1L, null, FreigabeRecht.SCHREIBEN, heute, "Desk");
+        assertEquals(heute, zeilen.get(0).getGueltigBis(), "heute heisst bis heute, nicht unbefristet");
+        assertEquals("rw", zeilen.get(0).getRecht());
+        assertFalse(zeilen.get(0).getTokenHash().contains(tokenAus(url)));
+        assertTrue(service.zeige(tokenAus(url)).isPresent());
+        zeilen.get(0).setGueltigBis(heute.minusDays(1));
+        assertTrue(service.zeige(tokenAus(url)).isEmpty(), "am Folgetag zu");
+
+        assertThrows(IllegalArgumentException.class, () -> service.erzeugeAdresseBis("t", 1L, null, null, heute.minusDays(1), null));
+        assertThrows(IllegalArgumentException.class, () -> service.erzeugeAdresseBis("t", 1L, null, null, null, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.erzeugeAdresseBis("t", 1L, null, null, heute.plusDays(FreigabeLinkService.MAX_TAGE + 1), null));
+        assertThrows(NoSuchElementException.class, () -> service.erzeugeAdresseBis("t", 666L, null, null, heute, null));
+        schreibbar = false;
+        assertThrows(IllegalArgumentException.class, () -> service.erzeugeAdresseBis("t", 1L, null, FreigabeRecht.SCHREIBEN, heute, null));
+        assertEquals(1, zeilen.size(), "kein abgewiesener Aufruf legt eine Zeile an");
+        schreibbar = true;
+        service.erzeugeAdresseBis("t", 1L, null, null, heute.plusDays(FreigabeLinkService.MAX_TAGE), null);
+        assertEquals(heute.plusDays(FreigabeLinkService.MAX_TAGE), zeilen.get(1).getGueltigBis(), "Obergrenze gilt noch");
+    }
+
+    @Test
+    @DisplayName("Karte 1498: erzeugeAdresse wie erzeuge; widerrufeAlle nur das eigene Objekt und nur, was der Benutzer darf")
+    void adresseUndWiderrufeAlle() {
+        String a = service.erzeugeAdresse("t", 1L, null, null, null, null);
+        String b = service.erzeugeAdresse("t", 1L, "seite-1", null, 0, null);
+        String nachbar = service.erzeugeAdresse("t", 2L, null, null, 1, null);
+        assertEquals(LocalDate.now().plusDays(FreigabeLinkService.STANDARD_TAGE), zeilen.get(0).getGueltigBis());
+        assertNull(zeilen.get(1).getGueltigBis(), "0 = unbefristet wie bei erzeuge");
+        FreigabeLink fremd = new FreigabeLink();
+        fremd.setMandat("demo");
+        fremd.setTyp("t");
+        fremd.setObjektId(666L);
+        fremd.setRecht("r");
+        fremd.setTokenHash("x");
+        fremd.setId(99L);
+        zeilen.add(fremd);
+
+        assertEquals(2, service.widerrufeAlle("t", 1L));
+        assertTrue(service.zeige(tokenAus(a)).isEmpty());
+        assertTrue(service.zeige(tokenAus(b)).isEmpty());
+        assertTrue(service.zeige(tokenAus(nachbar)).isPresent(), "Gegenprobe: Nachbarobjekt bleibt");
+        assertEquals(0, service.widerrufeAlle("t", 666L), "fremdes Objekt: nichts widerrufen");
+        assertFalse(fremd.getDeleted());
+        assertEquals(0, service.widerrufeAlle("t", 1L), "zweimal ist harmlos");
+    }
+
     @Test
     @DisplayName("Recht: r und rw, sonst Fehler")
     void recht() {

@@ -5,7 +5,9 @@ package ch.plaintext.freigabe.link.service;
 
 import ch.plaintext.PlaintextSecurity;
 import ch.plaintext.framework.EigeneAdresse;
+import ch.plaintext.modules.ModulApiUmsetzung;
 import ch.plaintext.freigabe.FreigabeInhalt;
+import ch.plaintext.freigabe.FreigabeLinks;
 import ch.plaintext.freigabe.FreigabeQuelle;
 import ch.plaintext.freigabe.FreigabeRecht;
 import ch.plaintext.freigabe.FreigabeZugriff;
@@ -43,7 +45,14 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 @Service
-public class FreigabeLinkService {
+@ModulApiUmsetzung(beschreibung = "Creates share links (token stored as SHA-256 only) and revokes all links of an object, "
+        + "with the same tenant and darfFreigeben checks as the UI and MCP.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"The address is returned once; only the hash is stored",
+                "erzeugeAdresseBis never creates an unlimited link; a day in the past is rejected"},
+        beispiele = {"erzeugeAdresse(\"wiki\", seiteId, null, FreigabeRecht.LESEN, null, \"public\")",
+                "erzeugeAdresseBis(\"event-desk\", eventId, null, FreigabeRecht.SCHREIBEN, eventEnde.plusDays(1), \"Desk\")"})
+public class FreigabeLinkService implements FreigabeLinks {
 
     public static final int STANDARD_TAGE = 90;
     public static final int MAX_TAGE = 3650;
@@ -94,15 +103,44 @@ public class FreigabeLinkService {
      */
     @Transactional
     public Link erzeuge(String typ, Long objektId, String teil, FreigabeRecht recht, Integer gueltigTage, String zweck) {
+        int tage = gueltigTage == null ? STANDARD_TAGE : gueltigTage;
+        if (tage < 0 || tage > MAX_TAGE) {
+            throw new IllegalArgumentException("gueltigTage muss zwischen 0 (unbefristet) und " + MAX_TAGE + " liegen, war " + tage);
+        }
+        return anlegen(typ, objektId, teil, recht, tage == 0 ? null : LocalDate.now().plusDays(tage), zweck);
+    }
+
+    @Override
+    @Transactional
+    public String erzeugeAdresse(String typ, Long objektId, String teil, FreigabeRecht recht, Integer gueltigTage, String zweck) {
+        return erzeuge(typ, objektId, teil, recht, gueltigTage, zweck).url();
+    }
+
+    @Override
+    @Transactional
+    public String erzeugeAdresseBis(String typ, Long objektId, String teil, FreigabeRecht recht, LocalDate gueltigBis, String zweck) {
+        LocalDate heute = LocalDate.now();
+        if (gueltigBis == null || gueltigBis.isBefore(heute) || gueltigBis.isAfter(heute.plusDays(MAX_TAGE))) {
+            throw new IllegalArgumentException("gueltigBis muss zwischen heute und " + MAX_TAGE + " Tagen liegen, war " + gueltigBis);
+        }
+        return anlegen(typ, objektId, teil, recht, gueltigBis, zweck).url();
+    }
+
+    @Override
+    @Transactional
+    public int widerrufeAlle(String typ, Long objektId) {
+        List<Link> alle = liste(typ, objektId);
+        alle.forEach(l -> widerrufe(l.id()));
+        return alle.size();
+    }
+
+    /** @param bis {@code null} = unbefristet; geprüft von den Aufrufern */
+    private Link anlegen(String typ, Long objektId, String teil, FreigabeRecht recht, LocalDate bis, String zweck) {
         FreigabeQuelle q = quelle(typ).filter(x -> objektId != null && x.darfFreigeben(objektId))
                 .orElseThrow(() -> new NoSuchElementException("Objekt " + typ + "/" + objektId + " nicht gefunden"));
         FreigabeRecht r = recht == null ? FreigabeRecht.LESEN : recht;
         if (r == FreigabeRecht.SCHREIBEN && !q.schreibbar()) {
             throw new IllegalArgumentException("Typ " + typ + " kann über Links nicht schreiben, nur r ist möglich");
-        }
-        int tage = gueltigTage == null ? STANDARD_TAGE : gueltigTage;
-        if (tage < 0 || tage > MAX_TAGE) {
-            throw new IllegalArgumentException("gueltigTage muss zwischen 0 (unbefristet) und " + MAX_TAGE + " liegen, war " + tage);
         }
         String t = leerAlsNull(teil);
         if (t != null && t.length() > MAX_TEIL) {
@@ -119,7 +157,7 @@ public class FreigabeLinkService {
         l.setRecht(r.kurz());
         l.setTokenHash(hash(token));
         l.setZweck(leerAlsNull(zweck));
-        l.setGueltigBis(tage == 0 ? null : LocalDate.now().plusDays(tage));
+        l.setGueltigBis(bis);
         l = links.save(l);
         log.info("Freigabe-Link {} angelegt: {}/{} teil={} recht={} gültig bis {}", l.getId(), l.getTyp(), objektId, t,
                 l.getRecht(), l.getGueltigBis());
