@@ -4,7 +4,12 @@ spring:
   profiles:
     active: dev
   config:
-    import: "optional:file:./plconfig/spring/application.yml"
+    import:
+      - "optional:file:./plconfig/spring/application.yml"
+      # Karte 1512: Instanz-Konfig der Huelle aus dem PV (application.yml und application-<profil>.yml
+      # in diesem Verzeichnis). Fehlt das Verzeichnis, gilt diese Datei unveraendert. Wirkt nur in
+      # root selbst: jede App bringt eine eigene application.yml mit, die diese hier verdeckt.
+      - "optional:file:${PLAINTEXT_KONFIG_VERZEICHNIS:/data/config}/"
   main:
     allow-circular-references: true
     allow-bean-definition-overriding: true
@@ -22,6 +27,15 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  ai:
+    mcp:
+      server:
+        # Karte 1512: MCP-Server fest in der Huelle; gleiche Art wie in app/guild/iot/schuetu.
+        # Den Namen setzt die Instanz-Konfig im PV.
+        name: plaintext-root
+        version: '@project.version@'
+        type: SYNC
+        protocol: STREAMABLE
   docker:
     compose:
       enabled: ${DOCKER_COMPOSE_ENABLED:false}
@@ -125,6 +139,9 @@ plaintext:
   stage: ${PLAINTEXT_ENV:dev}
   root:
     version: '@project.version@'
+    # Karte 1503/1512: aelteste root-Version, gegen die ein Modul gebaut sein darf (Laufzeit-Module).
+    # Nur anheben bei absichtlichem Bruch der Modul-API; letzter Bruch: Karte 1504 in 1.767.0.
+    kompatibel-ab: 1.767.0
   menu:
     scan-package: ch.plaintext
   security:
