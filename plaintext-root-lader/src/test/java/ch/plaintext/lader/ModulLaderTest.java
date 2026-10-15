@@ -31,13 +31,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** Karte 1513: Hash, feste Quelle, Cache, Notfall-Schalter, Kompatibilitaet. */
 class ModulLaderTest {
 
-    private static final byte[] JAR = "inhalt-des-modul-jars".getBytes(StandardCharsets.UTF_8);
+    static final byte[] JAR = TestJars.zip("ch/plaintext/probe/Probe.class", "probe");
     private static final String SHA = sha(JAR);
     private static final String PFAD = "/releases/ch/plaintext/plaintext-z-probe/1.0.0/plaintext-z-probe-1.0.0.jar";
-    private static final ModulLader.Huelle HUELLE = new ModulLader.Huelle("1.780.0", "1.767.0");
+    private ModulLader.Huelle huelle;
 
     @TempDir
     Path dir;
+
+    @TempDir
+    Path huellenDir;
 
     private HttpServer server;
     private HttpServer fremd;
@@ -48,6 +51,7 @@ class ModulLaderTest {
 
     @BeforeEach
     void starteServer() throws IOException {
+        huelle = new ModulLader.Huelle("1.780.0", "1.767.0", TestJars.huelle(huellenDir.resolve("app.jar")));
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/", ex -> {
             anfragen.incrementAndGet();
@@ -95,7 +99,7 @@ class ModulLaderTest {
     }
 
     private ModulLader lader(String notfallEnv) {
-        return new ModulLader(dir, quelle, notfallEnv, HUELLE);
+        return new ModulLader(dir, quelle, notfallEnv, huelle);
     }
 
     private void konfig(String sha256) throws IOException {
@@ -306,6 +310,66 @@ class ModulLaderTest {
         assertThat(anfragen).hasValue(0);
     }
 
+    // --- Stueckliste (Karte 1514) ---
+
+    private static final byte[] LIB = TestJars.zip("org/example/lib/Lib.class", "lib");
+    private static final String LIB_PFAD = "/central/org/example/lib/1.2.0/lib-1.2.0.jar";
+
+    private void konfigMitStueckliste(String bibliothek, String libVersion, String libSha) throws IOException {
+        Files.writeString(dir.resolve("module.yaml"), """
+                module:
+                  - name: plaintext-z-probe
+                    version: 1.0.0
+                    sha256: %s
+                    root-min: 1.770.0
+                    bibliotheken: [%s]
+                  - name: lib
+                    gruppe: org.example
+                    version: %s
+                    sha256: %s
+                """.formatted(SHA, bibliothek, libVersion, libSha));
+    }
+
+    @Test
+    void stuecklisteMitPassendemHashWirdGeladen() throws Exception {
+        dateien.put(LIB_PFAD, LIB);
+        konfigMitStueckliste("org.example:lib:1.2.0", "1.2.0", sha(LIB));
+        assertThat(lader(null).vorbereiten()).containsExactly(
+                dir.resolve("cache/plaintext-z-probe-1.0.0.jar"), dir.resolve("cache/lib-1.2.0.jar"));
+    }
+
+    @Test
+    void bibliothekMitAbweichendemHashWirdAbgewiesen() throws Exception {
+        dateien.put(LIB_PFAD, TestJars.zip("org/example/lib/Lib.class", "manipuliert"));
+        konfigMitStueckliste("org.example:lib:1.2.0", "1.2.0", sha(LIB));
+        assertThatThrownBy(() -> lader(null).vorbereiten())
+                .hasMessageContaining("Modul 'lib' 1.2.0: sha256").hasMessageContaining("nicht geladen");
+        assertThat(cacheInhalt()).doesNotContain("lib-1.2.0.jar");
+    }
+
+    @Test
+    void stuecklisteOhneEintragMitHashWirdAbgewiesen() throws Exception {
+        konfigMitStueckliste("org.example:fehlt:1.0.0", "1.2.0", sha(LIB));
+        assertThatThrownBy(() -> lader(null).vorbereiten())
+                .hasMessageContaining("nennt org.example:fehlt:1.0.0, dazu fehlt ein Eintrag mit Hash");
+        assertThat(anfragen).hasValue(0);
+    }
+
+    @Test
+    void stuecklisteMitAndererVersionWirdAbgewiesen() throws Exception {
+        konfigMitStueckliste("org.example:lib:1.1.0", "1.2.0", sha(LIB));
+        assertThatThrownBy(() -> lader(null).vorbereiten())
+                .hasMessageContaining("nennt org.example:lib:1.1.0, eingetragen ist org.example:lib:1.2.0");
+    }
+
+    @Test
+    void fremdJarOhneStuecklisteWirdAbgewiesen() throws Exception {
+        konfigMitStueckliste("", "1.2.0", sha(LIB));
+        assertThatThrownBy(() -> lader(null).vorbereiten())
+                .hasMessageContaining("Fremd-Jar 'org.example:lib:1.2.0' steht in keiner Stueckliste");
+        assertThat(anfragen).hasValue(0);
+    }
+
     // --- Cache aufraeumen ---
 
     @Test
@@ -365,7 +429,7 @@ class ModulLaderTest {
                 + "\n    root-min: 1.770.0\n", "t").get(0).sha256()).isEqualTo(SHA);
     }
 
-    private static String sha(byte[] b) {
+    static String sha(byte[] b) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(b));
         } catch (Exception ex) {
