@@ -12,7 +12,6 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="3000"/>
 
             <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
                 <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
@@ -35,7 +34,7 @@
 
                     <p:commandButton value="#{i18n.t('Abmelden')}" icon="pi pi-sign-out" styleClass="ui-button-danger"
                                      actionListener="#{sessionsBackingBean.forceLogout()}"
-                                     update="messages,tbl" process="@this"
+                                     update="tbl" process="@this"
                                      disabled="#{sessionsBackingBean.selected == null}"
                                      style="margin-left: 5px;">
                         <p:confirm header="#{i18n.t('Bestätigung')}"

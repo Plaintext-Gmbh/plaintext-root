@@ -37,7 +37,6 @@
 
         <f:event type="preRenderView" listener="#{cronBackingBean.refreshCrons()}"/>
 
-        <p:growl id="messages" showDetail="true" life="3000"/>
 
         <p:blockUI block="tbl" widgetVar="blockIt">
             <h:outputText value="#{i18n.t('Bitte warten...')}"/>
@@ -88,7 +87,7 @@
                         <p:commandButton icon="pi pi-clock"
                                          ajax="true"
                                          actionListener="#{cronBackingBean.trigger(row.getCronName(), row.mandat)}"
-                                         update="@form,:fm:messages"
+                                         update="@form"
                                          onstart="PF('blockIt').show()"
                                          oncomplete="PF('blockIt').hide()"
                                          title="Jetzt ausführen"

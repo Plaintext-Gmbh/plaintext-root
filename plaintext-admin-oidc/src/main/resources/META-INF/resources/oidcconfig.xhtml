@@ -8,7 +8,6 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="5000"/>
 
             <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
                 <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
@@ -145,17 +144,17 @@
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" styleClass="ui-button-success"
                                          action="#{oidcConfigBackingBean.save()}"
-                                         update="messages,fm:tbl"
+                                         update="fm:tbl"
                                          process="detailDialog"
                                          oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
 
                         <p:commandButton value="#{i18n.t('Verbindung testen')}" icon="pi pi-bolt"
                                          actionListener="#{oidcConfigBackingBean.testConnection()}"
-                                         update="messages" process="detailDialog"/>
+                                         process="detailDialog"/>
 
                         <p:commandButton value="#{i18n.t('Löschen')}" icon="pi pi-trash" styleClass="ui-button-danger"
                                          actionListener="#{oidcConfigBackingBean.delete()}"
-                                         update="messages,fm:tbl"
+                                         update="fm:tbl"
                                          process="@this"
                                          oncomplete="PF('dlg').hide()"
                                          rendered="#{oidcConfigBackingBean.selected.id != null}">
@@ -178,7 +177,7 @@
                                       label="JSON importieren" uploadLabel="Importieren"
                                       cancelLabel="Abbrechen"
                                       listener="#{oidcConfigBackingBean.uploadJson}"
-                                      update="dialogContent,messages"
+                                      update="dialogContent"
                                       skinSimple="true"/>
                     </div>
 

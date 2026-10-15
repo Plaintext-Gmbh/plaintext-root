@@ -85,7 +85,6 @@
             }
         </style>
 
-        <p:growl id="messages" showDetail="true" life="3000"/>
 
         <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
             <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
@@ -258,7 +257,7 @@
                     <h:outputText value="#{i18n.t('Benutzername')}:"/>
                     <p:inputText id="username" size="45" value="#{myUserBackingBean.selected.username}" required="true" requiredMessage="#{i18n.t('Benutzername ist erforderlich')}">
                         <f:validateRegex pattern="^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"/>
-                        <p:ajax event="blur" update="messages" listener="#{myUserBackingBean.validateUsername()}"/>
+                        <p:ajax event="blur" listener="#{myUserBackingBean.validateUsername()}"/>
                     </p:inputText>
 
                     <!--
@@ -362,7 +361,7 @@
                         <p:commandButton value="#{i18n.t('Magic-Link senden')}"
                                          icon="pi pi-envelope"
                                          actionListener="#{myUserBackingBean.sendMagicLink}"
-                                         update="messages"
+                                        
                                          process="@this"/>
                     </h:panelGroup>
 
@@ -390,12 +389,12 @@
                     -->
                     <f:facet name="footer">
                       <h:panelGroup styleClass="dialog-buttons">
-                        <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" action="#{myUserBackingBean.save()}" update="messages,fm:tbl,rolesMenu,fm:rollenEntzugDlg" oncomplete="if (args &amp;&amp; !args.validationFailed) { PF('dlg').hide(); } else if (#{myUserBackingBean.rollenEntzugAusstehend}) { PF('rollenEntzugDlg').show(); }"/>
+                        <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check" action="#{myUserBackingBean.save()}" update="fm:tbl rolesMenu fm:rollenEntzugDlg" oncomplete="if (args &amp;&amp; !args.validationFailed) { PF('dlg').hide(); } else if (#{myUserBackingBean.rollenEntzugAusstehend}) { PF('rollenEntzugDlg').show(); }"/>
                         <p:commandButton value="#{i18n.t('Benutzer löschen')}"
                                          icon="pi pi-trash"
                                          styleClass="ui-button-danger"
                                          actionListener="#{myUserBackingBean.delete()}"
-                                         update="messages,fm:tbl"
+                                         update="fm:tbl"
                                          process="@this"
                                          oncomplete="PF('dlg').hide()"
                                          style="margin-left: 5px;">
@@ -427,14 +426,14 @@
                                      styleClass="ui-button-danger"
                                      action="#{myUserBackingBean.bestaetigeRollenEntzugUndSpeichere()}"
                                      process="@this"
-                                     update="messages,fm:tbl,rolesMenu,fm:rollenEntzugDlg"
+                                     update="fm:tbl rolesMenu fm:rollenEntzugDlg"
                                      oncomplete="PF('rollenEntzugDlg').hide(); if (args &amp;&amp; !args.validationFailed) PF('dlg').hide();"/>
                     <p:commandButton value="#{i18n.t('Abbrechen')}"
                                      icon="pi pi-times"
                                      styleClass="ui-button-secondary"
                                      action="#{myUserBackingBean.brichRollenEntzugAb()}"
                                      process="@this"
-                                     update="messages,fm:rollenEntzugDlg"
+                                     update="fm:rollenEntzugDlg"
                                      oncomplete="PF('rollenEntzugDlg').hide()"
                                      style="margin-left: 5px;"/>
                 </h:panelGroup>

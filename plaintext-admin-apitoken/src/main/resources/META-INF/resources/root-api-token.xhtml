@@ -15,7 +15,6 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="5000"/>
 
             <p:fieldset id="fs1" legend="API Tokens - Alle Mandate">
 
@@ -85,7 +84,7 @@
                                              styleClass="ui-button-danger ui-button-rounded"
                                              title="Token invalidieren"
                                              action="#{rootApiTokenBean.invalidateToken(t.id)}"
-                                             update=":fm:tokenTable,:fm:messages"
+                                             update=":fm:tokenTable"
                                              process="@this">
                                 <p:confirm header="Token invalidieren?"
                                            message="Der Token '#{t.tokenName}' von Benutzer #{t.userEmail} (Mandat: #{t.mandat}) wird unwiderruflich invalidiert. Fortfahren?"

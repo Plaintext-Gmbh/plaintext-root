@@ -108,14 +108,16 @@
         </div>
 
         <!-- Phase 1 JSF quick wins (Daniel, 28 August 2026): ONE global growl + ONE global
-             ConfirmDialog for all pages. Page local growls may (for the time being) stay
-             in place; a duplicate display does no harm and the pages can remove their
-             copies release by release. The separate small form is necessary because the
+             ConfirmDialog for all pages. Card 1547: the growl updates itself on every Ajax
+             request (p:autoUpdate), so pages no longer carry their own growl and no button
+             has to name it in update=. The separate small form is necessary because the
              ConfirmDialog buttons have to sit inside a form and the template
              may make no assumption about the forms of a page. -->
         <h:form id="globalMessagesForm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
-            <p:growl id="globalGrowl" widgetVar="globalGrowl" showDetail="true" life="5000"/>
+            <p:growl id="globalGrowl" widgetVar="globalGrowl" showDetail="true" life="5000">
+                <p:autoUpdate/>
+            </p:growl>
             <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
                 <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes" icon="pi pi-check"/>
                 <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no ui-button-secondary" icon="pi pi-times"/>

@@ -18,6 +18,13 @@
                                    https://jakarta.ee/xml/ns/jakartaee/web-facesconfig_4_0.xsd"
               version="4.0">
     <application>
+        <!-- Card 1547: German view locale for every app. PrimeFaces resolves its texts from it
+             (Messages_de: "Keine Datensätze gefunden.", "Aufsteigend") and loads
+             locales/locale-de.js for paginator and calendar. No supported-locale here: schuetu
+             declares its own languages and sets the view locale itself (languageBean). -->
+        <locale-config>
+            <default-locale>de</default-locale>
+        </locale-config>
         <resource-handler>ch.plaintext.boot.web.resource.StandResourceHandler</resource-handler>
     </application>
 </faces-config>

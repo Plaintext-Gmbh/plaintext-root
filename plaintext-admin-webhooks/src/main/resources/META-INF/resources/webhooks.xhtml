@@ -14,7 +14,6 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="5000"/>
 
             <!-- ══ One-time plaintext display of the signing secret after creation/rotation ══ -->
             <h:panelGroup layout="block" rendered="#{webhookBean.hasNewSecret}"
@@ -60,7 +59,7 @@
                     </p:column>
                     <p:column headerText="" style="width:220px; text-align:center;">
                         <p:commandButton icon="pi pi-send" title="Test-Ping senden" process="@this"
-                                         actionListener="#{webhookBean.testPing(e)}" update="fm:messages"
+                                         actionListener="#{webhookBean.testPing(e)}"
                                          styleClass="ui-button-flat" style="margin-right:2px;"/>
                         <p:commandButton icon="pi pi-list" title="Delivery-Log anzeigen" process="@this"
                                          actionListener="#{webhookBean.showDeliveryLog(e)}" update="fm:log"
