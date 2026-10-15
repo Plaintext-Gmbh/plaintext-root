@@ -37,6 +37,11 @@
           und nimmt dem Cache genau den Teil, der etwas bringt.
         -->
         <maven.build.cache.input.qualitygate>../quality/quality-gate.properties</maven.build.cache.input.qualitygate>
+        <!-- Karte 1503/1512/1513: aelteste root-Version, gegen die ein Laufzeit-Modul gebaut sein darf.
+             Nur anheben bei absichtlichem Bruch der Modul-API; letzter Bruch: Karte 1504 in 1.767.0.
+             Landet in der application.yml (plaintext.root.kompatibel-ab) UND im Manifest des Exec-Jars,
+             wo der ModulLader (plaintext-root-lader, nur JDK) es vor dem Spring-Start liest. -->
+        <plaintext.root.kompatibel-ab>1.767.0</plaintext.root.kompatibel-ab>
     </properties>
 
     <dependencies>
@@ -538,6 +543,20 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- Karte 1513: Version und kompatibel-ab fuer den ModulLader. repackage uebernimmt das Manifest
+                 ins Exec-Jar; der Lader liest es dort ohne YAML-Parser und ohne Spring. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Plaintext-Root-Version>${project.version}</Plaintext-Root-Version>
+                            <Plaintext-Root-Kompatibel-Ab>${plaintext.root.kompatibel-ab}</Plaintext-Root-Kompatibel-Ab>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

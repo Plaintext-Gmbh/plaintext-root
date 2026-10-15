@@ -140,8 +140,8 @@ plaintext:
   root:
     version: '@project.version@'
     # Karte 1503/1512: aelteste root-Version, gegen die ein Modul gebaut sein darf (Laufzeit-Module).
-    # Nur anheben bei absichtlichem Bruch der Modul-API; letzter Bruch: Karte 1504 in 1.767.0.
-    kompatibel-ab: 1.767.0
+    # Wert steht im pom von plaintext-root-webapp (plaintext.root.kompatibel-ab), auch fuer das Manifest.
+    kompatibel-ab: '@plaintext.root.kompatibel-ab@'
   menu:
     scan-package: ch.plaintext
   security:
