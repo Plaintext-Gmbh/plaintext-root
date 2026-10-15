@@ -131,7 +131,9 @@ class PlaintextModulgrenzenTest {
             "plaintext-root-menu",
             "plaintext-root-flyway",
             "plaintext-root-pageguard",
-            "plaintext-root-webapp");
+            "plaintext-root-webapp",
+            // Karte 1515: der ModulLader gehoert zur Huelle (nur JDK); die Modul-Ansicht prueft mit seinem Parser.
+            "plaintext-root-lader");
 
     /**
      * Lower bounds of the scan set, measured on 22./23.09.2026 on the six reactors (classes /

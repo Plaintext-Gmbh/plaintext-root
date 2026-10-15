@@ -43,12 +43,12 @@ import java.util.stream.Collectors;
  */
 public final class ModulLader {
 
-    static final String VERZEICHNIS_ENV = "PLAINTEXT_MODULE_VERZEICHNIS";
-    static final String STANDARD_VERZEICHNIS = "/data/module";
+    public static final String VERZEICHNIS_ENV = "PLAINTEXT_MODULE_VERZEICHNIS";
+    public static final String STANDARD_VERZEICHNIS = "/data/module";
     static final String NOTFALL_ENV = "PLAINTEXT_MODULE";
-    static final String NOTFALL_DATEI = "NOTFALL-AUS";
-    static final String KONFIG = "module.yaml";
-    static final String KONFIG_VORHER = "module.yaml.vorher";
+    public static final String NOTFALL_DATEI = "NOTFALL-AUS";
+    public static final String KONFIG = "module.yaml";
+    public static final String KONFIG_VORHER = "module.yaml.vorher";
 
     /** Manifest-Attribute des Huellen-Exec-Jars (gesetzt im pom von plaintext-root-webapp). */
     static final String ATTR_VERSION = "Plaintext-Root-Version";
@@ -91,6 +91,19 @@ public final class ModulLader {
             return;
         }
         starten(jars, args);
+    }
+
+    /**
+     * Karte 1515: prueft eine Konfig mit genau dem Parser, den der Lader beim Start nimmt (Format, Muster,
+     * Stueckliste). Fuer die Modul-Ansicht, BEVOR sie die Datei im PV schreibt.
+     *
+     * @return {@code name:version} je Eintrag, Module und Bibliotheken
+     * @throws IllegalArgumentException mit der Meldung des Laders, wenn er die Konfig ablehnen wuerde
+     */
+    public static List<String> konfigPruefen(String text) {
+        return ModulKonfig.parsen(text, KONFIG).stream()
+                .map(e -> e.name() + ":" + e.version() + (e.bibliothek() ? " (Bibliothek)" : ""))
+                .toList();
     }
 
     /** Liefert die Jars fuer {@code loader.path}; leer = Start ohne Module. */

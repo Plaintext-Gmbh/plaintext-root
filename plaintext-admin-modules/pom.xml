@@ -31,6 +31,18 @@
             <groupId>ch.plaintext</groupId>
             <artifactId>plaintext-root-jpa</artifactId>
         </dependency>
+        <!-- Karte 1515: die Modul-Ansicht prueft die Konfig im PV mit dem Parser des Laders, bevor sie schreibt.
+             Der Lader ist nur JDK, bringt also nichts mit. -->
+        <dependency>
+            <groupId>ch.plaintext</groupId>
+            <artifactId>plaintext-root-lader</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- registry.yaml (plaintext-modules, Format 2) lesen; Version von Spring Boot verwaltet -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
