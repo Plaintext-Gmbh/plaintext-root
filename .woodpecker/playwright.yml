@@ -239,7 +239,7 @@ steps:
       - >-
         mvn -B -pl plaintext-root-webapp -Dmaven.build.cache.enabled=false
         failsafe:integration-test failsafe:verify
-        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,WatchHandyLinkPlaywrightIT,WatchMusterPlaywrightIT,RessourcenMarkePlaywrightIT,TabellenstandZweiBenutzerPlaywrightIT,TabellenSortierungZweiBenutzerPlaywrightIT,GlobaleSucheMenuPlaywrightIT,StartseiteAnpassenPlaywrightIT,MobilSeitePlaywrightIT,AblageAusprobierenPlaywrightIT
+        -Dit.test=SelfServicePlaywrightIT,RootPagesPlaywrightIT,LaufzeitModulePlaywrightIT,WatchHandyLinkPlaywrightIT,WatchMusterPlaywrightIT,RessourcenMarkePlaywrightIT,TabellenstandZweiBenutzerPlaywrightIT,TabellenSortierungZweiBenutzerPlaywrightIT,GlobaleSucheMenuPlaywrightIT,StartseiteAnpassenPlaywrightIT,MobilSeitePlaywrightIT,AblageAusprobierenPlaywrightIT
 
   berichte-bei-fehlschlag:
     image: mcr.microsoft.com/playwright/java:v1.63.0-noble

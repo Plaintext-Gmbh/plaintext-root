@@ -294,7 +294,7 @@
                             <p class="ui-messages-error">Aktuelle Konfig: #{laufzeitModuleBackingBean.stand.konfigFehler}</p>
                         </h:panelGroup>
 
-                        <p:selectManyCheckbox id="auswahl" value="#{laufzeitModuleBackingBean.auswahl}" layout="grid" columns="2">
+                        <p:selectManyCheckbox id="auswahl" value="#{laufzeitModuleBackingBean.auswahl}" layout="responsive" columns="2">
                             <f:selectItems value="#{laufzeitModuleBackingBean.stand.registry}" var="r"
                                            itemValue="#{r.name}" itemLabel="#{r.name} #{r.version} (#{r.art})"/>
                         </p:selectManyCheckbox>
