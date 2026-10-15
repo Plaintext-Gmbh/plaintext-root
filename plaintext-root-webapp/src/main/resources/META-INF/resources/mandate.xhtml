@@ -72,7 +72,6 @@
             }
         </style>
 
-        <p:growl id="messages" showDetail="true" life="5000"/>
 
         <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
             <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
@@ -124,7 +123,7 @@
                             <p:commandButton value="#{i18n.t('Aus Verwaltung entfernen')}"
                                            icon="pi pi-trash"
                                            action="#{mandateBackingBean.deleteMandat()}"
-                                           update="messages,mandateList,deleteButtonPanel,usersTable"
+                                           update="mandateList deleteButtonPanel usersTable"
                                            process="@this"
                                            styleClass="ui-button-danger"
                                            style="width: 100%; margin-top: 15px;"
@@ -191,7 +190,7 @@
                                                  itemLabel="#{m}"
                                                  itemValue="#{m}"/>
                                     <p:ajax listener="#{mandateBackingBean.saveUserMandat(user)}"
-                                          update=":fm:messages,:fm:usersTable"
+                                          update=":fm:usersTable"
                                           process="@this"/>
                                 </p:selectOneMenu>
                             </p:column>

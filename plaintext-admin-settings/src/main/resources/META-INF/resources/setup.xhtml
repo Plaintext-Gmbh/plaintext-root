@@ -27,7 +27,6 @@
         <h:form id="fm" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="3000"/>
 
             <!-- Login Settings -->
             <p:fieldset legend="#{i18n.t('Login')}" toggleable="true" style="margin-bottom: 1rem;">
@@ -88,7 +87,7 @@
 
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveLoginSettings()}"
-                                         update="messages"
+                                        
                                          process="rootUserEnabled passwordManagementEnabled totpEnabled oidcAutoRedirectEnabled oidcAutoRedirectConfigId selfRegistrationEnabled passwordResetLinkEnabled magicLinkEnabled systemMailAccountId @this"
                                          style="margin-top:10px;"/>
 
@@ -151,7 +150,7 @@
 
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveSessionSettings()}"
-                                         update="messages"
+                                        
                                          process="sessionTrackingEnabled @this"
                                          style="margin-top:10px;"/>
 
@@ -189,7 +188,7 @@
                             <p:fileUpload listener="#{setupBackingBean.handleLightLogoUpload}"
                                           mode="advanced" auto="true" allowTypes="/(\.|\/)(png|webp|jpe?g)$/i"
                                           maxFileSize="2097152" fileLimit="1"
-                                          update="messages lightPreviewPanel"
+                                          update="lightPreviewPanel"
                                           label="Light-Logo hochladen" uploadLabel="Upload"
                                           cancelLabel="Abbrechen"
                                           style="margin-bottom:10px;"/>
@@ -198,12 +197,12 @@
                         <h:panelGroup rendered="#{setupBackingBean.hasLightLogo}">
                             <p:commandButton value="#{i18n.t('Dimensionen speichern')}" icon="pi pi-save"
                                              actionListener="#{setupBackingBean.saveLightLogoDimensions()}"
-                                             update="messages" process="lightWidth lightHeight @this"
+                                             process="lightWidth lightHeight @this"
                                              style="margin-right:5px;"/>
                             <p:commandButton value="#{i18n.t('Logo entfernen')}" icon="pi pi-trash"
                                              styleClass="ui-button-danger"
                                              actionListener="#{setupBackingBean.deleteLightLogo()}"
-                                             update="messages fm"
+                                             update="fm"
                                              process="@this">
                                 <p:confirm header="#{i18n.t('Bestätigung')}" message="Light-Logo wirklich löschen?"
                                            icon="pi pi-exclamation-triangle"/>
@@ -252,7 +251,7 @@
                             <p:fileUpload listener="#{setupBackingBean.handleDarkLogoUpload}"
                                           mode="advanced" auto="true" allowTypes="/(\.|\/)(png|webp|jpe?g)$/i"
                                           maxFileSize="2097152" fileLimit="1"
-                                          update="messages darkPreviewPanel"
+                                          update="darkPreviewPanel"
                                           label="Dark-Logo hochladen" uploadLabel="Upload"
                                           cancelLabel="Abbrechen"
                                           style="margin-bottom:10px;"/>
@@ -261,12 +260,12 @@
                         <h:panelGroup rendered="#{setupBackingBean.hasDarkLogo}">
                             <p:commandButton value="#{i18n.t('Dimensionen speichern')}" icon="pi pi-save"
                                              actionListener="#{setupBackingBean.saveDarkLogoDimensions()}"
-                                             update="messages" process="darkWidth darkHeight @this"
+                                             process="darkWidth darkHeight @this"
                                              style="margin-right:5px;"/>
                             <p:commandButton value="#{i18n.t('Logo entfernen')}" icon="pi pi-trash"
                                              styleClass="ui-button-danger"
                                              actionListener="#{setupBackingBean.deleteDarkLogo()}"
-                                             update="messages fm"
+                                             update="fm"
                                              process="@this">
                                 <p:confirm header="#{i18n.t('Bestätigung')}" message="Dark-Logo wirklich löschen?"
                                            icon="pi pi-exclamation-triangle"/>
@@ -320,7 +319,7 @@
 
                         <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveI18nSettings()}"
-                                         update="messages"
+                                        
                                          process="i18nEnabled i18nIcon @this"
                                          style="margin-top:10px;"/>
                     </div>
@@ -360,7 +359,7 @@
 
                         <p:commandButton value="#{i18n.t('Footer speichern')}" icon="pi pi-save"
                                          actionListener="#{setupBackingBean.saveFooterSettings()}"
-                                         update="messages"
+                                        
                                          process="footerText showVersion showRootVersion showBuildTimestamp @this"
                                          style="margin-top:10px;"/>
                     </div>

@@ -12,7 +12,6 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="3000"/>
 
             <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
                 <p:commandButton value="#{i18n.t('Ja')}" type="button" styleClass="ui-confirmdialog-yes"/>
@@ -36,7 +35,7 @@
 
                     <p:commandButton value="#{i18n.t('Löschen')}" icon="pi pi-trash" styleClass="ui-button-danger"
                                      actionListener="#{rollenzuteilungBackingBean.delete()}"
-                                     update="messages,tbl" process="@this"
+                                     update="tbl" process="@this"
                                      disabled="#{rollenzuteilungBackingBean.selected == null}"
                                      style="margin-left: 5px;">
                         <p:confirm header="#{i18n.t('Bestätigung')}"
@@ -121,7 +120,7 @@
 
                     <p:commandButton value="#{i18n.t('Speichern')}" icon="pi pi-check"
                                      action="#{rollenzuteilungBackingBean.save()}"
-                                     update="messages,tbl"
+                                     update="tbl"
                                      process="@form"
                                      oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlg').hide()"/>
                 </h:panelGroup>

@@ -16,13 +16,12 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-        <p:growl id="growl" widgetVar="growl" showDetail="true" life="3000"/>
 
         <!-- Remote command for advanced mode toggle -->
         <p:remoteCommand name="remoteToggleAdvancedMode"
                          action="#{myUserInfoBackingBean.toggleAdvancedMode}"
                          update="dynamicContentPanel"
-                         oncomplete="if (args &amp;&amp; args.advancedModeEnabled !== undefined) { PF('growl').renderMessage({ 'summary': 'Entwickler-Modus', 'detail': args.advancedModeEnabled ? 'Entwickler-Modus aktiviert (Ctrl+Shift+D)' : 'Entwickler-Modus deaktiviert', 'severity': 'info' }); }"/>
+                         oncomplete="if (args &amp;&amp; args.advancedModeEnabled !== undefined) { PF('globalGrowl').renderMessage({ 'summary': 'Entwickler-Modus', 'detail': args.advancedModeEnabled ? 'Entwickler-Modus aktiviert (Ctrl+Shift+D)' : 'Entwickler-Modus deaktiviert', 'severity': 'info' }); }"/>
 
         <style>
             .user-info-grid td {

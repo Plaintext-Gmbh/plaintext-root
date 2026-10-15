@@ -8,7 +8,6 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="3000"/>
 
             <p:fieldset legend="Howtos - Handlungsanweisungen">
 
@@ -27,7 +26,7 @@
 
                     <p:commandButton value="Löschen" icon="pi pi-trash" styleClass="ui-button-danger"
                                      actionListener="#{howtoBackingBean.delete()}"
-                                     update="messages,howtosTable" process="@this"
+                                     update="howtosTable" process="@this"
                                      disabled="#{howtoBackingBean.selected == null}"
                                      style="margin-left: 5px;">
                         <p:confirm header="Löschen bestätigen"
@@ -121,7 +120,7 @@
 
                     <p:commandButton value="Speichern" icon="pi pi-check"
                                      action="#{howtoBackingBean.save()}"
-                                     update="messages,howtosTable"
+                                     update="howtosTable"
                                      process="@form"
                                      ajax="true"
                                      oncomplete="if (args &amp;&amp; !args.validationFailed) PF('howtoDialog').hide()"

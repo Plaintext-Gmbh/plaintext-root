@@ -74,7 +74,6 @@
     <div data-pt-pushstate="#{pageUrl}" hidden="hidden"></div>
     <h:outputScript library="plaintext-layout" name="js/pushstate.js"/>
 
-    <p:growl id="messages" showDetail="true" life="3000"/>
 
     <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
         <h:form id="confirmForm">
@@ -99,7 +98,7 @@
                                      converter="entityDescriptorConverter">
                         <f:attribute name="backingBean" value="#{bean}"/>
                         <p:ajax listener="#{bean.entityTypeChanged}"
-                                update=":listForm :messages" process="@this"/>
+                                update=":listForm" process="@this"/>
                         <f:selectItem itemLabel="-- Bitte wählen --" itemValue="#{null}" noSelectionOption="true"/>
                         <f:selectItems value="#{bean.availableEntities}"
                                        var="entity"
@@ -135,7 +134,7 @@
                                  icon="pi pi-trash"
                                  styleClass="ui-button-danger"
                                  action="#{bean.deleteEntity()}"
-                                 update="messages,entityTable,actionButtons"
+                                 update="entityTable actionButtons"
                                  process="@this"
                                  disabled="#{bean.selectedEntity == null}">
                     <p:confirm header="Bestätigung"
@@ -221,7 +220,7 @@
                     <p:commandButton value="#{i18n.t('Importieren')}"
                                      icon="pi pi-upload"
                                      action="#{bean.importEntities()}"
-                                     update="@form,@(#messages),@(#listForm)"
+                                     update="@form,@(#listForm)"
                                      oncomplete="if (args &amp;&amp; !args.validationFailed) PF('importDialog').hide();"/>
                     <p:commandButton value="#{i18n.t('Abbrechen')}"
                                      icon="pi pi-times"
@@ -307,7 +306,7 @@
                     <p:commandButton value="Speichern"
                                      icon="pi pi-check"
                                      action="#{bean.saveEntity()}"
-                                     update="@form @(#messages) @(#listForm)"
+                                     update="@form @(#listForm)"
                                      oncomplete="if (args &amp;&amp; !args.validationFailed) PF('editDialog').hide();"/>
                 </h:panelGroup>
             </h:panelGrid>

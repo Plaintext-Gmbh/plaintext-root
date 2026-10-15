@@ -14,7 +14,6 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="8000"/>
 
             <p:fieldset id="fsAdresse" legend="Ansicht auf dem Telefon">
                 <h:panelGrid columns="1" style="width:100%">
@@ -69,11 +68,11 @@
                 <p:commandButton id="btnErzeugen" value="Handy-Link erstellen"
                                  action="#{watchSettingsBean.erzeugeHandyLink}"
                                  rendered="#{watchSettingsBean.handyLinkMoeglich}"
-                                 update="fsHandy messages" style="margin-top:10px"/>
+                                 update="fsHandy" style="margin-top:10px"/>
                 <p:commandButton id="btnAbschalten" value="Deaktivieren"
                                  action="#{watchSettingsBean.schalteHandyLinkAb}"
                                  rendered="#{watchSettingsBean.handyLinkMoeglich and watchSettingsBean.handyLinkAktiv}"
-                                 update="fsHandy messages" style="margin-top:10px;margin-left:8px"/>
+                                 update="fsHandy" style="margin-top:10px;margin-left:8px"/>
             </p:fieldset>
 
             <!-- Karten 1257/1260: die Seitenauswahl je Benutzer. Dieselbe Auswahl bedient die
@@ -97,7 +96,7 @@
                     </p:column>
                 </p:dataTable>
                 <p:commandButton id="btnSpeichern" value="Speichern" action="#{watchSettingsBean.speichern}"
-                                 update="messages tblSeiten" style="margin-top:10px"/>
+                                 update="tblSeiten" style="margin-top:10px"/>
             </p:fieldset>
         </h:form>
     </ui:define>

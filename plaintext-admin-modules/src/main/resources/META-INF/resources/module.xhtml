@@ -14,7 +14,6 @@
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
 
-            <p:growl id="messages" showDetail="true" life="3000"/>
 
             <p:fieldset legend="🧩 Modul-Verwaltung" style="margin-bottom: 20px;">
                 <!-- Karte 1438: root (Framework aus plaintext-root) oder Modul (Fachmodul der App); filtert beide Listen -->
@@ -47,7 +46,7 @@
                     </p:column>
                     <p:column headerText="Aktiv" style="width:110px; text-align:center;">
                         <p:toggleSwitch value="#{m.enabled}">
-                            <p:ajax listener="#{modulesBackingBean.toggle(m)}" update=":fm:messages"/>
+                            <p:ajax listener="#{modulesBackingBean.toggle(m)}"/>
                         </p:toggleSwitch>
                     </p:column>
                     <p:column headerText="Daten" style="width:140px; text-align:center;">
@@ -229,7 +228,7 @@
                         Einträge werden anhand der ID überschrieben, neue angelegt.</p>
                     <p:fileUpload listener="#{modulesBackingBean.handleImportUpload}"
                                   mode="advanced" auto="true" dragDropSupport="true"
-                                  update=":fm:dlgImport,:fm:messages" allowTypes="/(\.|\/)(json)$/"
+                                  update=":fm:dlgImport" allowTypes="/(\.|\/)(json)$/"
                                   label="Export-Datei wählen" uploadLabel="Hochladen" cancelLabel="Abbrechen"/>
                     <h:panelGroup layout="block" style="margin-top:.5rem;" rendered="#{not empty modulesBackingBean.importFileName}">
                         <span><i class="pi pi-file"></i> #{modulesBackingBean.importFileName}</span>
@@ -239,7 +238,7 @@
                     <p:commandButton value="Importieren" icon="pi pi-check"
                                      actionListener="#{modulesBackingBean.importUebernehmen}"
                                      disabled="#{empty modulesBackingBean.importFileName}"
-                                     update=":fm:dlgImport,:fm:messages,:fm:tbl"
+                                     update=":fm:dlgImport :fm:tbl"
                                      oncomplete="PF('dlgImport').hide()"/>
                     <p:commandButton value="Abbrechen" icon="pi pi-times" type="button"
                                      onclick="PF('dlgImport').hide()" styleClass="ui-button-secondary"/>

@@ -42,7 +42,6 @@
     <ui:define name="content">
         <h:form id="fm">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
-            <p:growl id="messages" showDetail="true" life="6000"/>
 
             <p class="sc-einleitung">
                 Sidecars sind eigenständige Container, die dieser Anwendung Dienste anbieten. Jeder beschreibt sich
@@ -225,7 +224,7 @@
                 </h:panelGroup>
                 <f:facet name="footer">
                     <p:commandButton id="ergaenzenSpeichern" value="Ergänzen" icon="pi pi-plus" action="#{sidecarsBean.registrieren()}"
-                                     process="@this ergaenzenFelder" update="reiter messages"
+                                     process="@this ergaenzenFelder" update="reiter"
                                      oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlgErgaenzen').hide()"/>
                     <p:commandButton value="Abbrechen" type="button" styleClass="ui-button-secondary"
                                      onclick="PF('dlgErgaenzen').hide()"/>
@@ -257,7 +256,7 @@
                 </h:panelGroup>
                 <f:facet name="footer">
                     <p:commandButton id="ablageSpeichern" value="Speichern und prüfen" icon="pi pi-check"
-                                     action="#{sidecarsBean.ablageSpeichern()}" process="@this ablageFelder" update="reiter messages"
+                                     action="#{sidecarsBean.ablageSpeichern()}" process="@this ablageFelder" update="reiter"
                                      oncomplete="if (args &amp;&amp; !args.validationFailed) PF('dlgAblage').hide()"/>
                     <p:commandButton value="Abbrechen" type="button" styleClass="ui-button-secondary"
                                      onclick="PF('dlgAblage').hide()"/>
