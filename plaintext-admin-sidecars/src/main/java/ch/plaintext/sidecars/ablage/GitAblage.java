@@ -104,7 +104,7 @@ public final class GitAblage implements DateiAblage {
         if (pfad == null || pfad.contains("\\") || pfad.chars().anyMatch(c -> c < 0x20)) {
             throw new IOException(UNGUELTIG);
         }
-        String p = pfad.strip().replaceAll("^/+|/+$", "");
+        String p = ohneRandSchraegstriche(pfad.strip());
         if (p.isEmpty()) {
             if (leerErlaubt) {
                 return "";
@@ -117,6 +117,19 @@ public final class GitAblage implements DateiAblage {
             }
         }
         return p;
+    }
+
+    /** Karte 1509 (Sonar S5852): linear statt {@code replaceAll("^/+|/+$")}, das bei vielen "/" quadratisch sucht. */
+    static String ohneRandSchraegstriche(String s) {
+        int a = 0;
+        int e = s.length();
+        while (a < e && s.charAt(a) == '/') {
+            a++;
+        }
+        while (e > a && s.charAt(e - 1) == '/') {
+            e--;
+        }
+        return s.substring(a, e);
     }
 
     /** Relativer Pfad in der Ablage → Pfad im Repo (mit Unterordner). */
