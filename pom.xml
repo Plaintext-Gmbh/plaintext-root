@@ -165,7 +165,7 @@
           28.08.2026: 11.0.24 -> 11.0.25. Geeicht per NVD-CPE-Abfrage: 11.0.24 traegt 11 CVEs
           (4x CRITICAL bis 9.8, u.a. CVE-2026-65637/65905/65182/68525), 11.0.25 null.
         -->
-        <tomcat.version>11.0.26</tomcat.version>
+        <tomcat.version>11.0.27</tomcat.version>
         <!--
           log4j-api: Boot 4.1.0 pinnt 2.25.4 — darin CVE-2026-49844 (CVSS 5.9, MapMessage-
           JSON-Serialisierung erzeugt ungueltiges JSON bei non-finite Floats), behoben ab 2.25.5.
