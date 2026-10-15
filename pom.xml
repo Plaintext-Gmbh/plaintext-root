@@ -203,6 +203,8 @@
         <module>plaintext-root-template</module>
 
         <module>plaintext-root-webapp</module>
+        <!-- Laufzeit-Module: Lader vor dem Start der Huelle (Karte 1513) -->
+        <module>plaintext-root-lader</module>
 
         <!-- geteilte Architektur-/Lint-Tests (via Surefire dependenciesToScan in Consumern nutzbar) -->
         <module>plaintext-root-watch</module>
