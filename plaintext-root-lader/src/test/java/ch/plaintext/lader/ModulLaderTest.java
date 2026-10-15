@@ -405,6 +405,16 @@ class ModulLaderTest {
         assertThat(cacheInhalt()).contains("plaintext-z-weg-0.1.0.jar");
     }
 
+    // --- oeffentliche Pruefung fuer die Modul-Ansicht (Karte 1515) ---
+
+    @Test
+    void konfigPruefenNutztDenLaderParser() {
+        assertThat(ModulLader.konfigPruefen("module:\n  - name: a\n    version: 1.0.0\n    sha256: " + SHA
+                + "\n    root-min: 1.770.0\n")).containsExactly("a:1.0.0");
+        assertThatThrownBy(() -> ModulLader.konfigPruefen("module:\n  - name: a\n    url: x\n"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("unbekannter Schluessel 'url'");
+    }
+
     // --- Parser ---
 
     @Test
