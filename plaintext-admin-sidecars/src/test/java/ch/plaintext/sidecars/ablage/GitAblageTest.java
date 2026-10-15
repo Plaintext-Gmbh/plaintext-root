@@ -264,4 +264,17 @@ class GitAblageTest {
         assertThat(b.existiert("start.txt")).isTrue();
         assertThat(b.existiert("weg.txt")).isFalse();
     }
+
+    @Test
+    @DisplayName("Karte 1509: Rand-Schrägstriche fallen weg, die Mitte bleibt, viele '/' laufen linear")
+    void randSchraegstricheLinear() throws IOException {
+        assertThat(GitAblage.normiere("//a/b//", false)).isEqualTo("a/b");
+        assertThat(GitAblage.normiere("///", true)).isEmpty();
+        assertThatThrownBy(() -> GitAblage.normiere("///", false)).isInstanceOf(IOException.class);
+        assertThatThrownBy(() -> GitAblage.normiere("a//b", false)).isInstanceOf(IOException.class);
+        String boese = "/".repeat(200_000) + "x" + "/".repeat(200_000) + "y";
+        long t0 = System.nanoTime();
+        assertThatThrownBy(() -> GitAblage.normiere(boese, false)).isInstanceOf(IOException.class);
+        assertThat(System.nanoTime() - t0).isLessThan(2_000_000_000L);
+    }
 }
