@@ -27,7 +27,15 @@ import java.util.regex.Pattern;
  *     sha256: 59b09084b7f9...
  *     root-min: 1.766.0
  *     gruppe: ch.plaintext        # optional, Standard ch.plaintext
+ *     bibliotheken: [org.example:lib:1.2.0]   # optional, Stueckliste (Karte 1514)
+ *   - name: lib                   # Bibliothek: eigener Eintrag mit Hash, ohne root-min
+ *     gruppe: org.example
+ *     version: 1.2.0
+ *     sha256: 0f1e...
  * </pre>
+ * Stueckliste (Karte 1514): Jede Bibliothek, die ein Modul nennt, muss genau so (Gruppe, Name, Version)
+ * als Eintrag mit Hash dastehen. Ein Fremd-Jar, das kein Modul nennt, wird abgewiesen. Module brauchen
+ * {@code root-min}, Bibliotheken nicht.
  * Alles andere (unbekannte Schluessel, insbesondere eine URL, Einrueckung ausserhalb des Musters,
  * doppelte Namen) ist ein Fehler: lieber kein Start als ein still falsch gelesener.
  * Die Werte werden eng geprueft, weil sie in Download-Pfad und Cache-Dateinamen landen.
@@ -41,10 +49,22 @@ final class ModulKonfig {
     private static final Pattern VERSION = Pattern.compile("[0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)*");
     private static final Pattern ROOT_VERSION = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+");
     private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
-    private static final Set<String> SCHLUESSEL = Set.of("name", "version", "sha256", "root-min", "gruppe");
+    private static final Set<String> SCHLUESSEL = Set.of("name", "version", "sha256", "root-min", "gruppe", "bibliotheken");
+    private static final Pattern KOORDINATE = Pattern.compile("([^:]+):([^:]+):([^:]+)");
 
-    /** Ein Modul-Jar. */
-    record Eintrag(String gruppe, String name, String version, String sha256, String rootMin) {
+    /**
+     * Ein Jar: Modul ({@code bibliothek=false}, mit root-min) oder Bibliothek aus der Stueckliste eines Moduls.
+     */
+    record Eintrag(String gruppe, String name, String version, String sha256, String rootMin,
+                   List<String> bibliotheken, boolean bibliothek) {
+
+        Eintrag(String gruppe, String name, String version, String sha256, String rootMin) {
+            this(gruppe, name, version, sha256, rootMin, List.of(), false);
+        }
+
+        String koordinate() {
+            return gruppe + ":" + name + ":" + version;
+        }
 
         /** Dateiname im Cache, eindeutig je Name und Version. */
         String dateiname() {
@@ -130,16 +150,88 @@ final class ModulKonfig {
             }
             eintraege.add(e);
         }
-        return List.copyOf(eintraege);
+        return stueckliste(eintraege, quelle);
+    }
+
+    /** Karte 1514: Stueckliste aufloesen und pruefen; markiert die Bibliotheken. */
+    private static List<Eintrag> stueckliste(List<Eintrag> eintraege, String quelle) {
+        Map<String, Eintrag> jeName = new LinkedHashMap<>();
+        eintraege.forEach(e -> jeName.put(e.name(), e));
+        Set<String> genannt = new HashSet<>();
+        for (Eintrag e : eintraege) {
+            for (String k : e.bibliotheken()) {
+                java.util.regex.Matcher m = KOORDINATE.matcher(k);
+                if (!m.matches()) {
+                    throw new IllegalArgumentException(quelle + ": Modul '" + e.name()
+                            + "', Bibliothek '" + k + "' ist nicht gruppe:name:version");
+                }
+                Eintrag b = jeName.get(m.group(2));
+                if (b == null) {
+                    throw new IllegalArgumentException(quelle + ": Stueckliste von '" + e.name() + "' nennt " + k
+                            + ", dazu fehlt ein Eintrag mit Hash");
+                }
+                if (!b.koordinate().equals(k)) {
+                    throw new IllegalArgumentException(quelle + ": Stueckliste von '" + e.name() + "' nennt " + k
+                            + ", eingetragen ist " + b.koordinate());
+                }
+                if (!b.bibliotheken().isEmpty()) {
+                    throw new IllegalArgumentException(quelle + ": Bibliothek '" + b.name()
+                            + "' hat selbst eine Stueckliste (die Liste ist flach, je Modul vollstaendig)");
+                }
+                genannt.add(b.name());
+            }
+        }
+        List<Eintrag> ergebnis = new ArrayList<>();
+        for (Eintrag e : eintraege) {
+            boolean bibliothek = genannt.contains(e.name());
+            if (!bibliothek && e.rootMin() == null) {
+                String grund = istPlaintext(e.gruppe())
+                        ? "Modul '" + e.name() + "' ohne 'root-min'"
+                        : "Fremd-Jar '" + e.koordinate() + "' steht in keiner Stueckliste";
+                throw new IllegalArgumentException(quelle + ": " + grund);
+            }
+            ergebnis.add(new Eintrag(e.gruppe(), e.name(), e.version(), e.sha256(), e.rootMin(),
+                    e.bibliotheken(), bibliothek));
+        }
+        return List.copyOf(ergebnis);
+    }
+
+    static boolean istPlaintext(String gruppe) {
+        return STANDARD_GRUPPE.equals(gruppe) || gruppe.startsWith(STANDARD_GRUPPE + ".");
     }
 
     private static Eintrag eintrag(Map<String, String> m, String quelle) {
         String name = pflicht(m, "name", NAME, quelle, "?");
         String version = pflicht(m, "version", VERSION, quelle, name);
         String sha256 = pflicht(m, "sha256", SHA256, quelle, name, true);
-        String rootMin = pflicht(m, "root-min", ROOT_VERSION, quelle, name);
+        String rootMin = m.containsKey("root-min") ? pflicht(m, "root-min", ROOT_VERSION, quelle, name) : null;
         String gruppe = m.containsKey("gruppe") ? pflicht(m, "gruppe", GRUPPE, quelle, name) : STANDARD_GRUPPE;
-        return new Eintrag(gruppe, name, version, sha256, rootMin);
+        return new Eintrag(gruppe, name, version, sha256, rootMin, liste(m.get("bibliotheken"), quelle, name), false);
+    }
+
+    /** Flusssequenz {@code [a, b]}; Elemente werden mit denselben Mustern geprueft wie Eintraege. */
+    private static List<String> liste(String wert, String quelle, String modul) {
+        if (wert == null) {
+            return List.of();
+        }
+        if (!wert.startsWith("[") || !wert.endsWith("]")) {
+            throw new IllegalArgumentException(quelle + ": Modul '" + modul + "', 'bibliotheken' erwartet [a, b]");
+        }
+        String innen = wert.substring(1, wert.length() - 1).strip();
+        if (innen.isEmpty()) {
+            return List.of();
+        }
+        List<String> l = new ArrayList<>();
+        for (String teil : innen.split(",")) {
+            String k = ohneAnfuehrung(teil.strip());
+            java.util.regex.Matcher m = KOORDINATE.matcher(k);
+            if (!m.matches() || !GRUPPE.matcher(m.group(1)).matches() || !NAME.matcher(m.group(2)).matches()
+                    || !VERSION.matcher(m.group(3)).matches()) {
+                throw new IllegalArgumentException(quelle + ": Modul '" + modul + "', ungueltige Bibliothek: " + k);
+            }
+            l.add(k);
+        }
+        return List.copyOf(l);
     }
 
     private static String pflicht(Map<String, String> m, String schluessel, Pattern muster, String quelle, String modul) {

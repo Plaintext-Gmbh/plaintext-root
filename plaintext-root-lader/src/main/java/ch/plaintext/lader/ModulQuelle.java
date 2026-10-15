@@ -56,8 +56,7 @@ final class ModulQuelle {
     }
 
     URI adresse(ModulKonfig.Eintrag e) {
-        URI basis = ModulKonfig.STANDARD_GRUPPE.equals(e.gruppe()) || e.gruppe().startsWith("ch.plaintext.")
-                ? plaintext : central;
+        URI basis = ModulKonfig.istPlaintext(e.gruppe()) ? plaintext : central;
         URI ziel = basis.resolve(e.mavenPfad());
         // Zweite Sperre neben dem Muster in ModulKonfig: das Ziel muss unter der Basis liegen.
         if (!ziel.normalize().toString().startsWith(basis.toString())

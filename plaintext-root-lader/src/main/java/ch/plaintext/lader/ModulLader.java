@@ -57,8 +57,11 @@ public final class ModulLader {
     static final String JAR_LAUNCHER = "org.springframework.boot.loader.launch.JarLauncher";
     static final String PROPERTIES_LAUNCHER = "org.springframework.boot.loader.launch.PropertiesLauncher";
 
-    /** Version der Huelle und aelteste root-Version, gegen die ein Modul gebaut sein darf. */
-    record Huelle(String version, String kompatibelAb) {
+    /**
+     * Version der Huelle, aelteste root-Version, gegen die ein Modul gebaut sein darf, und das Exec-Jar
+     * (fuer die Klassen-Duplikat-Pruefung, Karte 1514).
+     */
+    record Huelle(String version, String kompatibelAb, Path archiv) {
     }
 
     private final Path verzeichnis;
@@ -116,6 +119,7 @@ public final class ModulLader {
         for (ModulKonfig.Eintrag e : soll) {
             jars.add(bereitstellen(e, cache));
         }
+        ModulPruefung.pruefen(soll, jars, huelle.archiv());
         aufraeumen(cache, soll);
         log(jars.size() + " Module bereit: "
                 + soll.stream().map(e -> e.name() + ":" + e.version()).collect(Collectors.joining(", ")));
@@ -129,6 +133,9 @@ public final class ModulLader {
                     + ATTR_KOMPATIBEL_AB + " fehlen): ohne sie werden keine Module geladen");
         }
         for (ModulKonfig.Eintrag e : soll) {
+            if (e.bibliothek()) {
+                continue;
+            }
             if (ModulKonfig.vergleiche(e.rootMin(), huelle.version()) > 0) {
                 throw new IllegalStateException("Modul '" + e.name() + "' braucht root >= " + e.rootMin()
                         + ", die Huelle ist " + huelle.version());
@@ -193,16 +200,27 @@ public final class ModulLader {
     static Huelle huelleAusManifest() throws IOException {
         Enumeration<URL> manifeste = ClassLoader.getSystemClassLoader().getResources("META-INF/MANIFEST.MF");
         while (manifeste.hasMoreElements()) {
-            try (InputStream rein = manifeste.nextElement().openStream()) {
+            URL url = manifeste.nextElement();
+            try (InputStream rein = url.openStream()) {
                 Attributes a = new Manifest(rein).getMainAttributes();
                 String ab = a.getValue(ATTR_KOMPATIBEL_AB);
                 if (ab != null && a.getValue("Start-Class") != null) {
                     String v = a.getValue(ATTR_VERSION);
-                    return new Huelle(v == null ? null : v.replace("-SNAPSHOT", ""), ab);
+                    return new Huelle(v == null ? null : v.replace("-SNAPSHOT", ""), ab, archivVon(url));
                 }
             }
         }
         return null;
+    }
+
+    /** {@code jar:file:/app/app.jar!/META-INF/MANIFEST.MF} -> {@code /app/app.jar}; sonst {@code null}. */
+    static Path archivVon(URL manifest) {
+        String s = manifest.toString();
+        int bang = s.indexOf("!/");
+        if (!s.startsWith("jar:file:") || bang < 0) {
+            return null;
+        }
+        return Path.of(java.net.URI.create(s.substring(4, bang)));
     }
 
     private static void starten(List<Path> jars, String[] args) throws Throwable {
