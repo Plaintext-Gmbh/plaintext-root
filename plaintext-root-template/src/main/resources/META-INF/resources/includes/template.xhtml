@@ -4,12 +4,13 @@
       xmlns:f="http://java.sun.com/jsf/core"
       xmlns:ui="http://java.sun.com/jsf/facelets"
       xmlns:p="http://primefaces.org/ui"
-      lang="#{empty languageBean ? 'en' : languageBean.languageCode}"
+      lang="#{empty languageBean ? view.locale.language : languageBean.languageCode}"
       data-theme="#{userPreferencesBackingBean.darkMode}">
 <!-- Phase 1, item 4 (dissolve the schuetu fork): f:view carries the app locale when the app
-     provides a languageBean (schuetu multi-language support). Without that bean the locale is
-     null = default behaviour, and nothing changes for all the other apps. -->
-<f:view locale="#{empty languageBean ? null : languageBean.locale}">
+     provides a languageBean (schuetu multi-language support). Without that bean it keeps the
+     locale the ViewHandler calculated (faces-config default-locale de, card 1547). Never null:
+     Mojarra then falls back to the JVM locale (en) and logs "returned null" (card 1547). -->
+<f:view locale="#{empty languageBean ? view.locale : languageBean.locale}">
 
 <h:head>
     <f:facet name="first">

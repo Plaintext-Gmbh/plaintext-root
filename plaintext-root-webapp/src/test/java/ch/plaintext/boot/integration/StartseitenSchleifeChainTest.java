@@ -132,6 +132,36 @@ class StartseitenSchleifeChainTest {
                 "Eine existierende Startseite muss weiter benutzt werden — war: " + wurzel);
     }
 
+    /**
+     * Karte 1547: eine Template-Seite rendert PrimeFaces deutsch. Das f:view des Templates lieferte
+     * ohne languageBean {@code null}; Mojarra nimmt dann das JVM-Locale (en) statt der
+     * default-locale de aus faces-config. Bundle-Tests sahen das nicht, nur die gerenderte Seite.
+     * Hier im selben Kontext, damit kein weiterer Spring-Kontext Verbindungen haelt.
+     */
+    @Test
+    @DisplayName("Template-Seite angemeldet: PrimeFaces-Locale de, html lang=de")
+    void templateSeite_rendertDeutschesLocale() {
+        String session = login(benutzer("access-denied.html"));
+
+        // PROD und CI laufen im JVM-Locale en; der Entwicklerrechner hat oft de_CH und saehe den Fehler nicht.
+        java.util.Locale vorher = java.util.Locale.getDefault();
+        ResponseEntity<String> seite;
+        try {
+            java.util.Locale.setDefault(java.util.Locale.ENGLISH);
+            seite = get("/access-denied.html", session, MediaType.TEXT_HTML_VALUE);
+        } finally {
+            java.util.Locale.setDefault(vorher);
+        }
+        assertEquals(200, seite.getStatusCode().value());
+        String html = seite.getBody();
+        assertNotNull(html);
+        assertTrue(html.contains("id=\"globalGrowl\"") || html.contains(":globalGrowl\""),
+                "Positivkontrolle: die Seite laeuft durch das root-Template");
+        assertTrue(html.contains("locales/locale-de.js"), "PrimeFaces muss locale-de.js laden");
+        assertTrue(!html.contains("locales/locale-en.js"), "kein locale-en.js auf einer deutschen Seite");
+        assertTrue(html.matches("(?s).*<html[^>]*\\slang=\"de\".*"), "html lang muss de sein");
+    }
+
     // ---------------------------------------------------------------------------------------
 
     /** Creates (or resets) a user with the given start page and returns the login name. */
