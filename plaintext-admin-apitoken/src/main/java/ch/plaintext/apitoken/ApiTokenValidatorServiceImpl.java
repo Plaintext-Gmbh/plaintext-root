@@ -78,34 +78,38 @@ public class ApiTokenValidatorServiceImpl implements ApiTokenValidatorService {
         Optional<ApiTokenValidationResult> result = apiTokenService.validateVerifiedToken(token, jwtResult.get());
 
         if (result.isPresent()) {
-            // SECURITY (card 1484): a ui: token (watch link, viewer link) is a browser credential
-            // for its own page, which validates it via IApiTokenService.validateToken. At a REST
-            // controller it is worth nothing, same rule as McpBearerTokenFilter at /mcp.
-            if (McpBearerTokenFilter.istNurFuerDieOberflaeche(result.get().tokenName())) {
-                log.warn("API request to {} rejected: token '{}' (userId={}) is a UI credential",
-                        requestPath, result.get().tokenName(), result.get().userId());
-                return errorOutcome(ApiErrorResponse.tokenInvalid(requestPath));
-            }
-            // SECURITY (card 1485, M1 from review 1450): same scope rule as /mcp. Effective scope =
-            // min(claim, what the owner's CURRENT roles allow); a write (any method but
-            // GET/HEAD/OPTIONS) needs WRITE. Before, a READ token wrote packing lists and uploads.
-            ApiTokenValidationResult v = result.get();
-            Set<String> rollen = mcpUserRoles.rolesForUser(v.userId());
-            String claim = v.scope() == null || v.scope().isBlank() ? ApiTokenScopeDeckel.READ : v.scope();
-            Optional<String> wirksam = scopeDeckel.deckeln(claim, rollen == null ? Set.of() : rollen, v.tokenName());
-            boolean schreibend = istSchreibend();
-            if (wirksam.isEmpty() || (schreibend
-                    && ApiTokenScopeDeckel.stufe(wirksam.get()) < ApiTokenScopeDeckel.stufe(ApiTokenScopeDeckel.WRITE))) {
-                log.warn("API request to {} rejected: token '{}' (userId={}) has scope {} (claim {}), write={}",
-                        requestPath, v.tokenName(), v.userId(), wirksam.orElse("none"), claim, schreibend);
-                return errorOutcome(ApiErrorResponse.insufficientScope(requestPath));
-            }
-            return new TokenValidationOutcome(null, v);
+            return pruefeBerechtigung(result.get(), requestPath);
         }
 
         // JWT is valid, but not (any longer) in the DB or invalidated → revoked
         log.warn("API request with revoked token to {} for userId={}", requestPath, jwtResult.get().userId());
         return errorOutcome(ApiErrorResponse.tokenRevoked(requestPath));
+    }
+
+    /** Token is valid and not revoked: UI credential and scope check (cards 1484/1485). */
+    private ITokenValidationOutcome pruefeBerechtigung(ApiTokenValidationResult v, String requestPath) {
+        // SECURITY (card 1484): a ui: token (watch link, viewer link) is a browser credential
+        // for its own page, which validates it via IApiTokenService.validateToken. At a REST
+        // controller it is worth nothing, same rule as McpBearerTokenFilter at /mcp.
+        if (McpBearerTokenFilter.istNurFuerDieOberflaeche(v.tokenName())) {
+            log.warn("API request to {} rejected: token '{}' (userId={}) is a UI credential",
+                    requestPath, v.tokenName(), v.userId());
+            return errorOutcome(ApiErrorResponse.tokenInvalid(requestPath));
+        }
+        // SECURITY (card 1485, M1 from review 1450): same scope rule as /mcp. Effective scope =
+        // min(claim, what the owner's CURRENT roles allow); a write (any method but
+        // GET/HEAD/OPTIONS) needs WRITE. Before, a READ token wrote packing lists and uploads.
+        Set<String> rollen = mcpUserRoles.rolesForUser(v.userId());
+        String claim = v.scope() == null || v.scope().isBlank() ? ApiTokenScopeDeckel.READ : v.scope();
+        Optional<String> wirksam = scopeDeckel.deckeln(claim, rollen == null ? Set.of() : rollen, v.tokenName());
+        boolean schreibend = istSchreibend();
+        if (wirksam.isEmpty() || (schreibend
+                && ApiTokenScopeDeckel.stufe(wirksam.get()) < ApiTokenScopeDeckel.stufe(ApiTokenScopeDeckel.WRITE))) {
+            log.warn("API request to {} rejected: token '{}' (userId={}) has scope {} (claim {}), write={}",
+                    requestPath, v.tokenName(), v.userId(), wirksam.orElse("none"), claim, schreibend);
+            return errorOutcome(ApiErrorResponse.insufficientScope(requestPath));
+        }
+        return new TokenValidationOutcome(null, v);
     }
 
     /** Method of the current MVC request; without a bound request it fails closed (= write). */

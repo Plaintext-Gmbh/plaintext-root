@@ -170,7 +170,7 @@ public class ModulAnalyse {
             for (Bezug b : bezuege(k)) {
                 String name = binaerZuName.get(b.typ());
                 if (name != null && gesehen.add(name + b.optional())) {
-                    raus.add(new Nutzung(name, bean, k.getName(), SchnittstellenKatalog.modul(k), b.optional()));
+                    raus.add(new Nutzung(name, bean, k.getName(), SchnittstellenKatalog.modulVon(k), b.optional()));
                 }
             }
         }

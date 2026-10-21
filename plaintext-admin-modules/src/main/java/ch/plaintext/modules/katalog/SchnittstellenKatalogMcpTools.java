@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 public class SchnittstellenKatalogMcpTools {
 
     private static final Set<String> ROLLEN = Set.of("ROLE_ADMIN", "ROLE_ROOT");
+    private static final String FELD_MODUL = "modul";
     private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     private final SchnittstellenKatalog katalog;
@@ -57,7 +58,7 @@ public class SchnittstellenKatalogMcpTools {
         ArrayNode a = JSON.createArrayNode();
         for (SchnittstellenKatalog.Schnittstelle s : SchnittstellenKatalog.nachEbene(katalog.alle(), ebene)) {
             ObjectNode o = a.addObject();
-            o.put("modul", s.modul());
+            o.put(FELD_MODUL, s.modul());
             o.put("ebene", s.ebene());
             o.put("name", s.name());
             o.put("zweck", s.zweckKurz());
@@ -113,7 +114,7 @@ public class SchnittstellenKatalogMcpTools {
         }
         String m = modul.strip();
         ObjectNode o = JSON.createObjectNode();
-        o.set("modul", JSON.valueToTree(a.module().stream().filter(x -> x.modul().equals(m)).findFirst().orElse(null)));
+        o.set(FELD_MODUL, JSON.valueToTree(a.module().stream().filter(x -> x.modul().equals(m)).findFirst().orElse(null)));
         o.set("schnittstellen", JSON.valueToTree(a.schnittstellen().stream().filter(s -> s.modul().equals(m)
                 || s.umgesetztIn().contains(m) || s.nutzer().stream().anyMatch(n -> n.modul().equals(m))).toList()));
         o.set("weglassen", JSON.valueToTree(a.weglassen().stream().filter(f -> f.modul().equals(m)).toList()));
@@ -146,7 +147,7 @@ public class SchnittstellenKatalogMcpTools {
         }
         List<SchnittstellenKatalog.Schnittstelle> l = SchnittstellenKatalog.nachEbene(katalog.suche(text), ebene);
         ArrayNode a = JSON.createArrayNode();
-        l.forEach(s -> a.addObject().put("modul", s.modul()).put("ebene", s.ebene()).put("name", s.name())
+        l.forEach(s -> a.addObject().put(FELD_MODUL, s.modul()).put("ebene", s.ebene()).put("name", s.name())
                 .put("zweck", s.zweckKurz()));
         return a.toPrettyString();
     }

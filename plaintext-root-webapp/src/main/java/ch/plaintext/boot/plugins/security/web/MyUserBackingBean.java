@@ -55,6 +55,8 @@ public class MyUserBackingBean implements Serializable {
 
     /** Column width of {@code destructive_action_audit.detail}; longer texts are truncated. */
     private static final int AUDIT_DETAIL_MAX = 2000;
+    private static final String AUDIT_ENTITAET = "MyUserEntity";
+    private static final String AUDIT_DURCH = "; durch: ";
 
     /** Name fragment that marks a tenant role; such roles are hidden from the role menu. */
     private static final String MANDATSROLLE_MARKER = "mandat";
@@ -700,11 +702,11 @@ public class MyUserBackingBean implements Serializable {
                 Log.mail(handelnderBenutzer()));
 
         if (auditService != null) {
-            auditService.logDestructiveAction("UI", "USER_ROLES_CHANGED", "MyUserEntity",
+            auditService.logDestructiveAction("UI", "USER_ROLES_CHANGED", AUDIT_ENTITAET,
                     String.valueOf(selected.getId()),
                     kuerze("Benutzer '" + selected.getUsername() + "': vorher " + alt + " → nachher "
                             + neu + "; entzogen: " + entzogen + "; vergeben: " + hinzugefuegt
-                            + "; durch: " + handelnderBenutzer()));
+                            + AUDIT_DURCH + handelnderBenutzer()));
         }
     }
 
@@ -755,10 +757,10 @@ public class MyUserBackingBean implements Serializable {
             log.warn("AUDIT Benutzerloeschung: '{}' (id={}, Mandat={}, Rollen {}) geloescht durch '{}'.",
                     Log.mail(username), id, mandat, rollen, Log.mail(handelnderBenutzer()));
             if (auditService != null) {
-                auditService.logDestructiveAction("UI", "USER_DELETE", "MyUserEntity",
+                auditService.logDestructiveAction("UI", "USER_DELETE", AUDIT_ENTITAET,
                         String.valueOf(id),
                         kuerze("Benutzer '" + username + "' (Mandat " + mandat + ") geloescht; Rollen "
-                                + rollen + "; durch: " + handelnderBenutzer()));
+                                + rollen + AUDIT_DURCH + handelnderBenutzer()));
             }
             FacesMessages.info(FacesMessages.TITEL_ERFOLG, "Benutzer erfolgreich gelöscht.");
         } catch (Exception e) {
@@ -826,10 +828,10 @@ public class MyUserBackingBean implements Serializable {
         if (geaendert.isEmpty()) {
             return;
         }
-        auditService.logDestructiveAction("UI", "USER_CREDENTIALS_CHANGE", "MyUserEntity",
+        auditService.logDestructiveAction("UI", "USER_CREDENTIALS_CHANGE", AUDIT_ENTITAET,
                 String.valueOf(selected.getId()),
                 kuerze("Anmeldedaten von '" + bisherLogin + "' geaendert: " + String.join(", ", geaendert)
-                        + "; durch: " + akteur));
+                        + AUDIT_DURCH + akteur));
     }
 
     private String handelnderBenutzer() {
