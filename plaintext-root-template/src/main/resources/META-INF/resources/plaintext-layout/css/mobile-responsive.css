@@ -19,23 +19,22 @@
 /*    Deckelt fixe px-Breiten (z. B. p:dialog width="700") auf den     */
 /*    Viewport; der Content scrollt statt rechts rauszulaufen.         */
 /* ------------------------------------------------------------------ */
-.ui-dialog {
-    max-width: 96vw !important;
+/* PrimeFaces 16 (Karte 1511) baut den Dialog zweistufig: .ui-dialog ist die fixe, viewport-grosse
+ * Scroll-Ebene (Sichtbarkeit ueber inline display:none/block), .ui-dialog-box darin die sichtbare
+ * Box, auf die PF auch width/height und die Position setzt. Breite und Hoehe gehoeren darum an die
+ * Box. Bis PF 15 standen diese Regeln auf .ui-dialog — dort gedeckelt waere jetzt die Scroll-Ebene,
+ * und die Box liefe auf dem Handy weiter rechts hinaus.
+ *
+ * Bis PF 15 brauchte es hier zusaetzlich ".ui-dialog[aria-hidden=false] {display:flex !important}",
+ * weil ein festes display auf .ui-dialog PF's inline display:none ueberschrieb ("Formular immer
+ * aktiv"). Das entfaellt: das display der Box (inline-flex, Spalte, aus dem Theme) beruehrt die
+ * Sichtbarkeit der Huelle nicht mehr. */
+.ui-dialog .ui-dialog-box {
+    max-width: 100% !important;
     max-height: 92vh;
     box-sizing: border-box;
-}
-
-/* Flex-Column NUR fuer den SICHTBAREN Dialog. PrimeFaces steuert die Dialog-Sichtbarkeit ueber
- * inline display:none/block + aria-hidden="true"/"false". Ein festes `display: flex !important`
- * auf .ui-dialog wuerde PF's inline display:none UEBERSCHREIBEN -> der Dialog bleibt sichtbar und
- * laesst sich nicht mehr schliessen ("Formular immer aktiv"); zusaetzlich haelt PF ihn dann
- * faelschlich fuer sichtbar (computed != none), sodass show()/hide() sich verheddern. Deshalb an
- * aria-hidden="false" (setzt PF beim Zeigen) binden: das Verstecken bleibt intakt, und der offene
- * Dialog bekommt flex-column, damit der Content in der 92vh-Deckelung scrollt und der Footer
- * (Buttons!) auf schmalen Viewports IMMER erreichbar bleibt. */
-.ui-dialog[aria-hidden="false"] {
-    display: flex !important;
-    flex-direction: column !important;
+    display: inline-flex;
+    flex-direction: column;
 }
 
 .ui-dialog .ui-dialog-titlebar,
@@ -64,9 +63,9 @@
 /*     Ersetzt fixe width="NNN": Desktop bekommt eine sinnvolle,       */
 /*     inhaltsbasierte Breite (bis 700px), Handy schrumpft via 96vw.   */
 /* ------------------------------------------------------------------ */
-.ui-dialog.mobile-safe {
+.ui-dialog.mobile-safe .ui-dialog-box {
     width: auto !important;
-    max-width: min(700px, 96vw) !important;
+    max-width: min(700px, 100%) !important;
 }
 
 .ui-dialog.mobile-safe .ui-dialog-content {
@@ -78,10 +77,16 @@
 /* ------------------------------------------------------------------ */
 @media (max-width: 768px) {
 
-    /* Dialog nimmt (fast) den ganzen Viewport ein, statt fixer px-Breite. */
-    .ui-dialog {
-        width: 96vw !important;
-        max-width: 96vw !important;
+    /* Dialog nimmt (fast) den ganzen Viewport ein, statt fixer px-Breite. Der Rand der
+     * Scroll-Ebene (Theme: 1.5rem) schrumpft auf 2vw, damit die Box wie bis PF 15 96vw breit ist.
+     * "body" davor, weil die Theme-Regel "body .ui-dialog" sonst an Spezifitaet gewinnt. */
+    body .ui-dialog {
+        padding: 2vw;
+    }
+
+    .ui-dialog .ui-dialog-box {
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     /* Inputs/Textareas/Selects nie breiter als ihr Container.

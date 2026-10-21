@@ -266,10 +266,21 @@
         <dependency>
             <groupId>org.joinfaces</groupId>
             <artifactId>primefaces-spring-boot-starter</artifactId>
+            <!-- Eigene <exclusions> heben die aus dem Eltern-POM auf; die beiden
+                 PrimeFaces-Ausschluesse (kein jakarta-Classifier mehr in PF 16, Karte 1511)
+                 muessen darum hier wiederholt werden. -->
             <exclusions>
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-webmvc</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.primefaces</groupId>
+                    <artifactId>primefaces</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.primefaces.extensions</groupId>
+                    <artifactId>primefaces-extensions</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

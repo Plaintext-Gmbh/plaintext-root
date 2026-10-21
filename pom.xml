@@ -59,7 +59,7 @@
 
         <!-- JSF & Primefaces -->
         <primefaces-spring-boot-starter.version>6.1.1</primefaces-spring-boot-starter.version>
-        <primefaces.version>15.0.18</primefaces.version>
+        <primefaces.version>16.0.1</primefaces.version>
         <!-- Mindestens 4.1.13: dort schliesst Mojarra CVE-2026-46581 (Pfad-Traversal/RCE ueber
              ui:include, CVSS 7.5). Nicht zurueckdrehen. Die Kehrseite derselben Haertung —
              Facelet-Verweise brauchen seither einen fuehrenden "/" — haelt der Test
@@ -403,10 +403,31 @@
             </dependency>
 
             <!-- JSF & Primefaces -->
+            <!-- PrimeFaces 16 kennt nur noch Jakarta und veroeffentlicht kein Jar mit
+                 Classifier "jakarta" mehr (Karte 1511). JoinFaces 6.1.1 zieht aber genau
+                 primefaces:jar:jakarta und primefaces-extensions:jar:jakarta; mit der hier
+                 verwalteten 16er-Version bricht die Aufloesung ab ("Could not find artifact
+                 org.primefaces:primefaces:jar:jakarta:16.0.x"). Darum schliesst die Verwaltung
+                 beide aus und setzt unten die Jars ohne Classifier ein.
+                 ACHTUNG Maven: Eine Abhaengigkeit mit EIGENEN <exclusions> erbt diese hier
+                 nicht (die Verwaltung ergaenzt Exclusions nur, wenn keine dastehen). Wer den
+                 Starter mit eigener Exclusion deklariert, muss die beiden PrimeFaces-Exclusions
+                 dort wiederholen (siehe plaintext-root-webapp, plaintext-root-flyway).
+                 Die Ausschluesse entfallen, sobald JoinFaces einen Starter fuer PF 16 hat. -->
             <dependency>
                 <groupId>org.joinfaces</groupId>
                 <artifactId>primefaces-spring-boot-starter</artifactId>
                 <version>${primefaces-spring-boot-starter.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.primefaces</groupId>
+                        <artifactId>primefaces</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.primefaces.extensions</groupId>
+                        <artifactId>primefaces-extensions</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.primefaces</groupId>
@@ -414,10 +435,14 @@
                 <version>${primefaces.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.primefaces</groupId>
-                <artifactId>primefaces</artifactId>
+                <groupId>org.primefaces.extensions</groupId>
+                <artifactId>primefaces-extensions</artifactId>
                 <version>${primefaces.version}</version>
-                <classifier>jakarta</classifier>
+            </dependency>
+            <dependency>
+                <groupId>org.primefaces</groupId>
+                <artifactId>primefaces-themes</artifactId>
+                <version>${primefaces.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.glassfish</groupId>

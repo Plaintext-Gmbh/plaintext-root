@@ -98,6 +98,30 @@ exhaustive.
   `PlaintextModulApiVertragTest` until it carries `@ModulApiUmsetzung` — add it with the bump.
 
 ### Changed
+- **PrimeFaces 15.0.18 → 16.0.1** (Karte 1511, analysis Karte 1507; first cut of the family). **Breaking for
+  consumers** — on the bump:
+  1. **Drop `<classifier>jakarta</classifier>`** from every `org.primefaces:primefaces` (and
+     `primefaces-extensions`) dependency. PF 16 is Jakarta-only and publishes no `-jakarta` jar; a leftover
+     classifier fails the build with `Could not find artifact org.primefaces:primefaces:jar:jakarta:16.0.1`.
+     The root parent now manages `primefaces`, `primefaces-extensions` and `primefaces-themes` without classifier
+     and excludes the `jakarta` jars that JoinFaces 6.1.1's `primefaces-spring-boot-starter` still pulls. A
+     consumer that declares the starter **with its own `<exclusions>`** does not inherit those exclusions (Maven
+     applies managed exclusions only when a dependency has none) and must repeat the two
+     (`org.primefaces:primefaces`, `org.primefaces.extensions:primefaces-extensions`). A consumer page using
+     `pe:` needs an explicit `primefaces-extensions` dependency unless it gets it through
+     `plaintext-admin-apitoken`.
+  2. **Replace `p:separator` with `p:divider`** — the tag is gone in PF 16 and Facelets fails the page. A
+     vertical separator in a toolbar becomes `<p:divider layout="vertical"/>`.
+  3. **Dialog CSS on `.ui-dialog-box`**: PF 16 renders `.ui-dialog` as the full-viewport scroll layer and
+     `.ui-dialog-box` as the visible box. Own CSS that sets width, height, shadow or flex on `.ui-dialog` must
+     move to `.ui-dialog .ui-dialog-box`. Root's `mobile-responsive.css` and the `primefaces-plaintext` theme
+     are converted (dialog rules taken over from saga-blue 16.0.1); the `[aria-hidden="false"]` display
+     workaround is gone.
+  4. `p:selectOneButton` renders its text as `label.ui-button-text` instead of `span`; selectors on
+     `span.ui-button-text` need adjusting (none in root).
+  5. `p:accordionPanel activeIndex` is deprecated in PF 16, use `active` (none in root).
+  Renovate keeps blocking PrimeFaces majors until the last application is on 16; that rule goes with the last
+  app PR.
 - **Contracts live with their provider** (Karte 1504, decisions in Karte 1502). New ArchUnit rule `vertragsort`
   (`PlaintextVertragsortTest`): an interface implemented only in another module and not used in its own belongs in
   that provider's `<modul>-api` jar; root's shell (`plaintext-root-interfaces` + platform layer) is exempt.

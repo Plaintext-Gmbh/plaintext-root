@@ -157,7 +157,7 @@ class PlaintextRootTemplateDriftTest {
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/colors/color-yellow.css",
                 "7653a6dac2f5dee1bea8abcc0b7169b50c06be6e0cb5e73e63c4987f31c06782");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/mobile-responsive.css",
-                "b194f2661cb70918968e486e4ed75fdfafcf295f9f13257d7f5b4ae58d1e033d");
+                "7c31e7c9b4b0105193073a377e4baa6478b4743975904859169dfc77d82122ce");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/primeflex.min.css",
                 "eb6819b24b9489c43b9e86f5fb8c49baef36c85eb71377d6930387157cc180c9");
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/css/primeicons.css",
@@ -185,7 +185,7 @@ class PlaintextRootTemplateDriftTest {
         GETEILTE_DATEIEN.put("META-INF/resources/plaintext-layout/js/topbar.js",
                 "2369f7e76dc883e5b42334a86281db088700673e3e5d79e4c0c3fb79cf7865cb");
         GETEILTE_DATEIEN.put("META-INF/resources/primefaces-plaintext/theme.css",
-                "6ace021af81224c8c4036d2cccf718d3041b14511183c85fc78373d6c9f5d8b5");
+                "ce3048469b1f03c2c4c487af3c79619c78a3bfb3a00cd06b12fce2a22a68191e");
         GETEILTE_DATEIEN.put("META-INF/tags/colAmount.xhtml",
                 "ab2ef79b50c02ce2574b16df2e99e4d5d1fd54c54d1ba66d4150aa5bb601e480");
         GETEILTE_DATEIEN.put("META-INF/tags/colDate.xhtml",
