@@ -138,7 +138,9 @@ public class FilesService {
         if (!gibtEs(b, name)) {
             throw new IllegalArgumentException("Datei '" + name + "' gibt es nicht");
         }
-        LocalDate bis = tage == 0 ? null : LocalDate.now(ZONE).plusDays(tage);
+        // Same day as the LinkTokenStore checks against (JVM default zone), not ZONE: with ZONE a
+        // link set to yesterday stayed open until midnight UTC (release 1.786.0, Karte 1559).
+        LocalDate bis = tage == 0 ? null : LocalDate.now().plusDays(tage);
         LinkToken l = links.anlegen(new LinkTokenAntrag(ART, objekt(b, name), LinkRecht.LESEN, b, zweck, bis));
         log.info("[FilesService] Link erstellt | benutzer={} | datei={} | bis={}", b, name, bis);
         return l;

@@ -12,6 +12,13 @@ exhaustive.
 
 ## [Unreleased]
 
+### Fixed
+- **`plaintext-root-files`: link expiry on the same day as the store** (Karte 1559). `FilesService` computed the
+  last valid day of a share link in `Europe/Zurich`, the `LinkTokenStore` checks it against the JVM default zone.
+  Between midnight in Zurich and midnight UTC the two disagreed by a day, so `FilesServiceTest` failed in the
+  release build of 1.786.0 (22:49 UTC) and left that release without `plaintext-root-files` and
+  `plaintext-admin-requirements`. Both now count days in the JVM default zone, as Draw.io and Diashow links do.
+
 ### Added
 - **Personal file store `plaintext-root-files`** (Karte 1559, ported from the Inventar): every user uploads, lists,
   downloads and deletes their own files under `files/<user>/<name>`; a file lives `plaintext.files.frist` (default

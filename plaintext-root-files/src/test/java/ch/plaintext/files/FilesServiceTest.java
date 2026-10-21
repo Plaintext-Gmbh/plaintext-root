@@ -95,10 +95,10 @@ class FilesServiceTest {
         LinkToken l = service.linkErstellen("anna", "a.txt", 7, " Workshop ");
 
         assertThat(l.zweck()).isEqualTo("Workshop");
-        assertThat(l.gueltigBis()).isEqualTo(LocalDate.now(FilesService.ZONE).plusDays(7));
+        assertThat(l.gueltigBis()).isEqualTo(LocalDate.now().plusDays(7));
         assertThat(service.finde(l.token())).isPresent();
 
-        links.setzeBis(0, LocalDate.now(FilesService.ZONE).minusDays(1));
+        links.setzeBis(0, LocalDate.now().minusDays(1));
         assertThat(service.finde(l.token())).as("abgelaufen öffnet nicht").isEmpty();
         assertThat(service.linkErstellen("anna", "a.txt").gueltigBis()).as("0 = mit der Datei").isNull();
         assertThatThrownBy(() -> service.linkErstellen("anna", "a.txt", 4000, null)).isInstanceOf(IllegalArgumentException.class);
