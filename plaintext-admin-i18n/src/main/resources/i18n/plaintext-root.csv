@@ -970,6 +970,9 @@ Debug;it;Debug
 Einstellungen;en;Settings
 Einstellungen;fr;Paramètres
 Einstellungen;it;Impostazioni
+Files;en;Files
+Files;fr;Fichiers
+Files;it;File
 Flyway;en;Flyway
 Flyway;fr;Flyway
 Flyway;it;Flyway
