@@ -120,6 +120,16 @@ exhaustive.
   4. `p:selectOneButton` renders its text as `label.ui-button-text` instead of `span`; selectors on
      `span.ui-button-text` need adjusting (none in root).
   5. `p:accordionPanel activeIndex` is deprecated in PF 16, use `active` (none in root).
+  6. **The EL functions `p:ifGranted`, `p:ifAllGranted`, `p:ifAnyGranted`, `p:ifNoneGranted`, `p:remoteUser`,
+     `p:userPrincipal` are gone** — a page using one fails with `Function [p:ifGranted] not found` (HTTP 500).
+     Root's `topbar.xhtml` now calls `facesContext.externalContext.isUserInRole('ROLE_…')`, which is what
+     `p:ifGranted` did internally.
+  7. Attributes removed in PF 16 (none used in root; grep in consumers): `p:dataExporter exporter`,
+     `p:autoComplete effect/effectDuration`, `p:button onchange/readonly`, `p:calendar showLongMonthNames`,
+     `p:dataTable initMode`, `p:fileUpload validateContentType/virusScan`, `p:graphicImage url`,
+     `collectionType` on `p:selectCheckboxMenu`/`p:selectManyCheckbox`/`p:selectManyMenu`,
+     `p:selectOneMenu inputmode`, `p:timeline timeChangeable`, `p:tree sourceFilterPlaceholder`,
+     `p:treeTable touchable`, `p:chip removeIconClass`, `p:confirmPopup showEffect/hideEffect`.
   Renovate keeps blocking PrimeFaces majors until the last application is on 16; that rule goes with the last
   app PR.
 - **Contracts live with their provider** (Karte 1504, decisions in Karte 1502). New ArchUnit rule `vertragsort`

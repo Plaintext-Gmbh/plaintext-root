@@ -76,7 +76,10 @@
                         </li>
                     </ui:fragment>
 
-                    <ui:fragment rendered="#{p:ifGranted('ROLE_ADMIN') or p:ifGranted('ROLE_ROOT')}">
+                    <!-- PrimeFaces 16 hat die EL-Funktionen p:ifGranted/p:ifAnyGranted/... entfernt (Karte 1511);
+                         die Seite brach mit "Function [p:ifGranted] not found" ab. Das hier ist genau, was
+                         p:ifGranted intern tat (SecurityUtils: ExternalContext.isUserInRole). -->
+                    <ui:fragment rendered="#{facesContext.externalContext.isUserInRole('ROLE_ADMIN') or facesContext.externalContext.isUserInRole('ROLE_ROOT')}">
                         <li class="topbar-item">
                             <a href="useradmin.xhtml" title="Benutzer verwalten">
                                 <i class="topbar-icon pi pi-users" style="font-size:1.5rem"/>
