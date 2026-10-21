@@ -460,6 +460,23 @@ class RootPagesPlaywrightIT {
     }
 
     @Test
+    @DisplayName("Karte 1560: Claude-API-Seite ohne Schlüssel — Knopf 'Jetzt prüfen' meldet ehrlich 'keine Verbindung', Guthaben-Hinweis steht da")
+    void claudeApiOhneSchluessel() {
+        anmelden(ROOT_USER);
+        Response seite = page.navigate(url("/claude-api.html"));
+        page.waitForLoadState();
+        assertTrue(page.url().contains("claude-api"), "umgeleitet nach " + page.url());
+        assertEquals(200, seite.status(), "claude-api.html: HTTP " + seite.status());
+        assertTrue(page.content().contains("nicht gesetzt"), "Schlüsselzustand fehlt");
+        assertTrue(page.content().contains("nicht abfragbar"), "Guthaben-Hinweis fehlt");
+
+        page.locator("button:has-text('Jetzt prüfen')").click();
+        page.waitForFunction("() => document.body.innerText.includes('keine Verbindung')");
+        assertTrue(page.content().contains("Kein API-Schlüssel gesetzt"), "Fehlergrund fehlt: " + page.locator("#fm").innerText());
+        assertTrue(page.locator("button:has-text('Testfrage')").isDisabled(), "Testfrage ohne Schlüssel muss gesperrt sein");
+    }
+
+    @Test
     @DisplayName("Karte 1422: Modulseite zeigt die Schnittstellen, Suche, Aufklappen mit Methoden, Filter DTO als Gegenprobe")
     void modulSchnittstellen() {
         List<String> ajaxFehler = new ArrayList<>();
@@ -501,17 +518,18 @@ class RootPagesPlaywrightIT {
 
         // Filter DTO: genau die markierten DTOs aus root-interfaces (Etappe B: zwei; Karte 1476: FreigabeZugriff und FreigabeInhalt; das Enum FreigabeRecht fuehrt der Katalog nicht;
         // Karte 1504: IApiErrorResponse geloescht, MailAccountRef und MailAttachment mit dem MailSender-Vertrag dazu;
-        // Karte 1525: PaperlessDokument mit IPaperlessAblage dazu)
+        // Karte 1525: PaperlessDokument mit IPaperlessAblage dazu; Karte 1560: ClaudeAnfrage und ClaudeAntwort)
         page.locator("#fm\\:schnittstellenSuche").fill("");
         page.locator("#fm\\:schnittstellenSuche").press("End");
         page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length >= 20");
         ruhig();
         page.locator("#fm\\:schnittstellenArt").getByText("DTOs").click();
-        page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length === 6");
+        page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length === 8");
         ruhig();
         String dtos = tabelle.innerText();
         assertTrue(dtos.contains("MailAccountRef") && dtos.contains("MailAttachment") && dtos.contains("ITokenValidationOutcome")
-                && dtos.contains("FreigabeZugriff") && dtos.contains("FreigabeInhalt") && dtos.contains("PaperlessDokument"), "DTO-Filter: " + dtos);
+                && dtos.contains("FreigabeZugriff") && dtos.contains("FreigabeInhalt") && dtos.contains("PaperlessDokument")
+                && dtos.contains("ClaudeAnfrage") && dtos.contains("ClaudeAntwort"), "DTO-Filter: " + dtos);
         // Gegenprobe: ein Suchbegriff ohne Treffer leert die Liste
         page.locator("#fm\\:schnittstellenSuche").fill("gibtesnirgends");
         page.locator("#fm\\:schnittstellenSuche").press("End");
