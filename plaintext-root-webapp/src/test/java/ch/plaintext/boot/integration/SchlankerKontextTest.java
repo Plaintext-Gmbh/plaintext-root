@@ -61,7 +61,8 @@ class SchlankerKontextTest {
             "ch.plaintext.notifications.",
             "ch.plaintext.secrets.",
             "ch.plaintext.sidecars.",
-            "ch.plaintext.modules.");
+            "ch.plaintext.modules.",
+            "ch.plaintext.claude.");
 
     /** One class from each deselected module jar; loading it has to fail. */
     private static final List<String> ABGEWAEHLTE_KLASSEN = List.of(
@@ -69,7 +70,8 @@ class SchlankerKontextTest {
             "ch.plaintext.notifications.config.NotificationsModuleConfiguration",
             "ch.plaintext.secrets.config.SecretsModuleConfiguration",
             "ch.plaintext.sidecars.config.SidecarsModuleConfiguration",
-            "ch.plaintext.modules.config.ModulesModuleConfiguration");
+            "ch.plaintext.modules.config.ModulesModuleConfiguration",
+            "ch.plaintext.claude.config.ClaudeModuleConfiguration");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {

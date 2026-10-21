@@ -142,7 +142,9 @@ public class PlaintextSecurityConfig {
             "/sessioninsights.*",
             "/settings.*",
             "/setup.*",
-            "/webhooks.*"
+            "/webhooks.*",
+            // Card 1560: Claude API key and credit belong to the installation, not to a tenant.
+            "/claude-api.*"
     };
 
     /**

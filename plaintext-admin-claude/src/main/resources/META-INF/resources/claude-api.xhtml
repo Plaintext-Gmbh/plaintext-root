@@ -1,0 +1,94 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Claude API</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <p style="color:#666; max-width:900px;">
+                Zugang zur Anthropic-API für alle Module (<code>ClaudeClient</code>). Schlüssel:
+                <b>#{claudeMonitorBean.konfiguriert ? 'gesetzt' : 'nicht gesetzt'}</b>
+                (<code>plaintext.claude.api-key</code>), Standardmodell <code>#{claudeMonitorBean.defaultModell}</code>.
+            </p>
+
+            <p:fieldset legend="1 · Verbindung" style="margin-bottom:16px;">
+                <p:commandButton value="Jetzt prüfen" icon="pi pi-refresh" action="#{claudeMonitorBean.pruefen()}"
+                                 process="@this" update="fm"/>
+                <p:commandButton value="Testfrage" icon="pi pi-comment" action="#{claudeMonitorBean.testfrage()}"
+                                 process="@this" update="fm" style="margin-left:8px;"
+                                 disabled="#{not claudeMonitorBean.konfiguriert}"/>
+                <h:panelGroup layout="block" rendered="#{claudeMonitorBean.verbindung == null}" style="margin-top:10px; color:#888;">
+                    Noch nicht geprüft.
+                </h:panelGroup>
+                <h:panelGroup layout="block" rendered="#{claudeMonitorBean.verbindung != null}" style="margin-top:10px;">
+                    <span class="ui-tag #{claudeMonitorBean.verbindung.ok ? 'ui-tag-success' : 'ui-tag-danger'}">
+                        #{claudeMonitorBean.verbindung.ok ? 'verbunden' : 'keine Verbindung'}</span>
+                    &#160;#{claudeMonitorBean.verbindung.latenzMs} ms, geprüft #{claudeMonitorBean.verbindung.zeitpunkt}
+                    <div>Organisation: <b>#{claudeMonitorBean.verbindung.organisation}</b></div>
+                    <div style="color:#b00;">#{claudeMonitorBean.verbindung.fehler}</div>
+                    <div>Modelle: <ui:repeat value="#{claudeMonitorBean.verbindung.modelle}" var="m"><code>#{m}</code> </ui:repeat></div>
+                </h:panelGroup>
+                <h:panelGroup layout="block" rendered="#{claudeMonitorBean.testAntwort != null}" style="margin-top:10px;">
+                    Testfrage: #{claudeMonitorBean.testAntwort}
+                </h:panelGroup>
+            </p:fieldset>
+
+            <p:fieldset legend="2 · Rate-Limit-Spielraum (letzter Aufruf)" style="margin-bottom:16px;">
+                <h:panelGroup rendered="#{claudeMonitorBean.rateLimit == null}" style="color:#888;">
+                    Seit dem Start noch kein Aufruf — „Jetzt prüfen“ liefert den ersten Stand.
+                </h:panelGroup>
+                <h:panelGroup layout="block" rendered="#{claudeMonitorBean.rateLimit != null}">
+                    <div style="color:#888;">Stand #{claudeMonitorBean.rateLimit.zeitpunkt}</div>
+                    <p:dataTable var="r" value="#{claudeMonitorBean.rateLimit.werte}" styleClass="ui-datatable-sm">
+                        <p:column headerText="Art">#{r.art}</p:column>
+                        <p:column headerText="Limit">#{r.limit}</p:column>
+                        <p:column headerText="Verbleibend">#{r.remaining}</p:column>
+                        <p:column headerText="Zurückgesetzt um">#{r.reset}</p:column>
+                    </p:dataTable>
+                </h:panelGroup>
+            </p:fieldset>
+
+            <p:fieldset legend="3 · Eigener Verbrauch" style="margin-bottom:16px;">
+                <ui:repeat value="#{claudeMonitorBean.sichten}" var="sicht">
+                    <h4 style="margin:12px 0 4px;">#{sicht.titel}</h4>
+                    <p:dataTable var="s" value="#{sicht.summen}" styleClass="ui-datatable-sm"
+                                 emptyMessage="Noch keine Aufrufe">
+                        <p:column headerText="">#{s.name}</p:column>
+                        <p:column headerText="Aufrufe">#{s.aufrufe}</p:column>
+                        <p:column headerText="Input-Tokens">#{s.inputTokens}</p:column>
+                        <p:column headerText="Output-Tokens">#{s.outputTokens}</p:column>
+                        <p:column headerText="Cache-Tokens">#{s.cacheTokens}</p:column>
+                        <p:column headerText="Fehlerquote">
+                            <h:outputText value="#{s.fehlerquote()}"><f:convertNumber maxFractionDigits="1"/></h:outputText> %
+                        </p:column>
+                        <p:column headerText="Ø Latenz">#{s.mittlereLatenz()} ms</p:column>
+                    </p:dataTable>
+                </ui:repeat>
+            </p:fieldset>
+
+            <p:fieldset legend="4 · Guthaben und Kosten" style="margin-bottom:16px;">
+                <p style="max-width:900px;">
+                    Das Guthaben ist über die API <b>nicht abfragbar</b> — es steht nur in der
+                    <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener">Anthropic Console</a>.
+                </p>
+                <h:panelGroup layout="block" rendered="#{not claudeMonitorBean.adminKonfiguriert}" style="color:#888;">
+                    Mit einem Admin-API-Schlüssel (<code>plaintext.claude.admin-key</code>) zeigt diese Seite die Kosten der letzten 30 Tage.
+                </h:panelGroup>
+                <h:panelGroup layout="block" rendered="#{claudeMonitorBean.adminKonfiguriert}">
+                    <p:commandButton value="Kosten laden" icon="pi pi-dollar" action="#{claudeMonitorBean.ladeKosten()}"
+                                     process="@this" update="fm"/>
+                    <h:panelGroup layout="block" rendered="#{claudeMonitorBean.kosten != null}" style="margin-top:10px;">
+                        #{claudeMonitorBean.kosten.von} bis #{claudeMonitorBean.kosten.bis}:
+                        <b>USD <h:outputText value="#{claudeMonitorBean.kosten.usd}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2"/></h:outputText></b>
+                    </h:panelGroup>
+                    <div style="color:#b00;">#{claudeMonitorBean.kostenFehler}</div>
+                </h:panelGroup>
+            </p:fieldset>
+        </h:form>
+    </ui:define>
+</ui:composition>
