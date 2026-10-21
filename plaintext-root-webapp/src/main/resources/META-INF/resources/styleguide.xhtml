@@ -1,0 +1,148 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:pt="http://plaintext.ch/ui"
+                template="/includes/template.xhtml">
+    <!--
+      Karte 1548 (UI 2): der Styleguide — die lebende Referenz fuer neue Seiten.
+
+      Diese Seite ist selbst nach den Regeln gebaut, die sie zeigt: kein style-Attribut, kein
+      eigenes p:growl, ein Seitenkopf, Tabellen ueber pt:tabelle. Wer ein Muster sucht, kopiert von
+      hier. Die Tokens und Muster stehen in plaintext-layout/css/layout.css (plaintext-root-template);
+      styleguide.css enthaelt nur die Schaukaesten dieser Seite.
+    -->
+
+    <ui:define name="title">Styleguide</ui:define>
+
+    <ui:define name="head">
+        <h:outputStylesheet library="plaintext-root" name="css/styleguide.css"/>
+    </ui:define>
+
+    <ui:define name="page">
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+
+            <!-- Prinzip 1: ein Seitenkopf — Titel links, eine Hauptaktion rechts, Seltenes ins «⋯»-Menü. -->
+            <pt:seitenkopf titel="Styleguide" untertitel="Tokens, Muster und Zustände für neue Seiten" mehr="true">
+                <ui:define name="aktion">
+                    <p:commandButton id="neu" value="Neu" icon="pi pi-plus" action="#{styleguideBean.neu}" process="@this"/>
+                </ui:define>
+                <ui:define name="mehr">
+                    <p:menuitem value="Exportieren" icon="pi pi-download" action="#{styleguideBean.exportieren}" process="@this"/>
+                </ui:define>
+            </pt:seitenkopf>
+
+            <section class="sg-abschnitt">
+                <h2>Die fünf Regeln</h2>
+                <p>Entscheid vom 15.10.2026 — gilt für jede neue Seite, hell und dunkel.</p>
+                <ol class="sg-regeln">
+                    <li>Ein Seitenkopf: Titel links, eine Hauptaktion rechts, Zeilenaktionen in der Zeile, Seltenes im «⋯»-Menü (<code>pt:seitenkopf</code>).</li>
+                    <li>Tabellen: ein Paginator unten erst ab Seite 2, ein deutscher Leerzustand mit Weg, Zahlen rechtsbündig mit gleich breiten Ziffern (<code>pt:tabelle</code>, <code>pt:colAmount</code>).</li>
+                    <li>Eine Sprache, ein Meldungsort: Meldungen über FacesMessages an das eine Growl, Rückfragen über den einen ConfirmDialog — beide liefert das Template.</li>
+                    <li>Tokens statt Inline-Farben: Fläche, Text, Akzent, Status; vier Abstände, ein Radius, eine Schrift in drei Größen. Status als leiser Chip, keine Emoji in Titeln.</li>
+                    <li>Mobil als eigener Entwurf: eine sichtbare Aktion, Tabellen als Karten mit 2–3 Feldern, Filter hinter einem Knopf.</li>
+                </ol>
+            </section>
+
+            <!-- Prinzip 4: Tokens -->
+            <section class="sg-abschnitt">
+                <h2>Farbrollen</h2>
+                <p>Vier Rollen. Der Akzent ist die gewählte Farbvariante (Grün, Blau oder Orange); alles andere folgt hell und dunkel von selbst.</p>
+                <div class="sg-raster">
+                    <div class="sg-muster"><div class="sg-farbe sg-flaeche"/><code>--pt-flaeche</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-flaeche-leise"/><code>--pt-flaeche-leise</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-flaeche-rand"/><code>--pt-flaeche-rand</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-text"/><code>--pt-text</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-text-leise"/><code>--pt-text-leise</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-akzent"/><code>--pt-akzent</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-akzent-leise"/><code>--pt-akzent-leise</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-status-ok"/><code>--pt-status-ok</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-status-warnung"/><code>--pt-status-warnung</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-status-fehler"/><code>--pt-status-fehler</code></div>
+                    <div class="sg-muster"><div class="sg-farbe sg-status-info"/><code>--pt-status-info</code></div>
+                </div>
+            </section>
+
+            <section class="sg-abschnitt">
+                <h2>Abstand, Radius, Schrift</h2>
+                <p>Vier Abstände, ein Radius, eine Schriftfamilie in drei Größen — mehr gibt es nicht.</p>
+                <div class="sg-raster">
+                    <div class="sg-muster"><div class="sg-abstand sg-abstand-1"/><code>--pt-abstand-1</code> 0.25rem</div>
+                    <div class="sg-muster"><div class="sg-abstand sg-abstand-2"/><code>--pt-abstand-2</code> 0.5rem</div>
+                    <div class="sg-muster"><div class="sg-abstand sg-abstand-3"/><code>--pt-abstand-3</code> 1rem</div>
+                    <div class="sg-muster"><div class="sg-abstand sg-abstand-4"/><code>--pt-abstand-4</code> 1.5rem</div>
+                    <div class="sg-muster"><div class="sg-radius"/><code>--pt-radius</code></div>
+                    <div class="sg-muster"><span class="sg-schrift-gross">Seitentitel</span><code>--pt-schrift-gross</code></div>
+                    <div class="sg-muster"><span class="sg-schrift-normal">Fliesstext</span><code>--pt-schrift-normal</code></div>
+                    <div class="sg-muster"><span class="sg-schrift-klein">Hinweis, Chip</span><code>--pt-schrift-klein</code></div>
+                </div>
+            </section>
+
+            <section class="sg-abschnitt">
+                <h2>Status</h2>
+                <p>Ein Status ist ein leiser Chip (<code>pt:chip</code>), nie farbiger Text.</p>
+                <div class="pt-reihe">
+                    <pt:chip text="aktiv" art="ok"/>
+                    <pt:chip text="läuft aus" art="warnung"/>
+                    <pt:chip text="gekündigt" art="fehler"/>
+                    <pt:chip text="Entwurf" art="info"/>
+                    <pt:chip text="archiviert"/>
+                    <pt:chip text="mit Icon" art="ok" chipIcon="pi pi-check"/>
+                </div>
+            </section>
+
+            <!-- Prinzip 2 und 5: Tabelle, mobil als Karten, Filter hinter Knopf -->
+            <section class="sg-abschnitt">
+                <h2>Tabelle mit mehreren Seiten</h2>
+                <p>Paginator unten, weil es mehr als eine Seite gibt. Auf dem Telefon: jede Zeile eine Karte mit Nummer, Kunde und Status; die Filter hinter dem Knopf.</p>
+                <pt:filter>
+                    <p:inputText id="suche" placeholder="Kunde oder Nummer" ariaLabel="Suche"/>
+                    <p:selectOneMenu id="statusFilter" ariaLabel="Status">
+                        <f:selectItem itemLabel="Alle Status" itemValue=""/>
+                        <f:selectItem itemLabel="aktiv" itemValue="aktiv"/>
+                        <f:selectItem itemLabel="läuft aus" itemValue="läuft aus"/>
+                    </p:selectOneMenu>
+                </pt:filter>
+                <pt:tabelle id="viele" value="#{styleguideBean.viele}" rows="10">
+                    <pt:colText header="Nummer" value="#{row.nummer}" bold="true"/>
+                    <pt:colText header="Kunde" value="#{row.kunde}"/>
+                    <pt:colText header="Ort" value="#{row.ort}" colClass="pt-mobil-aus"/>
+                    <p:column headerText="Status">
+                        <pt:chip text="#{row.status}" art="#{row.statusArt}"/>
+                    </p:column>
+                    <pt:colDate header="Beginn" value="#{row.beginn}" type="localDate" withTime="false" colClass="pt-mobil-aus"/>
+                    <pt:colAmount header="Betrag" value="#{row.betrag}" currency="CHF" colClass="pt-mobil-aus"/>
+                    <p:column headerText="Aktionen" styleClass="pt-zeilenaktionen">
+                        <p:commandButton icon="pi pi-pencil" title="Bearbeiten" ariaLabel="Bearbeiten"
+                                         styleClass="ui-button-flat"
+                                         action="#{styleguideBean.bearbeiten(row)}" process="@this"/>
+                        <pt:deleteButton action="#{styleguideBean.loeschen(row)}" update="@none"
+                                         message="Vertrag #{row.nummer} wirklich löschen?"/>
+                    </p:column>
+                </pt:tabelle>
+            </section>
+
+            <section class="sg-abschnitt">
+                <h2>Tabelle mit einer Seite</h2>
+                <p>Drei Zeilen passen auf eine Seite — also kein Paginator.</p>
+                <pt:tabelle id="wenige" value="#{styleguideBean.wenige}">
+                    <pt:colText header="Nummer" value="#{row.nummer}"/>
+                    <pt:colText header="Kunde" value="#{row.kunde}"/>
+                    <pt:colAmount header="Betrag" value="#{row.betrag}" currency="CHF"/>
+                </pt:tabelle>
+            </section>
+
+            <section class="sg-abschnitt">
+                <h2>Leerzustand</h2>
+                <p>Was fehlt, und wie man es bekommt — statt «No records found».</p>
+                <pt:tabelle id="keine" value="#{styleguideBean.keine}"
+                            leerText="Noch keine Verträge." leerWeg="Mit «Neu» legen Sie den ersten an.">
+                    <pt:colText header="Nummer" value="#{row.nummer}"/>
+                    <pt:colText header="Kunde" value="#{row.kunde}"/>
+                </pt:tabelle>
+            </section>
+        </h:form>
+    </ui:define>
+</ui:composition>

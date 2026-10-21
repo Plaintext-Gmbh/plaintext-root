@@ -1,0 +1,45 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:pt="http://plaintext.ch/ui">
+    <!--
+      pt:tabelle — card 1548 (UI 2, principle 2): pt:table with the defaults of the new pages.
+
+      Not a second table: it IS pt:table (same attributes, same row variable "row" — the reason is
+      in tags/table.xhtml), only with three other defaults, because pt:table must not change for
+      the pages already built with it:
+
+        - paginatorAlwaysVisible false: ONE paginator at the bottom, and only from page 2 on.
+          A paginator under three rows is a control without a function.
+        - an empty state with a way out instead of «No records found»: leerText (what is missing)
+          and leerWeg (how to get it). leerText defaults to "Keine Einträge vorhanden"; leerWeg
+          has no default, because only the page knows the way ("Mit «Neu» legen Sie den ersten
+          an.", "Filter zurücksetzen").
+        - styleClass pt-tabelle: below 640px every row becomes a card (layout.css). Columns that
+          the card does not need carry colClass="pt-mobil-aus" — the card shows the 2-3 fields
+          that identify the row, not all of them.
+
+      Numbers: pt:colAmount (right aligned, tabular-nums via .pt-zahl). Row actions: one
+      p:column styleClass="pt-zeilenaktionen" with icon buttons (ui-button-flat, title= set) —
+      the reference is "wiki-projekte" in app.
+
+      REQUIRED: value
+      OPTIONAL: everything of pt:table
+    -->
+    <pt:table id="#{id}"
+              value="#{value}"
+              widgetVar="#{widgetVar}"
+              rendered="#{rendered}"
+              emptyMessage="#{emptyMessage}"
+              paginator="#{paginator}"
+              rows="#{rows}"
+              rowsPerPageTemplate="#{rowsPerPageTemplate}"
+              reflow="#{reflow}"
+              rowStyleClass="#{rowStyleClass}"
+              paginatorAlwaysVisible="#{empty paginatorAlwaysVisible ? false : paginatorAlwaysVisible}"
+              leerText="#{empty leerText ? 'Keine Einträge vorhanden' : leerText}"
+              leerWeg="#{leerWeg}"
+              leerIcon="#{leerIcon}"
+              styleClass="pt-tabelle #{styleClass}">
+        <ui:insert/>
+    </pt:table>
+</ui:composition>

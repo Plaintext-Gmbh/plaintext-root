@@ -1,0 +1,26 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets">
+    <!--
+      pt:filter — card 1548 (UI 2, principle 5): filters behind a button on the phone.
+
+      On a large screen the filters stand open in one row and the button is not there. Below
+      640px only the button «Filter» is visible; a tap opens the filters as a column
+      (layout.css .pt-filter, behaviour in plaintext-layout/js/ui-grundlage.js — no inline
+      JavaScript, PlaintextInlineJsVertragTest).
+
+      A plain <button type="button"> and not a p:commandButton: it must not submit and needs no
+      server; a p:commandButton type="button" would render the same with more machinery.
+
+      OPTIONAL: knopfText (default "Filter")
+    -->
+    <div class="pt-filter">
+        <button type="button" class="pt-filter-knopf ui-button ui-widget ui-button-outlined ui-button-secondary ui-button-text-icon-left"
+                data-pt-filter-umschalten="" aria-expanded="false">
+            <span class="ui-button-icon-left ui-icon ui-c pi pi-filter" aria-hidden="true"/>
+            <span class="ui-button-text ui-c">#{empty knopfText ? 'Filter' : knopfText}</span>
+        </button>
+        <div class="pt-filter-inhalt">
+            <ui:insert/>
+        </div>
+    </div>
+</ui:composition>

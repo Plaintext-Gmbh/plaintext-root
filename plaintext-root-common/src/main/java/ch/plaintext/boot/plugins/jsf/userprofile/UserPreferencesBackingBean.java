@@ -83,16 +83,11 @@ public class UserPreferencesBackingBean implements Serializable {
     public void init() {
         laden(angemeldeterBenutzer());
 
-        componentThemes.add(new ComponentTheme("Blue", "blue", "#2196F3"));
-        componentThemes.add(new ComponentTheme("Green", "green", "#4CAF50"));
+        // Karte 1548: drei Varianten (Begruendung und Rueckfall der gestrichenen sieben in
+        // ThemeColorProvider.VARIANTEN / RUECKFALL). Reihenfolge = ThemeColorProvider.VARIANTEN.
+        componentThemes.add(new ComponentTheme("Grün", "green", "#4CAF50"));
+        componentThemes.add(new ComponentTheme("Blau", "blue", "#2196F3"));
         componentThemes.add(new ComponentTheme("Orange", "orange", "#FF9800"));
-        componentThemes.add(new ComponentTheme("Turquoise", "turquoise", "#00BCD4"));
-        componentThemes.add(new ComponentTheme("Avocado", "avocado", "#AEC523"));
-        componentThemes.add(new ComponentTheme("Purple", "purple", "#7B1FA2"));
-        componentThemes.add(new ComponentTheme("Red", "red", "#F44336"));
-        componentThemes.add(new ComponentTheme("Yellow", "yellow", "#FFC107"));
-        componentThemes.add(new ComponentTheme("Lime", "lime", "#8BC34A"));
-        componentThemes.add(new ComponentTheme("Crimson", "crimson", "#B71C1C"));
     }
 
     /**
@@ -169,7 +164,8 @@ public class UserPreferencesBackingBean implements Serializable {
             // Reihenfolge und Wirkung wie vorher).
             boolean farbenGeaendert = farbenAusCookies(cookieColor, cookieCustomColor);
             boolean themenGeaendert = themenAngleichen();
-            if (farbenGeaendert || themenGeaendert) {
+            boolean varianteGeaendert = gestricheneVarianteErsetzen();
+            if (farbenGeaendert || themenGeaendert || varianteGeaendert) {
                 save(); // Persist the corrected values
             }
         } else {
@@ -191,6 +187,23 @@ public class UserPreferencesBackingBean implements Serializable {
             prefs.setMenuTheme(cookieTheme);
             prefs.setLightLogo(!cookieTheme.equals("light"));
         }
+    }
+
+    /**
+     * Karte 1548: eine gestrichene Farbvariante (z.B. {@code purple}) durch die naechstliegende
+     * der drei verbliebenen ersetzen und das zurueckschreiben — sonst stuende der alte Name ewig
+     * in der Datenbank und jede Stelle, die ihn liest, muesste den Rueckfall selbst kennen.
+     * Laeuft nach den Cookies, damit auch ein alter Cookie-Wert ersetzt wird.
+     */
+    private boolean gestricheneVarianteErsetzen() {
+        String gespeichert = prefs.getComponentTheme();
+        String gilt = ThemeColorProvider.variante(gespeichert);
+        if (gilt == null || gilt.equals(gespeichert)) {
+            return false;
+        }
+        log.info("Farbvariante '{}' gibt es nicht mehr (Karte 1548), ersetzt durch '{}'", gespeichert, gilt);
+        prefs.setComponentTheme(gilt);
+        return true;
     }
 
     /** Farbe und eigene Farbe aus den Cookies uebernehmen; {@code true}, wenn sich etwas geaendert hat. */
@@ -469,7 +482,7 @@ public class UserPreferencesBackingBean implements Serializable {
                                    String topbarTheme, String menuTheme, String inputStyle,
                                    String menuStatic, String customColor) {
         if (componentTheme != null && !componentTheme.isEmpty()) {
-            prefs().setComponentTheme(componentTheme);
+            prefs().setComponentTheme(ThemeColorProvider.variante(componentTheme));
         }
         if (darkMode != null && !darkMode.isEmpty()) {
             prefs().setDarkMode(darkMode);
@@ -545,7 +558,9 @@ public class UserPreferencesBackingBean implements Serializable {
      */
     public boolean isHasHiddenColors() {
         java.util.Set<String> hidden = prefs().getHiddenColors();
-        return hidden != null && !hidden.isEmpty();
+        // Karte 1548: nur verbliebene Varianten zaehlen — eine frueher ausgeblendete, inzwischen
+        // gestrichene Farbe wuerde sonst "Show all colors" anbieten, ohne dass etwas erscheint.
+        return hidden != null && hidden.stream().anyMatch(ThemeColorProvider.VARIANTEN::contains);
     }
 
     // ==================== Delegating Getters ====================
@@ -563,7 +578,9 @@ public class UserPreferencesBackingBean implements Serializable {
     }
 
     public String getComponentTheme() {
-        return prefs().getComponentTheme();
+        // Karte 1548: auch ein Stand, der noch nicht neu geladen wurde (Session von vor dem
+        // Update), zeigt nie eine gestrichene Variante als ausgewaehlt.
+        return ThemeColorProvider.variante(prefs().getComponentTheme());
     }
 
     public String getMenuTheme() {

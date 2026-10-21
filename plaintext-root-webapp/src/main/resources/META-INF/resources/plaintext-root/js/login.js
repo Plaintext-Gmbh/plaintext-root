@@ -62,13 +62,14 @@ function cleanUrl() {
 function initColor() {
     var savedColor = getCookie('plaintext-color');
     if (savedColor) {
-        // Color palette (matching ThemeColorProvider)
-        var palettes = {
-            'blue': '#2196F3', 'green': '#4CAF50', 'orange': '#FF9800', 'turquoise': '#00BCD4',
-            'avocado': '#AEC523', 'purple': '#7B1FA2', 'red': '#F44336', 'yellow': '#FFC107',
-            'lime': '#8BC34A', 'crimson': '#B71C1C'
+        // Color palette (matching ThemeColorProvider): drei Varianten seit Karte 1548, die
+        // gestrichenen sieben fallen auf die naechstliegende zurueck (ThemeColorProvider.RUECKFALL).
+        var palettes = {'green': '#4CAF50', 'blue': '#2196F3', 'orange': '#FF9800'};
+        var rueckfall = {
+            'turquoise': 'blue', 'purple': 'blue', 'avocado': 'green', 'lime': 'green',
+            'red': 'orange', 'crimson': 'orange', 'yellow': 'orange'
         };
-        var hex = palettes[savedColor];
+        var hex = palettes[rueckfall[savedColor] || savedColor];
         if (savedColor === 'custom') {
             hex = getCookie('plaintext-custom-color');
         }

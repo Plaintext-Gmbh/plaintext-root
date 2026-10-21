@@ -125,6 +125,13 @@ class PlaintextRootTemplateDriftTest {
     static final Set<String> UEBERSCHATTBARE_HOOKS =
             Set.of("META-INF/resources/includes/app-template-extra.xhtml");
 
+    /*
+     * Karte 1548: die neuen Dateien der UI-2-Grundlage (css/layout.css, js/ui-grundlage.js, die
+     * Tags tabelle/seitenkopf/chip/filter) stehen bewusst NICHT in dieser Liste: der Test meldet
+     * eine geteilte Datei ohne jede Kopie als Fehler, und eine Oblique-Kopie, die sie noch nicht
+     * hat, waere damit beim naechsten root-Bump rot — fuer Dateien, die keine Bestandsseite
+     * braucht. Aufnehmen, sobald die Kopie sie uebernommen hat.
+     */
     private static final Map<String, String> GETEILTE_DATEIEN = new LinkedHashMap<>();
 
     static {
@@ -187,7 +194,7 @@ class PlaintextRootTemplateDriftTest {
         GETEILTE_DATEIEN.put("META-INF/resources/primefaces-plaintext/theme.css",
                 "6ace021af81224c8c4036d2cccf718d3041b14511183c85fc78373d6c9f5d8b5");
         GETEILTE_DATEIEN.put("META-INF/tags/colAmount.xhtml",
-                "ab2ef79b50c02ce2574b16df2e99e4d5d1fd54c54d1ba66d4150aa5bb601e480");
+                "a60109c833b9728cabb16c335dcfdde0b0052ba46a4ca390183d667541bf21a6");
         GETEILTE_DATEIEN.put("META-INF/tags/colDate.xhtml",
                 "d44083bd3c1c56c6827c52c0edfbd1c7dfe9257ad1da99ddb0f1a16841b65fd3");
         GETEILTE_DATEIEN.put("META-INF/tags/colText.xhtml",
@@ -195,7 +202,7 @@ class PlaintextRootTemplateDriftTest {
         GETEILTE_DATEIEN.put("META-INF/tags/deleteButton.xhtml",
                 "b8d851d953ed15e3327eda2f6e44f119ce6b596c9956e97eea7bad8b1c572fd1");
         GETEILTE_DATEIEN.put("META-INF/tags/table.xhtml",
-                "81adc0ddd9ab2c5c7a766ff884a88f90ce55720d9df2b2dbd189217cb138e2fc");
+                "883a403bf650993565fa3a4aaa0bffcf1dd8a868552b5b4367d8fbf6ce06cfe5");
     }
 
     /** One copy of a shared file: where it was found and what it hashes to. */

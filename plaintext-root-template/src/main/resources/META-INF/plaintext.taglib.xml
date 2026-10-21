@@ -34,6 +34,13 @@
         <source>tags/table.xhtml</source>
     </tag>
 
+    <!-- Karte 1548 (UI 2): pt:table mit den Vorgaben neuer Seiten — Paginator erst ab Seite 2,
+         Leerzustand mit Weg, mobil als Karten. Delegiert an pt:table, ist also keine zweite Tabelle. -->
+    <tag>
+        <tag-name>tabelle</tag-name>
+        <source>tags/tabelle.xhtml</source>
+    </tag>
+
     <!-- Spalten: Header + Konverter + Ausrichtung in einer Zeile statt in vier bis sechs. -->
     <tag>
         <tag-name>colText</tag-name>
@@ -61,6 +68,21 @@
     <tag>
         <tag-name>tableSettings</tag-name>
         <source>tags/tableSettings.xhtml</source>
+    </tag>
+
+    <!-- Karte 1548 (UI 2): Seitenkopf (Titel links, eine Hauptaktion rechts, Seltenes im «⋯»-Menue),
+         Status als leiser Chip, Filter hinter Knopf auf dem Telefon. Referenz: /styleguide.html. -->
+    <tag>
+        <tag-name>seitenkopf</tag-name>
+        <source>tags/seitenkopf.xhtml</source>
+    </tag>
+    <tag>
+        <tag-name>chip</tag-name>
+        <source>tags/chip.xhtml</source>
+    </tag>
+    <tag>
+        <tag-name>filter</tag-name>
+        <source>tags/filter.xhtml</source>
     </tag>
 
     <!-- Karte 1440: Dateiablage (Ablage waehlen, Ordner, oeffnen, herunterladen, hochladen);

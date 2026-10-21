@@ -81,8 +81,7 @@ class ThemeColorProviderJsonTest {
     }
 
     @ParameterizedTest(name = "Farbe {0} liefert light und dark vollstaendig")
-    @ValueSource(strings = {"blue", "green", "orange", "turquoise", "avocado",
-            "purple", "red", "yellow", "lime", "crimson"})
+    @ValueSource(strings = {"blue", "green", "orange"})
     void jedeFarbeHatBeideModiVollstaendig(String farbe) throws Exception {
         JsonNode wurzel = JSON.readTree(provider.getColorsJson());
         JsonNode eintrag = wurzel.get(farbe);
@@ -134,7 +133,7 @@ class ThemeColorProviderJsonTest {
     void dieReihenfolgeIstStabil() {
         String json = provider.getColorsJson();
 
-        assertTrue(json.startsWith("{\"avocado\""),
+        assertTrue(json.startsWith("{\"blue\""),
                 "Aussen wird alphabetische Reihenfolge erwartet (TreeMap): " + json);
 
         List<String> farben = new ArrayList<>();
@@ -147,6 +146,6 @@ class ThemeColorProviderJsonTest {
         }
         assertEquals(farben.stream().sorted().toList(), farben,
                 "Die Farben stehen nicht alphabetisch: " + farben);
-        assertEquals(10, farben.size(), "Erwartet werden alle zehn Farben: " + farben);
+        assertEquals(ThemeColorProvider.VARIANTEN.size(), farben.size(), "Erwartet werden alle drei Varianten (Karte 1548): " + farben);
     }
 }

@@ -13,6 +13,22 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **UI 2 foundation** (Karte 1548, the five UI principles decided on 15.10.2026). All additive; existing pages look
+  the same after the bump. New file `plaintext-layout/css/layout.css`, loaded by the template after
+  `layout-light/dark.css`: tokens for four colour roles (`--pt-flaeche*`, `--pt-text*`, `--pt-akzent*`,
+  `--pt-status-{ok,warnung,fehler,info}*`), four spacing steps (`--pt-abstand-1..4`), `--pt-radius` and one font
+  in three sizes (`--pt-schrift-{klein,normal,gross}`); dark as a second variable set in the same file. New tags:
+  `pt:seitenkopf` (title left, one main action right, rare actions in a «⋯» menu), `pt:tabelle` (= `pt:table`
+  with paginator only from page 2, German empty state with a way out via `leerText`/`leerWeg`, rows as cards
+  below 640px; columns the card does not need get `colClass="pt-mobil-aus"`), `pt:chip` (status as a quiet chip)
+  and `pt:filter` (filters behind a button on the phone, behaviour in `js/ui-grundlage.js`). `pt:table` gets the
+  optional attributes `paginatorAlwaysVisible`, `leerText`, `leerWeg`, `leerIcon` (unset = unchanged).
+  Living reference: `/styleguide.html` (Admin → Styleguide, ADMIN/ROOT). Screenshots in `docs/ui/1548/`.
+- **`PlaintextUiGrundlageLinterTest`** in `plaintext-root-archtests` (Karte 1548): XHTML without `style="`,
+  without its own `p:growl`, every `h:form` with `_csrf`; the existing state is frozen per file in
+  `plaintext-ui-bestand.txt` at the reactor root and may only shrink. Enforced in root; in consumers it only
+  reports (default `report`) until they write their own baseline with
+  `-Dplaintext.arch.ui-grundlage=bestand-schreiben` and set `enforce`.
 - **One token-link store for Draw.io, slide shows and Files** (Karte 1559): port `ch.plaintext.linktoken.LinkTokenStore`
   in `plaintext-root-interfaces` (`anlegen`, `finde`, `liste`, `widerrufe`, `widerrufeFuer`, `zieheUm`, `aufgerufen`)
   with `LinkToken`, `LinkTokenAntrag`, `LinkRecht` (`lesen`/`schreiben`). Default `JpaLinkTokenStore` in
@@ -106,6 +122,13 @@ exhaustive.
   `PlaintextModulApiVertragTest` until it carries `@ModulApiUmsetzung` — add it with the bump.
 
 ### Changed
+- **Three colour variants instead of ten** (Karte 1548): green (default for new users), blue (fallback for unknown
+  names) and orange (the warm side). Users with a removed variant get the nearest one by hue — turquoise/purple →
+  blue, avocado/lime → green, red/crimson/yellow → orange — written back to their preferences on the next load
+  (`ThemeColorProvider.VARIANTEN`/`RUECKFALL`, also for the colour cookie, the REST endpoint and the login page).
+  Custom colours stay. Visible for those users: their accent colour changes once.
+- `pt:colAmount` cells carry `.pt-zahl` (`font-variant-numeric: tabular-nums`) — digits equally wide, alignment
+  unchanged.
 - **Contracts live with their provider** (Karte 1504, decisions in Karte 1502). New ArchUnit rule `vertragsort`
   (`PlaintextVertragsortTest`): an interface implemented only in another module and not used in its own belongs in
   that provider's `<modul>-api` jar; root's shell (`plaintext-root-interfaces` + platform layer) is exempt.

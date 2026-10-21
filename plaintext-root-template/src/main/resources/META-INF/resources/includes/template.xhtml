@@ -84,6 +84,7 @@
     </title>
     <h:outputScript name="js/layout.js" library="plaintext-layout"/>
     <h:outputScript name="js/primefaces-fixes.js" library="plaintext-layout"/>
+    <h:outputScript name="js/ui-grundlage.js" library="plaintext-layout"/>
     <ui:insert name="head"/>
 </h:head>
 
@@ -139,6 +140,10 @@
     <h:outputStylesheet name="css/primeicons.css" library="plaintext-layout"/>
     <h:outputStylesheet name="css/primeflex.min.css" library="plaintext-layout"/>
     <h:outputStylesheet name="css/#{userPreferencesBackingBean.layout}.css" library="plaintext-layout"/>
+    <!-- Card 1548 (UI 2): tokens (light + dark as two variable sets) and the patterns of the new
+         pages (pt:seitenkopf, pt:tabelle, chips, filter). Only NEW names, so existing pages look
+         unchanged; right after the layout file, whose variables the tokens point to. -->
+    <h:outputStylesheet name="css/layout.css" library="plaintext-layout"/>
     <!-- Card 478: buttons never sit flush against one another. Deliberately BEFORE mobile-responsive.css,
          so that its viewport rules still win the cascade. -->
     <h:outputStylesheet name="css/button-spacing.css" library="plaintext-layout"/>
