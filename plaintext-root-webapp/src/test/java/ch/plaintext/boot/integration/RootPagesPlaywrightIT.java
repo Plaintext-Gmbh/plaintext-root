@@ -518,18 +518,20 @@ class RootPagesPlaywrightIT {
 
         // Filter DTO: genau die markierten DTOs aus root-interfaces (Etappe B: zwei; Karte 1476: FreigabeZugriff und FreigabeInhalt; das Enum FreigabeRecht fuehrt der Katalog nicht;
         // Karte 1504: IApiErrorResponse geloescht, MailAccountRef und MailAttachment mit dem MailSender-Vertrag dazu;
-        // Karte 1525: PaperlessDokument mit IPaperlessAblage dazu; Karte 1560: ClaudeAnfrage und ClaudeAntwort)
+        // Karte 1525: PaperlessDokument mit IPaperlessAblage dazu; Karte 1560: ClaudeAnfrage und ClaudeAntwort;
+        // Karte 1559: LinkToken und LinkTokenAntrag mit dem LinkTokenStore, das Enum LinkRecht fuehrt der Katalog nicht)
         page.locator("#fm\\:schnittstellenSuche").fill("");
         page.locator("#fm\\:schnittstellenSuche").press("End");
         page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length >= 20");
         ruhig();
         page.locator("#fm\\:schnittstellenArt").getByText("DTOs").click();
-        page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length === 8");
+        page.waitForFunction("() => document.querySelectorAll('[id=\"fm:schnittstellen_data\"] > tr').length === 10");
         ruhig();
         String dtos = tabelle.innerText();
         assertTrue(dtos.contains("MailAccountRef") && dtos.contains("MailAttachment") && dtos.contains("ITokenValidationOutcome")
                 && dtos.contains("FreigabeZugriff") && dtos.contains("FreigabeInhalt") && dtos.contains("PaperlessDokument")
-                && dtos.contains("ClaudeAnfrage") && dtos.contains("ClaudeAntwort"), "DTO-Filter: " + dtos);
+                && dtos.contains("ClaudeAnfrage") && dtos.contains("ClaudeAntwort")
+                && dtos.contains("LinkToken") && dtos.contains("LinkTokenAntrag"), "DTO-Filter: " + dtos);
         // Gegenprobe: ein Suchbegriff ohne Treffer leert die Liste
         page.locator("#fm\\:schnittstellenSuche").fill("gibtesnirgends");
         page.locator("#fm\\:schnittstellenSuche").press("End");
