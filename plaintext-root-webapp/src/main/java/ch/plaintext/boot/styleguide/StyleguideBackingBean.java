@@ -3,8 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.styleguide;
 
-import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
+import ch.plaintext.boot.plugins.jsf.FacesMessages;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 
@@ -86,7 +85,6 @@ public class StyleguideBackingBean {
     }
 
     private static void melde(String titel, String text) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, titel, text));
+        FacesMessages.info(titel, text);
     }
 }
