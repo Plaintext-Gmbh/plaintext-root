@@ -10,6 +10,7 @@ import ch.plaintext.linktoken.LinkRecht;
 import ch.plaintext.linktoken.LinkToken;
 import ch.plaintext.linktoken.LinkTokenAntrag;
 import ch.plaintext.linktoken.LinkTokenStore;
+import ch.plaintext.modules.ModulApiUmsetzung;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,14 @@ import java.util.regex.Pattern;
  * Aufruf direkt in die Zeile (wie bei den Freigabe-Links); wer weniger Schreiblast will, bringt einen eigenen Store.</p>
  */
 @Slf4j
+@ModulApiUmsetzung(beschreibung = "Default store of the token links of Draw.io, slide shows and Files in the table "
+        + "freigabe_link (only the SHA-256 is stored); steps back when the application registers its own LinkTokenStore.",
+        seiteneffekte = ModulApiUmsetzung.Seiteneffekte.INTERN,
+        hinweise = {"The secret is returned once, by anlegen; liste returns it as null",
+                "anlegen, liste and widerrufe work in the tenant of the signed-in user, finde knows only the secret",
+                "Every call of aufgerufen writes the counter to the row"},
+        beispiele = {"anlegen(new LinkTokenAntrag(\"files\", \"anna/bericht.pdf\", LinkRecht.LESEN, \"anna\", null, null))",
+                "zieheUm(\"drawio\", \"plan.drawio\", \"architektur/plan.drawio\")"})
 public class JpaLinkTokenStore implements LinkTokenStore {
 
     /** Base64url ohne Auffüllung, 24 Byte = 32 Zeichen; ältere Stores hatten bis 128. */
