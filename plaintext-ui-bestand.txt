@@ -7,6 +7,7 @@
 plaintext-admin-apitoken/src/main/resources/META-INF/resources/admin-api-token.xhtml  15 0 0
 plaintext-admin-apitoken/src/main/resources/META-INF/resources/api-token.xhtml  45 0 0
 plaintext-admin-apitoken/src/main/resources/META-INF/resources/root-api-token.xhtml  21 0 0
+plaintext-admin-claude/src/main/resources/META-INF/resources/claude-api.xhtml  17 0 0
 plaintext-admin-cron/src/main/resources/META-INF/resources/cron.xhtml  37 0 0
 plaintext-admin-i18n/src/main/resources/META-INF/resources/i18n-translations.xhtml  18 0 0
 plaintext-admin-mailtemplate/src/main/resources/META-INF/resources/mailtemplates.xhtml  12 0 0
