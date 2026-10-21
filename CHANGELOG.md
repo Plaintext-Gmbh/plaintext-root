@@ -18,7 +18,7 @@ exhaustive.
   with `LinkToken`, `LinkTokenAntrag`, `LinkRecht` (`lesen`/`schreiben`). Default `JpaLinkTokenStore` in
   `plaintext-root-freigabe`, registered `@ConditionalOnMissingBean`, so an application with its own store (Inventar:
   config list) replaces it with one bean. It shares the table `freigabe_link` (token only as SHA-256, same expiry and
-  call counter): Flyway `V1792606298` makes `objekt_id` optional and adds `schluessel` and `besitzer`.
+  call counter): Flyway `V1792612327` makes `objekt_id` optional and adds `schluessel` and `besitzer`.
   `FreigabeLinkService` ignores rows with a `schluessel`, so a store token never opens a `FreigabeQuelle`. Additive;
   consumers only run the migration.
 - **Claude API for every module** (Karte 1560): contract `ch.plaintext.claude.ClaudeClient` in
