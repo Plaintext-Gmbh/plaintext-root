@@ -1,0 +1,76 @@
+<ui:composition xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <ui:define name="title">Files</ui:define>
+
+    <ui:define name="content">
+        <h:form id="fm" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <p:growl id="meldungen" showDetail="true"/>
+            <p>Persönliche Ablage: nur du siehst deine Dateien. Jede Datei wird #{filesBean.fristTage} Tage nach
+                der letzten Änderung automatisch gelöscht; neu hochladen unter demselben Namen ersetzt sie und zählt
+                die Frist neu. Freigabe-Links laden ohne Anmeldung herunter und verschwinden mit der Datei.</p>
+
+            <p:fileUpload listener="#{filesBean.hochladen}" mode="advanced" auto="true" dragDropSupport="true"
+                          multiple="true" update=":fm:liste :fm:meldungen"
+                          label="Dateien wählen" uploadLabel="Hochladen" cancelLabel="Abbrechen"/>
+
+            <p:dataTable id="liste" value="#{filesBean.dateien}" var="d" reflow="true"
+                         emptyMessage="Noch keine Dateien.">
+                <p:column headerText="Datei" priority="1">
+                    <h:outputLink value="#{request.contextPath}/files/api/datei">
+                        <f:param name="pfad" value="#{d.name}"/>
+                        <i class="pi pi-download"/> #{d.name}
+                    </h:outputLink>
+                </p:column>
+                <p:column headerText="Grösse" priority="3">#{filesBean.groesse(d.groesse)}</p:column>
+                <p:column headerText="Geändert" priority="4">#{filesBean.zeit(d.geaendert)}</p:column>
+                <p:column headerText="Läuft ab" priority="2">#{filesBean.zeit(d.ablauf)}</p:column>
+                <p:column headerText="" priority="1">
+                    <p:commandButton icon="pi pi-share-alt" title="Link teilen" styleClass="rounded-button ui-button-flat"
+                                     action="#{filesBean.dialogOeffnen(d.name)}" update=":fm:dlgLink"
+                                     oncomplete="PF('dlgLink').show()"/>
+                    <p:commandButton icon="pi pi-trash" title="Löschen" styleClass="rounded-button ui-button-flat ui-button-danger"
+                                     action="#{filesBean.loeschen(d.name)}" update=":fm:liste :fm:meldungen">
+                        <p:confirm header="Löschen" message="#{d.name} samt Links löschen?" icon="pi pi-exclamation-triangle"/>
+                    </p:commandButton>
+                </p:column>
+            </p:dataTable>
+
+            <p:confirmDialog global="true">
+                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes"/>
+                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no ui-button-secondary"/>
+            </p:confirmDialog>
+
+            <p:dialog id="dlgLink" widgetVar="dlgLink" header="Link teilen: #{filesBean.datei}" modal="true"
+                      responsive="true" styleClass="mobile-safe">
+                <p>Wer den Link kennt, lädt die Datei ohne Anmeldung herunter.</p>
+                <h:panelGrid columns="2" cellpadding="4">
+                    <p:outputLabel for="tage" value="Gültig (Tage, 0 = solange die Datei lebt)"/>
+                    <p:inputNumber id="tage" value="#{filesBean.linkTage}" decimalPlaces="0" minValue="0" maxValue="3650"/>
+                    <p:outputLabel for="zweck" value="Zweck"/>
+                    <p:inputText id="zweck" value="#{filesBean.linkZweck}" maxlength="500"/>
+                </h:panelGrid>
+                <p:commandButton value="Link erzeugen" icon="pi pi-link" action="#{filesBean.linkErzeugen}"
+                                 update=":fm:dlgLink :fm:meldungen"/>
+                <h:panelGroup layout="block" rendered="#{not empty filesBean.neueUrl}" style="margin-top:.5rem">
+                    <p:inputText value="#{filesBean.neueUrl}" readonly="true" style="width:100%"/>
+                    <small>Die Adresse wird nur jetzt angezeigt.</small>
+                </h:panelGroup>
+                <p:dataTable value="#{filesBean.links}" var="l" reflow="true" emptyMessage="Noch keine Links."
+                             style="margin-top:.5rem">
+                    <p:column headerText="Zweck">#{l.zweck}</p:column>
+                    <p:column headerText="Gültig bis">#{empty l.gueltigBis ? 'solange die Datei lebt' : l.gueltigBis}</p:column>
+                    <p:column headerText="Aufrufe">#{l.aufrufe}</p:column>
+                    <p:column headerText="">
+                        <p:commandButton icon="pi pi-times" title="Zurückziehen" styleClass="rounded-button ui-button-flat"
+                                         action="#{filesBean.linkZurueckziehen(l.id)}" update=":fm:dlgLink :fm:meldungen"/>
+                    </p:column>
+                </p:dataTable>
+            </p:dialog>
+        </h:form>
+    </ui:define>
+</ui:composition>

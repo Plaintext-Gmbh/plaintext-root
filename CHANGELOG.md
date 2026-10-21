@@ -13,6 +13,18 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **Personal file store `plaintext-root-files`** (Karte 1559, ported from the Inventar): every user uploads, lists,
+  downloads and deletes their own files under `files/<user>/<name>`; a file lives `plaintext.files.frist` (default
+  21 days) after its last change, uploading the same name again replaces it and restarts the period. Share links
+  without login at `GET /nosec/files/{token}` (address as in the Inventar) through the `LinkTokenStore` (art
+  `files`), with expiry, purpose and call counter; they die with the file. Page `files/ablage.html` (menu
+  `moduleId = files`), REST `/files/api/*` in the format of the Draw.io store widget, MCP tools `list_files`,
+  `get_file`, `save_file`, `create_file_link` (optional identity question `plaintext.files.mcp-identitaet`). New port
+  `ch.plaintext.files.DateiSpeicher` in `plaintext-root-interfaces` (`upload`, `download`, `exists`, `list`,
+  `delete`, flag `raeumtSelbstAuf`); default file system under `plaintext.files.verzeichnis`, replaced by any own
+  bean. Without `raeumtSelbstAuf` the cron `FilesAufraeumen` deletes expired files. **Not** in the
+  `plaintext-root-webapp` aggregate: an application adds the dependency, and on that bump raises
+  `mindestens.werkzeuge` in its `mcp-scope-vertrag.properties` by 4. New module, additive.
 - **One token-link store for Draw.io, slide shows and Files** (Karte 1559): port `ch.plaintext.linktoken.LinkTokenStore`
   in `plaintext-root-interfaces` (`anlegen`, `finde`, `liste`, `widerrufe`, `widerrufeFuer`, `zieheUm`, `aufgerufen`)
   with `LinkToken`, `LinkTokenAntrag`, `LinkRecht` (`lesen`/`schreiben`). Default `JpaLinkTokenStore` in
