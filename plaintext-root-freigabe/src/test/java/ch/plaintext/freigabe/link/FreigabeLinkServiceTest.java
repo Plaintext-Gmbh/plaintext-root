@@ -176,6 +176,19 @@ class FreigabeLinkServiceTest {
     }
 
     @Test
+    @DisplayName("Karte 1559: eine LinkTokenStore-Zeile mit gleichem Typ öffnet über /nosec/freigabe/ nichts und steht nicht in der Liste")
+    void linkTokenZeileBleibtDraussen() {
+        FreigabeLinkService.Link l = service.erzeuge("t", 1L, null, FreigabeRecht.LESEN, 1, null);
+        FreigabeLink z = zeilen.get(0);
+        z.setSchluessel("plan.drawio");
+        z.setObjektId(null);
+        assertTrue(service.zeige(token(l)).isEmpty());
+        assertTrue(service.liste(null, null).isEmpty());
+        assertThrows(NoSuchElementException.class, () -> service.widerrufe(l.id()));
+        assertTrue(aufrufe.isEmpty(), "die Quelle wird gar nicht gefragt");
+    }
+
+    @Test
     @DisplayName("Modul wirft: leer statt 500, kein Zähler")
     void modulWirft() {
         FreigabeLinkService.Link l = service.erzeuge("t", 1L, "kaputt", FreigabeRecht.LESEN, 1, null);
