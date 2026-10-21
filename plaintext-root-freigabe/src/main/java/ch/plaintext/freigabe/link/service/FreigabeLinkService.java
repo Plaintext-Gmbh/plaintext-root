@@ -174,6 +174,7 @@ public class FreigabeLinkService implements FreigabeLinks {
      */
     public List<Link> liste(String typ, Long objektId) {
         return links.findByMandatAndDeletedFalseOrderByIdDesc(security.getMandat()).stream()
+                .filter(FreigabeLinkService::istFreigabe)
                 .filter(l -> typ == null || typ.equals(l.getTyp()))
                 .filter(l -> objektId == null || objektId.equals(l.getObjektId()))
                 .filter(this::darf)
@@ -183,7 +184,8 @@ public class FreigabeLinkService implements FreigabeLinks {
     /** @throws NoSuchElementException wenn der Link nicht im Mandat liegt oder der Benutzer sein Objekt nicht freigeben darf */
     @Transactional
     public void widerrufe(Long linkId) {
-        FreigabeLink l = links.findByIdAndMandatAndDeletedFalse(linkId, security.getMandat()).filter(this::darf)
+        FreigabeLink l = links.findByIdAndMandatAndDeletedFalse(linkId, security.getMandat())
+                .filter(FreigabeLinkService::istFreigabe).filter(this::darf)
                 .orElseThrow(() -> new NoSuchElementException("Link " + linkId + " nicht gefunden"));
         l.setDeleted(true);
         links.save(l);
@@ -225,6 +227,7 @@ public class FreigabeLinkService implements FreigabeLinks {
             return Optional.empty();
         }
         return links.findByTokenHashAndDeletedFalse(hash(token))
+                .filter(FreigabeLinkService::istFreigabe)
                 .filter(l -> l.getGueltigBis() == null || !LocalDate.now().isAfter(l.getGueltigBis()))
                 .flatMap(l -> quelle(l.getTyp()).map(q -> new Offen(l, q, new FreigabeZugriff(l.getId(), l.getMandat(),
                         l.getTyp(), l.getObjektId(), l.getTeil(), FreigabeRecht.von(l.getRecht())))));
@@ -251,6 +254,15 @@ public class FreigabeLinkService implements FreigabeLinks {
             links.save(l);
         }
         return antwort;
+    }
+
+    /**
+     * Zeilen des {@link ch.plaintext.linktoken.LinkTokenStore} (Karte 1559) liegen in derselben Tabelle, gehören aber
+     * nicht zu einer {@link FreigabeQuelle}: sonst öffnete ein Draw.io-Token über {@code /nosec/freigabe/} die
+     * Quelle {@code drawio} mit leerer Objekt-Id.
+     */
+    static boolean istFreigabe(FreigabeLink l) {
+        return l.getSchluessel() == null && l.getObjektId() != null;
     }
 
     private Optional<FreigabeQuelle> quelle(String typ) {

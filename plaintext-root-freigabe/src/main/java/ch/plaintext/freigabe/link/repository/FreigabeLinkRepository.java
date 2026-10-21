@@ -17,4 +17,10 @@ public interface FreigabeLinkRepository extends JpaRepository<FreigabeLink, Long
     List<FreigabeLink> findByMandatAndDeletedFalseOrderByIdDesc(String mandat);
 
     Optional<FreigabeLink> findByIdAndMandatAndDeletedFalse(Long id, String mandat);
+
+    /** LinkTokenStore (Karte 1559): alle Links einer Art, neueste zuerst. */
+    List<FreigabeLink> findByTypAndSchluesselIsNotNullAndDeletedFalseOrderByIdDesc(String typ);
+
+    /** LinkTokenStore (Karte 1559): die Links eines Objekts. */
+    List<FreigabeLink> findByTypAndSchluesselAndDeletedFalse(String typ, String schluessel);
 }
