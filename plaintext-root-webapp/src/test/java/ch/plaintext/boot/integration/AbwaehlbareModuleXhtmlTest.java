@@ -50,7 +50,8 @@ class AbwaehlbareModuleXhtmlTest {
             "ch.plaintext.webhooks",
             "ch.plaintext.notifications",
             "ch.plaintext.secrets",
-            "ch.plaintext.modules");
+            "ch.plaintext.modules",
+            "ch.plaintext.claude");
 
     /** Only the XHTML of these two artifacts are "core" — the modules bring their own. */
     private static final List<String> KERN_ARTEFAKTE = List.of(

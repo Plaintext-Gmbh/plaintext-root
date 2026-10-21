@@ -46,7 +46,7 @@ graph TD
     end
 
     subgraph admin["Admin modules — 12, each optional via &lt;exclusions&gt;"]
-        ADMIN[settings · sessions · cron · i18n · oidc<br/>apitoken · secrets · modules · mailtemplate<br/>webhooks · notifications · requirements]
+        ADMIN[settings · sessions · cron · i18n · oidc<br/>apitoken · secrets · modules · mailtemplate<br/>webhooks · notifications · claude · requirements]
     end
 
     subgraph core["Core"]
@@ -126,6 +126,7 @@ things are worth knowing:
 | `plaintext-admin-notifications` | In-app and push notifications |
 | `plaintext-admin-secrets` | Secret store with pluggable backends |
 | `plaintext-admin-webhooks` | Outgoing webhook configuration |
+| `plaintext-admin-claude` | Claude API access for all modules (`ClaudeClient`) and its monitoring page |
 | `plaintext-admin-requirements` | Requirements management with AI integration |
 | `plaintext-root-archtests` | Shared ArchUnit architecture/lint tests |
 

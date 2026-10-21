@@ -21,6 +21,7 @@ Shared interfaces that define the framework's public API and extension points. N
 | `SearchProvider` | Contributing results to the global search |
 | `DeepLinkTarget` / `DeepLinkService` | Resolving a deep link to one record |
 | `PlaintextCron` | Scheduled work with an admin UI, per tenant |
+| `ClaudeClient` | Ask Claude (Anthropic API) with the installation's key; implemented by `plaintext-admin-claude` |
 
 ### plaintext-root-common
 
@@ -215,6 +216,20 @@ Outgoing webhook configuration and dispatch (`WebhookConfig`, `WebhookEndpointSe
 In-app notifications behind the topbar bell (`NotificationServiceImpl`,
 `NotificationMenu`); `notifications.html` is reachable for every user.
 
+### plaintext-admin-claude
+
+Access to the Anthropic Claude API for every module (Karte 1560). Contract `ClaudeClient` in `-interfaces`
+(package `ch.plaintext.claude`, records `ClaudeAnfrage`/`ClaudeAntwort`, `ClaudeException` with `Art`);
+implementation `AnthropicClaudeClient` (JDK `HttpClient`, retries 429/529 twice with `retry-after`, capped at
+30 s). Properties: `plaintext.claude.api-key` (in the apps `vault:anthropic.api-key`), `plaintext.claude.admin-key`
+(optional Admin API key, only for the cost report), `plaintext.claude.default-model` (default
+`claude-sonnet-5-5`), `plaintext.claude.base-url`. Every call is counted in `claude_nutzung` per day, calling
+module (`quelle`) and model — without a tenant, because the key belongs to the installation. ROOT page
+*Root → Claude API* (`claude-api.html`): connection check (`/v1/models`, `/v1/organizations/me`), rate-limit
+headers of the last call, consumption today/7/30 days per module and model with error rate and mean latency,
+a test question (max_tokens 20) and, with an admin key, the costs of the last 30 days. **The remaining credit is
+not available through the API** (only in the Anthropic Console). The key is never shown.
+
 ## Template & Application
 
 ### plaintext-root-template
@@ -269,7 +284,8 @@ plaintext-root-webapp
 ├── plaintext-admin-modules
 ├── plaintext-admin-mailtemplate
 ├── plaintext-admin-webhooks
-└── plaintext-admin-notifications
+├── plaintext-admin-notifications
+└── plaintext-admin-claude
 
 plaintext-root-archtests   (test rules, consumed by the applications; not on the webapp's path)
 ```

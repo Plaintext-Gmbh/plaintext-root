@@ -13,6 +13,16 @@ exhaustive.
 ## [Unreleased]
 
 ### Added
+- **Claude API for every module** (Karte 1560): contract `ch.plaintext.claude.ClaudeClient` in
+  `plaintext-root-interfaces` (`frage(ClaudeAnfrage)`, `frage(quelle, prompt)`, `isKonfiguriert()`, errors as
+  `ClaudeException` with `Art` and `retryAfter`), implemented by the new module `plaintext-admin-claude` (comes with
+  `plaintext-root-webapp`, can be opted out). JDK `HttpClient`, no SDK; retries 429/529 twice. Properties
+  `plaintext.claude.api-key` (e.g. `vault:anthropic.api-key`), `admin-key` (optional, for costs), `default-model`
+  (`claude-sonnet-5-5`), `base-url`. Without a key the bean exists and reports "not configured". Consumption per
+  day, calling module and model in the new table `claude_nutzung` (no tenant: the key is per installation). ROOT
+  page *Root → Claude API* (`claude-api.html`, in `ROOT_ONLY_PAGES`): connection check, models, organisation,
+  rate-limit headroom, own consumption, test question, costs via the Admin API cost report. The remaining credit
+  cannot be read through the API — the page says so.
 - **Share links from module code** (Karte 1498): contract `ch.plaintext.freigabe.FreigabeLinks` in
   `plaintext-root-interfaces` (`erzeugeAdresse` with days, `erzeugeAdresseBis` with a fixed last day set by the
   module, `widerrufeAlle`), implemented by `FreigabeLinkService` with the same tenant and `darfFreigeben` checks.

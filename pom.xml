@@ -228,6 +228,7 @@
         <module>plaintext-admin-mailtemplate</module>
         <module>plaintext-admin-webhooks</module>
         <module>plaintext-admin-notifications</module>
+        <module>plaintext-admin-claude</module>
     </modules>
 
     <dependencyManagement>
