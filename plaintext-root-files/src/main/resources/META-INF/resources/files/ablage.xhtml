@@ -9,13 +9,12 @@
     <ui:define name="content">
         <h:form id="fm" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
-            <p:growl id="meldungen" showDetail="true"/>
             <p>Persönliche Ablage: nur du siehst deine Dateien. Jede Datei wird #{filesBean.fristTage} Tage nach
                 der letzten Änderung automatisch gelöscht; neu hochladen unter demselben Namen ersetzt sie und zählt
                 die Frist neu. Freigabe-Links laden ohne Anmeldung herunter und verschwinden mit der Datei.</p>
 
             <p:fileUpload listener="#{filesBean.hochladen}" mode="advanced" auto="true" dragDropSupport="true"
-                          multiple="true" update=":fm:liste :fm:meldungen"
+                          multiple="true" update=":fm:liste"
                           label="Dateien wählen" uploadLabel="Hochladen" cancelLabel="Abbrechen"/>
 
             <p:dataTable id="liste" value="#{filesBean.dateien}" var="d" reflow="true"
@@ -34,7 +33,7 @@
                                      action="#{filesBean.dialogOeffnen(d.name)}" update=":fm:dlgLink"
                                      oncomplete="PF('dlgLink').show()"/>
                     <p:commandButton icon="pi pi-trash" title="Löschen" styleClass="rounded-button ui-button-flat ui-button-danger"
-                                     action="#{filesBean.loeschen(d.name)}" update=":fm:liste :fm:meldungen">
+                                     action="#{filesBean.loeschen(d.name)}" update=":fm:liste">
                         <p:confirm header="Löschen" message="#{d.name} samt Links löschen?" icon="pi pi-exclamation-triangle"/>
                     </p:commandButton>
                 </p:column>
@@ -55,7 +54,7 @@
                     <p:inputText id="zweck" value="#{filesBean.linkZweck}" maxlength="500"/>
                 </h:panelGrid>
                 <p:commandButton value="Link erzeugen" icon="pi pi-link" action="#{filesBean.linkErzeugen}"
-                                 update=":fm:dlgLink :fm:meldungen"/>
+                                 update=":fm:dlgLink"/>
                 <h:panelGroup layout="block" rendered="#{not empty filesBean.neueUrl}" style="margin-top:.5rem">
                     <p:inputText value="#{filesBean.neueUrl}" readonly="true" style="width:100%"/>
                     <small>Die Adresse wird nur jetzt angezeigt.</small>
@@ -67,7 +66,7 @@
                     <p:column headerText="Aufrufe">#{l.aufrufe}</p:column>
                     <p:column headerText="">
                         <p:commandButton icon="pi pi-times" title="Zurückziehen" styleClass="rounded-button ui-button-flat"
-                                         action="#{filesBean.linkZurueckziehen(l.id)}" update=":fm:dlgLink :fm:meldungen"/>
+                                         action="#{filesBean.linkZurueckziehen(l.id)}" update=":fm:dlgLink"/>
                     </p:column>
                 </p:dataTable>
             </p:dialog>
