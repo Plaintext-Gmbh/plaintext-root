@@ -182,8 +182,8 @@ steps:
         echo "$DEPLOY_TARGET" > /tmp/deploy-target
 
       # ── 1. Retrofit the tools ──────────────────────────────────────────────────
-      # maven:3.9-eclipse-temurin-25 already brings git, ssh, scp, curl, tar and Maven
-      # 3.9.16. Two binaries are missing, and they carry very different weight:
+      # maven:3.10-eclipse-temurin-25 already brings git, ssh, scp, curl, tar and Maven
+      # 3.10.0 (Resolver 2.0.24). Two binaries are missing, and they carry very different weight:
       #
       # (a) docker — MANDATORY, hence without a safety net. It is NOT needed for building:
       #     plaintext-root carries `.m3-jar-volume`, so it calls neither `docker build` nor
@@ -274,9 +274,9 @@ steps:
       #
       # NO mvn shim as in the GitHub pipeline: the shim exists there because the
       # twingate runners once carried Maven 3.6.3, which does not evaluate MAVEN_ARGS. This
-      # image is pinned to 3.9.16, so MAVEN_ARGS takes effect — also for the mvn calls
-      # inside ./build and mirror_to_plaintext_mvn, without touching a single call
-      # site.
+      # image is pinned to Maven 3.10 (3.10.0 as of 22.10.2026), so MAVEN_ARGS takes effect —
+      # also for the mvn calls inside ./build and mirror_to_plaintext_mvn, without touching
+      # a single call site.
       - >-
         umask 077;
         printf '%s\n'
@@ -290,7 +290,43 @@ steps:
       # Clear away an old file in the SHARED volume: it would not override MAVEN_ARGS,
       # but would still lie there readable for every other repo.
       - rm -f /root/.m2/settings.xml
-      - export MAVEN_ARGS="-s /tmp/ci/settings.xml"
+      # ── Upload-Haertung (Karte 1563) ─────────────────────────────────────────
+      # Laeufe 634 und 641 (22.10.2026) blieben je 46 min an EINEM PUT nach
+      # maven.pkg.github.com haengen (634: watch-1.789.0.pom.sha1, 641:
+      # apitoken-1.790.0.jar) und starben dann mit "Read timed out". Die Zahlen
+      # stammen aus Maven 3.10.0 / Resolver 2.0.24 / HttpClient 4.5.14 — das ist,
+      # was dieses Image enthaelt (lib/maven-resolver-*-2.0.24.jar, httpclient-4.5.14.jar),
+      # und die Namen sind die von Resolver 2.x (org.eclipse.aether.ConfigurationProperties):
+      #   aether.transport.http.requestTimeout   Socket-Lese-Timeout je Antwort. Default
+      #                                          1 800 000 ms = 30 min; das ist der Loewenanteil
+      #                                          der 46 min. 300 000 ms = 5 min: ein PUT nach
+      #                                          GitHub Packages dauert normal ~5 s (gemessen
+      #                                          an allen Uploads der Laeufe 634/641), die
+      #                                          NAS-Uploads unter 1 s.
+      #   aether.transport.http.retryHandler.count   Wiederholungen je Anfrage (Default 3,
+      #                                          hier explizit). Greift bei Verbindungsabbruch
+      #                                          (NoHttpResponse, Connection reset) — fuer PUT
+      #                                          auch nach gesendetem Request, weil der
+      #                                          Standard-Handler PUT als idempotent fuehrt
+      #                                          (StandardHttpRequestRetryHandler). Greift NICHT
+      #                                          bei "Read timed out": SocketTimeoutException
+      #                                          steht in DefaultHttpRequestRetryHandler auf der
+      #                                          Ausschlussliste (InterruptedIOException).
+      #   aether.transport.http.retryHandler.interval  Pause zwischen den Versuchen (5 s).
+      # Die 1.9.x-Namen aether.connector.requestTimeout und aether.connector.http.retryHandler.*
+      # liest Resolver 2.0.24 NICHT mehr (nur userAgent und smartChecksums haben einen
+      # Alt-Namen behalten); sie waeren hier wirkungslos.
+      # aether.transport.apache.retryHandler.requestSentEnabled ist absichtlich NICHT gesetzt:
+      # es betrifft nur nicht-idempotente Methoden (POST); unsere Uploads sind PUT.
+      # retryFailedDeploymentCount (Deploy-Plugin) ist absichtlich NICHT gesetzt: es laedt das
+      # ganze Modul neu, und beide Repos antworten auf eine vorhandene Datei mit 409 — der
+      # Retry wuerde selbst rot. Was ein Lese-Timeout hinterlaesst, raeumt stattdessen
+      # `./build nachliefern` auf (Schritt 7 unten).
+      - >-
+        export MAVEN_ARGS="-s /tmp/ci/settings.xml
+        -Daether.transport.http.requestTimeout=300000
+        -Daether.transport.http.retryHandler.count=3
+        -Daether.transport.http.retryHandler.interval=5000"
 
       # ── 4. SSH to the NAS ──────────────────────────────────────────────────────
       # YES, WITH release-only TOO. This is the point where "root doesn't deploy anything"
@@ -408,6 +444,16 @@ steps:
       # The four remaining case branches are here so that the file stays comparable with the
       # GitHub pipeline line by line. None of them is reachable: the allowlist
       # in step 0 lets only release-only through.
+      #
+      # ONE DELIBERATE DEVIATION from "character for character" (Karte 1563): a red
+      # `./build release` is followed by `./build nachliefern` (root's own ./build, not
+      # plaintext-scripts). It completes a HALF release — tag and release commit are out,
+      # the upload died midway — file by file and never re-uploads what is already there;
+      # then it runs the same completeness check as the step `vollstaendigkeit` and only
+      # then commits "Prepare next development iteration". If `./build release` failed
+      # BEFORE publishing (no tag on origin), nachliefern refuses and the step stays red
+      # with the original error. Version arithmetic and tagging stay untouched in
+      # tui-build-logic.sh.
       - >-
         case "$CI_COMMIT_MESSAGE" in
           *"[fast]"*) export MVN_TEST_FLAG="-DskipTests" ;;
@@ -431,7 +477,10 @@ steps:
             ;;
           release-only)
             echo "=== Release (Maven-Artefakt) OHNE Container-Deploy ===";
-            ./build release
+            ./build release || {
+              echo "=== Release rot — Nachlieferung des halben Releases (Karte 1563) ===";
+              ./build nachliefern;
+            }
             ;;
           prod-single)
             echo "=== Single PROD instance (kein blue-green, kein DEV) ===";

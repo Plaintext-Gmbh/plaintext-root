@@ -92,6 +92,34 @@ pipeline sets it from the same secret as `MVN_DEPLOY_TOKEN`.
 > 409 and left half a release behind (1.636.0, 29 August 2026). The order stays
 > as it is.
 
+### A hung upload does not end the release (Karte 1563)
+
+On 22 October 2026 two release runs in a row (634, 641) stalled on a single
+`PUT` to `maven.pkg.github.com` — once a `.pom.sha1`, once a `.jar` — for
+46 minutes each, then died with `Read timed out`, leaving both repositories
+with roughly half of the modules and `master` without the "Prepare next
+development iteration" commit. Two things changed:
+
+1. **Resolver settings in the release step** (`MAVEN_ARGS` in `deploy.yml`):
+   `aether.transport.http.requestTimeout=300000` (5 min instead of the default
+   30 min socket read timeout, which was the bulk of the 46 min) plus an
+   explicit `retryHandler.count=3`/`interval=5000`. These are the Resolver 2.x
+   names; Maven 3.10.0 ships Resolver 2.0.24, which no longer reads the 1.9.x
+   `aether.connector.*` keys. The retry only ever covers connection failures:
+   Apache HttpClient never retries a read timeout, and a module-level retry
+   (`retryFailedDeploymentCount`) re-uploads files that are already there, which
+   both repositories answer with 409.
+2. **`./build nachliefern`** (root's own `build`, called by `deploy.yml` when
+   `./build release` is red): checks that tag and release commit are out, then
+   lets `scripts/release-nachliefern.sh` upload — file by file, after a probe,
+   never touching an existing file — what is missing for every module that was
+   built, runs `mvn clean deploy -pl` for the modules the reactor never reached,
+   verifies with `scripts/release-vollstaendig.sh` against both repositories,
+   mirrors to plaintext-mvn and finally commits the next SNAPSHOT exactly as
+   `do_release` would have. A 409 on a file the probe did not see is reported
+   as an error, not swallowed. If `./build release` failed before publishing,
+   nachliefern refuses and the original error stays the error.
+
 ### No verify-dev, no verify-prod
 
 The applications have four pipeline files; this repository has three. The two
