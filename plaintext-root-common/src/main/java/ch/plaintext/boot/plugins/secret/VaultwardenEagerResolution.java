@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.boot.env.OriginTrackedMapPropertySource;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.MapPropertySource;
@@ -108,6 +109,11 @@ final class VaultwardenEagerResolution {
         kopie.putAll(aufgeloest);
         if (original instanceof SystemEnvironmentPropertySource) {
             return new SystemEnvironmentPropertySource(original.getName(), kopie);
+        }
+        // YAML-Werte liegen als OriginTrackedValue in der Map; nur diese Klasse packt sie beim Lesen aus
+        // (sonst scheitert z.B. management.server.port an der Integer-Umwandlung, app 22.10.2026)
+        if (original instanceof OriginTrackedMapPropertySource) {
+            return new OriginTrackedMapPropertySource(original.getName(), kopie);
         }
         return new MapPropertySource(original.getName(), kopie);
     }
