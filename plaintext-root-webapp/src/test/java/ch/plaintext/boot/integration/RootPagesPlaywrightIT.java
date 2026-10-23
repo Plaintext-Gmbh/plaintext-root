@@ -14,6 +14,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.Response;
+import com.microsoft.playwright.TimeoutError;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import ch.plaintext.sidecars.entity.AuthZustand;
 import ch.plaintext.sidecars.entity.Sidecar;
@@ -210,16 +211,34 @@ class RootPagesPlaywrightIT {
         assertEquals(0, page.locator("#listForm\\:entityTable").count(), "Tabelle darf vor der Auswahl fehlen");
 
         // PrimeFaces SelectOneMenu: click the label, then the first real entry in the panel.
-        page.click("#selectorForm\\:entityType_label");
-        Locator eintraege = page.locator("#selectorForm\\:entityType_panel li.ui-selectonemenu-item");
-        eintraege.first().waitFor();
-        assertTrue(eintraege.count() > 1, "keine Entitaeten zur Auswahl");
-        Locator gewaehlt = eintraege.nth(1);
-        String erwartet = gewaehlt.innerText().trim();
-        gewaehlt.click();
-
+        // Pipeline 651/666 (Karte 1548): on a loaded agent the click on the entry was lost once —
+        // the server saw no Ajax request for 30 s, while the same test is green locally and on
+        // master. So: wait until the page is quiet, make sure the panel is open, and repeat the
+        // selection if no request follows within a few seconds. A real regression (the Ajax
+        // never fires, the bug from 29 August 2026) still fails on the last attempt.
         Locator tabelle = page.locator("#listForm\\:entityTable");
-        tabelle.waitFor();
+        Locator panel = page.locator("#selectorForm\\:entityType_panel");
+        Locator eintraege = panel.locator("li.ui-selectonemenu-item");
+        String erwartet = null;
+        for (int versuch = 1; versuch <= 3 && tabelle.count() == 0; versuch++) {
+            ruhig();
+            if (!panel.isVisible()) {
+                page.click("#selectorForm\\:entityType_label");
+            }
+            panel.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+            eintraege.first().waitFor();
+            assertTrue(eintraege.count() > 1, "keine Entitaeten zur Auswahl");
+            Locator gewaehlt = eintraege.nth(1);
+            erwartet = gewaehlt.innerText().trim();
+            gewaehlt.click();
+            try {
+                tabelle.waitFor(new Locator.WaitForOptions().setTimeout(versuch < 3 ? 10_000 : 30_000));
+            } catch (TimeoutError e) {
+                if (versuch == 3) {
+                    throw e;
+                }
+            }
+        }
         assertTrue(tabelle.isVisible(), "Tabelle erschien nach der Auswahl nicht");
         String kopf = page.locator("#listForm .ui-panel-title").first().innerText().trim();
         assertEquals(erwartet, kopf, "Panel zeigt nicht den gewaehlten Typ");
