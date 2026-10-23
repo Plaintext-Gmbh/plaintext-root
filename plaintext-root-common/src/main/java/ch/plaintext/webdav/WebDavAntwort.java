@@ -1,8 +1,9 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-package ch.plaintext.sidecars.ablage;
+package ch.plaintext.webdav;
 
+import ch.plaintext.arch.StabileApi;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -22,13 +23,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Liest eine WebDAV-{@code multistatus}-Antwort (PROPFIND). Übernommen aus plaintext-z-fotos (Karte 1386)
- * für die Speicher-Ablagen (Karte 1406).
+ * Liest eine WebDAV-{@code multistatus}-Antwort (PROPFIND). Gemeinsam für plaintext-z-fotos (Karte 1386)
+ * und die Speicher-Ablagen (Karte 1406), seit Karte 1565 an einer Stelle.
  *
  * <p>Der Parser lässt keine DOCTYPE-Deklaration zu und löst keine externen Entitäten auf (XXE):
  * die Antwort kommt von einem Server, den der Benutzer selbst eingetragen hat.</p>
  */
-final class WebDavAntwort {
+@StabileApi("PROPFIND-Parser fuer Fremd-Repos, z.B. die Fotoablage in app (plaintext-z-fotos, Karte 1565)")
+public final class WebDavAntwort {
 
     /**
      * Ein Eintrag der Antwort.
@@ -38,13 +40,13 @@ final class WebDavAntwort {
      * @param groesse   {@code getcontentlength}, -1 wenn fehlt
      * @param geaendert {@code getlastmodified}, {@code null} wenn fehlt
      */
-    record Eintrag(String pfad, boolean ordner, long groesse, Instant geaendert) {
+    public record Eintrag(String pfad, boolean ordner, long groesse, Instant geaendert) {
     }
 
     private WebDavAntwort() {
     }
 
-    static List<Eintrag> lies(String xml) throws IOException {
+    public static List<Eintrag> lies(String xml) throws IOException {
         Document doc;
         try {
             DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();

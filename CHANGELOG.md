@@ -12,6 +12,21 @@ exhaustive.
 
 ## [Unreleased]
 
+### Changed
+- **Release upload hardened against hung and aborted uploads** (Karte 1563). Runs 634 and 641 (22 October 2026)
+  each stalled 46 minutes on one `PUT` to GitHub Packages and died with `Read timed out`, leaving 1.789.0 and
+  1.790.0 half published in both repositories and `master` without the next SNAPSHOT commit. The release step
+  now sets `aether.transport.http.requestTimeout=300000` and explicit `retryHandler.count=3`/`interval=5000`
+  (Resolver 2.0.24 names, as shipped with Maven 3.10.0; the 1.9.x `aether.connector.*` keys are no longer read),
+  and a red `./build release` is followed by `./build nachliefern`: `scripts/release-nachliefern.sh` probes every
+  file of every built module in both repositories and uploads only what is missing (a 409 on a file the probe did
+  not see is an error, not swallowed), `mvn clean deploy -pl` builds the modules the reactor never reached,
+  `release-vollstaendig.sh` verifies both repositories, then plaintext-mvn is mirrored and the SNAPSHOT commit is
+  made as `do_release` would have. Neither `deployAtEnd` nor `retryFailedDeploymentCount` is used: both re-upload
+  files that are already there and run into the same 409. The half releases 1.789.0 and 1.790.0 are not reused;
+  1.791.0 went out complete on 23 October 2026 (run 645) still without this fix, so the first release carrying it
+  is 1.792.0.
+
 ### Fixed
 - **`plaintext-root-files`: link expiry on the same day as the store** (Karte 1559). `FilesService` computed the
   last valid day of a share link in `Europe/Zurich`, the `LinkTokenStore` checks it against the JVM default zone.
