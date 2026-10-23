@@ -65,7 +65,7 @@ class UserPreferencesBackingBeanTest {
         assertEquals("light", bean.getDarkMode());
         assertEquals("green", bean.getComponentTheme());
         assertFalse(bean.getComponentThemes().isEmpty());
-        assertEquals(10, bean.getComponentThemes().size());
+        assertEquals(3, bean.getComponentThemes().size());
     }
 
     @Test
@@ -122,16 +122,66 @@ class UserPreferencesBackingBeanTest {
         bean.init();
 
         List<UserPreferencesBackingBean.ComponentTheme> themes = bean.getComponentThemes();
-        assertEquals(10, themes.size());
+        // Karte 1548: drei Varianten, in der Reihenfolge von ThemeColorProvider.VARIANTEN.
+        assertEquals(3, themes.size());
+        assertEquals(ThemeColorProvider.VARIANTEN,
+                themes.stream().map(UserPreferencesBackingBean.ComponentTheme::getFile).toList());
 
-        assertEquals("Blue", themes.get(0).getName());
-        assertEquals("blue", themes.get(0).getFile());
-        assertEquals("#2196F3", themes.get(0).getColor());
+        assertEquals("Grün", themes.get(0).getName());
+        assertEquals("#4CAF50", themes.get(0).getColor());
+        assertEquals("Blau", themes.get(1).getName());
+        assertEquals("blue", themes.get(1).getFile());
+        assertEquals("#2196F3", themes.get(1).getColor());
+        assertEquals("Orange", themes.get(2).getName());
+    }
 
-        assertEquals("Green", themes.get(1).getName());
-        assertEquals("Yellow", themes.get(7).getName());
-        assertEquals("Lime", themes.get(8).getName());
-        assertEquals("Crimson", themes.get(9).getName());
+    @Test
+    void init_ersetztGestricheneFarbvarianteUndSpeichertSie() {
+        // Karte 1548: wer Violett gespeichert hatte, bekommt Blau — und zwar in der Datenbank,
+        // nicht nur in der Anzeige.
+        existingPrefs.setComponentTheme("purple");
+        when(storage.findByUniqueId("test@example.com")).thenReturn(existingPrefs);
+
+        bean.init();
+
+        assertEquals("blue", bean.getComponentTheme());
+        assertEquals("blue", existingPrefs.getComponentTheme());
+        verify(storage, atLeastOnce()).save(existingPrefs);
+    }
+
+    @Test
+    void init_laesstVerbliebeneVarianteUndEigeneFarbeUnberuehrt() {
+        existingPrefs.setComponentTheme("custom");
+        existingPrefs.setCustomColor("#123456");
+        when(storage.findByUniqueId("test@example.com")).thenReturn(existingPrefs);
+
+        bean.init();
+
+        assertEquals("custom", bean.getComponentTheme());
+        verify(storage, never()).save(any());
+    }
+
+    @Test
+    void updateFromRestApi_bildetGestricheneVarianteAb() {
+        when(storage.findByUniqueId("test@example.com")).thenReturn(existingPrefs);
+        bean.init();
+
+        bean.updateFromRestApi("crimson", null, null, null, null, null, null, null);
+
+        assertEquals("orange", existingPrefs.getComponentTheme());
+    }
+
+    @Test
+    void verborgeneFarbenZaehlenNurVerbliebeneVarianten() {
+        existingPrefs.setHiddenColors(new java.util.HashSet<>(java.util.Set.of("lime", "turquoise")));
+        when(storage.findByUniqueId("test@example.com")).thenReturn(existingPrefs);
+        bean.init();
+
+        assertFalse(bean.isHasHiddenColors(),
+                "Nur gestrichene Farben verborgen — 'Show all colors' braechte nichts zurueck");
+
+        existingPrefs.getHiddenColors().add("orange");
+        assertTrue(bean.isHasHiddenColors());
     }
 
     @Test

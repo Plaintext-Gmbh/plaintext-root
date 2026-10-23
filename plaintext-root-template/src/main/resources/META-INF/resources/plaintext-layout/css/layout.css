@@ -1,0 +1,310 @@
+/*
+ * Karte 1548 — UI 2, die Grundlage: Tokens und Muster fuer neue Seiten.
+ *
+ * WAS HIER STEHT
+ *   1. Tokens: vier Farbrollen (Flaeche, Text, Akzent, Status), vier Abstandsstufen, ein Radius,
+ *      eine Schriftfamilie in drei Groessen. Hell als erster, dunkel als zweiter Variablensatz —
+ *      in DIESER Datei, statt in einer zweiten Datei mit 16 KB Wiederholung.
+ *   2. Muster, die nur aus diesen Tokens gebaut sind: Seitenkopf (pt:seitenkopf), Tabelle
+ *      (pt:tabelle: Leerzustand, Zahlen, mobil als Karten), Status-Chips, Filter hinter Knopf.
+ *   Die lebende Referenz ist /styleguide.html in der root-Anwendung.
+ *
+ * WARUM ZUSAETZLICH UND NICHT ANSTATT
+ *   layout-light.css und layout-dark.css bleiben vorerst, wie sie sind: sie tragen das ganze
+ *   Geruest (Topbar, Menue, Karten) aller Bestandsseiten in app, guild, schuetu und iot, und die
+ *   Oblique-Kopie ueberschattet genau diese beiden Dateien (PlaintextRootTemplateDriftTest). Ein
+ *   Umbau dort waere ein Rutsch auf jeder Seite jeder Anwendung. Diese Datei fuehrt deshalb nur
+ *   NEUE Namen ein (--pt-flaeche, .pt-seitenkopf, ...) und aendert keinen bestehenden — eine
+ *   Bestandsseite sieht nach dem root-Bump genau gleich aus. Wenn die Anwendungen ihre Seiten
+ *   umgestellt haben, wird layout-light/dark auf diese Tokens zurueckgefuehrt und die zweite
+ *   Datei entfaellt.
+ *
+ * WARUM DIE TOKENS AUF DIE ALTEN VARIABLEN ZEIGEN
+ *   --pt-flaeche ist var(--pt-surface-0) usw.: die Werte kommen weiter aus genau einer Quelle
+ *   (Inline-Block in template.xhtml bzw. layout-light/dark.css), und die neue Seite sieht neben
+ *   einer alten nicht anders aus. Der Rueckfallwert hinter dem Komma gilt nur, wenn diese Datei
+ *   ohne das root-Template geladen wird.
+ *
+ * REGELN FUER NEUE SEITEN (UiGrundlageLinter in plaintext-root-archtests haelt die ersten zwei)
+ *   - kein style="…": Farben, Abstaende, Groessen kommen aus Klassen und Tokens;
+ *   - kein eigenes p:growl: Meldungen gehen ueber FacesMessages an das eine Growl im Template;
+ *   - keine Emoji in Titeln, Status als leiser Chip (.pt-chip) statt farbigem Text;
+ *   - jede neue Seite wird hell UND dunkel angesehen — die Tokens machen das billig, pruefen
+ *     muss man es trotzdem.
+ */
+
+/* ===== 1. Tokens — hell (Vorgabe) ===== */
+:root {
+    /* Flaeche */
+    --pt-flaeche: var(--pt-surface-0, #ffffff);
+    --pt-flaeche-leise: var(--pt-surface-50, #f8f9fa);
+    --pt-flaeche-rand: var(--pt-surface-border, #dee2e6);
+
+    /* Text */
+    --pt-text: var(--pt-text-color, #495057);
+    --pt-text-leise: var(--pt-text-color-secondary, #6c757d);
+
+    /* Akzent — die gewaehlte Farbvariante (ThemeColorProvider, drei Varianten) */
+    --pt-akzent: var(--pt-primary-color, #4CAF50);
+    --pt-akzent-text: var(--pt-primary-color-text, #ffffff);
+    --pt-akzent-leise: var(--pt-primary-bg-16, rgba(76, 175, 80, .16));
+
+    /* Status — je Text und leise Flaeche; Kontrast Text auf Flaeche >= 4.5:1 */
+    --pt-status-ok: #1b5e20;
+    --pt-status-ok-flaeche: #e8f5e9;
+    --pt-status-warnung: #8a4b00;
+    --pt-status-warnung-flaeche: #fff3e0;
+    --pt-status-fehler: #b71c1c;
+    --pt-status-fehler-flaeche: #fdecea;
+    --pt-status-info: #0d47a1;
+    --pt-status-info-flaeche: #e3f2fd;
+    --pt-status-neutral: var(--pt-text-leise);
+    --pt-status-neutral-flaeche: var(--pt-flaeche-leise);
+
+    /* Abstand — vier Stufen, sonst keine */
+    --pt-abstand-1: 0.25rem;
+    --pt-abstand-2: 0.5rem;
+    --pt-abstand-3: 1rem;
+    --pt-abstand-4: 1.5rem;
+
+    /* Radius */
+    --pt-radius: var(--pt-border-radius, 6px);
+
+    /* Schrift — eine Familie, drei Groessen (rem: 1rem = --pt-font-size = 14px) */
+    --pt-schrift: var(--pt-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+    --pt-schrift-klein: 0.857rem;
+    --pt-schrift-normal: 1rem;
+    --pt-schrift-gross: 1.429rem;
+}
+
+/* ===== 1b. Tokens — dunkel (zweiter Variablensatz) =====
+   Nur was sich wirklich aendert. Flaeche/Text/Akzent folgen ueber var() schon den dunklen
+   Werten aus template.xhtml; uebrig bleiben die Statusfarben, die hell auf dunkel anders
+   gemischt werden muessen (helle Schrift, durchscheinende Flaeche). */
+html[data-theme="dark"] {
+    --pt-status-ok: #a5d6a7;
+    --pt-status-ok-flaeche: rgba(129, 199, 132, .16);
+    --pt-status-warnung: #ffcc80;
+    --pt-status-warnung-flaeche: rgba(255, 183, 77, .16);
+    --pt-status-fehler: #ef9a9a;
+    --pt-status-fehler-flaeche: rgba(239, 154, 154, .16);
+    --pt-status-info: #90caf9;
+    --pt-status-info-flaeche: rgba(144, 202, 249, .16);
+}
+
+/* ===== 2a. Seitenkopf (pt:seitenkopf) =====
+   Titel links, EINE Hauptaktion rechts, Seltenes im «⋯»-Menue daneben. */
+.pt-seitenkopf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pt-abstand-2) var(--pt-abstand-3);
+    margin: 0 0 var(--pt-abstand-4) 0;
+}
+
+.pt-seitenkopf-titel {
+    min-width: 0;
+}
+
+.pt-seitenkopf-titel h1 {
+    margin: 0;
+    font-family: var(--pt-schrift);
+    font-size: var(--pt-schrift-gross);
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--pt-text);
+    overflow-wrap: anywhere;
+}
+
+.pt-seitenkopf-untertitel {
+    margin: var(--pt-abstand-1) 0 0 0;
+    font-size: var(--pt-schrift-klein);
+    color: var(--pt-text-leise);
+}
+
+.pt-seitenkopf-aktionen {
+    display: flex;
+    align-items: center;
+    gap: var(--pt-abstand-2);
+    margin-left: auto;
+}
+
+/* ===== 2b. Tabelle (pt:tabelle) ===== */
+
+/* Zahlen rechtsbuendig, Ziffern gleich breit: eine Spalte Betraege liest sich als Spalte. */
+.pt-zahl {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Zeilenaktionen: Icon-Knoepfe in der Zeile, ohne eigene Rahmenfarbe. */
+.pt-zeilenaktionen {
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* Leerzustand: was fehlt und wie man es bekommt — statt «No records found». */
+.pt-leer {
+    padding: var(--pt-abstand-4) var(--pt-abstand-3);
+    text-align: center;
+    color: var(--pt-text-leise);
+}
+
+.pt-leer-icon {
+    display: block;
+    margin-bottom: var(--pt-abstand-2);
+    font-size: var(--pt-schrift-gross);
+}
+
+.pt-leer-text {
+    margin: 0;
+    font-size: var(--pt-schrift-normal);
+    font-weight: 600;
+    color: var(--pt-text);
+}
+
+.pt-leer-weg {
+    margin: var(--pt-abstand-1) 0 0 0;
+    font-size: var(--pt-schrift-klein);
+}
+
+/* ===== 2c. Status-Chips — leise, nie als farbiger Fliesstext ===== */
+.pt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pt-abstand-1);
+    padding: 0.125rem var(--pt-abstand-2);
+    border-radius: 999px;
+    font-size: var(--pt-schrift-klein);
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+    color: var(--pt-status-neutral);
+    background: var(--pt-status-neutral-flaeche);
+}
+
+.pt-chip-ok {
+    color: var(--pt-status-ok);
+    background: var(--pt-status-ok-flaeche);
+}
+
+.pt-chip-warnung {
+    color: var(--pt-status-warnung);
+    background: var(--pt-status-warnung-flaeche);
+}
+
+.pt-chip-fehler {
+    color: var(--pt-status-fehler);
+    background: var(--pt-status-fehler-flaeche);
+}
+
+.pt-chip-info {
+    color: var(--pt-status-info);
+    background: var(--pt-status-info-flaeche);
+}
+
+/* ===== 2d. Filter hinter Knopf (pt:filter) =====
+   Desktop: die Filter stehen offen da, der Knopf fehlt. Mobil: nur der Knopf, ein Druck klappt
+   die Filter auf (ui-grundlage.js setzt .pt-filter-offen). */
+.pt-filter {
+    margin: 0 0 var(--pt-abstand-3) 0;
+}
+
+.pt-filter-inhalt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--pt-abstand-2) var(--pt-abstand-3);
+}
+
+.pt-filter-knopf {
+    display: none;
+}
+
+/* ===== 2e. Abstand-Hilfen fuer Bausteine ohne eigene Klasse ===== */
+.pt-stapel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pt-abstand-3);
+}
+
+.pt-reihe {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pt-abstand-2);
+}
+
+/* ===== 3. Mobil als eigener Entwurf (<= 640px, dieselbe Grenze wie reflow in PrimeFaces) ===== */
+@media (max-width: 640px) {
+    /* Seitenkopf: Titel ueber die ganze Breite, darunter die eine Aktion — keine Knopfleiste. */
+    .pt-seitenkopf {
+        margin-bottom: var(--pt-abstand-3);
+    }
+
+    .pt-seitenkopf-titel {
+        flex: 1 1 100%;
+    }
+
+    .pt-seitenkopf-aktionen {
+        margin-left: 0;
+        flex: 1 1 100%;
+    }
+
+    .pt-seitenkopf-aktionen .pt-hauptaktion {
+        flex: 1 1 auto;
+    }
+
+    /* Was der Entwurf nur auf dem grossen Bildschirm zeigen will. */
+    .pt-nur-gross {
+        display: none !important;
+    }
+
+    /* Filter: zu, bis jemand den Knopf drueckt. */
+    .pt-filter-knopf {
+        display: inline-flex;
+    }
+
+    .pt-filter:not(.pt-filter-offen) .pt-filter-inhalt {
+        display: none;
+    }
+
+    .pt-filter-inhalt {
+        flex-direction: column;
+        align-items: stretch;
+        margin-top: var(--pt-abstand-2);
+    }
+
+    /* Tabelle als Karten: jede Zeile eine Karte, nur die 2-3 Spalten ohne .pt-mobil-aus. */
+    /* flow-root und float:none: reflow in PrimeFaces laesst die Zellen floaten, ein gewoehnlicher
+       Block wuerde sie nicht umschliessen und die Karte bliebe ein leerer Rahmen ueber der Zeile. */
+    .pt-tabelle.ui-datatable-reflow .ui-datatable-data > tr {
+        display: flow-root;
+        margin: 0 0 var(--pt-abstand-2) 0;
+        padding: var(--pt-abstand-2) var(--pt-abstand-3);
+        border: 1px solid var(--pt-flaeche-rand);
+        border-radius: var(--pt-radius);
+        background: var(--pt-flaeche);
+    }
+
+    .pt-tabelle.ui-datatable-reflow .ui-datatable-data > tr > td {
+        float: none !important;
+        border: 0 !important;
+        padding: var(--pt-abstand-1) 0 !important;
+    }
+
+    .pt-tabelle.ui-datatable-reflow .ui-datatable-data > tr > td.pt-mobil-aus {
+        display: none !important;
+    }
+
+    /* Der Leerzustand ist keine Karte. */
+    .pt-tabelle.ui-datatable-reflow .ui-datatable-data > tr.ui-datatable-empty-message {
+        border: 0;
+        background: transparent;
+    }
+
+    .pt-tabelle.ui-datatable-reflow .ui-datatable-data > tr > td.pt-zeilenaktionen {
+        text-align: left;
+    }
+}

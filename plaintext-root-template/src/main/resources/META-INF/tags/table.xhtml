@@ -1,5 +1,7 @@
 <ui:composition xmlns="http://www.w3.org/1999/xhtml"
                 xmlns:ui="jakarta.faces.facelets"
+                xmlns:f="jakarta.faces.core"
+                xmlns:c="jakarta.tags.core"
                 xmlns:p="http://primefaces.org/ui">
     <!--
       pt:table — a p:dataTable with the house defaults.
@@ -33,7 +35,15 @@
 
       REQUIRED: value
       OPTIONAL: id, emptyMessage, paginator, rows, rowsPerPageTemplate, styleClass, rowStyleClass,
-                rendered, widgetVar, reflow
+                rendered, widgetVar, reflow,
+                paginatorAlwaysVisible, leerText, leerWeg, leerIcon (card 1548, see below)
+
+      CARD 1548 (UI 2) — added, nothing existing changed: pt:table without the new attributes
+      renders exactly as before. paginatorAlwaysVisible="false" shows the paginator only from page
+      2 on. leerText/leerWeg replace the one line emptyMessage by an empty state that says what is
+      missing AND how to get it ("Noch keine Verträge." / "Mit «Neu» legen Sie den ersten an.").
+      New pages use pt:tabelle, which sets these defaults; pt:table keeps its own for the pages
+      already built with it.
 
       All defaults can be overridden: whoever has a reason sets the attribute, and then
       the reason stands in exactly one visible place instead of in the copy.
@@ -48,9 +58,21 @@
                  rows="#{empty rows ? 20 : rows}"
                  rowsPerPageTemplate="#{empty rowsPerPageTemplate ? '10,20,50,100,200' : rowsPerPageTemplate}"
                  paginatorPosition="bottom"
+                 paginatorAlwaysVisible="#{empty paginatorAlwaysVisible ? true : paginatorAlwaysVisible}"
                  reflow="#{empty reflow ? true : reflow}"
                  rowStyleClass="#{rowStyleClass}"
                  styleClass="mobile-safe #{styleClass}">
+        <c:if test="#{not empty leerText or not empty leerWeg}">
+            <f:facet name="emptyMessage">
+                <div class="pt-leer">
+                    <i class="pt-leer-icon #{empty leerIcon ? 'pi pi-inbox' : leerIcon}" aria-hidden="true"/>
+                    <p class="pt-leer-text">#{empty leerText ? 'Keine Einträge vorhanden' : leerText}</p>
+                    <c:if test="#{not empty leerWeg}">
+                        <p class="pt-leer-weg">#{leerWeg}</p>
+                    </c:if>
+                </div>
+            </f:facet>
+        </c:if>
         <ui:insert/>
     </p:dataTable>
 </ui:composition>

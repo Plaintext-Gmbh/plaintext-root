@@ -55,12 +55,12 @@
                 </h:panelGrid>
                 <p:commandButton value="Link erzeugen" icon="pi pi-link" action="#{filesBean.linkErzeugen}"
                                  update=":fm:dlgLink"/>
-                <h:panelGroup layout="block" rendered="#{not empty filesBean.neueUrl}" style="margin-top:.5rem">
-                    <p:inputText value="#{filesBean.neueUrl}" readonly="true" style="width:100%"/>
+                <h:panelGroup layout="block" rendered="#{not empty filesBean.neueUrl}" styleClass="mt-2">
+                    <p:inputText value="#{filesBean.neueUrl}" readonly="true" styleClass="w-full"/>
                     <small>Die Adresse wird nur jetzt angezeigt.</small>
                 </h:panelGroup>
                 <p:dataTable value="#{filesBean.links}" var="l" reflow="true" emptyMessage="Noch keine Links."
-                             style="margin-top:.5rem">
+                             styleClass="mt-2">
                     <p:column headerText="Zweck">#{l.zweck}</p:column>
                     <p:column headerText="Gültig bis">#{empty l.gueltigBis ? 'solange die Datei lebt' : l.gueltigBis}</p:column>
                     <p:column headerText="Aufrufe">#{l.aufrufe}</p:column>

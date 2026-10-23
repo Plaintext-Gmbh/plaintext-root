@@ -1,0 +1,58 @@
+# Karte 1548 (UI 2): eingefrorener Bestand — PlaintextUiGrundlageLinterTest (plaintext-root-archtests).
+# Je Datei: style="…"-Attribute, eigene p:growl, h:form ohne _csrf. Eine Datei darf nie mehr
+# bekommen; eine Datei, die hier nicht steht, hat null. Nur senken, nie erhoehen.
+# Neu schreiben: mvn test -Dtest=PlaintextUiGrundlageLinterTest -Dsurefire.failIfNoSpecifiedTests=false \
+#                -Dplaintext.arch.ui-grundlage=bestand-schreiben
+# pfad  style  growl  csrf
+plaintext-admin-apitoken/src/main/resources/META-INF/resources/admin-api-token.xhtml  15 0 0
+plaintext-admin-apitoken/src/main/resources/META-INF/resources/api-token.xhtml  45 0 0
+plaintext-admin-apitoken/src/main/resources/META-INF/resources/root-api-token.xhtml  21 0 0
+plaintext-admin-claude/src/main/resources/META-INF/resources/claude-api.xhtml  17 0 0
+plaintext-admin-cron/src/main/resources/META-INF/resources/cron.xhtml  37 0 0
+plaintext-admin-i18n/src/main/resources/META-INF/resources/i18n-translations.xhtml  18 0 0
+plaintext-admin-mailtemplate/src/main/resources/META-INF/resources/mailtemplates.xhtml  12 0 0
+plaintext-admin-modules/src/main/resources/META-INF/resources/module.xhtml  56 0 0
+plaintext-admin-notifications/src/main/resources/META-INF/resources/notifications.xhtml  9 0 0
+plaintext-admin-oidc/src/main/resources/META-INF/resources/oidcconfig.xhtml  26 0 0
+plaintext-admin-requirements/src/main/resources/META-INF/resources/anforderungdetail.xhtml  3 0 0
+plaintext-admin-requirements/src/main/resources/META-INF/resources/anforderungen.xhtml  22 0 0
+plaintext-admin-requirements/src/main/resources/META-INF/resources/anforderungssettings.xhtml  11 0 0
+plaintext-admin-requirements/src/main/resources/META-INF/resources/claudesummary.xhtml  1 0 0
+plaintext-admin-requirements/src/main/resources/META-INF/resources/howtos.xhtml  17 0 0
+plaintext-admin-secrets/src/main/resources/META-INF/resources/secrets.xhtml  31 0 0
+plaintext-admin-sessions/src/main/resources/META-INF/resources/sessioninsights.xhtml  4 0 0
+plaintext-admin-sessions/src/main/resources/META-INF/resources/sessions.xhtml  24 0 0
+plaintext-admin-settings/src/main/resources/META-INF/resources/settings.xhtml  17 0 0
+plaintext-admin-settings/src/main/resources/META-INF/resources/setup.xhtml  80 0 0
+plaintext-admin-sidecars/src/main/resources/META-INF/resources/ablage-ausprobieren.xhtml  6 0 0
+plaintext-admin-sidecars/src/main/resources/META-INF/resources/sidecars.xhtml  5 0 0
+plaintext-admin-webhooks/src/main/resources/META-INF/resources/webhooks.xhtml  26 0 0
+plaintext-root-flyway/src/main/resources/META-INF/resources/flyway.xhtml  10 0 0
+plaintext-root-jpa/src/main/resources/META-INF/resources/includes/entityverwaltung.xhtml  3 0 0
+plaintext-root-menu-visibility/src/main/resources/META-INF/resources/mandatemenu.xhtml  8 0 0
+plaintext-root-menu-visibility/src/main/resources/META-INF/resources/mandatemenudetail.xhtml  24 0 0
+plaintext-root-menu-visibility/src/main/resources/META-INF/resources/menudiagnose.xhtml  6 0 0
+plaintext-root-menu-visibility/src/main/resources/META-INF/resources/menuesteuerung-anleitung.xhtml  1 0 0
+plaintext-root-role-assignment/src/main/resources/META-INF/resources/modulrollen-anleitung.xhtml  1 0 0
+plaintext-root-role-assignment/src/main/resources/META-INF/resources/rollenzuteilung.xhtml  12 0 0
+plaintext-root-template/src/main/resources/META-INF/resources/includes/config.xhtml  21 0 0
+plaintext-root-template/src/main/resources/META-INF/resources/includes/footer.xhtml  1 0 0
+plaintext-root-template/src/main/resources/META-INF/resources/includes/template.xhtml  1 0 0
+plaintext-root-template/src/main/resources/META-INF/resources/includes/topbar.xhtml  35 0 0
+plaintext-root-template/src/main/resources/META-INF/tags/colAmount.xhtml  1 0 0
+plaintext-root-template/src/main/resources/META-INF/tags/colDate.xhtml  1 0 0
+plaintext-root-template/src/main/resources/META-INF/tags/colText.xhtml  2 0 0
+plaintext-root-template/src/main/resources/META-INF/tags/dateiAblage.xhtml  16 0 0
+plaintext-root-template/src/main/resources/META-INF/tags/freigabeLinks.xhtml  4 0 0
+plaintext-root-template/src/main/resources/META-INF/tags/tableSettings.xhtml  17 0 0
+plaintext-root-watch/src/main/resources/META-INF/resources/watch-einstellungen.xhtml  17 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/access-denied.xhtml  8 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/debug.xhtml  6 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/deeplinks.xhtml  4 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/index.xhtml  4 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/login-totp.xhtml  5 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/login.xhtml  23 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/mandate.xhtml  10 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/myuser.xhtml  34 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/performance.xhtml  9 0 0
+plaintext-root-webapp/src/main/resources/META-INF/resources/useradmin.xhtml  16 0 0

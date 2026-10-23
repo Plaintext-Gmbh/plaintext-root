@@ -12,12 +12,16 @@
 
       Attribute names deliberately colClass/colRendered as in pt:colText — reasoning there.
 
+      Card 1548: the cells carry .pt-zahl (layout.css) and with it font-variant-numeric:
+      tabular-nums — every digit equally wide, so the decimal separators stand in one line even in
+      a proportional font. Alignment was right already; nothing else changes.
+
       REQUIRED: header, value
       OPTIONAL: width, pattern, currency, colClass, colRendered
     -->
     <p:column headerText="#{header}"
               rendered="#{empty colRendered ? true : colRendered}"
-              styleClass="#{colClass}"
+              styleClass="pt-zahl #{colClass}"
               style="width:#{empty width ? '120px' : width}; text-align:right;">
         <h:outputText value="#{value}">
             <f:convertNumber pattern="#{empty pattern ? '#,##0.00' : pattern}"/>
