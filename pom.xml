@@ -684,8 +684,11 @@
                      merkt sich das Plugin je Modul nur EINE Ziel-Konfiguration und schiebt am Ende alle Module
                      zweimal ins selbe Repository; Reposilite lehnt das zweite Mal mit 409 ab, GitHub Packages
                      ging leer aus, der Release-Lauf brach nach Tag und Upload ab (SNAPSHOT-Commit fehlte).
-                     Halbe Releases (Zustandsbericht M4) bleiben damit ein offener Punkt — Loesung waere ein
-                     einzelnes Deploy-Ziel oder ein Staging-Verzeichnis, nicht diese Option. -->
+                     Halbe Releases (Zustandsbericht M4) heilt seit Karte 1563 `./build nachliefern`
+                     (scripts/release-nachliefern.sh): nach einem roten `mvn clean deploy` werden die
+                     fehlenden Dateien einzeln nachgeliefert, nie etwas Vorhandenes neu geladen (409).
+                     Auch KEIN retryFailedDeploymentCount: es laedt das ganze Modul neu und laeuft in
+                     denselben 409. -->
             </plugins>
         </pluginManagement>
         <plugins>
