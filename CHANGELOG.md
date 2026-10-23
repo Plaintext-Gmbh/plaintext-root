@@ -12,6 +12,13 @@ exhaustive.
 
 ## [Unreleased]
 
+### Fixed
+- **`plaintext-root-files`: link expiry on the same day as the store** (Karte 1559). `FilesService` computed the
+  last valid day of a share link in `Europe/Zurich`, the `LinkTokenStore` checks it against the JVM default zone.
+  Between midnight in Zurich and midnight UTC the two disagreed by a day, so `FilesServiceTest` failed in the
+  release build of 1.786.0 (22:49 UTC) and left that release without `plaintext-root-files` and
+  `plaintext-admin-requirements`. Both now count days in the JVM default zone, as Draw.io and Diashow links do.
+
 ### Added
 - **UI 2 foundation** (Karte 1548, the five UI principles decided on 15.10.2026). All additive; existing pages look
   the same after the bump. New file `plaintext-layout/css/layout.css`, loaded by the template after
@@ -29,6 +36,18 @@ exhaustive.
   `plaintext-ui-bestand.txt` at the reactor root and may only shrink. Enforced in root; in consumers it only
   reports (default `report`) until they write their own baseline with
   `-Dplaintext.arch.ui-grundlage=bestand-schreiben` and set `enforce`.
+- **Personal file store `plaintext-root-files`** (Karte 1559, ported from the Inventar): every user uploads, lists,
+  downloads and deletes their own files under `files/<user>/<name>`; a file lives `plaintext.files.frist` (default
+  21 days) after its last change, uploading the same name again replaces it and restarts the period. Share links
+  without login at `GET /nosec/files/{token}` (address as in the Inventar) through the `LinkTokenStore` (art
+  `files`), with expiry, purpose and call counter; they die with the file. Page `files/ablage.html` (menu
+  `moduleId = files`), REST `/files/api/*` in the format of the Draw.io store widget, MCP tools `list_files`,
+  `get_file`, `save_file`, `create_file_link` (optional identity question `plaintext.files.mcp-identitaet`). New port
+  `ch.plaintext.files.DateiSpeicher` in `plaintext-root-interfaces` (`upload`, `download`, `exists`, `list`,
+  `delete`, flag `raeumtSelbstAuf`); default file system under `plaintext.files.verzeichnis`, replaced by any own
+  bean. Without `raeumtSelbstAuf` the cron `FilesAufraeumen` deletes expired files. **Not** in the
+  `plaintext-root-webapp` aggregate: an application adds the dependency, and on that bump raises
+  `mindestens.werkzeuge` in its `mcp-scope-vertrag.properties` by 4. New module, additive.
 - **One token-link store for Draw.io, slide shows and Files** (Karte 1559): port `ch.plaintext.linktoken.LinkTokenStore`
   in `plaintext-root-interfaces` (`anlegen`, `finde`, `liste`, `widerrufe`, `widerrufeFuer`, `zieheUm`, `aufgerufen`)
   with `LinkToken`, `LinkTokenAntrag`, `LinkRecht` (`lesen`/`schreiben`). Default `JpaLinkTokenStore` in

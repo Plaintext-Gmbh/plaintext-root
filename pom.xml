@@ -12,7 +12,7 @@
 
     <groupId>ch.plaintext</groupId>
     <artifactId>plaintext-root-parent</artifactId>
-    <version>1.785.0-SNAPSHOT</version>
+    <version>1.791.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>plaintext-root-parent</name>
@@ -59,7 +59,7 @@
 
         <!-- JSF & Primefaces -->
         <primefaces-spring-boot-starter.version>6.1.1</primefaces-spring-boot-starter.version>
-        <primefaces.version>15.0.18</primefaces.version>
+        <primefaces.version>15.0.19</primefaces.version>
         <!-- Mindestens 4.1.13: dort schliesst Mojarra CVE-2026-46581 (Pfad-Traversal/RCE ueber
              ui:include, CVSS 7.5). Nicht zurueckdrehen. Die Kehrseite derselben Haertung —
              Facelet-Verweise brauchen seither einen fuehrenden "/" — haelt der Test
@@ -165,7 +165,7 @@
           28.08.2026: 11.0.24 -> 11.0.25. Geeicht per NVD-CPE-Abfrage: 11.0.24 traegt 11 CVEs
           (4x CRITICAL bis 9.8, u.a. CVE-2026-65637/65905/65182/68525), 11.0.25 null.
         -->
-        <tomcat.version>11.0.26</tomcat.version>
+        <tomcat.version>11.0.27</tomcat.version>
         <!--
           log4j-api: Boot 4.1.0 pinnt 2.25.4 — darin CVE-2026-49844 (CVSS 5.9, MapMessage-
           JSON-Serialisierung erzeugt ungueltiges JSON bei non-finite Floats), behoben ab 2.25.5.
@@ -182,7 +182,7 @@
           ist DOMPurify 3.4.12 gebuendelt (Fix ab 3.4.11). springdoc gibt die Version nicht
           selbst vor, deshalb hier gepinnt (siehe dependencyManagement).
         -->
-        <swagger-ui.version>5.33.1</swagger-ui.version>
+        <swagger-ui.version>5.34.0</swagger-ui.version>
         <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
     </properties>
 
@@ -209,6 +209,7 @@
         <!-- geteilte Architektur-/Lint-Tests (via Surefire dependenciesToScan in Consumern nutzbar) -->
         <module>plaintext-root-watch</module>
         <module>plaintext-root-freigabe</module>
+        <module>plaintext-root-files</module>
         <module>plaintext-root-archtests</module>
         <!-- geteilte Test-Hilfsklassen (EmbeddedPg, Seitenliste), Karte 1298 -->
         <module>plaintext-root-testsupport</module>
@@ -242,7 +243,7 @@
             <dependency>
                 <groupId>io.zonky.test.postgres</groupId>
                 <artifactId>embedded-postgres-binaries-bom</artifactId>
-                <version>17.11.0</version>
+                <version>18.6.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -379,6 +380,11 @@
             <dependency>
                 <groupId>ch.plaintext</groupId>
                 <artifactId>plaintext-root-freigabe</artifactId>
+                <version>${plaintext-root.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.plaintext</groupId>
+                <artifactId>plaintext-root-files</artifactId>
                 <version>${plaintext-root.version}</version>
             </dependency>
 

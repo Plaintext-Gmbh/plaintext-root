@@ -74,7 +74,7 @@ class SchnittstellenKatalogTest {
     void hilfen() {
         assertThat(SchnittstellenKatalog.binaerName("ch.plaintext.a.Aussen.Innen")).isEqualTo("ch.plaintext.a.Aussen$Innen");
         assertThat(SchnittstellenKatalog.binaerName("ch.plaintext.a.Dienst")).isEqualTo("ch.plaintext.a.Dienst");
-        assertThat(SchnittstellenKatalog.modul(org.junit.jupiter.api.Test.class)).isEqualTo("junit-jupiter-api");
+        assertThat(SchnittstellenKatalog.modulVon(org.junit.jupiter.api.Test.class)).isEqualTo("junit-jupiter-api");
     }
 
     @Test
