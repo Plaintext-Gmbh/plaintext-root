@@ -7,6 +7,7 @@ import ch.plaintext.modules.ModulApiUmsetzung;
 
 import ch.plaintext.ablagen.AblageEintrag;
 import ch.plaintext.ablagen.DateiAblage;
+import ch.plaintext.webdav.WebDavAntwort;
 
 import java.io.IOException;
 import java.io.InputStream;
