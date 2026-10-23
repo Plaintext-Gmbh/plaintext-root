@@ -58,7 +58,7 @@
         <plaintext-root.version>${project.version}</plaintext-root.version>
 
         <!-- JSF & Primefaces -->
-        <primefaces-spring-boot-starter.version>6.1.1</primefaces-spring-boot-starter.version>
+        <primefaces-spring-boot-starter.version>6.1.2</primefaces-spring-boot-starter.version>
         <primefaces.version>15.0.19</primefaces.version>
         <!-- Mindestens 4.1.13: dort schliesst Mojarra CVE-2026-46581 (Pfad-Traversal/RCE ueber
              ui:include, CVSS 7.5). Nicht zurueckdrehen. Die Kehrseite derselben Haertung —
