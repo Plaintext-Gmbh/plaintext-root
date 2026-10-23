@@ -48,7 +48,7 @@
                                    icon="pi pi-exclamation-triangle"/>
                     </p:commandButton>
 
-                    <p:separator style="width: 1px; height: 20px; margin: 0 5px;"/>
+                    <p:divider layout="vertical" style="height: 20px; margin: 0 5px;"/>
 
                     <p:linkButton value="CSV Export" icon="pi pi-download"
                                   href="/api/i18n/export" target="_blank"
@@ -128,7 +128,7 @@
                                          style="width: 400px;" placeholder="Übersetzten Text eingeben"/>
                     </h:panelGrid>
 
-                    <p:separator style="margin: 10px 0;"/>
+                    <p:divider style="margin: 10px 0;"/>
 
                     <p:commandButton value="Speichern" icon="pi pi-check"
                                      action="#{i18nBackingBean.saveNew()}"
@@ -157,7 +157,7 @@
                                          style="width: 400px;"/>
                     </h:panelGrid>
 
-                    <p:separator style="margin: 10px 0;"/>
+                    <p:divider style="margin: 10px 0;"/>
 
                     <p:commandButton value="Speichern" icon="pi pi-check"
                                      action="#{i18nBackingBean.saveSelected()}"

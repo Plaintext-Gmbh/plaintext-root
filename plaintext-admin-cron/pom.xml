@@ -103,7 +103,6 @@
         <dependency>
             <groupId>org.primefaces</groupId>
             <artifactId>primefaces</artifactId>
-            <classifier>jakarta</classifier>
         </dependency>
 
         <!-- Servlet API: kein Java-Treffer im Modul (Stand 06.09.2026); nicht Teil der
