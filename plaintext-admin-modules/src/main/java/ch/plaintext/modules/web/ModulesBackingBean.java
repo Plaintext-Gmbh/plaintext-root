@@ -58,6 +58,8 @@ import java.util.List;
 public class ModulesBackingBean implements Serializable {
 
     private static final long serialVersionUID = 1L;
+    private static final String SUCCESS = "success";
+    private static final String SECONDARY = "secondary";
 
     @Autowired
     private transient ModuleService moduleService;
@@ -264,7 +266,7 @@ public class ModulesBackingBean implements Serializable {
 
     /** root in the default tag colour, modules green; PrimeFaces 15 knows success/info/warning/danger only. */
     public String ebeneSchwere(String wert) {
-        return SchnittstellenKatalog.MODUL.equals(wert) ? "success" : null;
+        return SchnittstellenKatalog.MODUL.equals(wert) ? SUCCESS : null;
     }
 
     static List<SchnittstellenKatalog.Schnittstelle> filtere(List<SchnittstellenKatalog.Schnittstelle> l, String art) {
@@ -297,25 +299,25 @@ public class ModulesBackingBean implements Serializable {
     }
 
     public String artSchwere(SchnittstellenKatalog.Schnittstelle s) {
-        return s.annotiert() ? "info" : "secondary";
+        return s.annotiert() ? "info" : SECONDARY;
     }
 
     public String stabilitaetSchwere(SchnittstellenKatalog.Schnittstelle s) {
         return switch (s.stabilitaet()) {
-            case "STABIL" -> "success";
+            case "STABIL" -> SUCCESS;
             case "VERALTET" -> "warning";
             case "NEU" -> "info";
-            default -> "secondary";
+            default -> SECONDARY;
         };
     }
 
     /** KEINE grün, INTERN blau, AUSSEN rot — Mail, Messenger und Zahlung fallen auf. */
     public String seiteneffekteSchwere(String seiteneffekte) {
         return switch (seiteneffekte == null ? "" : seiteneffekte) {
-            case "KEINE" -> "success";
+            case "KEINE" -> SUCCESS;
             case "INTERN" -> "info";
             case "AUSSEN" -> "danger";
-            default -> "secondary";
+            default -> SECONDARY;
         };
     }
 

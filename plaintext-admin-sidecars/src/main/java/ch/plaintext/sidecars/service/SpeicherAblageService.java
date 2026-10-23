@@ -103,20 +103,15 @@ public class SpeicherAblageService implements DateiAblagenRegister {
      */
     public SpeicherAblage speichere(String name, String art, String url, String benutzer, String neuesPasswort, String pfad, String zweig) {
         String n = name == null ? "" : name.strip();
-        String t = art == null || art.isBlank() ? SpeicherAblage.ART_NEXTCLOUD : art.strip().toUpperCase(Locale.ROOT);
+        String t = normiereArt(art);
         boolean git = SpeicherAblage.ART_GIT.equals(t);
-        if (!git && !SpeicherAblage.ART_NEXTCLOUD.equals(t)) {
-            throw new IllegalArgumentException("Art: NEXTCLOUD oder GIT.");
-        }
         URI u = pruefeAngaben(n, url, benutzer, git ? "/" : pfad);
         if (git && (zweig == null || zweig.isBlank())) {
             throw new IllegalArgumentException("Bitte den Zweig angeben (z. B. main).");
         }
         SpeicherAblage a = repo.findFirstByNameAndDeletedFalse(n).orElseGet(SpeicherAblage::new);
         boolean neu = a.getId() == null;
-        if (neu && (neuesPasswort == null || neuesPasswort.isBlank())) {
-            throw new IllegalArgumentException(git ? "Bitte das Zugangs-Token angeben." : "Bitte das App-Passwort angeben.");
-        }
+        verlangePasswort(neu, neuesPasswort, git);
         a.setName(n);
         a.setArt(t);
         a.setMandat(ch.plaintext.sidecars.entity.Sidecar.MANDAT);
@@ -127,14 +122,35 @@ public class SpeicherAblageService implements DateiAblagenRegister {
         if (neuesPasswort != null && !neuesPasswort.isBlank()) {
             a.setPasswortEncrypted(crypto.encrypt(neuesPasswort.strip()));
         }
+        baueZurProbe(a, git);
+        log.info("Speicher-Ablage «{}» {}: {} {} als {}, Pfad {}{}", n, neu ? "angelegt" : "geändert", t, a.getUrl(), a.getBenutzer(),
+                a.getPfad(), git ? ", Zweig " + a.getZweig() : "");
+        return pruefe(repo.save(a));
+    }
+
+    /** NEXTCLOUD (Vorgabe) oder GIT; Sonar java:S3776 (Karte 1554): aus speichere() herausgeloest. */
+    private static String normiereArt(String art) {
+        String t = art == null || art.isBlank() ? SpeicherAblage.ART_NEXTCLOUD : art.strip().toUpperCase(Locale.ROOT);
+        if (!SpeicherAblage.ART_GIT.equals(t) && !SpeicherAblage.ART_NEXTCLOUD.equals(t)) {
+            throw new IllegalArgumentException("Art: NEXTCLOUD oder GIT.");
+        }
+        return t;
+    }
+
+    /** Beim Anlegen ist das Passwort bzw. Token Pflicht. */
+    private static void verlangePasswort(boolean neu, String neuesPasswort, boolean git) {
+        if (neu && (neuesPasswort == null || neuesPasswort.isBlank())) {
+            throw new IllegalArgumentException(git ? "Bitte das Zugangs-Token angeben." : "Bitte das App-Passwort angeben.");
+        }
+    }
+
+    /** Baut die Ablage einmal auf; ein Fehler wird zur Meldung fuer das Formular. */
+    private void baueZurProbe(SpeicherAblage a, boolean git) {
         try {
             baue(a, null);
         } catch (IOException e) {
             throw new IllegalArgumentException((git && e.getMessage().contains("Zweig") ? "" : "Pfad: ") + e.getMessage());
         }
-        log.info("Speicher-Ablage «{}» {}: {} {} als {}, Pfad {}{}", n, neu ? "angelegt" : "geändert", t, a.getUrl(), a.getBenutzer(),
-                a.getPfad(), git ? ", Zweig " + a.getZweig() : "");
-        return pruefe(repo.save(a));
     }
 
     /**

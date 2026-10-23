@@ -98,6 +98,12 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
         if (!alle && gefunden.isEmpty() && umsetzungen.isEmpty()) {
             return false;   // Fachmodul ohne @ModulApi: keine leere Datei ins Jar
         }
+        schreibeKatalog(modul);
+        return false;
+    }
+
+    /** Schreibt {@code META-INF/plaintext-katalog/<modul>.json} mit allen gesammelten Typen. */
+    private void schreibeKatalog(String modul) {
         boolean streng = !"false".equalsIgnoreCase(processingEnv.getOptions().get(OPTION_STRENG));
         Diagnostic.Kind fehler = streng ? Diagnostic.Kind.ERROR : Diagnostic.Kind.WARNING;
         gefunden.sort(Comparator.comparing(t -> t.getQualifiedName().toString()));
@@ -130,7 +136,6 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
         } catch (IOException ex) {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Schnittstellen-Katalog nicht schreibbar: " + ex.getMessage());
         }
-        return false;
     }
 
     /** Ausdrückliche Option, sonst: alle öffentlichen Schnittstellen genau in {@code *-interfaces}. */
