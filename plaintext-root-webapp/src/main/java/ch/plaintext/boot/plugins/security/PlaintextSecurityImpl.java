@@ -274,7 +274,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         }
         List<GrantedAuthority> newAuthorities = new ArrayList<>(auth.getAuthorities());
         newAuthorities.removeIf(a -> a.getAuthority().toLowerCase().contains("mandat"));
-        String rolle = "PROPERTY_MANDAT_" + mandat.toLowerCase();
+        String rolle = MANDAT_PREFIX + mandat.toLowerCase();
         newAuthorities.add(new SimpleGrantedAuthority(rolle));
         Authentication newAuth = new UsernamePasswordAuthenticationToken(
                 auth.getPrincipal(), auth.getCredentials(), newAuthorities);
@@ -689,7 +689,7 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
 
             // Add mandat
             if (targetUser.getMandat() != null && !targetUser.getMandat().isEmpty()) {
-                newAuthorities.add(new SimpleGrantedAuthority("PROPERTY_MANDAT_" + targetUser.getMandat().toLowerCase()));
+                newAuthorities.add(new SimpleGrantedAuthority(MANDAT_PREFIX + targetUser.getMandat().toLowerCase()));
             }
 
             // Add startpage if available

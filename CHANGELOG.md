@@ -24,7 +24,8 @@ exhaustive.
   `release-vollstaendig.sh` verifies both repositories, then plaintext-mvn is mirrored and the SNAPSHOT commit is
   made as `do_release` would have. Neither `deployAtEnd` nor `retryFailedDeploymentCount` is used: both re-upload
   files that are already there and run into the same 409. The half releases 1.789.0 and 1.790.0 are not reused;
-  the next release is 1.791.0.
+  1.791.0 went out complete on 23 October 2026 (run 645) still without this fix, so the first release carrying it
+  is 1.792.0.
 
 ### Fixed
 - **`plaintext-root-files`: link expiry on the same day as the store** (Karte 1559). `FilesService` computed the
