@@ -170,7 +170,9 @@ public class PlaintextSecurityConfig {
             "/anforderungssettings.*",
             "/howtos.*",
             "/howtodetail.*",
-            "/claudesummary.*"
+            "/claudesummary.*",
+            // Card 1548: the UI 2 styleguide, a reference for those who build pages.
+            "/styleguide.*"
     };
 
     public PlaintextSecurityConfig(MyRememberMeRepositoryRepository tokenRepository,

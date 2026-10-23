@@ -1,0 +1,94 @@
+/*
+ * Karte 1548 — nur fuer /styleguide.html: die Schaukaesten, in denen die Tokens sichtbar werden.
+ * Alles, was eine echte Seite braucht, steht in plaintext-layout/css/layout.css; hier steht nur,
+ * was der Styleguide braucht, um ueber die Tokens zu sprechen. Gebaut aus denselben Tokens, damit
+ * die Seite hell und dunkel selbst die Probe ist.
+ */
+.sg-abschnitt {
+    margin: 0 0 var(--pt-abstand-4) 0;
+    padding: var(--pt-abstand-3);
+    border: 1px solid var(--pt-flaeche-rand);
+    border-radius: var(--pt-radius);
+    background: var(--pt-flaeche);
+}
+
+.sg-abschnitt h2 {
+    margin: 0 0 var(--pt-abstand-1) 0;
+    font-size: var(--pt-schrift-normal);
+    font-weight: 600;
+    color: var(--pt-text);
+}
+
+.sg-abschnitt > p {
+    margin: 0 0 var(--pt-abstand-3) 0;
+    font-size: var(--pt-schrift-klein);
+    color: var(--pt-text-leise);
+}
+
+.sg-raster {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    gap: var(--pt-abstand-2);
+}
+
+.sg-muster {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pt-abstand-1);
+    font-size: var(--pt-schrift-klein);
+    color: var(--pt-text-leise);
+}
+
+.sg-muster code {
+    color: var(--pt-text);
+}
+
+.sg-farbe {
+    height: 2.5rem;
+    border: 1px solid var(--pt-flaeche-rand);
+    border-radius: var(--pt-radius);
+}
+
+.sg-flaeche { background: var(--pt-flaeche); }
+.sg-flaeche-leise { background: var(--pt-flaeche-leise); }
+.sg-flaeche-rand { background: var(--pt-flaeche-rand); }
+.sg-text { background: var(--pt-text); }
+.sg-text-leise { background: var(--pt-text-leise); }
+.sg-akzent { background: var(--pt-akzent); }
+.sg-akzent-leise { background: var(--pt-akzent-leise); }
+.sg-status-ok { background: var(--pt-status-ok); }
+.sg-status-warnung { background: var(--pt-status-warnung); }
+.sg-status-fehler { background: var(--pt-status-fehler); }
+.sg-status-info { background: var(--pt-status-info); }
+
+.sg-abstand {
+    height: 0.75rem;
+    border-radius: 2px;
+    background: var(--pt-akzent);
+}
+
+.sg-abstand-1 { width: var(--pt-abstand-1); }
+.sg-abstand-2 { width: var(--pt-abstand-2); }
+.sg-abstand-3 { width: var(--pt-abstand-3); }
+.sg-abstand-4 { width: var(--pt-abstand-4); }
+
+.sg-radius {
+    width: 3rem;
+    height: 3rem;
+    border: 2px solid var(--pt-akzent);
+    border-radius: var(--pt-radius);
+}
+
+.sg-schrift-klein { font-size: var(--pt-schrift-klein); color: var(--pt-text); }
+.sg-schrift-normal { font-size: var(--pt-schrift-normal); color: var(--pt-text); }
+.sg-schrift-gross { font-size: var(--pt-schrift-gross); font-weight: 600; color: var(--pt-text); }
+
+.sg-regeln {
+    margin: 0;
+    padding-left: var(--pt-abstand-4);
+    color: var(--pt-text);
+}
+
+.sg-regeln li {
+    margin-bottom: var(--pt-abstand-1);
+}

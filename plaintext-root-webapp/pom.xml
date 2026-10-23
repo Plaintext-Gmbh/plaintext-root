@@ -6,7 +6,7 @@
     <parent>
         <groupId>ch.plaintext</groupId>
         <artifactId>plaintext-root-parent</artifactId>
-        <version>1.795.0-SNAPSHOT</version>
+        <version>1.796.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>plaintext-root-webapp</artifactId>
@@ -15,6 +15,8 @@
     <description>Plaintext Web Application Framework - Security, Login, Menu, Templates, Admin</description>
 
     <properties>
+        <!-- Karte 1548: Modus von PlaintextUiGrundlageLinterTest (siehe Surefire unten). -->
+        <plaintext.arch.ui-grundlage>enforce</plaintext.arch.ui-grundlage>
         <!--
           Der Maven-Build-Cache hasht die Eingaben JE MODUL aus sourceDirectory, resources,
           testSourceDirectory und testResources (MavenProjectInput.getInputFiles()).
@@ -511,6 +513,12 @@
                              solange dort noch Altbestand liegt. Wer bereinigt ist, setzt dieselben
                              Zeilen in seinem webapp-pom. -->
                         <plaintext.arch.inline-js>enforce</plaintext.arch.inline-js>
+                        <!-- Karte 1548: PlaintextUiGrundlageLinterTest scharf — neue XHTML ohne style=,
+                             ohne eigenes p:growl, mit _csrf; der Bestand steht in
+                             plaintext-ui-bestand.txt. Ueber die Property, damit
+                             -Dplaintext.arch.ui-grundlage=bestand-schreiben auf der Kommandozeile
+                             durchkommt (ein fester Wert hier wuerde sie ueberstimmen). -->
+                        <plaintext.arch.ui-grundlage>${plaintext.arch.ui-grundlage}</plaintext.arch.ui-grundlage>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>
@@ -595,6 +603,21 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- Karte 1548: Jede IT-Klasse bekommt ueber EmbeddedPg.registrieren ihre eigene
+                             Datenbank und damit ihren eigenen Spring-Kontext samt Hikari-Pool (10
+                             Verbindungen). Spring haelt bis zu 32 Kontexte im Cache und schliesst sie
+                             erst am Ende der JVM, die Pools bleiben also offen. Der Postgres-Service in
+                             .woodpecker/playwright.yml hat die Vorgabe max_connections=100: mit 11
+                             IT-Klassen ging das knapp auf, mit der zwoelften (UiGrundlagePlaywrightIT)
+                             fiel die letzte mit "FATAL: sorry, too many clients already" (Pipeline 651).
+                             Cache-Groesse 1: der vorige Kontext wird beim Laden des naechsten
+                             geschlossen und gibt seine Verbindungen frei. Die ITs teilen keinen
+                             Kontext (jede hat ihre eigene DB), es geht also kein Caching verloren. -->
+                        <spring.test.context.cache.maxSize>1</spring.test.context.cache.maxSize>
+                    </systemPropertyVariables>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>

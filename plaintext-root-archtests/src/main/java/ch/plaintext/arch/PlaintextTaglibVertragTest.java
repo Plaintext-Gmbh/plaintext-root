@@ -69,8 +69,9 @@ class PlaintextTaglibVertragTest {
     private static final Set<String> ERBENDE_ATTRIBUTE =
             Set.of("rendered", "styleClass", "paginator", "rows", "emptyMessage", "widgetVar", "reflow");
 
-    /** Tag files that span the table themselves — the inheritance rule does not apply to them. */
-    private static final Set<String> TABELLEN_TAGS = Set.of("table.xhtml");
+    /** Tag files that span the table themselves — the inheritance rule does not apply to them
+     *  ({@code tabelle.xhtml}, Karte 1548, passes the attributes of pt:table through on purpose). */
+    private static final Set<String> TABELLEN_TAGS = Set.of("table.xhtml", "tabelle.xhtml");
 
     private static List<Path> taglibDeklarationen() {
         List<Path> gefunden = new ArrayList<>();

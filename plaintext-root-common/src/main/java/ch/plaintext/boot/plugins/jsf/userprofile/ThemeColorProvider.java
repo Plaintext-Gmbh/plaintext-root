@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -64,6 +65,48 @@ public class ThemeColorProvider implements Serializable {
         }
     }
 
+    /**
+     * Karte 1548 (UI 2, Entscheid Daniel 15.10.2026): drei Farbvarianten statt zehn.
+     *
+     * <p><b>Warum genau diese drei.</b> {@code green} ist die Vorgabe jedes neuen Benutzers
+     * ({@link UserPreference}), {@code blue} der Rueckfall dieser Klasse fuer jeden unbekannten
+     * Namen und fuer eine ungueltige eigene Farbe — beide sind also heute schon die Farben, die
+     * am meisten Benutzer sehen, ohne je gewaehlt zu haben. {@code orange} deckt als dritte die
+     * warme Haelfte des Farbkreises ab: ohne sie haette ein Benutzer mit Rot, Karmin oder Gelb
+     * keine nahe Variante, sondern nur ein kaltes Blau oder Gruen.</p>
+     *
+     * <p>Die Reihenfolge ist die Reihenfolge im Farbwaehler.</p>
+     */
+    public static final List<String> VARIANTEN = List.of("green", "blue", "orange");
+
+    /**
+     * Rueckfall fuer die sieben gestrichenen Varianten auf die naechstliegende verbliebene — nach
+     * Farbton, nicht nach Name: Tuerkis (187 Grad) liegt naeher bei Blau (207) als bei Gruen (122),
+     * Violett faellt in den kalten Bereich zu Blau, Avocado und Limette sind Gelbgruen und bleiben
+     * gruen, Rot, Karmin und Gelb gehen zu Orange. Die Paletten der gestrichenen Varianten sind
+     * entfernt; wer einen alten Namen gespeichert hat (Datenbank oder Cookie
+     * {@code plaintext-color}), sieht ab dem ersten Aufruf die Ersatzfarbe, und
+     * {@link UserPreferencesBackingBean} schreibt sie beim Laden zurueck.
+     */
+    static final Map<String, String> RUECKFALL = Map.of(
+            "turquoise", "blue",
+            "purple", "blue",
+            "avocado", "green",
+            "lime", "green",
+            "red", "orange",
+            "crimson", "orange",
+            "yellow", "orange");
+
+    /**
+     * Die Variante, die fuer {@code name} tatsaechlich gilt: eine gestrichene wird auf ihre
+     * naechstliegende abgebildet, alles andere (die drei Varianten, {@code custom}, ein
+     * unbekannter Name, {@code null}) bleibt unveraendert — fuer Unbekanntes gilt weiter der
+     * Rueckfall von {@link #getPalette(String)}.
+     */
+    public static String variante(String name) {
+        return name == null ? null : RUECKFALL.getOrDefault(name, name);
+    }
+
     private static final Map<String, ColorPalette> PALETTES = Map.ofEntries(
             Map.entry("blue", new ColorPalette(
                     "#2196F3", "#ffffff", "#e3f2fd",
@@ -79,46 +122,11 @@ public class ThemeColorProvider implements Serializable {
                     "#FF9800", "#ffffff", "#fff3e0",
                     "rgba(255,152,0,.16)", "rgba(255,152,0,.04)", "rgba(255,152,0,.5)",
                     "#FFB74D", "#3e2700",
-                    "rgba(255,183,77,.16)", "rgba(255,183,77,.04)", "rgba(255,183,77,.5)")),
-            Map.entry("turquoise", new ColorPalette(
-                    "#00BCD4", "#ffffff", "#e0f7fa",
-                    "rgba(0,188,212,.16)", "rgba(0,188,212,.04)", "rgba(0,188,212,.5)",
-                    "#4DD0E1", "#003d44",
-                    "rgba(77,208,225,.16)", "rgba(77,208,225,.04)", "rgba(77,208,225,.5)")),
-            Map.entry("avocado", new ColorPalette(
-                    "#AEC523", "#ffffff", "#f4f7e0",
-                    "rgba(174,197,35,.16)", "rgba(174,197,35,.04)", "rgba(174,197,35,.5)",
-                    "#C6D63E", "#2d3308",
-                    "rgba(198,214,62,.16)", "rgba(198,214,62,.04)", "rgba(198,214,62,.5)")),
-            Map.entry("purple", new ColorPalette(
-                    "#7B1FA2", "#ffffff", "#f3e5f5",
-                    "rgba(123,31,162,.16)", "rgba(123,31,162,.04)", "rgba(123,31,162,.5)",
-                    "#BA68C8", "#2a0936",
-                    "rgba(186,104,200,.16)", "rgba(186,104,200,.04)", "rgba(186,104,200,.5)")),
-            Map.entry("red", new ColorPalette(
-                    "#F44336", "#ffffff", "#ffebee",
-                    "rgba(244,67,54,.16)", "rgba(244,67,54,.04)", "rgba(244,67,54,.5)",
-                    "#E57373", "#3e0d0a",
-                    "rgba(229,115,115,.16)", "rgba(229,115,115,.04)", "rgba(229,115,115,.5)")),
-            Map.entry("yellow", new ColorPalette(
-                    "#FFC107", "#212529", "#fff8e1",
-                    "rgba(255,193,7,.16)", "rgba(255,193,7,.04)", "rgba(255,193,7,.5)",
-                    "#FFD54F", "#3e3000",
-                    "rgba(255,213,79,.16)", "rgba(255,213,79,.04)", "rgba(255,213,79,.5)")),
-            Map.entry("lime", new ColorPalette(
-                    "#8BC34A", "#ffffff", "#f1f8e9",
-                    "rgba(139,195,74,.16)", "rgba(139,195,74,.04)", "rgba(139,195,74,.5)",
-                    "#AED581", "#263218",
-                    "rgba(174,213,129,.16)", "rgba(174,213,129,.04)", "rgba(174,213,129,.5)")),
-            Map.entry("crimson", new ColorPalette(
-                    "#B71C1C", "#ffffff", "#fce4ec",
-                    "rgba(183,28,28,.16)", "rgba(183,28,28,.04)", "rgba(183,28,28,.5)",
-                    "#D32F2F", "#3b0a0a",
-                    "rgba(211,47,47,.16)", "rgba(211,47,47,.04)", "rgba(211,47,47,.5)"))
+                    "rgba(255,183,77,.16)", "rgba(255,183,77,.04)", "rgba(255,183,77,.5)"))
     );
 
     public ColorPalette getPalette(String colorName) {
-        return PALETTES.getOrDefault(colorName, PALETTES.get("blue"));
+        return PALETTES.getOrDefault(variante(colorName), PALETTES.get("blue"));
     }
 
     /**

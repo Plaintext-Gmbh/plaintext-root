@@ -1,0 +1,53 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:h="jakarta.faces.html"
+                xmlns:c="jakarta.tags.core"
+                xmlns:p="http://primefaces.org/ui">
+    <!--
+      pt:seitenkopf — card 1548 (UI 2, principle 1): ONE page header.
+
+      Title on the left, ONE main action on the right, whatever is rare in the «⋯» menu next to
+      it. Row actions do not belong here: they sit in the row (pt:tabelle, .pt-zeilenaktionen).
+      In-house references: "vertraege" (title + one main action) and "wiki-projekte" in app.
+
+      USAGE (inside the page's h:form id="fm", because the buttons submit):
+
+          <pt:seitenkopf titel="Verträge" untertitel="12 aktive" mehr="true">
+              <ui:define name="aktion">
+                  <p:commandButton value="Neu" icon="pi pi-plus" action="#{bean.neu}"/>
+              </ui:define>
+              <ui:define name="mehr">
+                  <p:menuitem value="Exportieren" icon="pi pi-download" action="#{bean.export}"/>
+              </ui:define>
+          </pt:seitenkopf>
+
+      REQUIRED: titel
+      OPTIONAL: untertitel, mehr (true = render the «⋯» menu with the items of ui:define "mehr")
+
+      Why "mehr" is an attribute and not detected: a tag file cannot see whether the caller
+      filled a ui:define — an empty menu button would be a control without a function. The
+      attribute keeps the decision in one visible place.
+
+      The h1 is the page title for the eye; <title> of the browser tab stays ui:define "title" of
+      the template, as before. No emoji in titel (principle 4) — the title is read, not decorated.
+    -->
+    <div class="pt-seitenkopf">
+        <div class="pt-seitenkopf-titel">
+            <h1>#{titel}</h1>
+            <c:if test="#{not empty untertitel}">
+                <p class="pt-seitenkopf-untertitel">#{untertitel}</p>
+            </c:if>
+        </div>
+        <div class="pt-seitenkopf-aktionen">
+            <div class="pt-hauptaktion">
+                <ui:insert name="aktion"/>
+            </div>
+            <c:if test="#{mehr}">
+                <p:menuButton icon="pi pi-ellipsis-h" title="Weitere Aktionen" ariaLabel="Weitere Aktionen" buttonStyleClass="ui-button-secondary ui-button-outlined"
+                              styleClass="pt-mehr">
+                    <ui:insert name="mehr"/>
+                </p:menuButton>
+            </c:if>
+        </div>
+    </div>
+</ui:composition>

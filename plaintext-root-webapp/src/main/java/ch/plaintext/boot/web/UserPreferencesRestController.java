@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.web;
 
+import ch.plaintext.boot.plugins.jsf.userprofile.ThemeColorProvider;
 import ch.plaintext.boot.plugins.jsf.userprofile.UserPreferencesBackingBean;
 import ch.plaintext.boot.plugins.log.Log;
 import ch.plaintext.boot.plugins.jsf.userprofile.UserPreference;
@@ -80,6 +81,9 @@ public class UserPreferencesRestController {
             validateLength("componentTheme", componentTheme);
             validateLength("topbarTheme", topbarTheme);
             validateLength("menuTheme", menuTheme);
+            // Karte 1548: eine gestrichene Farbvariante (alter Browser-Stand) landet gleich als
+            // ihre naechstliegende in Datenbank und Cookie.
+            componentTheme = ThemeColorProvider.variante(componentTheme);
             if (customColor != null && !customColor.isEmpty() && !customColor.matches("^#[0-9A-Fa-f]{6}$")) {
                 throw new IllegalArgumentException("Invalid hex color format for 'customColor': '" + customColor + "'. Expected format: #RRGGBB");
             }

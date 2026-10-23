@@ -1,0 +1,23 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="jakarta.faces.facelets"
+                xmlns:c="jakarta.tags.core">
+    <!--
+      pt:chip — card 1548 (UI 2, principle 4): a status as a quiet chip.
+
+      Instead of red/green text or a style="color:…" in the cell: one chip, four states plus
+      neutral, colours from the status tokens in layout.css (light and dark).
+
+      REQUIRED: text
+      OPTIONAL: art — ok | warnung | fehler | info; anything else (or nothing) = neutral
+                chipIcon — a pi icon class in front of the text
+
+      chipIcon carries a prefix for the same reason as colClass in pt:colText: inside a pt:table
+      an unset "icon" would inherit the attribute of a surrounding tag.
+    -->
+    <span class="pt-chip#{empty art ? '' : ' pt-chip-'.concat(art)}">
+        <c:if test="#{not empty chipIcon}">
+            <i class="#{chipIcon}" aria-hidden="true"/>
+        </c:if>
+        #{text}
+    </span>
+</ui:composition>
