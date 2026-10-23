@@ -146,7 +146,7 @@ exhaustive.
      `primefaces-extensions`) dependency. PF 16 is Jakarta-only and publishes no `-jakarta` jar; a leftover
      classifier fails the build with `Could not find artifact org.primefaces:primefaces:jar:jakarta:16.0.1`.
      The root parent now manages `primefaces`, `primefaces-extensions` and `primefaces-themes` without classifier
-     and excludes the `jakarta` jars that JoinFaces 6.1.1's `primefaces-spring-boot-starter` still pulls. A
+     and excludes the `jakarta` jars that JoinFaces 6.1.x's `primefaces-spring-boot-starter` (6.1.2: BOM on PF 15.0.19) still pulls. A
      consumer that declares the starter **with its own `<exclusions>`** does not inherit those exclusions (Maven
      applies managed exclusions only when a dependency has none) and must repeat the two
      (`org.primefaces:primefaces`, `org.primefaces.extensions:primefaces-extensions`). A consumer page using
