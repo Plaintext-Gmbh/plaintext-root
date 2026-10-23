@@ -61,7 +61,7 @@ public class ModuleService implements ModuleEnablementProvider {
         for (ModuleDescriptor d : descriptors) {
             result.add(new ModuleView(d.moduleId(), sicher(d::displayName, d.moduleId()),
                     sicher(d::version, "dev"), isEnabled(d.moduleId()),
-                    SchnittstellenKatalog.modul(ClassUtils.getUserClass(d.getClass()))));
+                    SchnittstellenKatalog.modulVon(ClassUtils.getUserClass(d.getClass()))));
         }
         result.sort(Comparator.comparing(ModuleView::getDisplayName, String.CASE_INSENSITIVE_ORDER));
         return result;

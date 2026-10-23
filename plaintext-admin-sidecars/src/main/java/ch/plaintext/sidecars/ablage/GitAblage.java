@@ -60,6 +60,7 @@ public final class GitAblage implements DateiAblage {
     private static final Map<Path, Object> SPERREN = new ConcurrentHashMap<>();
     private static final int ZEIT_SEKUNDEN = (int) NextcloudAblage.ZEIT.toSeconds();
     private static final String UNGUELTIG = "Ungültiger Pfad.";
+    private static final String COMMIT_ABLAGE = "Ablage ";
     /** Hält einen sonst leeren Ordner im Repo (Git kennt keine leeren Ordner); {@link #liste} blendet ihn aus. */
     static final String PLATZHALTER = ".gitkeep";
 
@@ -284,7 +285,7 @@ public final class GitAblage implements DateiAblage {
             Files.write(d, daten);
             git.add().addFilepattern(r).call();
             if (!git.status().call().isClean()) {
-                sichere(git, "Ablage " + name + ": " + r + " gespeichert");
+                sichere(git, COMMIT_ABLAGE + name + ": " + r + " gespeichert");
             }
             return null;
         });
@@ -346,7 +347,7 @@ public final class GitAblage implements DateiAblage {
                 throw new IOException("Datei nicht gefunden.");
             }
             git.rm().addFilepattern(r).call();
-            sichere(git, "Ablage " + name + ": " + r + " gelöscht");
+            sichere(git, COMMIT_ABLAGE + name + ": " + r + " gelöscht");
             return null;
         });
     }
@@ -370,7 +371,7 @@ public final class GitAblage implements DateiAblage {
                 Files.createDirectories(d);
                 Files.write(d.resolve(PLATZHALTER), new byte[0]);
                 nimmAuf(git);
-                sichere(git, "Ablage " + name + ": Ordner " + r + " angelegt");
+                sichere(git, COMMIT_ABLAGE + name + ": Ordner " + r + " angelegt");
             }
             return null;
         });
@@ -395,7 +396,7 @@ public final class GitAblage implements DateiAblage {
             Files.createDirectories(z.getParent());
             Files.move(q, z);
             nimmAuf(git);
-            sichere(git, "Ablage " + name + ": " + rv + " nach " + rn + " verschoben");
+            sichere(git, COMMIT_ABLAGE + name + ": " + rv + " nach " + rn + " verschoben");
             return null;
         });
     }
@@ -421,7 +422,7 @@ public final class GitAblage implements DateiAblage {
                 }
             }
             nimmAuf(git);
-            sichere(git, "Ablage " + name + ": Ordner " + r + " gelöscht");
+            sichere(git, COMMIT_ABLAGE + name + ": Ordner " + r + " gelöscht");
             return null;
         });
     }

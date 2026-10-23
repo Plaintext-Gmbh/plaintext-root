@@ -90,7 +90,7 @@ public class ApiTokenScopeDeckel {
     private List<String> schreibRollen = new ArrayList<>(List.of(ADMIN, "ROOT"));
 
     /** Roles that may hold {@code ADMIN}. */
-    private List<String> adminRollen = new ArrayList<>(List.of("ADMIN", "ROOT"));
+    private List<String> adminRollen = new ArrayList<>(List.of(ADMIN, "ROOT"));
 
     /** Token name → roles that keep {@code WRITE} for a server-minted token of that name. */
     private Map<String, List<String>> serviceTokenSchreibRollen = new LinkedHashMap<>();

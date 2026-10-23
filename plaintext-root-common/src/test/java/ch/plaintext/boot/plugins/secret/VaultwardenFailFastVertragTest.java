@@ -16,6 +16,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
+import org.springframework.boot.env.OriginTrackedMapPropertySource;
+import org.springframework.boot.origin.OriginTrackedValue;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -94,6 +96,20 @@ class VaultwardenFailFastVertragTest {
             ctx.refresh();
             assertThat(ctx.getBean(Bohne.class).wert).isEqualTo(SECRET);
         }
+    }
+
+    @Test
+    void yamlQuelleBleibtNachDemErsetzenTypumwandelbar() {
+        StandardEnvironment env = new StandardEnvironment();
+        Map<String, Object> yaml = new LinkedHashMap<>();
+        yaml.put("app.secret", OriginTrackedValue.of(REFERENZ_OK));
+        yaml.put("management.server.port", OriginTrackedValue.of("8081"));
+        env.getPropertySources().addLast(new OriginTrackedMapPropertySource("application-prod.yml", yaml));
+
+        aufloesen(env);
+
+        assertThat(env.getProperty("app.secret")).isEqualTo(SECRET);
+        assertThat(env.getProperty("management.server.port", Integer.class)).isEqualTo(8081);
     }
 
     // ── The actual regression: NEVER the raw string ───────────────────────────

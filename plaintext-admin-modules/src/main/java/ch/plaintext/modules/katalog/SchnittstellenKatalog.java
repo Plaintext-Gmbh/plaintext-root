@@ -41,6 +41,8 @@ public class SchnittstellenKatalog {
     public static final String ROOT = "root";
     /** Card 1438: functionality of an app module ({@code plaintext-z-*}, {@code plaintext-guild-*}, …). */
     public static final String MODUL = "modul";
+    /** JSON field of a catalogue: the jar name (different meaning from {@link #MODUL}, same text). */
+    private static final String FELD_MODUL = "modul";
     private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
     private final ApplicationContext kontext;
@@ -204,7 +206,7 @@ public class SchnittstellenKatalog {
         // die Beschreibung steht im Katalog des umsetzenden Moduls, nicht in dem des Vertrags.
         List<Umsetzung> umsetzungen = new ArrayList<>();
         for (JsonNode k : kataloge) {
-            String modul = k.path("modul").asString();
+            String modul = k.path(FELD_MODUL).asString();
             k.path("umsetzungen").forEach(u -> umsetzungen.add(umsetzung(modul, u)));
         }
         umsetzungen.sort(Comparator.comparing(Umsetzung::klasse));
@@ -212,7 +214,7 @@ public class SchnittstellenKatalog {
         umsetzungen.forEach(u -> nachKlasse.putIfAbsent(binaerName(u.klasse()), u));
         List<Schnittstelle> l = new ArrayList<>();
         for (JsonNode k : kataloge) {
-            String modul = k.path("modul").asString();
+            String modul = k.path(FELD_MODUL).asString();
             for (JsonNode s : k.path("schnittstellen")) {
                 l.add(schnittstelle(modul, s, nachKlasse));
             }
@@ -271,7 +273,7 @@ public class SchnittstellenKatalog {
             Class<?> k = kontext.getType(bean);
             k = k == null ? null : org.springframework.util.ClassUtils.getUserClass(k);
             if (k != null) {
-                u.add(new Umsetzer(bean, k.getName(), modul(k), beschreibungen.get(k.getName())));
+                u.add(new Umsetzer(bean, k.getName(), modulVon(k), beschreibungen.get(k.getName())));
             }
         }
         u.sort(Comparator.comparing(Umsetzer::bean));
@@ -296,7 +298,7 @@ public class SchnittstellenKatalog {
     }
 
     /** @return Jar-Name ohne Version, z. B. {@code plaintext-z-fotos}, oder {@code ?} */
-    public static String modul(Class<?> k) {
+    public static String modulVon(Class<?> k) {
         try {
             CodeSource cs = k.getProtectionDomain().getCodeSource();
             URL u = cs == null ? null : cs.getLocation();
