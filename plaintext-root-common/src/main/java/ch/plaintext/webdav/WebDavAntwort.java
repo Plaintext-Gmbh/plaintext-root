@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.webdav;
 
+import ch.plaintext.arch.StabileApi;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -28,6 +29,7 @@ import java.util.List;
  * <p>Der Parser lässt keine DOCTYPE-Deklaration zu und löst keine externen Entitäten auf (XXE):
  * die Antwort kommt von einem Server, den der Benutzer selbst eingetragen hat.</p>
  */
+@StabileApi("PROPFIND-Parser fuer Fremd-Repos, z.B. die Fotoablage in app (plaintext-z-fotos, Karte 1565)")
 public final class WebDavAntwort {
 
     /**
