@@ -592,6 +592,21 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- Karte 1548: Jede IT-Klasse bekommt ueber EmbeddedPg.registrieren ihre eigene
+                             Datenbank und damit ihren eigenen Spring-Kontext samt Hikari-Pool (10
+                             Verbindungen). Spring haelt bis zu 32 Kontexte im Cache und schliesst sie
+                             erst am Ende der JVM, die Pools bleiben also offen. Der Postgres-Service in
+                             .woodpecker/playwright.yml hat die Vorgabe max_connections=100: mit 11
+                             IT-Klassen ging das knapp auf, mit der zwoelften (UiGrundlagePlaywrightIT)
+                             fiel die letzte mit "FATAL: sorry, too many clients already" (Pipeline 651).
+                             Cache-Groesse 1: der vorige Kontext wird beim Laden des naechsten
+                             geschlossen und gibt seine Verbindungen frei. Die ITs teilen keinen
+                             Kontext (jede hat ihre eigene DB), es geht also kein Caching verloren. -->
+                        <spring.test.context.cache.maxSize>1</spring.test.context.cache.maxSize>
+                    </systemPropertyVariables>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
