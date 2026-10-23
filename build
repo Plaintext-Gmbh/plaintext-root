@@ -136,6 +136,131 @@ mirror_to_plaintext_mvn() {
     return 0
 }
 
+# ── Nachlieferung eines halben Releases (Karte 1563) ─────────
+#
+# WARUM
+# `./build release` laedt die Module nacheinander hoch. Bleibt EIN Upload nach
+# maven.pkg.github.com ohne Antwort (22.10.2026, Laeufe 634 und 641: je 46 min,
+# dann "Read timed out"), stirbt der Reactor mittendrin: beide Paket-Repos halten
+# dann ungefaehr die Haelfte, der SNAPSHOT-Commit fehlt, master bleibt auf dem
+# Release-Commit stehen. Ein Retry des Resolvers hilft dagegen nicht (er
+# wiederholt kein Lese-Timeout), ein Retry je Modul auch nicht (409 fuer alles,
+# was schon oben liegt; Begruendung mit Quellen in scripts/release-nachliefern.sh).
+#
+# WAS HIER PASSIERT, wenn `./build release` rot war und die deploy.yml dieses
+# Kommando aufruft:
+#   1. Vorbedingungen: HEAD traegt den Release-Tag, die POM steht auf derselben
+#      Version, der Tag liegt auf origin (Karte 518: ohne Push wurde nichts
+#      veroeffentlicht, dann gibt es auch nichts nachzuliefern). Sonst Abbruch
+#      ohne Seiteneffekt — der urspruengliche Fehler bleibt der Fehler.
+#   2. Bis zu drei Runden "messen -> nachliefern -> bauen":
+#      scripts/release-nachliefern.sh liefert fuer alle GEBAUTEN Module die
+#      fehlenden Dateien nach (Datei fuer Datei, nie etwas Vorhandenes). Die
+#      UNGEBAUTEN Module (der Reactor war vor ihnen gestorben) bekommen einen
+#      normalen `mvn clean deploy -pl` — derselbe Weg wie im Release-Lauf, mit
+#      beiden Zielen (Profil dual-publish-nas) und denselben Test-Flags.
+#   3. Gegenprobe mit scripts/release-vollstaendig.sh gegen BEIDE Repos.
+#   4. Was do_release nach `mvn deploy` sonst tut: Spiegelung nach plaintext-mvn
+#      und "Prepare next development iteration" — derselbe versions:set, derselbe
+#      Commit-Text, dieselbe Push-Regel (Ablehnung = Warnung, Karte 518).
+#      stage_jar_to_nas entfaellt bewusst: der root-Container ist seit dem
+#      12.08.2026 stillgelegt (Karte 776), das Staging-Jar hat keinen Abnehmer.
+#
+# NIE wird hier eine Versionsnummer gerechnet oder ein Tag gesetzt — das bleibt
+# in tui-build-logic.sh. Dieses Kommando vervollstaendigt nur, was dort schon
+# beansprucht und halb veroeffentlicht wurde.
+release_nachliefern() {
+    local version pom_version runde rc ungebaut module_pl test_flag protokoll
+    local release_flags="-Dmaven.build.cache.enabled=false"
+
+    version="$(git describe --tags --exact-match --match '[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null)"
+    if [ -z "$version" ]; then
+        echo -e "${RED}nachliefern: HEAD traegt keinen Release-Tag — do_release ist VOR dem Veroeffentlichen gescheitert; es gibt nichts nachzuliefern.${NC}"
+        return 1
+    fi
+    pom_version="$(get_pom_version)"
+    if [ "$pom_version" != "$version" ]; then
+        echo -e "${RED}nachliefern: POM-Version '${pom_version}' passt nicht zum Tag ${version} auf HEAD — Zustand unklar, keine Nachlieferung.${NC}"
+        return 1
+    fi
+    if ! git ls-remote --exit-code --tags origin "refs/tags/${version}" >/dev/null 2>&1; then
+        echo -e "${RED}nachliefern: Tag ${version} liegt nicht auf origin — do_release hat nichts veroeffentlicht (Karte 518); nichts nachzuliefern.${NC}"
+        return 1
+    fi
+    case "$(git log -1 --format=%s)" in
+        "Release version ${version}"*) ;;
+        *)
+            echo -e "${RED}nachliefern: HEAD ist nicht der Release-Commit von ${version} — keine Nachlieferung.${NC}"
+            return 1
+            ;;
+    esac
+
+    echo -e "${YELLOW}=== Nachlieferung des halben Releases ${version} (Karte 1563) ===${NC}"
+    test_flag="${MVN_TEST_FLAG:--DskipTests}"
+    protokoll="$(mktemp)"
+    # shellcheck disable=SC2064
+    trap "rm -f '$protokoll'" RETURN
+
+    rc=1
+    for runde in 1 2 3; do
+        echo -e "${BLUE}Runde ${runde}/3: Stand messen, fehlende Dateien gebauter Module nachliefern...${NC}"
+        bash scripts/release-nachliefern.sh "$version" > "$protokoll" 2>&1
+        rc=$?
+        cat "$protokoll"
+        [ "$rc" -eq 0 ] && break
+        [ "$runde" -eq 3 ] && break
+        ungebaut="$(sed -n 's/^NACHLIEFERN_UNGEBAUT=//p' "$protokoll" | tail -1)"
+        if [ -n "$ungebaut" ]; then
+            # shellcheck disable=SC2086
+            module_pl="$(printf ':%s,' $ungebaut)"
+            module_pl="${module_pl%,}"
+            echo -e "${BLUE}Maven: baue und veroeffentliche die ungebauten Module (${test_flag}, cache-frei): ${module_pl}${NC}"
+            # shellcheck disable=SC2086
+            mvn clean deploy -pl "$module_pl" ${test_flag} ${release_flags} -B \
+                || echo -e "${YELLOW}⚠ Deploy der ungebauten Module nicht durchgelaufen — die naechste Runde misst neu.${NC}"
+        else
+            echo -e "${YELLOW}⚠ Nachlieferung meldet rc=${rc} — die naechste Runde misst neu.${NC}"
+        fi
+    done
+    if [ "$rc" -ne 0 ]; then
+        echo -e "${RED}✗ Nachlieferung von ${version} nach ${runde} Runden nicht vollstaendig (zuletzt rc=${rc}). Protokoll oben.${NC}"
+        return 1
+    fi
+
+    # Dieselbe Gegenprobe wie der Schritt `vollstaendigkeit` der deploy.yml, nur
+    # hier schon VOR dem SNAPSHOT-Commit — ein halbes Release darf nicht als
+    # abgeschlossen gelten.
+    echo -e "${BLUE}Gegenprobe: Release ${version} gegen Reposilite und GitHub Packages zaehlen...${NC}"
+    if ! PRUEFE_GITHUB=1 bash scripts/release-vollstaendig.sh "$version"; then
+        echo -e "${RED}✗ Vollstaendigkeitspruefung fuer ${version} bleibt rot — SNAPSHOT-Commit unterbleibt.${NC}"
+        return 1
+    fi
+
+    mirror_to_plaintext_mvn "$version" \
+        || echo -e "${YELLOW}Spiegelung nach plaintext-mvn fehlgeschlagen - Release bleibt gueltig.${NC}"
+
+    # Wortgleich zu do_release_bauen_und_veroeffentlichen (tui-build-logic.sh):
+    # SNAPSHOT auf die GERADE veroeffentlichte Nummer (compute_release_versions),
+    # Commit mit nativem [skip ci], Push-Ablehnung ist eine Warnung (Karte 518).
+    local next_snapshot="${version}-SNAPSHOT"
+    echo -e "${BLUE}Maven: Preparing next SNAPSHOT version ${GREEN}${next_snapshot}${NC}"
+    mvn versions:set -DnewVersion="${next_snapshot}" -DgenerateBackupPoms=false
+    echo -e "${BLUE}Git: Committing next SNAPSHOT version...${NC}"
+    git add pom.xml "*/pom.xml" || true
+    git commit -m "Prepare next development iteration ${next_snapshot} [skip ci]"
+    echo -e "${BLUE}Git: Pushing next SNAPSHOT commit...${NC}"
+    if ! git push; then
+        echo -e "${YELLOW}⚠ Push des SNAPSHOT-Commits abgelehnt — master hat sich inzwischen bewegt."
+        echo -e "  Der Release ${version} ist vollstaendig (Commit, Tag und Artefakte sind"
+        echo -e "  draussen); es fehlt nur die Vorbereitung auf ${next_snapshot}.${NC}"
+        echo -e "${YELLOW}  Nachziehen: git pull --rebase && git push${NC}"
+    fi
+
+    echo -e "${GREEN}=== Release ${version} nachgeliefert und vollstaendig ===${NC}"
+    echo -e "${GREEN}=== Next development version: ${next_snapshot} ===${NC}"
+    return 0
+}
+
 # ── Command execution (digit dispatch) ───────────────────────
 
 execute_command() {
@@ -274,6 +399,11 @@ if [ -n "$COMMAND" ]; then
 
         mirror-mvn)
             mirror_to_plaintext_mvn "$2" || exit 1
+            ;;
+
+        nachliefern)
+            # Nur nach einem roten `./build release` sinnvoll (deploy.yml ruft es so auf).
+            release_nachliefern || exit 1
             ;;
 
         deploy-prod)
