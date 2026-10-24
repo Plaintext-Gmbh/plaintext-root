@@ -87,21 +87,6 @@
         "replacement"
       ],
       "enabled": false
-    },
-    {
-      "description": [
-        "Karte 1507 (12.10.2026): PrimeFaces 16 (Major) bis auf Weiteres nicht vorschlagen.",
-        "WARUM: Die Familie (root/app/guild/schuetu/iot) muss PrimeFaces gemeinsam heben - root liefert Templates und Komponenten, die in jeder App mitlaufen.",
-        "PF 16 entfernt p:separator, baut das Dialog-Markup um, liefert kein -jakarta-Classifier-Jar mehr (schuetu#303: 'Could not find artifact org.primefaces:primefaces:jar:jakarta:16.0.0').",
-        "Die Migration ist ein eigener Schnitt, beginnend in root (Analyse in Karte 1507). Patch/Minor von 15.x laufen weiter."
-      ],
-      "matchPackageNames": [
-        "org.primefaces:primefaces"
-      ],
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "enabled": false
     }
   ]
 }
