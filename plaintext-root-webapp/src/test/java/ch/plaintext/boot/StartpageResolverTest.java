@@ -131,4 +131,24 @@ class StartpageResolverTest {
         org.junit.jupiter.api.Assertions.assertTrue(
                 StartpageResolver.rejectionReason("javascript:alert(1)", SEITEN).contains("kein gueltiger Seitenpfad"));
     }
+
+    @Test
+    void resolve_instanceDefault_onlyWithoutIndividualStartpage() {
+        // Card 1517: iot shell sets plaintext.security.startseite=auszahlungen.html (stands for shelly.html).
+        List<SimpleGrantedAuthority> ohne = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        assertEquals("auszahlungen.html", StartpageResolver.resolve(ohne, SEITEN, "auszahlungen.html"));
+        // an individual start page still wins
+        assertEquals("index.html", StartpageResolver.resolve(List.of(
+                new SimpleGrantedAuthority("PROPERTY_STARTPAGE_index.html")), SEITEN, "auszahlungen.html"));
+        // without instance value: as before
+        assertEquals("index.html", StartpageResolver.resolve(ohne, SEITEN, null));
+    }
+
+    @Test
+    void resolve_instanceDefault_invalidOrMissing_fallsBackToIndex() {
+        List<SimpleGrantedAuthority> ohne = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        assertEquals("index.html", StartpageResolver.resolve(ohne, SEITEN, "shelly.html"));
+        assertEquals("index.html", StartpageResolver.resolve(ohne, SEITEN, "//evil.example/x.html"));
+        assertEquals("index.html", StartpageResolver.resolve(ohne, SEITEN, "https://evil.example/"));
+    }
 }

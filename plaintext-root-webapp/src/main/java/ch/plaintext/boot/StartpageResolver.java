@@ -84,8 +84,36 @@ public final class StartpageResolver {
      */
     public static String resolve(Collection<? extends GrantedAuthority> authorities,
                                  Predicate<String> pageExists) {
+        return resolve(authorities, pageExists, DEFAULT_PAGE);
+    }
+
+    /**
+     * Like {@link #resolve(Collection, ServletContext)}, but a user without an individual start page
+     * gets the start page of this instance ({@code plaintext.security.startseite}, card 1517). The
+     * instance value is checked the same way (valid path, page exists), otherwise {@link #DEFAULT_PAGE}.
+     *
+     * @param authorities the granted authorities of the user (may be {@code null})
+     * @param servletContext the servlet context to look the view up in; {@code null} = form check only
+     * @param instanceDefault the start page of this instance (may be {@code null})
+     * @return a valid, existing relative page path, otherwise {@link #DEFAULT_PAGE}
+     */
+    public static String resolve(Collection<? extends GrantedAuthority> authorities,
+                                 ServletContext servletContext, String instanceDefault) {
+        return resolve(authorities, existsIn(servletContext), instanceDefault);
+    }
+
+    /**
+     * Core of {@link #resolve(Collection, ServletContext, String)} with an explicit existence check.
+     *
+     * @param authorities the granted authorities of the user (may be {@code null})
+     * @param pageExists answers whether a (form-valid) page path exists
+     * @param instanceDefault the start page of this instance (may be {@code null})
+     * @return a valid, existing relative page path, otherwise {@link #DEFAULT_PAGE}
+     */
+    public static String resolve(Collection<? extends GrantedAuthority> authorities,
+                                 Predicate<String> pageExists, String instanceDefault) {
         String configured = configured(authorities);
-        String page = safe(configured);
+        String page = safe(configured == null ? instanceDefault : configured);
         if (!DEFAULT_PAGE.equals(page) && !pageExists.test(page)) {
             log.warn("Startseite '{}' existiert nicht — Umleitung auf {} (Karte 1331)", page, DEFAULT_PAGE);
             return DEFAULT_PAGE;
@@ -154,8 +182,9 @@ public final class StartpageResolver {
         };
     }
 
+    /** The individual start page of the user, {@code null} if none is configured. */
     private static String configured(Collection<? extends GrantedAuthority> authorities) {
-        String page = DEFAULT_PAGE;
+        String page = null;
         if (authorities != null) {
             for (GrantedAuthority authority : authorities) {
                 String authStr = authority.getAuthority();
