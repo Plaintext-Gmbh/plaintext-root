@@ -42,9 +42,13 @@
                                    message="#{i18n.t('Rollenzuteilung wirklich löschen?')}"
                                    icon="pi pi-exclamation-triangle"/>
                     </p:commandButton>
+                    <p:selectBooleanCheckbox value="#{rollenzuteilungBackingBean.verwaisteAusblenden}"
+                                             itemLabel="#{i18n.t('Verwaiste ausblenden')} (#{rollenzuteilungBackingBean.anzahlVerwaist})">
+                        <p:ajax update="tbl"/>
+                    </p:selectBooleanCheckbox>
                 </div>
 
-                <p:dataTable id="tbl" var="obj" value="#{rollenzuteilungBackingBean.rollenzuteilungen}"
+                <p:dataTable id="tbl" var="obj" value="#{rollenzuteilungBackingBean.angezeigteRollenzuteilungen}"
                              selectionMode="single" selection="#{rollenzuteilungBackingBean.selected}"
                              rowKey="#{obj.id}" emptyMessage="-" paginator="true" rows="20">
 
@@ -57,6 +61,9 @@
 
                     <p:column headerText="#{i18n.t('Rolle')}" sortBy="#{obj.roleName}">
                         <h:outputText value="#{obj.roleName}"/>
+                        <h:outputText value="#{i18n.t('Modul nicht geladen')}: #{rollenzuteilungBackingBean.verwaistGrund(obj)}"
+                                      styleClass="pt-chip pt-chip-warnung"
+                                      rendered="#{rollenzuteilungBackingBean.verwaistGrund(obj) != null}"/>
                     </p:column>
 
                     <p:column headerText="Mandat" sortBy="#{obj.mandat}">

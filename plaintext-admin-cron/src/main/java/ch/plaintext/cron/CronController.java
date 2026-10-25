@@ -51,10 +51,36 @@ public class CronController implements Serializable {
 
     private Map<String, String> cronsId = new HashMap<>();
 
+    /**
+     * Rows in {@code cron_config} whose cron name no loaded {@link SuperCron} carries (card 1521): the
+     * module was switched off, the job renamed or removed. They are never scheduled, because
+     * scheduling starts from the beans, not from the rows; the view only shows them.
+     */
+    @Getter
+    private List<CronConfigEntity> verwaiste = List.of();
+
     @EventListener(ApplicationReadyEvent.class)
     void init() {
         cronsMap = createCronsMap();
+        verwaiste = findeVerwaiste();
         scheduleTheMap();
+    }
+
+    private List<CronConfigEntity> findeVerwaiste() {
+        Set<String> geladen = new HashSet<>();
+        for (PlaintextCron cron : crons) {
+            if (cron instanceof SuperCron superCron) {
+                geladen.add(superCron.getName());
+            }
+        }
+        List<CronConfigEntity> ret = cronConfigStore.findAll().stream()
+                .filter(cfg -> !geladen.contains(cfg.getCronName()))
+                .toList();
+        if (!ret.isEmpty()) {
+            log.info("{} cron_config-Zeilen ohne geladene Cron-Klasse (Modul nicht geladen?), werden nicht "
+                    + "geplant: {}", ret.size(), ret.stream().map(CronConfigEntity::getCronName).distinct().toList());
+        }
+        return ret;
     }
 
     private Map<String, List<CronConfigEntity>> createCronsMap() {

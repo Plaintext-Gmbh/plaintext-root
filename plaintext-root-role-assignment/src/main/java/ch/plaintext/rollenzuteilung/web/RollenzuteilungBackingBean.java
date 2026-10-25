@@ -21,7 +21,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.TreeSet;
 
 /**
@@ -71,7 +74,14 @@ public class RollenzuteilungBackingBean implements Serializable {
     @Autowired(required = false)
     private transient PlaintextRoleRegistry roleRegistry;
 
+    /** Card 1521: detects roles of modules that are not loaded; optional like the registry. */
+    @Autowired(required = false)
+    private transient VerwaisteRollen verwaisteRollen;
+
     private List<Rollenzuteilung> rollenzuteilungen;
+    /** Role name -> module key / menu id that is not loaded. */
+    private Map<String, String> verwaist = new HashMap<>();
+    private boolean verwaisteAusblenden = true;
     private Rollenzuteilung selected;
     private boolean admin;
 
@@ -100,10 +110,31 @@ public class RollenzuteilungBackingBean implements Serializable {
     private void loadData() {
         try {
             rollenzuteilungen = service.getAllRollenzuteilungenForCurrentUser();
+            verwaist = verwaisteRollen == null ? new HashMap<>()
+                    : new HashMap<>(verwaisteRollen.gruende(rollenzuteilungen.stream()
+                            .map(Rollenzuteilung::getRoleName).filter(Objects::nonNull).distinct().toList()));
         } catch (Exception e) {
             log.error("Error loading rollenzuteilungen", e);
             addMessage(FacesMessage.SEVERITY_ERROR, "Fehler", "Daten konnten nicht geladen werden");
         }
+    }
+
+    /** What the table shows: without the orphans unless they are asked for. */
+    public List<Rollenzuteilung> getAngezeigteRollenzuteilungen() {
+        if (rollenzuteilungen == null || !verwaisteAusblenden) {
+            return rollenzuteilungen;
+        }
+        return rollenzuteilungen.stream().filter(r -> !verwaist.containsKey(r.getRoleName())).toList();
+    }
+
+    /** @return the module key / menu id that is not loaded, or {@code null} */
+    public String verwaistGrund(Rollenzuteilung r) {
+        return r == null ? null : verwaist.get(r.getRoleName());
+    }
+
+    public int getAnzahlVerwaist() {
+        return rollenzuteilungen == null ? 0
+                : (int) rollenzuteilungen.stream().filter(r -> verwaist.containsKey(r.getRoleName())).count();
     }
 
     public void select() {

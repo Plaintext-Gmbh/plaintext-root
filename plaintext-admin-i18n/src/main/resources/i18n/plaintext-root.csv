@@ -1034,3 +1034,13 @@ Claude API;it;API Claude
 Styleguide;en;Style guide
 Styleguide;fr;Guide de style
 Styleguide;it;Guida di stile
+# Karte 1521: verwaiste Eintraege nicht geladener Module (Cron-Verwaltung, Rollenzuteilung).
+Verwaiste ausblenden;en;Hide orphaned
+Verwaiste ausblenden;fr;Masquer les orphelins
+Verwaiste ausblenden;it;Nascondi orfani
+Modul nicht geladen;en;Module not loaded
+Modul nicht geladen;fr;Module non chargé
+Modul nicht geladen;it;Modulo non caricato
+Cron-Klasse nicht geladen, wird nicht gestartet;en;Cron class not loaded, will not be started
+Cron-Klasse nicht geladen, wird nicht gestartet;fr;Classe cron non chargée, ne sera pas démarrée
+Cron-Klasse nicht geladen, wird nicht gestartet;it;Classe cron non caricata, non verrà avviata
