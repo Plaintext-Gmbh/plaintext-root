@@ -42,4 +42,20 @@ class SecurityProviderReihenfolgeTest {
                             .isTrue();
                 });
     }
+
+    /**
+     * Karte 1586: Die Apps scannen {@code ch.plaintext} selbst ({@code @ComponentScan}). Dann sind beide Klassen
+     * gewöhnliche Konfigurationen, {@code @AutoConfigureBefore} wirkt nicht, und der Scan bestimmt die Reihenfolge.
+     * Mit dem Menü zuerst gewann auf allen vier PROD-Apps seit 13.10.2026 der Default: jeder sah jedes Menü und
+     * jede Seite ohne eigene URL-Regel. Der Default darf deshalb gar nicht entstehen, wenn Spring Security da ist.
+     */
+    @Test
+    void auchBeimKomponentenScanMitDemMenueZuerstGewinntDerEchteProvider() {
+        new WebApplicationContextRunner()
+                .withUserConfiguration(MenuAutoConfiguration.class, WebAutoConfiguration.class)
+                .run(context -> {
+                    assertThat(context).hasSingleBean(SecurityProvider.class);
+                    assertThat(context.getBean(SecurityProvider.class)).isInstanceOf(SpringSecurityProvider.class);
+                });
+    }
 }
