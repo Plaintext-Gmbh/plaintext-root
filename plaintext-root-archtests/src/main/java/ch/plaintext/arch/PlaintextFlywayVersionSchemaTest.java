@@ -124,6 +124,9 @@ class PlaintextFlywayVersionSchemaTest {
             "plaintext-root-webapp/src/main/resources/db/migration/V827340596__add_version_to_simple_storable_entity.sql",
             "plaintext-schuetu-webapp/src/main/resources/db/migration/V828995873__add_schiri_login_fields.sql",
             "plaintext-schuetu-webapp/src/main/resources/db/migration/V829770587__add_mqtt_fields_and_consumed_messages.sql",
+            // Karte 1518: dieselben zwei Dateien, per git mv in das Modul plaintext-schuetu-basis verschoben (Laufzeit-Module).
+            "plaintext-schuetu-basis/src/main/resources/db/migration/V828995873__add_schiri_login_fields.sql",
+            "plaintext-schuetu-basis/src/main/resources/db/migration/V829770587__add_mqtt_fields_and_consumed_messages.sql",
             "plaintext-z-bielerlauftage/src/main/resources/db/migration/V833356941__create_bieler_tables.sql",
             "plaintext-z-bielerlauftage/src/main/resources/db/migration/V833396356__bieler_tracking_toggle.sql",
             "plaintext-z-bielerlauftage/src/main/resources/db/migration/V833399566__bieler_rennen_bibliothek.sql",
