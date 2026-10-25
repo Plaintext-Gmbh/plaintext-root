@@ -65,6 +65,11 @@ public class CronBackingBean implements Serializable {
 
     private CronConfigEntity selected;
 
+    /** Card 1521: rows of crons that are not loaded stay hidden unless asked for. */
+    @Getter
+    @Setter
+    private boolean verwaisteAusblenden = true;
+
     @PostConstruct
     public void init() {
         refreshCrons();
@@ -88,6 +93,19 @@ public class CronBackingBean implements Serializable {
                 crons.addAll(list);
             }
         }
+    }
+
+    /**
+     * Rows without a loaded cron class, read only: root sees all tenants, everyone else their own.
+     * There is deliberately no action on them; {@link #findCron(String, String)} never finds them.
+     */
+    public List<CronConfigEntity> getVerwaiste() {
+        List<CronConfigEntity> alle = cronController.getVerwaiste();
+        if (plaintextSecurity.ifGranted("root")) {
+            return alle;
+        }
+        String mandat = plaintextSecurity.getMandat();
+        return alle.stream().filter(c -> mandat != null && mandat.equals(c.getMandat())).toList();
     }
 
     public void select(String name, String mandat) {

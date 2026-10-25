@@ -179,6 +179,31 @@
 
             </p:dataTable>
 
+            <h:panelGroup id="verwaist" layout="block" styleClass="pt-stapel">
+                <p:selectBooleanCheckbox value="#{cronBackingBean.verwaisteAusblenden}"
+                                         itemLabel="#{i18n.t('Verwaiste ausblenden')} (#{cronBackingBean.verwaiste.size()})">
+                    <p:ajax update="@form:verwaist"/>
+                </p:selectBooleanCheckbox>
+                <p:dataTable id="tblVerwaist" emptyMessage="-" var="w" value="#{cronBackingBean.verwaiste}"
+                             rendered="#{!cronBackingBean.verwaisteAusblenden}">
+                    <p:column headerText="Name">
+                        <h:outputText value="#{w.cronName}"/>
+                    </p:column>
+                    <p:column headerText="Mandant" rendered="#{cronBackingBean.isRoot()}">
+                        <h:outputText value="#{w.mandat}"/>
+                    </p:column>
+                    <p:column headerText="#{i18n.t('Ausführung')}">
+                        <h:outputText value="#{w.cronExpression}"/>
+                    </p:column>
+                    <p:column headerText="Enabled">
+                        <h:outputText value="#{w.enabled}"/>
+                    </p:column>
+                    <p:column headerText="#{i18n.t('Hinweis')}">
+                        <h:outputText value="#{i18n.t('Cron-Klasse nicht geladen, wird nicht gestartet')}"/>
+                    </p:column>
+                </p:dataTable>
+            </h:panelGroup>
+
 
             <p:dialog styleClass="mobile-safe" header="#{i18n.t('Ausführungszeit anpassen')}"
                       id="bem"
