@@ -93,7 +93,7 @@
         <jakarta.enterprise.cdi-api.version>4.1.0</jakarta.enterprise.cdi-api.version>
         <bcprov-jdk18on.version>1.86</bcprov-jdk18on.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
+        <springdoc-openapi.version>3.2.0</springdoc-openapi.version>
 
         <!-- Reporting -->
 
@@ -123,7 +123,7 @@
           den NVD zusaetzlich an spring_framework/spring_boot haengt (dependency-check meldet ihn
           nicht). Betrifft spring-core UND spring-web, beide erben aus dieser Property.
         -->
-        <spring-framework.version>7.0.9</spring-framework.version>
+        <spring-framework.version>7.0.10</spring-framework.version>
         <!--
           spring-security (Karte 1136): Boot 4.1.0 pinnt 7.1.0. Darin CVE-2026-59270 (CVSS 9.1,
           der eingebettete UnboundID-LDAP-Server registriert unbedingt eine Admin-Credential und
@@ -133,7 +133,7 @@
           Eichung `cpe:2.3:a:vmware:spring_security:<v>`: 7.1.0 = 7 CVEs, 7.1.1 = null.
           Betrifft spring-security-core, -web UND -oauth2-core.
         -->
-        <spring-security.version>7.1.1</spring-security.version>
+        <spring-security.version>7.1.2</spring-security.version>
         <!-- Jackson 3: Boot 4.1.0 pinnt bereits 3.1.4 (CVE-2026-54512 gefixt); explizit als Sicherheitsnetz. -->
         <jackson-bom.version>3.2.4</jackson-bom.version>
         <!--
@@ -147,7 +147,7 @@
           Beide Linien laufen NEBENEINANDER im Fat-Jar (jackson-databind-2.21.6 UND -3.1.4);
           verschwindet eine davon nach der Aenderung, ist mehr passiert als beabsichtigt.
         -->
-        <jackson-2-bom.version>2.22.3</jackson-2-bom.version>
+        <jackson-2-bom.version>2.22.4</jackson-2-bom.version>
         <!-- httpcore5: Boot 4.1.0 pinnt erst 5.4.2 -> hochziehen (CVE-2026-54399/54428). -->
         <httpcore5.version>5.4.4</httpcore5.version>
         <!--
@@ -156,7 +156,7 @@
           Geeicht statt geraten: NVD-CPE-Abfrage meldet fuer 5.6.1 zwei Treffer, fuer 5.6.4 null;
           5.7-alpha1 scheidet als Vorabversion aus. Karte 926.
         -->
-        <httpclient5.version>5.6.4</httpclient5.version>
+        <httpclient5.version>5.6.5</httpclient5.version>
         <!--
           Tomcat: Boot 4.1.0 pinnt 11.0.22 — darin stecken 8 CVEs (hoechste CVSS 9.1:
           CVE-2026-53434/55276/59083/59084), alle ab 11.0.23 behoben. Boot 4.1.0 ist die
@@ -175,7 +175,7 @@
           pgjdbc: Boot 4.1.0 pinnt 42.7.11 — darin CVE-2026-54291 (CVSS 5.9, channelBinding=require
           faellt still von SCRAM-SHA-256-PLUS auf plain zurueck), behoben ab 42.7.12.
         -->
-        <postgresql.version>42.7.13</postgresql.version>
+        <postgresql.version>42.7.14</postgresql.version>
         <!--
           swagger-ui: springdoc 3.0.3 zieht 5.32.2, darin gebuendelt DOMPurify 3.3.2 mit
           CVE-2026-65898 (CVSS 7.2) und 12 weiteren DOMPurify-CVEs. Ab swagger-ui 5.32.11
