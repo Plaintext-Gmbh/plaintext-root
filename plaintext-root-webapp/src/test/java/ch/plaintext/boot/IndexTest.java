@@ -53,6 +53,10 @@ class IndexTest {
         lenient().when(request.getServletContext()).thenReturn(servletContext);
     }
 
+    @org.mockito.Spy
+    private ch.plaintext.boot.plugins.security.PlaintextSecurityProperties securityProperties =
+            new ch.plaintext.boot.plugins.security.PlaintextSecurityProperties();
+
     @InjectMocks
     private Index index;
 
@@ -119,5 +123,27 @@ class IndexTest {
         index.getIndex(request, response);
 
         verify(response).sendRedirect(startseite);
+    }
+
+    /** Card 1517: without an individual start page the instance start page applies (iot: shelly.html). */
+    @Test
+    void getIndex_instanceStartpage_appliesWithoutIndividualOne() throws IOException {
+        securityProperties.setStartseite("shelly.html");
+        setupAuthentication(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+
+        index.getIndex(request, response);
+
+        verify(response).sendRedirect("shelly.html");
+    }
+
+    /** Card 1517: an instance start page that does not exist must not loop, as in card 1331. */
+    @Test
+    void getIndex_instanceStartpageMissing_fallsBackToIndex() throws IOException {
+        securityProperties.setStartseite("gibtesnicht.html");
+        setupAuthentication(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+
+        index.getIndex(request, response);
+
+        verify(response).sendRedirect("index.html");
     }
 }

@@ -14,7 +14,10 @@ import java.io.IOException;
 
 @org.springframework.web.bind.annotation.RestController
 @Slf4j
+@lombok.RequiredArgsConstructor
 public class Index {
+
+    private final ch.plaintext.boot.plugins.security.PlaintextSecurityProperties securityProperties;
 
     @GetMapping("/")
     public void getIndex(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -23,7 +26,7 @@ public class Index {
         // non-existing startpage value (card 1331: "Index.html" looped / -> /Index.html -> /).
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String redirect = StartpageResolver.resolve(auth == null ? null : auth.getAuthorities(),
-                request.getServletContext());
+                request.getServletContext(), securityProperties.getStartseite());
         response.sendRedirect(redirect);
     }
 }

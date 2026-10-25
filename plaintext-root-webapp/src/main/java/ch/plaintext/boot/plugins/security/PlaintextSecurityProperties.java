@@ -3,6 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.plugins.security;
 
+import ch.plaintext.boot.StartpageResolver;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -89,6 +90,13 @@ public class PlaintextSecurityProperties {
      * claim. Already linked accounts and auto-create are not affected.
      */
     private boolean oidcRequireVerifiedEmail = true;
+
+    /**
+     * Card 1517: start page of this instance for users without an individual start page (e.g. iot:
+     * {@code shelly.html}). Checked like an individual one (valid path, page exists), otherwise
+     * {@code index.html}.
+     */
+    private String startseite = StartpageResolver.DEFAULT_PAGE;
 
     /**
      * TOTP / two-factor authentication (only for local password users).
