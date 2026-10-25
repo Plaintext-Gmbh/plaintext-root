@@ -5,6 +5,7 @@ package ch.plaintext.boot.menu;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -18,8 +19,14 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 public class MenuAutoConfiguration {
 
+    /**
+     * Permissive Ersatz nur fuer Apps OHNE Spring Security. Karte 1586: Scannen die Apps {@code ch.plaintext}
+     * selbst, wirkt {@code @AutoConfigureBefore} nicht, und dieser Default gewann je nach Scan-Reihenfolge gegen
+     * den {@code SpringSecurityProvider} — jeder sah jedes Menue und jede Seite ohne eigene URL-Regel.
+     */
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnMissingClass("org.springframework.security.core.context.SecurityContextHolder")
     public SecurityProvider defaultSecurityProvider() {
         log.info("Using default SecurityProvider (no security)");
         return new SecurityProvider() {
