@@ -154,9 +154,10 @@ class PlaintextModulgrenzenTest {
     void keinFachmodulGreiftInEinAnderes() {
         Map<String, String> modulJeKlasse = modulJeKlasse(KLASSEN);
         Set<String> module = new TreeSet<>(modulJeKlasse.values());
-        assertTrue(KLASSEN.size() >= MINDESTENS_KLASSEN && module.size() >= MINDESTENS_MODULE,
+        int mindestensKlassen = ReactorLayout.mindestens(MINDESTENS_KLASSEN);
+        assertTrue(KLASSEN.size() >= mindestensKlassen && module.size() >= MINDESTENS_MODULE,
                 () -> "Der Modulgrenzen-Scan sieht nur " + KLASSEN.size() + " Klassen in " + module.size()
-                        + " Modulen (" + module + "), festgehalten sind mindestens " + MINDESTENS_KLASSEN
+                        + " Modulen (" + module + "), festgehalten sind mindestens " + mindestensKlassen
                         + " / " + MINDESTENS_MODULE + ". Eine Grenzregel, die nichts sieht, meldet 'keine "
                         + "Grenze verletzt' — zuerst 'mvn verify' ueber den Reactor laufen lassen.");
 

@@ -51,6 +51,15 @@ exhaustive.
   `plaintext-admin-requirements`. Both now count days in the JVM default zone, as Draw.io and Diashow links do.
 
 ### Added
+- **`plaintext-root-archtests` run in a module repository** (Karte 1604). A repository of a few modules without a
+  webapp (template `plaintext-modul-vorlage`) sets `-Dplaintext.archtests.modul-repo=true` in Surefire
+  `<systemPropertyVariables>`. Then the lower bounds measured on the six app reactors become "at least one", the two
+  empty-should ArchUnit rules (raw `@Scheduled`, cron prototype) accept an empty set, and the four classes that need
+  a whole application (`MethodSecurityEnabledTest`, `SecurityAllowlistGuardTest`, `PageGuardZuordnungTest`,
+  `PlaintextRootTemplateDriftTest`, now `@Tag("nur-app")`) skip themselves with a reason. Measured in the template:
+  before 22 of 35 classes red, after 0 red, 4 skipped. Without the switch nothing changes; in a reactor that ships a
+  `src/main/resources/application.yml` the switch is red instead of active, so an app cannot lower its own bounds.
+  `McpToolParamVertragTest` no longer asks for `@McpToolParam` when no tool has a parameter at all.
 - **UI 2 foundation** (Karte 1548, the five UI principles decided on 15.10.2026). All additive; existing pages look
   the same after the bump. New file `plaintext-layout/css/layout.css`, loaded by the template after
   `layout-light/dark.css`: tokens for four colour roles (`--pt-flaeche*`, `--pt-text*`, `--pt-akzent*`,

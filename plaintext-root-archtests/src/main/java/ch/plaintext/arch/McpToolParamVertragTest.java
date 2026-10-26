@@ -164,7 +164,9 @@ class McpToolParamVertragTest {
         long mitParametern = werkzeuge.stream()
                 .filter(m -> Arrays.stream(m.getParameters()).anyMatch(p -> paramAnnotation(p) != null))
                 .count();
-        assertTrue(werkzeuge.isEmpty() || mitParametern > 0,
+        // Karte 1604: ein Modul, dessen Werkzeuge gar keine Parameter haben, hat keine Annotation zu verlieren.
+        boolean ohneParameter = werkzeuge.stream().allMatch(m -> m.getParameterCount() == 0);
+        assertTrue(werkzeuge.isEmpty() || mitParametern > 0 || ohneParameter,
                 "Kein einziges der " + werkzeuge.size() + " Werkzeuge hat @McpToolParam-Parameter — die "
                         + "Annotationen kommen offenbar nicht bis zur Laufzeit durch (RetentionPolicy?).");
 

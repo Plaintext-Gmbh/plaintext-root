@@ -75,7 +75,7 @@ class PlaintextVertragsortTest {
     @Test
     @DisplayName("Ein Interface, das nur ein anderes Modul umsetzt, liegt im -api-Modul dieses Anbieters")
     void vertragLiegtBeimAnbieter() {
-        assertTrue(KLASSEN.size() >= 40,
+        assertTrue(KLASSEN.size() >= ReactorLayout.mindestens(40),
                 () -> "Der Vertragsort-Scan sieht nur " + KLASSEN.size() + " Klassen — zuerst 'mvn verify' ueber den Reactor.");
         ArchAllowlist allowlist = ArchAllowlist.fuer(REGEL);
         List<String> verstoesse = new ArrayList<>(allowlist.fehler());

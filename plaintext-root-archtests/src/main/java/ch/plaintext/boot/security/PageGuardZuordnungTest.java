@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.boot.security;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import ch.plaintext.MenuRegistry;
 import ch.plaintext.arch.ReactorLayout;
 import ch.plaintext.boot.menu.MenuAnnotation;
@@ -36,6 +38,7 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -92,7 +95,14 @@ import static org.junit.jupiter.api.Assertions.fail;
  *       kein Repo eine.</li>
  * </ul>
   */
+@Tag(ReactorLayout.NUR_APP)
 class PageGuardZuordnungTest {
+
+    /** Karte 1604: nur in einer App sinnvoll; in einem Modul-Repo uebersprungen, mit Grund. */
+    @BeforeEach
+    void nurInEinerApp() {
+        assumeFalse(ReactorLayout.modulRepo(), "Modul-Repo: prueft die Zugriffsregeln aus der application.yml einer Anwendung; die Regeln eines Moduls stehen in der Instanz.");
+    }
 
     /** Dieselbe Suche wie im {@code PageAccessGuardStartupReport}. */
     private static final String VIEW_MUSTER = "classpath*:META-INF/resources/**/*.xhtml";

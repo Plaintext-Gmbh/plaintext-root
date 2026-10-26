@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.arch;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.YamlProcessor;
@@ -27,6 +29,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -84,7 +87,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author info@plaintext.ch
  * @since 2026
  */
+@Tag(ReactorLayout.NUR_APP)
 class SecurityAllowlistGuardTest {
+
+    /** Karte 1604: nur in einer App sinnvoll; in einem Modul-Repo uebersprungen, mit Grund. */
+    @BeforeEach
+    void nurInEinerApp() {
+        assumeFalse(ReactorLayout.modulRepo(), "Modul-Repo: prueft die Allowlists der application.yml einer Anwendung; ein Modul liefert keine aus.");
+    }
 
     static final String DATEINAME = "plaintext-security-allowlist.txt";
 

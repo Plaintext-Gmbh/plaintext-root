@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.arch;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -87,7 +90,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author info@plaintext.ch
  * @since 2026
  */
+@Tag(ReactorLayout.NUR_APP)
 class PlaintextRootTemplateDriftTest {
+
+    /** Karte 1604: nur in einer App sinnvoll; in einem Modul-Repo uebersprungen, mit Grund. */
+    @BeforeEach
+    void nurInEinerApp() {
+        assumeFalse(ReactorLayout.modulRepo(), "Modul-Repo: prueft Kopien der plaintext-root-template-Dateien in einer Anwendung; ein Modul fuehrt keine.");
+    }
 
     private static final String RESOURCES_SUFFIX = "src/main/resources";
 
