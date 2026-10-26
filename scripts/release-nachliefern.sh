@@ -51,6 +51,13 @@
 #  AUFRUF
 #  ------
 #    scripts/release-nachliefern.sh <version>
+#    scripts/release-nachliefern.sh --runden <version>
+#        bis zu drei Runden "messen -> nachliefern -> ungebaute Module per
+#        `mvn clean deploy -pl` bauen", danach die Gegenprobe
+#        `PRUEFE_GITHUB=1 release-vollstaendig.sh` gegen BEIDE Repos. Exit 0 nur,
+#        wenn die Gegenprobe gruen ist. So rufen es `./build nachliefern` (v1) und
+#        v2/release.sh (plaintext-root-v2) auf. Der Arbeitsbaum muss dafuer auf der
+#        Release-Version stehen (POM = <version>), weil `-pl` aus ihm baut.
 #
 #  Exit 0  alle gebauten Module liegen vollstaendig in allen Zielen, und es gibt
 #          keine ungebauten Module
@@ -71,10 +78,59 @@
 #                      Exit 0 (ein uebersprungenes Ziel ist nicht vollstaendig).
 #    CURL_MAX_TIME     Standard 600 (Sekunden je PUT; ein haengender Upload
 #                      kostet so hoechstens 10 Minuten, nicht 46)
+#    TAG_PRAEFIX       Standard leer; "v2-" -> Tag v2-<version> (plaintext-root-v2)
+#    MVN_TEST_FLAG     nur --runden: Test-Flags fuer `mvn -pl`, Standard -DskipTests
 #
-#  Die Modulliste kommt wie in release-vollstaendig.sh aus der pom.xml des Tags.
+#  Die Modulliste kommt wie in release-vollstaendig.sh aus der pom.xml des Tags,
+#  die groupId (und damit der Pfad, z.B. ch/plaintext/v2) aus derselben pom.xml.
+#
+#  TOKENS (Karte 1596): nie in der Kommandozeile (`ps` zeigt sie jedem Prozess).
+#  curl bekommt sie per --config aus einer Datei in /dev/shm (Fallback: mktemp),
+#  Verzeichnis 0700, Dateien 0600; beim Ende geschreddert.
 # ══════════════════════════════════════════════════════════════════════════════
 set -uo pipefail
+
+TAG_PRAEFIX="${TAG_PRAEFIX:-}"
+
+# ── Modus --runden: Nachlieferung + Bau der ungebauten Module + Gegenprobe ────
+# (bis 26.10.2026 als release_nachliefern in ./build; dorthin gehoert nur, was
+# v1-eigen ist: Release-Commit, Spiegel nach plaintext-mvn, SNAPSHOT-Commit)
+if [ "${1:-}" = "--runden" ]; then
+  VERSION="${2:-}"
+  SELBST="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+  cd "$(dirname "$SELBST")/.." || exit 2
+  protokoll="$(mktemp)"
+  trap 'rm -f "$protokoll"' EXIT
+  rc=1
+  for runde in 1 2 3; do
+    echo "Runde $runde/3: Stand messen, fehlende Dateien gebauter Module nachliefern..."
+    bash "$SELBST" "$VERSION" > "$protokoll" 2>&1
+    rc=$?
+    cat "$protokoll"
+    [ "$rc" -eq 2 ] && exit 2
+    [ "$rc" -eq 0 ] && break
+    [ "$runde" -eq 3 ] && break
+    ungebaut="$(sed -n 's/^NACHLIEFERN_UNGEBAUT=//p' "$protokoll" | tail -1)"
+    if [ -n "$ungebaut" ]; then
+      # shellcheck disable=SC2086
+      module_pl="$(printf ':%s,' $ungebaut)"; module_pl="${module_pl%,}"
+      echo "Maven: baue und veroeffentliche die ungebauten Module (${MVN_TEST_FLAG:--DskipTests}, cache-frei): $module_pl"
+      # shellcheck disable=SC2086
+      mvn clean deploy -pl "$module_pl" ${MVN_TEST_FLAG:--DskipTests} -Dmaven.build.cache.enabled=false -B \
+        || echo "WARNUNG: Deploy der ungebauten Module nicht durchgelaufen — die naechste Runde misst neu."
+    else
+      echo "WARNUNG: Nachlieferung meldet rc=$rc — die naechste Runde misst neu."
+    fi
+  done
+  if [ "$rc" -ne 0 ]; then
+    echo "Nachlieferung von $VERSION nach $runde Runden nicht vollstaendig (zuletzt rc=$rc). Protokoll oben." >&2
+    exit 1
+  fi
+  echo "Gegenprobe: Release $VERSION gegen Reposilite und GitHub Packages zaehlen..."
+  PRUEFE_GITHUB=1 bash scripts/release-vollstaendig.sh "$VERSION" || {
+    echo "Vollstaendigkeitspruefung fuer $VERSION bleibt rot." >&2; exit 1; }
+  exit 0
+fi
 
 VERSION="${1:-}"
 case "$VERSION" in
@@ -91,7 +147,6 @@ GITHUB_BASIS="${GITHUB_BASIS:-https://maven.pkg.github.com/Plaintext-Gmbh/plaint
 GITHUB_USER="${GITHUB_USER:-daniel-marthaler}"
 NACHLIEFERN_ZIELE="${NACHLIEFERN_ZIELE:-reposilite github}"
 CURL_MAX_TIME="${CURL_MAX_TIME:-600}"
-GRUPPE_PFAD="ch/plaintext"
 
 SELBST="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$SELBST")/.." || exit 2
@@ -101,9 +156,9 @@ for werkzeug in curl sha1sum md5sum; do
 done
 
 # ── Modulliste aus dem Tag (Begruendung in release-vollstaendig.sh) ───────────
-if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null 2>&1; then
-  QUELLE="$VERSION"
-  hole() { git show "$VERSION:$1" 2>/dev/null; }
+if git rev-parse -q --verify "refs/tags/${TAG_PRAEFIX}$VERSION" >/dev/null 2>&1; then
+  QUELLE="${TAG_PRAEFIX}$VERSION"
+  hole() { git show "${TAG_PRAEFIX}$VERSION:$1" 2>/dev/null; }
 else
   QUELLE="Arbeitsverzeichnis"
   hole() { cat "$1" 2>/dev/null; }
@@ -115,7 +170,7 @@ WURZEL="$(hole pom.xml)"
 eigene_artifact_id() {
   local pom
   pom="$(cat)"
-  if printf '%s' "$pom" | grep -q '</parent>'; then
+  if [[ "$pom" == *'</parent>'* ]]; then  # kein grep -q in der Pipe: SIGPIPE + pipefail (Karte 1596)
     printf '%s' "$pom" | sed -n '/<\/parent>/,$p' | sed '1s/.*<\/parent>//' | grep -m1 -oE '<artifactId>[^<]+' | sed 's/<artifactId>//'
   else
     printf '%s' "$pom" | grep -m1 -oE '<artifactId>[^<]+' | sed 's/<artifactId>//'
@@ -123,6 +178,10 @@ eigene_artifact_id() {
 }
 PARENT_ID="$(printf '%s' "$WURZEL" | eigene_artifact_id)"
 [ -n "$PARENT_ID" ] || { echo "release-nachliefern: artifactId aus pom.xml nicht lesbar." >&2; exit 2; }
+# groupId der Wurzel (ch.plaintext in v1, ch.plaintext.v2 in plaintext-root-v2) — nie fest verdrahtet
+GRUPPE="$(printf '%s' "$WURZEL" | sed -n '/<\/parent>/,$p' | sed '1s/.*<\/parent>//' | grep -m1 -oE '<groupId>[^<]+' | sed 's/<groupId>//')"
+[ -n "$GRUPPE" ] || { echo "release-nachliefern: groupId aus pom.xml nicht lesbar." >&2; exit 2; }
+GRUPPE_PFAD="$(printf '%s' "$GRUPPE" | tr . /)"
 MODULE="$(printf '%s' "$WURZEL" | grep -oE '<module>[^<]+' | sed 's/<module>//')"
 [ -n "$MODULE" ] || { echo "release-nachliefern: keine <module>-Eintraege in pom.xml." >&2; exit 2; }
 
@@ -148,6 +207,21 @@ ziel_basis()  { case "$1" in reposilite) echo "$REPOSILITE_BASIS" ;; github) ech
 ziel_user()   { case "$1" in reposilite) echo "$REPOSILITE_USER" ;;  github) echo "$GITHUB_USER" ;;  esac; }
 ziel_token()  { case "$1" in reposilite) echo "${MAVEN_NAS_TOKEN:-}" ;; github) echo "${MVN_DEPLOY_TOKEN:-}" ;; esac; }
 
+# Zugangsdaten als curl-Konfiguration (Karte 1596): <ziel>.put = Basic fuer PUT,
+# <ziel>.lese = Bearer fuer lesende GitHub-Anfragen. Werte in "..." mit \ und " maskiert.
+TMP="$(mktemp -d -p /dev/shm 2>/dev/null || mktemp -d)"
+chmod 700 "$TMP"
+trap 'shred -u "$TMP"/*.put "$TMP"/*.lese 2>/dev/null; rm -rf "$TMP"' EXIT
+curl_wert() { printf '%s' "$1" | sed 's/[\\"]/\\&/g'; }
+schreibe_zugang() {
+  local ziel="$1" token
+  token="$(ziel_token "$ziel")"
+  [ -n "$token" ] || return 0
+  ( umask 077
+    printf 'user = "%s"\n' "$(curl_wert "$(ziel_user "$ziel"):$token")" > "$TMP/$ziel.put"
+    printf 'header = "%s"\n' "$(curl_wert "Authorization: Bearer $token")" > "$TMP/$ziel.lese" )
+}
+
 # probe <ziel> <url> -> HTTP-Code auf stdout. 200/206 = da, 404 = fehlt, Rest = unklar.
 # GitHub: GET mit Range 0-0 und -L, weil HEAD dort nicht fuer jede Datei zuverlaessig
 # ist (release-vollstaendig.sh, 19.09.2026) und ein voller GET die Jar laden wuerde.
@@ -156,7 +230,7 @@ probe() {
   case "$ziel" in
     github)
       curl -sL -o /dev/null -w '%{http_code}' --max-time 60 --retry 2 --retry-delay 3 \
-           -r 0-0 -H "Authorization: Bearer $(ziel_token "$ziel")" "$url"
+           -r 0-0 --config "$TMP/$ziel.lese" "$url"
       ;;
     *)
       curl -s -o /dev/null -w '%{http_code}' --max-time 60 --retry 2 --retry-delay 3 -I "$url"
@@ -168,7 +242,7 @@ probe() {
 lade_hoch() {
   local ziel="$1" datei="$2" url="$3" code rc nachprobe
   code="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 30 --max-time "$CURL_MAX_TIME" \
-               -u "$(ziel_user "$ziel"):$(ziel_token "$ziel")" -T "$datei" "$url" 2>/dev/null)"
+               --config "$TMP/$ziel.put" -T "$datei" "$url" 2>/dev/null)"
   rc=$?
   case "$code" in
     200|201|204)
@@ -213,8 +287,6 @@ lade_hoch() {
 
 # pruefsumme_datei <datei> <sha1|md5> -> Pfad einer temporaeren Pruefsummendatei (nur der Hex-Wert,
 # so schreibt sie auch der Resolver: Layout Maven2, Algorithmen SHA-1 und MD5).
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
 pruefsumme_datei() {
   local datei="$1" art="$2" ziel
   ziel="$TMP/$(basename "$datei").$art"
@@ -255,7 +327,7 @@ sichere_metadaten() {
   local alt="$TMP/$aid-$ziel-metadata.xml" neu="$TMP/$aid-$ziel-metadata-neu.xml" code jetzt
   case "$ziel" in
     github) code="$(curl -sL -o "$alt" -w '%{http_code}' --max-time 60 --retry 2 --retry-delay 3 \
-                    -H "Authorization: Bearer $(ziel_token "$ziel")" "$url")" ;;
+                    --config "$TMP/$ziel.lese" "$url")" ;;
     *)      code="$(curl -s  -o "$alt" -w '%{http_code}' --max-time 60 --retry 2 --retry-delay 3 "$url")" ;;
   esac
   jetzt="$(date -u +%Y%m%d%H%M%S)"
@@ -279,7 +351,7 @@ sichere_metadaten() {
       cat > "$neu" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <metadata>
-  <groupId>ch.plaintext</groupId>
+  <groupId>$GRUPPE</groupId>
   <artifactId>$aid</artifactId>
   <versioning>
     <latest>$VERSION</latest>
@@ -329,6 +401,7 @@ for ziel in $NACHLIEFERN_ZIELE; do
     UEBERSPRUNGEN=1
     continue
   fi
+  schreibe_zugang "$ziel"
   ZIELE_AKTIV="$ZIELE_AKTIV $ziel"
 done
 

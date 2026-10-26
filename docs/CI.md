@@ -119,6 +119,12 @@ development iteration" commit. Two things changed:
    `do_release` would have. A 409 on a file the probe did not see is reported
    as an error, not swallowed. If `./build release` failed before publishing,
    nachliefern refuses and the original error stays the error.
+   The rounds and the final check live in `scripts/release-nachliefern.sh
+   --runden <version>` (Karte 1596), so plaintext-root-v2 can call the same
+   path: groupId and path come from the tagged `pom.xml`, `TAG_PRAEFIX=v2-`
+   selects `v2-<version>` tags, and the tokens reach curl only through
+   `--config` files in `/dev/shm`, never on the command line. Self-test with
+   mock server, mock curl and mock mvn: `scripts/test-release-nachliefern.sh`.
 
 ### No verify-dev, no verify-prod
 

@@ -170,8 +170,7 @@ mirror_to_plaintext_mvn() {
 # in tui-build-logic.sh. Dieses Kommando vervollstaendigt nur, was dort schon
 # beansprucht und halb veroeffentlicht wurde.
 release_nachliefern() {
-    local version pom_version runde rc ungebaut module_pl test_flag protokoll
-    local release_flags="-Dmaven.build.cache.enabled=false"
+    local version pom_version
 
     version="$(git describe --tags --exact-match --match '[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null)"
     if [ -z "$version" ]; then
@@ -196,43 +195,11 @@ release_nachliefern() {
     esac
 
     echo -e "${YELLOW}=== Nachlieferung des halben Releases ${version} (Karte 1563) ===${NC}"
-    test_flag="${MVN_TEST_FLAG:--DskipTests}"
-    protokoll="$(mktemp)"
-    # shellcheck disable=SC2064
-    trap "rm -f '$protokoll'" RETURN
-
-    rc=1
-    for runde in 1 2 3; do
-        echo -e "${BLUE}Runde ${runde}/3: Stand messen, fehlende Dateien gebauter Module nachliefern...${NC}"
-        bash scripts/release-nachliefern.sh "$version" > "$protokoll" 2>&1
-        rc=$?
-        cat "$protokoll"
-        [ "$rc" -eq 0 ] && break
-        [ "$runde" -eq 3 ] && break
-        ungebaut="$(sed -n 's/^NACHLIEFERN_UNGEBAUT=//p' "$protokoll" | tail -1)"
-        if [ -n "$ungebaut" ]; then
-            # shellcheck disable=SC2086
-            module_pl="$(printf ':%s,' $ungebaut)"
-            module_pl="${module_pl%,}"
-            echo -e "${BLUE}Maven: baue und veroeffentliche die ungebauten Module (${test_flag}, cache-frei): ${module_pl}${NC}"
-            # shellcheck disable=SC2086
-            mvn clean deploy -pl "$module_pl" ${test_flag} ${release_flags} -B \
-                || echo -e "${YELLOW}⚠ Deploy der ungebauten Module nicht durchgelaufen — die naechste Runde misst neu.${NC}"
-        else
-            echo -e "${YELLOW}⚠ Nachlieferung meldet rc=${rc} — die naechste Runde misst neu.${NC}"
-        fi
-    done
-    if [ "$rc" -ne 0 ]; then
-        echo -e "${RED}✗ Nachlieferung von ${version} nach ${runde} Runden nicht vollstaendig (zuletzt rc=${rc}). Protokoll oben.${NC}"
-        return 1
-    fi
-
-    # Dieselbe Gegenprobe wie der Schritt `vollstaendigkeit` der deploy.yml, nur
-    # hier schon VOR dem SNAPSHOT-Commit — ein halbes Release darf nicht als
-    # abgeschlossen gelten.
-    echo -e "${BLUE}Gegenprobe: Release ${version} gegen Reposilite und GitHub Packages zaehlen...${NC}"
-    if ! PRUEFE_GITHUB=1 bash scripts/release-vollstaendig.sh "$version"; then
-        echo -e "${RED}✗ Vollstaendigkeitspruefung fuer ${version} bleibt rot — SNAPSHOT-Commit unterbleibt.${NC}"
+    # Runden "messen -> nachliefern -> bauen" und die Gegenprobe gegen BEIDE Repos liegen
+    # seit Karte 1596 im Skript (--runden), damit plaintext-root-v2 denselben Weg nimmt.
+    # Hier bleibt nur, was v1-eigen ist: Vorbedingungen oben, Spiegel und SNAPSHOT-Commit unten.
+    if ! bash scripts/release-nachliefern.sh --runden "$version"; then
+        echo -e "${RED}✗ Nachlieferung von ${version} nicht vollstaendig — SNAPSHOT-Commit unterbleibt. Protokoll oben.${NC}"
         return 1
     fi
 

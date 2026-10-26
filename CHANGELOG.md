@@ -13,6 +13,12 @@ exhaustive.
 ## [Unreleased]
 
 ### Changed
+- **`scripts/release-nachliefern.sh` works for plaintext-root-v2 too** (Karte 1596). groupId and path come from the
+  tagged `pom.xml` instead of a fixed `ch/plaintext`, `TAG_PRAEFIX` selects prefixed tags (`v2-<version>`), and the
+  rounds "measure, upload, build" plus the check against both repositories moved from `./build nachliefern` into
+  `release-nachliefern.sh --runden` (no behaviour change for root). Tokens no longer appear in any curl command
+  line (`ps`): they are passed via `--config` files in `/dev/shm` that are shredded on exit. New self-test
+  `scripts/test-release-nachliefern.sh` (mock server, curl and mvn).
 - **Release upload hardened against hung and aborted uploads** (Karte 1563). Runs 634 and 641 (22 October 2026)
   each stalled 46 minutes on one `PUT` to GitHub Packages and died with `Read timed out`, leaving 1.789.0 and
   1.790.0 half published in both repositories and `master` without the next SNAPSHOT commit. The release step
