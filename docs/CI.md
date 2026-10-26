@@ -127,6 +127,12 @@ development iteration" commit. Two things changed:
    mock server, mock curl and mock mvn: `scripts/test-release-nachliefern.sh`.
    `scripts/release-vollstaendig.sh` passes `GITHUB_TOKEN` the same way
    (Karte 1602); self-test: `scripts/test-release-vollstaendig.sh`.
+   It fails closed (Karte 1603): a probe that is not 200, unclear answers, no
+   version or GitHub requested but not countable give exit 3 ("NICHT
+   BEURTEILBAR"), never 0. Until 1603 the post-release step `vollstaendigkeit`
+   reported "kein Befund" on every release without counting a single file:
+   `printf | grep -q '</parent>'` under `pipefail` died of SIGPIPE in the CI
+   image, so the probe asked for `spring-boot-starter-parent` and got 404.
 
 ### No verify-dev, no verify-prod
 
