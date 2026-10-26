@@ -125,6 +125,8 @@ development iteration" commit. Two things changed:
    selects `v2-<version>` tags, and the tokens reach curl only through
    `--config` files in `/dev/shm`, never on the command line. Self-test with
    mock server, mock curl and mock mvn: `scripts/test-release-nachliefern.sh`.
+   `scripts/release-vollstaendig.sh` passes `GITHUB_TOKEN` the same way
+   (Karte 1602); self-test: `scripts/test-release-vollstaendig.sh`.
 
 ### No verify-dev, no verify-prod
 

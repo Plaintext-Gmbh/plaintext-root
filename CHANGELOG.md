@@ -13,6 +13,10 @@ exhaustive.
 ## [Unreleased]
 
 ### Changed
+- **`scripts/release-vollstaendig.sh` keeps `GITHUB_TOKEN` off the command line** (Karte 1602). With
+  `PRUEFE_GITHUB=1` the Authorization header reaches curl only through a `--config` file in `/dev/shm`
+  (directory 0700, file 0600, shredded on exit) instead of `-H`, so it no longer shows up in `ps`. Output and exit
+  codes are unchanged. New self-test `scripts/test-release-vollstaendig.sh` (mock server and curl).
 - **`scripts/release-nachliefern.sh` works for plaintext-root-v2 too** (Karte 1596). groupId and path come from the
   tagged `pom.xml` instead of a fixed `ch/plaintext`, `TAG_PRAEFIX` selects prefixed tags (`v2-<version>`), and the
   rounds "measure, upload, build" plus the check against both repositories moved from `./build nachliefern` into
