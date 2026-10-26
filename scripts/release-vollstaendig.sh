@@ -209,10 +209,17 @@ fi
 #  liefert 401 auf ALLE 51 Dateien der vollstaendigen Version 1.701.0).
 GH_FEHLT=0; GH_DA=0
 if [ "${PRUEFE_GITHUB:-0}" = "1" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
+  # Token nie in argv (sichtbar in ps, Karte 1602): curl liest den Header per --config aus
+  # /dev/shm (Verzeichnis 0700, Datei 0600, beim Ende geschreddert). Wert mit \ und " maskiert.
+  GH_TMP="$(mktemp -d -p /dev/shm 2>/dev/null || mktemp -d)"
+  chmod 700 "$GH_TMP"
+  trap 'shred -u "$GH_TMP/lese" 2>/dev/null; rm -rf "$GH_TMP"' EXIT
+  ( umask 077
+    printf 'header = "%s"\n' "$(printf '%s' "Authorization: Bearer $GITHUB_TOKEN" | sed 's/[\\"]/\\&/g')" > "$GH_TMP/lese" )
   # -L ist Pflicht: maven.pkg.github.com antwortet auf vorhandene Dateien mit 302
   # auf ein CDN. Ohne -L waere jede existierende Datei ein 302 und damit "unklar".
   probe="$(curl -sL -o /dev/null -w '%{http_code}' --max-time 30 \
-           -H "Authorization: Bearer $GITHUB_TOKEN" \
+           --config "$GH_TMP/lese" \
            "$GITHUB_BASIS/$GRUPPE_PFAD/$PARENT_ID/maven-metadata.xml")"
   if [ "$probe" != "200" ]; then
     echo "GitHub Packages: NICHT BEURTEILBAR (Vorprobe auf maven-metadata.xml gab $probe)."
@@ -223,7 +230,7 @@ if [ "${PRUEFE_GITHUB:-0}" = "1" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
       [ -n "$aid" ] || continue
       url="$GITHUB_BASIS/$GRUPPE_PFAD/$aid/$VERSION/$aid-$VERSION.$endung"
       code="$(curl -sL -o /dev/null -w '%{http_code}' --max-time 30 \
-              -H "Authorization: Bearer $GITHUB_TOKEN" "$url")"
+              --config "$GH_TMP/lese" "$url")"
       case "$code" in
         200) GH_DA=$((GH_DA + 1)) ;;
         404) GH_FEHLT=$((GH_FEHLT + 1))
