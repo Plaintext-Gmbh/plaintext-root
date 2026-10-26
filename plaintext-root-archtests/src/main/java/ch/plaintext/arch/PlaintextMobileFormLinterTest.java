@@ -43,9 +43,12 @@ class PlaintextMobileFormLinterTest {
 
     /**
      * Lower bound for the scan set (measured, see {@link ReactorLayout#untergrenze}). Smallest of
-     * the six reactors on 20.09.2026 — schuetu and iot with two roots each.
+     * the six reactors on 20.09.2026 — schuetu and iot with two roots each. Card 1518 (26.10.2026):
+     * schuetu drops the webapp's own {@code index.xhtml} (the shell sets the start page via
+     * {@code plaintext.security.startseite}); its pages now live in one module, so schuetu has one
+     * root. Still above zero: an empty scan set stays red.
      */
-    private static final int MINDESTENS_SCANWURZELN = 2;
+    private static final int MINDESTENS_SCANWURZELN = 1;
 
     /**
      * Scans every {@code src/main/resources/META-INF/resources} of all reactor modules (from the
