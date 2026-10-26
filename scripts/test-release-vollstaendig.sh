@@ -12,6 +12,10 @@
 #   2. ein Jar fehlt nur in GitHub -> Exit 1, "GH 404"
 #   3. --letzte 1 (Selbstaufruf erbt das Token ueber die Umgebung)
 #   4. GITHUB_TOKEN nie in einer curl-Kommandozeile, aber beim Server angekommen; keine Reste in /dev/shm
+#   5.-9. fail closed (Karte 1603): Vorprobe 404, --letzte mit Vorprobe 404, Reposilite weg,
+#         GitHub-Vorprobe 404, PRUEFE_GITHUB=1 ohne Token -> nie Exit 0
+# Die Wurzel-pom hat ein <parent> und ist >64 KiB, und ein grep im PATH liest bei -q nur die ersten
+# 4 KiB: so endet grep -q vor dem Schreiber wie im CI-Image (Karte 1603), und das deterministisch.
 # Aufruf: scripts/test-release-vollstaendig.sh   (SKRIPT=<pfad> prueft eine andere Fassung)
 # Exit 0 = alle Pruefungen gruen.
 set -u
@@ -64,12 +68,23 @@ printf '%s\n' "\$*" >> "$T/argv.log"
 exec "$ECHT_CURL" "\$@"
 EOF
 chmod +x "$T/bin/curl"
+ECHT_GREP="$(command -v grep)"
+cat > "$T/bin/grep" <<EOF
+#!/usr/bin/env bash
+# -q ohne Datei: nur die ersten 4 KiB lesen und dann enden, wie GNU grep im CI-Image
+case " \$* " in *" -q "*) [ -t 0 ] || exec "$ECHT_GREP" "\$@" < <(head -c 4096) ;; esac
+exec "$ECHT_GREP" "\$@"
+EOF
+chmod +x "$T/bin/grep"
 
 # ── Fixture: Wurzel (pom) + mod-a (jar), Tag 1.0.0, Tag-Zeit weit zurueck (fuer --letzte) ──
 F="$T/repo"
 mkdir -p "$F/scripts" "$F/mod-a"
 cp "$SKRIPT" "$F/scripts/release-vollstaendig.sh" && chmod +x "$F/scripts/release-vollstaendig.sh"
-printf '<project><groupId>ch.plaintext</groupId><artifactId>wurzel</artifactId><packaging>pom</packaging><modules><module>mod-a</module></modules></project>\n' > "$F/pom.xml"
+{ printf '<project>\n  <parent>\n    <groupId>org.springframework.boot</groupId>\n    <artifactId>spring-boot-starter-parent</artifactId>\n  </parent>\n'
+  printf '  <groupId>ch.plaintext</groupId>\n  <artifactId>wurzel</artifactId>\n  <packaging>pom</packaging>\n  <modules><module>mod-a</module></modules>\n'
+  for _ in $(seq 1200); do printf '  <!-- Fuellung: groesser als ein Pipe-Puffer (64 KiB) -->\n'; done
+  printf '</project>\n'; } > "$F/pom.xml"
 printf '<project><parent><artifactId>wurzel</artifactId></parent><artifactId>mod-a</artifactId></project>\n' > "$F/mod-a/pom.xml"
 git -C "$F" init -q && git -C "$F" add -A
 GIT_COMMITTER_DATE="2020-01-01T00:00:00Z" git -C "$F" -c user.name=t -c user.email=t@t commit -qm init
@@ -114,6 +129,33 @@ pruefe "kein -H/Authorization in argv" '! grep -qE "(^| )-H |Authorization" "$T/
 pruefe "GitHub-Probe trug Bearer <Token> (Maskierung korrekt)" 'grep -qF "GET /gh/ch/plaintext/mod-a/1.0.0/mod-a-1.0.0.jar Bearer $TOK_GH" "$T/server.log"'
 pruefe "Reposilite bekam kein Token" '! grep -E "^HEAD /repo/" "$T/server.log" | grep -qv " -$"'
 pruefe "keine Zugangsdatei in /dev/shm uebrig" '[ -z "$(find /dev/shm -newer "$T/port" -name lese 2>/dev/null)" ]'
+
+echo "── 5. Vorprobe 404 (maven-metadata.xml fehlt) ──"
+mv "$T/srv/repo/ch/plaintext/wurzel/maven-metadata.xml" "$T/weg.xml"
+lauf 1.0.0 > "$T/l5.txt" 2>&1; rc=$?
+pruefe "Exit 3 (rc=$rc)" '[ "$rc" -eq 3 ]'
+pruefe "NICHT BEURTEILBAR gemeldet" 'grep -q "NICHT BEURTEILBAR" "$T/l5.txt"'
+echo "── 6. --letzte 1 bei Vorprobe 404 ──"
+lauf --letzte 1 > "$T/l6.txt" 2>&1; rc=$?
+mv "$T/weg.xml" "$T/srv/repo/ch/plaintext/wurzel/maven-metadata.xml"
+pruefe "Exit 1 (rc=$rc)" '[ "$rc" -eq 1 ]'
+pruefe "1.0.0 NICHT BEURTEILBAR" 'grep -q "1.0.0  NICHT BEURTEILBAR" "$T/l6.txt"'
+
+echo "── 7. Reposilite nicht erreichbar ──"
+PATH="$T/bin:$PATH" REPOSILITE_BASIS="http://127.0.0.1:9/repo" \
+  bash "$F/scripts/release-vollstaendig.sh" 1.0.0 > "$T/l7.txt" 2>&1; rc=$?
+pruefe "Exit 3 (rc=$rc)" '[ "$rc" -eq 3 ]'
+
+echo "── 8. GitHub-Vorprobe 404 ──"
+mv "$T/srv/gh/ch/plaintext/wurzel/maven-metadata.xml" "$T/weg.xml"
+lauf 1.0.0 > "$T/l8.txt" 2>&1; rc=$?
+mv "$T/weg.xml" "$T/srv/gh/ch/plaintext/wurzel/maven-metadata.xml"
+pruefe "Exit 3 (rc=$rc)" '[ "$rc" -eq 3 ]'
+
+echo "── 9. PRUEFE_GITHUB=1 ohne Token ──"
+PATH="$T/bin:$PATH" PRUEFE_GITHUB=1 GITHUB_TOKEN="" REPOSILITE_BASIS="http://127.0.0.1:$PORT/repo" \
+  bash "$F/scripts/release-vollstaendig.sh" 1.0.0 > "$T/l9.txt" 2>&1; rc=$?
+pruefe "Exit 3 (rc=$rc)" '[ "$rc" -eq 3 ]'
 
 echo "────────────────────────────────────────"
 echo "test-release-vollstaendig: $GRUEN gruen, $ROT rot"

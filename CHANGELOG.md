@@ -13,6 +13,12 @@ exhaustive.
 ## [Unreleased]
 
 ### Changed
+- **`scripts/release-vollstaendig.sh` counts again in CI and fails closed** (Karte 1603). The Woodpecker step
+  `vollstaendigkeit` had never counted a file in v1 or v2: `printf | grep -q '</parent>'` under `pipefail` lost to
+  SIGPIPE in the CI image (200 of 200 runs, 0 of 200 locally), the root artifactId fell back to
+  `spring-boot-starter-parent`, the probe got 404 and the script exited 0 with "kein Befund". The check is now a bash
+  pattern match (as in `release-nachliefern.sh`), and "not assessable" (probe not 200, unclear answers, no version,
+  GitHub requested but not countable) is exit 3 instead of 0; `--letzte` counts it as a failure. Self-test cases 5-9.
 - **`scripts/release-vollstaendig.sh` keeps `GITHUB_TOKEN` off the command line** (Karte 1602). With
   `PRUEFE_GITHUB=1` the Authorization header reaches curl only through a `--config` file in `/dev/shm`
   (directory 0700, file 0600, shredded on exit) instead of `-H`, so it no longer shows up in `ps`. Output and exit

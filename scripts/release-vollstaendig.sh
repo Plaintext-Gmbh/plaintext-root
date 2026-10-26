@@ -28,6 +28,10 @@
 #  Exit 1  mindestens eines fehlt  (die fehlenden werden namentlich aufgezaehlt)
 #  Exit 2  die Version gibt es gar nicht (kein einziges Artefakt) — das ist KEIN
 #          halbes Release, sondern eine saubere Abwesenheit
+#  Exit 3  NICHT BEURTEILBAR: Vorprobe nicht 200, Antworten unklar, keine Version,
+#          GitHub verlangt, aber nicht pruefbar. Fail closed (Karte 1603): wer nicht
+#          gezaehlt hat, darf nicht gruen sein. Bis 1603 war das Exit 0 — und der
+#          CI-Schritt meldete bei jedem Release "kein Befund", ohne je zu zaehlen.
 #
 #  UMGEBUNG
 #  --------
@@ -78,6 +82,9 @@ if [ "${1:-}" = "--letzte" ]; then
       rc=$?
       if [ "$rc" = "2" ]; then
         echo "  $t  nicht im Repo (kein halbes Release)"
+      elif [ "$rc" = "3" ]; then
+        echo "  $t  NICHT BEURTEILBAR"; SCHLECHT="$SCHLECHT $t"
+        sed 's/^/      /' /tmp/rv.$$
       else
         echo "  $t  HALB"; SCHLECHT="$SCHLECHT $t"
         sed 's/^/      /' /tmp/rv.$$
@@ -86,7 +93,7 @@ if [ "${1:-}" = "--letzte" ]; then
     rm -f /tmp/rv.$$
   done
   if [ -n "$SCHLECHT" ]; then
-    echo "HALBE RELEASES GEFUNDEN:$SCHLECHT"
+    echo "HALBE ODER NICHT BEURTEILBARE RELEASES:$SCHLECHT"
     echo "Erst aufraeumen (Karte 1281), dann weiter releasen."
     echo "Notausgang, wenn es bewusst so bleiben soll: '[halbe-release-ok]' in die Commit-Zeile."
     exit 1
@@ -101,8 +108,8 @@ if [ -z "$VERSION" ]; then
 fi
 case "$VERSION" in
   ''|*SNAPSHOT*)
-    echo "release-vollstaendig: keine Release-Version bestimmbar (bekommen: '${VERSION:-<leer>}') — uebersprungen."
-    exit 0
+    echo "release-vollstaendig: keine Release-Version bestimmbar (bekommen: '${VERSION:-<leer>}') — NICHT BEURTEILBAR."
+    exit 3
     ;;
 esac
 
@@ -129,7 +136,10 @@ WURZEL="$(hole pom.xml)"
 eigene_artifact_id() {
   local pom
   pom="$(cat)"
-  if printf '%s' "$pom" | grep -q '</parent>'; then
+  # Kein `printf | grep -q`: grep -q endet beim ersten Treffer, printf stirbt an SIGPIPE, und
+  # pipefail macht daraus "kein </parent>" -> PARENT_ID = spring-boot-starter-parent, Vorprobe 404.
+  # Im CI-Image 200 von 200 Mal so, lokal 0 von 200 (Karte 1603; release-nachliefern.sh: 1596).
+  if [[ "$pom" == *'</parent>'* ]]; then
     printf '%s' "$pom" | sed -n '/<\/parent>/,$p' | sed '1s/.*<\/parent>//' | grep -m1 -oE '<artifactId>[^<]+' | sed 's/<artifactId>//'
   else
     printf '%s' "$pom" | grep -m1 -oE '<artifactId>[^<]+' | sed 's/<artifactId>//'
@@ -175,8 +185,8 @@ PROBE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 --retry 3 --retry-
          "$REPOSILITE_BASIS/$GRUPPE_PFAD/$PARENT_ID/maven-metadata.xml")"
 if [ "$PROBE" != "200" ]; then
   echo "Reposilite nicht erreichbar (Vorprobe auf maven-metadata.xml gab $PROBE)."
-  echo "Kein Befund und keine Entwarnung — hier wird nichts behauptet."
-  exit 0
+  echo "NICHT BEURTEILBAR — nichts gezaehlt, also auch keine Entwarnung (Exit 3)."
+  exit 3
 fi
 
 DA=0; FEHLT=0; UNKLAR=0; FEHLLISTE=""
@@ -197,9 +207,9 @@ done <<< "$ZU_PRUEFEN"
 
 GESAMT=$((DA + FEHLT + UNKLAR))
 echo "Reposilite: $DA von $GESAMT Dateien da, $FEHLT fehlen, $UNKLAR unklar."
-if [ "$UNKLAR" -gt 0 ] && [ "$FEHLT" -eq 0 ]; then
-  echo "Nicht abschliessend beurteilbar ($UNKLAR Antworten unklar) — kein Befund."
-  exit 0
+if [ "$GESAMT" -eq 0 ] || { [ "$UNKLAR" -gt 0 ] && [ "$FEHLT" -eq 0 ]; }; then
+  echo "NICHT BEURTEILBAR ($UNKLAR von $GESAMT Antworten unklar) — keine Entwarnung (Exit 3)."
+  exit 3
 fi
 
 # ── optional dasselbe gegen GitHub Packages ───────────────────────────────────
@@ -207,7 +217,7 @@ fi
 #  ein Token ohne read:packages mit 401 — wer das als "fehlt" zaehlt, meldet ein
 #  halbes Release, wo nur die Anmeldung fehlt (gemessen 19.09.2026: das gh-CLI-Token
 #  liefert 401 auf ALLE 51 Dateien der vollstaendigen Version 1.701.0).
-GH_FEHLT=0; GH_DA=0
+GH_FEHLT=0; GH_DA=0; GH_OFFEN=0
 if [ "${PRUEFE_GITHUB:-0}" = "1" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
   # Token nie in argv (sichtbar in ps, Karte 1602): curl liest den Header per --config aus
   # /dev/shm (Verzeichnis 0700, Datei 0600, beim Ende geschreddert). Wert mit \ und " maskiert.
@@ -224,6 +234,7 @@ if [ "${PRUEFE_GITHUB:-0}" = "1" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
   if [ "$probe" != "200" ]; then
     echo "GitHub Packages: NICHT BEURTEILBAR (Vorprobe auf maven-metadata.xml gab $probe)."
     echo "                 Token braucht read:packages. Kein Befund, keine Entwarnung."
+    GH_OFFEN=1
   else
     GH_DA=0; GH_UNKLAR=0
     while IFS='|' read -r aid endung; do
@@ -240,12 +251,18 @@ if [ "${PRUEFE_GITHUB:-0}" = "1" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
       esac
     done <<< "$ZU_PRUEFEN"
     echo "GitHub Packages: $GH_DA von $GESAMT da, $GH_FEHLT fehlen, $GH_UNKLAR unklar."
+    [ "$GH_UNKLAR" -eq 0 ] || GH_OFFEN=1
   fi
 elif [ "${PRUEFE_GITHUB:-0}" = "1" ]; then
   echo "GitHub Packages: uebersprungen (kein GITHUB_TOKEN) — keine Entwarnung."
+  GH_OFFEN=1
 fi
 
 if [ "$FEHLT" -eq 0 ] && [ "$GH_FEHLT" -eq 0 ]; then
+  if [ "$GH_OFFEN" -eq 1 ]; then
+    echo "NICHT BEURTEILBAR — Reposilite vollstaendig, GitHub Packages verlangt, aber nicht gezaehlt (Exit 3)."
+    exit 3
+  fi
   echo "OK — Release $VERSION ist vollstaendig."
   exit 0
 fi
