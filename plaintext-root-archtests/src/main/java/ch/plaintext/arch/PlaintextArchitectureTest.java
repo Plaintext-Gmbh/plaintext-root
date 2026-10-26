@@ -61,7 +61,9 @@ public class PlaintextArchitectureTest {
             .that().areAnnotatedWith(Scheduled.class)
             .should(nurInMitAllowRawScheduledAnnotierterKlasse())
             .because("Zeitsteuerung gehört ins PlaintextCron-Framework (Admin-UI, per-Mandant, "
-                    + "Statistik); begründete Ausnahmen tragen @AllowRawScheduled an der Klasse");
+                    + "Statistik); begründete Ausnahmen tragen @AllowRawScheduled an der Klasse")
+            // Karte 1604: ein Modul-Repo hat oft kein @Scheduled und keinen Cron; dort ist leer kein Defekt.
+            .allowEmptyShould(ReactorLayout.modulRepo());
 
     @ArchTest
     static final ArchRule plaintextCronsSindPrototype = classes()
@@ -73,7 +75,8 @@ public class PlaintextArchitectureTest {
             .and().resideOutsideOfPackage("ch.plaintext.cron..")
             .should(mitScopePrototypeAnnotiert())
             .because("der CronController holt pro Mandant-Lauf eine frische Instanz; ein Singleton "
-                    + "würde per setMandant() überschrieben (CronBeanPostProcessor bricht den Boot ab)");
+                    + "würde per setMandant() überschrieben (CronBeanPostProcessor bricht den Boot ab)")
+            .allowEmptyShould(ReactorLayout.modulRepo());
 
     /**
      * JSF backing beans run session-scoped in the plaintext-root framework: {@code @Component} +

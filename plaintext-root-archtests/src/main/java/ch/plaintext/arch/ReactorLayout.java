@@ -45,7 +45,64 @@ public final class ReactorLayout {
     /** Maximum module depth below the reactor root. */
     private static final int MAX_MODULE_DEPTH = 5;
 
+    /**
+     * Switch for a module repository (card 1604): a reactor of a few modules without a webapp, built
+     * from {@code plaintext-modul-vorlage}. It sets this system property in Surefire
+     * {@code <systemPropertyVariables>}; the apps never set it.
+     *
+     * <p>With the switch on, two things change and nothing else: the lower bounds measured on the six
+     * app reactors become "at least one" ({@link #mindestens(int)}), and the classes tagged
+     * {@value #NUR_APP} skip themselves with a reason. A reactor that ships an {@code application.yml}
+     * under {@code src/main/resources} is an application; there the switch is red instead of active,
+     * so an app cannot lower its own bounds with it.
+     */
+    public static final String MODUL_REPO = "plaintext.archtests.modul-repo";
+
+    /** JUnit tag of the classes that need a whole application (start class, application.yml, template copies). */
+    public static final String NUR_APP = "nur-app";
+
     private ReactorLayout() {
+    }
+
+    /** True in a module repository ({@link #MODUL_REPO} set and no application in the reactor), false in an app. */
+    public static boolean modulRepo() {
+        return modulRepo(Boolean.getBoolean(MODUL_REPO), repoRoot());
+    }
+
+    static boolean modulRepo(boolean schalter, Path reactor) {
+        if (!schalter) {
+            return false;
+        }
+        List<Path> anwendungen = anwendungen(reactor);
+        assertTrue(anwendungen.isEmpty(),
+                () -> "-D" + MODUL_REPO + "=true ist gesetzt, aber der Reactor " + reactor + " liefert eine "
+                        + "Anwendung aus: " + anwendungen.stream().map(Path::toString).sorted()
+                        .collect(Collectors.joining(", ")) + ". Der Schalter senkt die Untergrenzen und "
+                        + "ueberspringt die App-Pruefungen; in einer App darf er nicht stehen. Schalter entfernen.");
+        return true;
+    }
+
+    /** Every {@code src/main/resources/application.yml} of the reactor (not below {@code target}). */
+    static List<Path> anwendungen(Path reactor) {
+        if (reactor == null) {
+            return List.of();
+        }
+        Path ziel = Path.of("src", "main", "resources", "application.yml");
+        try (Stream<Path> dateien = Files.walk(reactor, MAX_MODULE_DEPTH + ziel.getNameCount())) {
+            return dateien.filter(p -> p.endsWith(ziel))
+                    .filter(p -> !reactor.relativize(p).toString().matches("(.*/)?(target|node_modules|\\.git)/.*"))
+                    .toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Reactor nicht lesbar: " + reactor, e);
+        }
+    }
+
+    /**
+     * A lower bound measured on the app reactors, or 1 in a module repository: there a single module
+     * is the real size, and "at least one" still catches the scan that finds nothing.
+     */
+    public static int mindestens(int inDenApps) {
+        return modulRepo() ? Math.min(inDenApps, 1) : inDenApps;
     }
 
     /** Working directory of the test run (Surefire sets {@code user.dir} to the module). */
@@ -152,9 +209,10 @@ public final class ReactorLayout {
                 "Kein Reactor gefunden: von '" + start() + "' aufwaerts traegt binnen acht Ebenen keine "
                         + "pom.xml ein <modules>. Der Linter saehe damit hoechstens sein eigenes Modul und "
                         + "waere gruen, ohne das Repository gelesen zu haben.");
-        assertTrue(roots.size() >= mindestens,
+        int soll = mindestens(mindestens);
+        assertTrue(roots.size() >= soll,
                 () -> "Der Scan findet nur " + roots.size() + " '" + suffix + "'-Wurzeln im Reactor "
-                        + repoRoot + ", festgehalten sind mindestens " + mindestens + ". Eine zu kleine "
+                        + repoRoot + ", festgehalten sind mindestens " + soll + ". Eine zu kleine "
                         + "Scanmenge sieht aus wie ein sauberes Repository und ist meist das Gegenteil: was "
                         + "der Linter nicht mehr findet, prueft er auch nicht mehr. Entweder ist der Reactor "
                         + "wirklich geschrumpft — dann die Zahl bewusst senken und begruenden — oder die "
@@ -197,7 +255,7 @@ public final class ReactorLayout {
      */
     public static int mindestensFuerDiesenReactor(java.util.Map<String, Integer> jeReactor, int sonst) {
         String id = reactorArtifactId();
-        return id != null && jeReactor.containsKey(id) ? jeReactor.get(id) : sonst;
+        return mindestens(id != null && jeReactor.containsKey(id) ? jeReactor.get(id) : sonst);
     }
 
     static boolean shipsTheseLinters(Path moduleDir) {

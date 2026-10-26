@@ -3,6 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 package ch.plaintext.arch;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -15,6 +17,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,7 +53,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author info@plaintext.ch
  * @since 2026
  */
+@Tag(ReactorLayout.NUR_APP)
 class MethodSecurityEnabledTest {
+
+    /** Karte 1604: nur in einer App sinnvoll; in einem Modul-Repo uebersprungen, mit Grund. */
+    @BeforeEach
+    void nurInEinerApp() {
+        assumeFalse(ReactorLayout.modulRepo(), "Modul-Repo: prueft die Startklasse (@SpringBootApplication) einer Anwendung; ein Modul-Repo hat keine.");
+    }
 
     static final String SPRING_BOOT_APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication";
     static final String ENABLE_METHOD_SECURITY =

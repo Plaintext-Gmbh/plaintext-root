@@ -96,7 +96,7 @@ class PlaintextRootCommonApiTest {
     @Test
     @DisplayName("Fremd-Repos nutzen aus plaintext-root-common nur als @StabileApi deklarierte Typen")
     void nurDeklarierteTypenAusRootCommon() {
-        assertTrue(KLASSEN.size() >= 40,
+        assertTrue(KLASSEN.size() >= ReactorLayout.mindestens(40),
                 () -> "Der Scan sieht nur " + KLASSEN.size() + " Klassen — zuerst 'mvn verify' ueber den Reactor.");
         ArchAllowlist allowlist = ArchAllowlist.fuer(REGEL);
         List<String> verstoesse = new ArrayList<>(allowlist.fehler());
