@@ -44,11 +44,11 @@ final class ModulKonfig {
 
     static final String STANDARD_GRUPPE = "ch.plaintext";
 
-    private static final Pattern NAME = Pattern.compile("[a-z0-9][a-z0-9-]*(\\.[a-z0-9-]+)*");
+    static final Pattern NAME = Pattern.compile("[a-z0-9][a-z0-9-]*(\\.[a-z0-9-]+)*");
     private static final Pattern GRUPPE = Pattern.compile("[a-z][a-z0-9_-]*(\\.[a-z0-9_-]+)*");
-    private static final Pattern VERSION = Pattern.compile("[0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)*");
-    private static final Pattern ROOT_VERSION = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+");
-    private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
+    static final Pattern VERSION = Pattern.compile("[0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)*");
+    static final Pattern ROOT_VERSION = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+");
+    static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
     private static final Set<String> SCHLUESSEL = Set.of("name", "version", "sha256", "root-min", "gruppe", "bibliotheken");
     private static final Pattern KOORDINATE = Pattern.compile("([^:]+):([^:]+):([^:]+)");
 

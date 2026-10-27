@@ -1,0 +1,83 @@
+<ui:composition xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns="http://www.w3.org/1999/xhtml" template="/includes/template.xhtml">
+
+    <f:metadata>
+        <f:event type="preRenderView" listener="#{modulAuswahlBackingBean.load()}"/>
+    </f:metadata>
+
+    <ui:define name="title">Laufzeit-Module</ui:define>
+
+    <ui:define name="content">
+        <!-- Karte 1608: Auswahl aus signierten Registries. ADMIN sieht, ROOT schaltet (Dienst prueft, sonst 403).
+             Wirksam erst nach dem Neustart: der ModulLader loest die Auswahl vor dem Spring-Start auf. -->
+        <h:form id="fm">
+            <input type="hidden" name="_csrf" value="#{_csrf.token}"/>
+            <h:messages id="messages" showDetail="false"/>
+
+            <h:panelGroup rendered="#{modulAuswahlBackingBean.ansicht ne null}">
+                <h2>Letzter Start</h2>
+                <h:panelGrid columns="2">
+                    <h:outputText value="Ergebnis:"/>
+                    <h:outputText id="ergebnis" value="#{empty modulAuswahlBackingBean.ansicht.status ? 'noch kein Start mit Auswahl' : modulAuswahlBackingBean.ansicht.status['ergebnis']}"/>
+                    <h:outputText value="Zeit:"/>
+                    <h:outputText value="#{modulAuswahlBackingBean.ansicht.status['zeit']}"/>
+                    <h:outputText value="Grund:"/>
+                    <h:outputText id="grund" value="#{modulAuswahlBackingBean.ansicht.status['grund']}"/>
+                    <h:outputText value="Geladen:"/>
+                    <h:outputText id="geladen" value="#{empty modulAuswahlBackingBean.ansicht.geladen ? 'ohne Module gestartet' : modulAuswahlBackingBean.ansicht.geladen}"/>
+                    <h:outputText value="Hülle:"/>
+                    <h:outputText value="#{modulAuswahlBackingBean.ansicht.huelle}"/>
+                </h:panelGrid>
+
+                <h:panelGroup rendered="#{modulAuswahlBackingBean.ansicht.quellenFehler ne null}">
+                    <p class="ui-messages-error">Quellen: #{modulAuswahlBackingBean.ansicht.quellenFehler}</p>
+                </h:panelGroup>
+                <h:panelGroup rendered="#{not empty modulAuswahlBackingBean.ansicht.registryFehler}">
+                    <p class="ui-messages-warn">Registry nicht lesbar: #{modulAuswahlBackingBean.ansicht.registryFehler}</p>
+                </h:panelGroup>
+                <h:panelGroup rendered="#{modulAuswahlBackingBean.ansicht.auswahlFehler ne null}">
+                    <p class="ui-messages-error">Auswahl: #{modulAuswahlBackingBean.ansicht.auswahlFehler}</p>
+                </h:panelGroup>
+
+                <h2>Module aus allen Registries</h2>
+                <h:dataTable id="tbl" value="#{modulAuswahlBackingBean.zeilen}" var="z" styleClass="mobile-safe">
+                    <h:column>
+                        <f:facet name="header">Aktiv</f:facet>
+                        <h:selectBooleanCheckbox id="aktiv" value="#{z.aktiv}"/>
+                    </h:column>
+                    <h:column>
+                        <f:facet name="header">Modul</f:facet>
+                        <h:outputText value="#{z.name}"/>
+                    </h:column>
+                    <h:column>
+                        <f:facet name="header">Version</f:facet>
+                        <h:selectOneMenu id="version" value="#{z.version}">
+                            <f:selectItems value="#{z.optionen}"/>
+                        </h:selectOneMenu>
+                    </h:column>
+                    <h:column>
+                        <f:facet name="header">Geladen</f:facet>
+                        <h:outputText value="#{empty z.geladen ? '-' : z.geladen}"/>
+                    </h:column>
+                    <h:column>
+                        <f:facet name="header">Verfügbar</f:facet>
+                        <h:outputText value="#{z.hinweis}"/>
+                    </h:column>
+                </h:dataTable>
+
+                <h:panelGroup rendered="#{not modulAuswahlBackingBean.ansicht.darfSchalten}">
+                    <p>Nur ROOT kann Module schalten und neu starten.</p>
+                </h:panelGroup>
+                <p>
+                    <h:commandButton id="btnSpeichern" value="Auswahl speichern" action="#{modulAuswahlBackingBean.speichern}"/>
+                    <h:commandButton id="btnNeustart" value="Neu starten" action="#{modulAuswahlBackingBean.neustart}"/>
+                </p>
+                <p>«Neu starten» beendet die Instanz sofort, sie ist danach etwa eine Minute weg.
+                    «latest» wird bei jedem Start auf die neueste zur Hülle passende, gültig signierte Version aufgelöst.
+                    Scheitert ein Download oder eine Signaturprüfung, startet die Instanz mit dem letzten guten Stand.</p>
+            </h:panelGroup>
+        </h:form>
+    </ui:define>
+</ui:composition>

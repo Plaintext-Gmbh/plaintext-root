@@ -994,6 +994,9 @@ Mandate;it;Mandanti
 Module;en;Modules
 Module;fr;Modules
 Module;it;Moduli
+Laufzeit-Module;en;Runtime Modules
+Laufzeit-Module;fr;Modules d'exécution
+Laufzeit-Module;it;Moduli di runtime
 OIDC Login;en;OIDC Login
 OIDC Login;fr;Connexion OIDC
 OIDC Login;it;Accesso OIDC

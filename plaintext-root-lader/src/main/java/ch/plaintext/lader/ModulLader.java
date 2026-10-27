@@ -61,27 +61,55 @@ public final class ModulLader {
      * Version der Huelle, aelteste root-Version, gegen die ein Modul gebaut sein darf, und das Exec-Jar
      * (fuer die Klassen-Duplikat-Pruefung, Karte 1514).
      */
-    record Huelle(String version, String kompatibelAb, Path archiv) {
+    public record Huelle(String version, String kompatibelAb, Path archiv) {
     }
 
     private final Path verzeichnis;
     private final ModulQuelle quelle;
     private final String notfallEnv;
     private final Huelle huelle;
+    private final Path konfigVerzeichnis;
+    private final Path eingebettet;
 
     ModulLader(Path verzeichnis, ModulQuelle quelle, String notfallEnv, Huelle huelle) {
+        this(verzeichnis, quelle, notfallEnv, huelle, verzeichnis.resolve("kein-konfig-verzeichnis"), null);
+    }
+
+    /** Karte 1608: mit Instanz-Konfig ({@code module-quellen.txt}) und Verzeichnis eingebetteter Module. */
+    ModulLader(Path verzeichnis, ModulQuelle quelle, String notfallEnv, Huelle huelle, Path konfigVerzeichnis,
+               Path eingebettet) {
         this.verzeichnis = verzeichnis;
         this.quelle = quelle;
         this.notfallEnv = notfallEnv;
         this.huelle = huelle;
+        this.konfigVerzeichnis = konfigVerzeichnis;
+        this.eingebettet = eingebettet;
     }
 
     public static void main(String[] args) throws Throwable {
+        if (args.length > 0 && "--einbetten".equals(args[0])) {
+            if (args.length != 4) {
+                System.err.println("Aufruf: java -cp app.jar:lader.jar " + ModulLader.class.getName()
+                        + " --einbetten <auswahl.yaml> <module-quellen.txt> <zielverzeichnis>");
+                System.exit(2);
+            }
+            try {
+                einbetten(Path.of(args[1]), Path.of(args[2]), Path.of(args[3]), new ModulQuelle(), huelleAusManifest());
+            } catch (Exception ex) {
+                System.err.println("[modul-lader] EINBETTEN ABGEBROCHEN: " + ex.getMessage());
+                System.exit(1);
+            }
+            return;
+        }
         String dir = System.getenv(VERZEICHNIS_ENV);
         Path verzeichnis = Path.of(dir == null || dir.isBlank() ? STANDARD_VERZEICHNIS : dir);
+        String konfig = System.getenv(ModulAuswahl.KONFIG_ENV);
+        String eingebettet = System.getenv(ModulAuswahl.EINGEBETTET_ENV);
         List<Path> jars;
         try {
-            jars = new ModulLader(verzeichnis, new ModulQuelle(), System.getenv(NOTFALL_ENV), huelleAusManifest())
+            jars = new ModulLader(verzeichnis, new ModulQuelle(), System.getenv(NOTFALL_ENV), huelleAusManifest(),
+                    Path.of(konfig == null || konfig.isBlank() ? ModulAuswahl.STANDARD_KONFIG : konfig),
+                    Path.of(eingebettet == null || eingebettet.isBlank() ? ModulAuswahl.STANDARD_EINGEBETTET : eingebettet))
                     .vorbereiten();
         } catch (Exception ex) {
             System.err.println("[modul-lader] START ABGEBROCHEN: " + ex.getMessage());
@@ -114,6 +142,22 @@ public final class ModulLader {
                     + verzeichnis.resolve(NOTFALL_DATEI) + ")");
             return List.of();
         }
+        Path auswahl = verzeichnis.resolve(ModulAuswahl.AUSWAHL);
+        boolean hatEingebettet = eingebettet != null && Files.isRegularFile(eingebettet.resolve(ModulAuswahl.EINGEBETTET_INDEX));
+        if (hatEingebettet || Files.isRegularFile(auswahl)) {
+            ModulAuswahl.Quellen q = ModulAuswahl.quellenLesen(konfigVerzeichnis.resolve(ModulAuswahl.QUELLEN));
+            if (hatEingebettet && !(q.eingebettetUeberschreibbar() && Files.isRegularFile(auswahl))) {
+                if (Files.isRegularFile(auswahl)) {
+                    log("Laufzeit-Auswahl " + auswahl + " ignoriert: eingebettete Module haben Vorrang (in "
+                            + ModulAuswahl.QUELLEN + " 'eingebettet ueberschreibbar' setzen, um das zu aendern)");
+                }
+                return eingebettetLaden(q);
+            }
+            if (hatEingebettet) {
+                log("eingebettete Module uebersteuert: Laufzeit-Auswahl gilt ('eingebettet ueberschreibbar')");
+            }
+            return auswahlLaden(q, auswahl);
+        }
         Path konfig = verzeichnis.resolve(KONFIG);
         if (!Files.isRegularFile(konfig)) {
             log("keine " + konfig + ": Start ohne Module");
@@ -139,12 +183,134 @@ public final class ModulLader {
         return jars;
     }
 
-    private void kompatibilitaetPruefen(List<ModulKonfig.Eintrag> soll) {
+    /** Karte 1608: eingebettete Module (festes Image); jeder Fehler bricht den Start ab. */
+    private List<Path> eingebettetLaden(ModulAuswahl.Quellen q) throws IOException, InterruptedException {
+        Path index = eingebettet.resolve(ModulAuswahl.EINGEBETTET_INDEX);
+        List<ModulAuswahl.Zeile> zeilen = ModulAuswahl.indexParsen(Files.readString(index), index.toString(), index.toUri());
+        List<Path> jars = pruefenUndBereitstellen(zeilen, q, eingebettet, false);
+        log("eingebettete Module (" + eingebettet + "): " + jars.size() + " Module bereit: " + namen(zeilen));
+        return jars;
+    }
+
+    /**
+     * Karte 1608: Auswahl aus den Registries; scheitert das, gilt der letzte gute Stand ({@code stand.txt}),
+     * erneut gegen Signatur und sha256 geprueft. Ist auch der ungueltig: Start ohne Module.
+     */
+    private List<Path> auswahlLaden(ModulAuswahl.Quellen q, Path auswahl) throws IOException, InterruptedException {
+        Path cache = verzeichnis.resolve("cache");
+        Path stand = verzeichnis.resolve(ModulAuswahl.STAND);
+        try {
+            List<ModulAuswahl.Wahl> wahl = ModulAuswahl.auswahlParsen(Files.readString(auswahl), auswahl.toString());
+            huellePruefen();
+            ModulAuswahl.Angebot angebot = wahl.isEmpty() ? new ModulAuswahl.Angebot(List.of(), java.util.Map.of())
+                    : ModulAuswahl.angebot(q, quelle);
+            List<ModulAuswahl.Zeile> zeilen = ModulAuswahl.aufloesen(wahl, angebot, q.schluessel(), huelle, true);
+            Files.createDirectories(cache);
+            List<Path> jars = pruefenUndBereitstellen(zeilen, q, cache, true);
+            ModulAuswahl.atomarSchreiben(stand, ModulAuswahl.indexText(zeilen, "letzter guter Stand, geschrieben vom ModulLader"));
+            Set<String> behalten = new HashSet<>();
+            zeilen.forEach(z -> behalten.add(z.dateiname()));
+            cacheAufraeumen(cache, behalten);
+            ModulAuswahl.statusSchreiben(verzeichnis, "OK", angebot.fehler().isEmpty() ? null
+                    : "Registry-Fehler (Auswahl trotzdem aufgeloest): " + angebot.fehler(), zeilen);
+            log("Auswahl: " + jars.size() + " Module bereit: " + namen(zeilen));
+            return jars;
+        } catch (InterruptedException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            String grund = ex.getMessage();
+            log("AUSWAHL NICHT ANWENDBAR: " + grund + " - starte mit dem letzten guten Stand");
+            try {
+                java.util.Optional<String> text = ModulAuswahl.lesen(stand);
+                if (text.isEmpty()) {
+                    log("kein letzter guter Stand (" + stand + "): Start ohne Module");
+                    ModulAuswahl.statusSchreiben(verzeichnis, "OHNE-MODULE", grund, List.of());
+                    return List.of();
+                }
+                List<ModulAuswahl.Zeile> zeilen = ModulAuswahl.indexParsen(text.get(), stand.toString(), stand.toUri());
+                List<Path> jars = pruefenUndBereitstellen(zeilen, q, cache, false);
+                ModulAuswahl.statusSchreiben(verzeichnis, "LETZTER-GUTER-STAND", grund, zeilen);
+                log("letzter guter Stand: " + jars.size() + " Module bereit: " + namen(zeilen));
+                return jars;
+            } catch (InterruptedException ex2) {
+                throw ex2;
+            } catch (Exception ex2) {
+                log("letzter guter Stand ungueltig (" + ex2.getMessage() + "): Start ohne Module");
+                ModulAuswahl.statusSchreiben(verzeichnis, "OHNE-MODULE",
+                        grund + "; letzter guter Stand ungueltig: " + ex2.getMessage(), List.of());
+                return List.of();
+            }
+        }
+    }
+
+    /** Signatur, Jar (sha256), Kompatibilitaet und Inhaltspruefung; erst danach ist ein Jar ladbar. */
+    private List<Path> pruefenUndBereitstellen(List<ModulAuswahl.Zeile> zeilen, ModulAuswahl.Quellen q, Path ort,
+                                               boolean herunterladen) throws IOException, InterruptedException {
+        huellePruefen();
+        zeilen.forEach(z -> ModulAuswahl.signaturPruefen(z, q.schluessel()));
+        List<ModulAuswahl.Zeile> module = zeilen.stream().filter(z -> !z.istBibliothek()).toList();
+        List<ModulAuswahl.Zeile> alle = new ArrayList<>(module);
+        alle.addAll(ModulAuswahl.bibliotheken(module, zeilen)); // sha256 der Bibliotheken nur aus der Modul-Signatur
+        alle = ModulAuswahl.gegenHuelle(alle, huelle.archiv());
+        List<ModulKonfig.Eintrag> eintraege = ModulAuswahl.eintraege(alle);
+        kompatibilitaetPruefen(eintraege);
+        List<Path> jars = new ArrayList<>();
+        for (ModulAuswahl.Zeile z : alle) {
+            jars.add(ModulAuswahl.bereitstellen(z, ort, quelle, herunterladen));
+        }
+        ModulPruefung.pruefen(eintraege, jars, huelle.archiv());
+        return jars;
+    }
+
+    /**
+     * Karte 1608, festes Image: loest die Auswahl (nur feste Versionen) zur Bauzeit auf, laedt und prueft wie beim
+     * Start und schreibt {@code <ziel>/index.txt} (signierte Zeilen) samt Jars.
+     */
+    static List<ModulAuswahl.Zeile> einbetten(Path auswahl, Path quellen, Path ziel, ModulQuelle quelle, Huelle huelle)
+            throws IOException, InterruptedException {
+        ModulAuswahl.Quellen q = ModulAuswahl.quellenLesen(quellen);
+        if (!Files.isRegularFile(quellen)) {
+            throw new IllegalArgumentException(quellen + " fehlt");
+        }
+        ModulLader lader = new ModulLader(ziel, quelle, null, huelle, quellen.getParent(), null);
+        lader.huellePruefen();
+        List<ModulAuswahl.Wahl> wahl = ModulAuswahl.auswahlParsen(Files.readString(auswahl), auswahl.toString());
+        ModulAuswahl.Angebot angebot = ModulAuswahl.angebot(q, quelle);
+        List<ModulAuswahl.Zeile> zeilen = ModulAuswahl.aufloesen(wahl, angebot, q.schluessel(), huelle, false);
+        Files.createDirectories(ziel);
+        lader.pruefenUndBereitstellen(zeilen, q, ziel, true);
+        ModulAuswahl.atomarSchreiben(ziel.resolve(ModulAuswahl.EINGEBETTET_INDEX),
+                ModulAuswahl.indexText(zeilen, "eingebettet zur Bauzeit aus " + auswahl.getFileName()));
+        log("eingebettet nach " + ziel + ": " + namen(zeilen));
+        return zeilen;
+    }
+
+    private static String namen(List<ModulAuswahl.Zeile> zeilen) {
+        return zeilen.stream().map(z -> z.name() + ":" + z.version()).collect(Collectors.joining(", "));
+    }
+
+    private static void cacheAufraeumen(Path cache, Set<String> behalten) throws IOException {
+        try (DirectoryStream<Path> dateien = Files.newDirectoryStream(cache)) {
+            for (Path p : dateien) {
+                String n = p.getFileName().toString();
+                if (Files.isRegularFile(p) && (n.endsWith(".jar") && !behalten.contains(n) || n.endsWith(".tmp"))) {
+                    log("Cache aufraeumen (deaktiviert): " + n);
+                    Files.delete(p);
+                }
+            }
+        }
+    }
+
+    private void huellePruefen() {
         if (huelle == null || !ModulKonfig.istRootVersion(huelle.version())
                 || !ModulKonfig.istRootVersion(huelle.kompatibelAb())) {
             throw new IllegalStateException("Huellen-Version unbekannt (Manifest-Attribute " + ATTR_VERSION + "/"
                     + ATTR_KOMPATIBEL_AB + " fehlen): ohne sie werden keine Module geladen");
         }
+    }
+
+    private void kompatibilitaetPruefen(List<ModulKonfig.Eintrag> soll) {
+        huellePruefen();
         for (ModulKonfig.Eintrag e : soll) {
             if (e.bibliothek()) {
                 continue;
@@ -210,7 +376,7 @@ public final class ModulLader {
         }
     }
 
-    static Huelle huelleAusManifest() throws IOException {
+    public static Huelle huelleAusManifest() throws IOException {
         Enumeration<URL> manifeste = ClassLoader.getSystemClassLoader().getResources("META-INF/MANIFEST.MF");
         while (manifeste.hasMoreElements()) {
             URL url = manifeste.nextElement();
