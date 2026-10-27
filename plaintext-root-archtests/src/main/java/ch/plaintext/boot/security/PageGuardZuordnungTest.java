@@ -341,9 +341,19 @@ class PageGuardZuordnungTest {
 
     /** Alle {@code @MenuAnnotation}-Klassen des Klassenpfads als Menuepunkte. */
     private List<MenuItemImpl> menueEintraegeAusKlassenpfad() {
+        // Karte 1608: auch Menues mit @ConditionalOnProperty zaehlen als Regel. Ist die Bedingung aus, fehlt das
+        // Menue und STRICT sperrt die View; ist sie an, gelten die Rollen des Menues. Ohne diese Ausnahme wertete
+        // der Scanner die Bedingung gegen eine leere Umgebung aus und meldete die View als ungeregelt.
+        AnnotationTypeFilter menuFilter = new AnnotationTypeFilter(MenuAnnotation.class);
         ClassPathScanningCandidateComponentProvider scanner =
-                new ClassPathScanningCandidateComponentProvider(false);
-        scanner.addIncludeFilter(new AnnotationTypeFilter(MenuAnnotation.class));
+                new ClassPathScanningCandidateComponentProvider(false) {
+                    @Override
+                    protected boolean isCandidateComponent(org.springframework.core.type.classreading.MetadataReader leser)
+                            throws IOException {
+                        return menuFilter.match(leser, getMetadataReaderFactory());
+                    }
+                };
+        scanner.addIncludeFilter(menuFilter);
 
         List<MenuItemImpl> ergebnis = new ArrayList<>();
         scanner.findCandidateComponents(MENU_BASISPAKET).forEach(definition -> {

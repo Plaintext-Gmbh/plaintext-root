@@ -37,6 +37,9 @@ final class ModulQuelle {
     /** Obergrenze je Jar, damit eine falsche Antwort das PV nicht fuellt. */
     static final long MAX_BYTES = 300L * 1024 * 1024;
 
+    /** Karte 1608: Obergrenze fuer eine Indexdatei. */
+    static final int MAX_INDEX_BYTES = 1024 * 1024;
+
     private final URI plaintext;
     private final URI central;
     private final HttpClient client;
@@ -71,12 +74,27 @@ final class ModulQuelle {
      * (auch bei Weiterleitung) und bei Ueberschreiten von {@link #MAX_BYTES}.
      */
     String laden(ModulKonfig.Eintrag e, Path temp) throws IOException, InterruptedException {
-        URI ziel = adresse(e);
+        return laden(adresse(e), temp, "Modul '" + e.name() + "'");
+    }
+
+    /**
+     * Karte 1608: laedt {@code ziel} nach {@code temp} (gleiche Regeln: nur 200, keine Weiterleitung,
+     * {@link #MAX_BYTES}) und gibt den sha256 zurueck. Das Ziel stammt aus einer Registry; vertraut wird
+     * ihm nicht, sondern nur der signierten Zeile, gegen deren sha256 der Aufrufer prueft.
+     */
+    String laden(URI ziel, Path temp, String was) throws IOException, InterruptedException {
+        if ("file".equals(ziel.getScheme())) { // lokale Verzeichnis-Registry: gleiche Grenzen, kein Netz
+            if (Files.size(Path.of(ziel)) > MAX_BYTES) {
+                throw new IOException(was + ": groesser als " + MAX_BYTES + " Bytes");
+            }
+            Files.copy(Path.of(ziel), temp);
+            return sha256(temp);
+        }
         HttpRequest anfrage = HttpRequest.newBuilder(ziel).timeout(Duration.ofMinutes(5)).GET().build();
         HttpResponse<InputStream> antwort = client.send(anfrage, HttpResponse.BodyHandlers.ofInputStream());
         try (InputStream rein = antwort.body()) {
             if (antwort.statusCode() != 200) {
-                throw new IOException("Modul '" + e.name() + "': " + ziel + " antwortet " + antwort.statusCode()
+                throw new IOException(was + ": " + ziel + " antwortet " + antwort.statusCode()
                         + (antwort.statusCode() / 100 == 3 ? " (Weiterleitung wird nicht verfolgt)" : ""));
             }
             MessageDigest sha = sha256();
@@ -88,12 +106,34 @@ final class ModulQuelle {
                 while ((n = d.read(puffer)) > 0) {
                     gesamt += n;
                     if (gesamt > MAX_BYTES) {
-                        throw new IOException("Modul '" + e.name() + "': groesser als " + MAX_BYTES + " Bytes");
+                        throw new IOException(was + ": groesser als " + MAX_BYTES + " Bytes");
                     }
                     raus.write(puffer, 0, n);
                 }
             }
             return HexFormat.of().formatHex(sha.digest());
+        }
+    }
+
+    /** Karte 1608: eine Indexdatei (UTF-8, hoechstens {@link #MAX_INDEX_BYTES}), sonst wie {@link #laden}. */
+    String text(URI ziel) throws IOException, InterruptedException {
+        if ("file".equals(ziel.getScheme())) {
+            if (Files.size(Path.of(ziel)) > MAX_INDEX_BYTES) {
+                throw new IOException(ziel + ": Index groesser als " + MAX_INDEX_BYTES + " Bytes");
+            }
+            return Files.readString(Path.of(ziel), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        HttpRequest anfrage = HttpRequest.newBuilder(ziel).timeout(Duration.ofSeconds(30)).GET().build();
+        HttpResponse<InputStream> antwort = client.send(anfrage, HttpResponse.BodyHandlers.ofInputStream());
+        try (InputStream rein = antwort.body()) {
+            if (antwort.statusCode() != 200) {
+                throw new IOException(ziel + " antwortet " + antwort.statusCode());
+            }
+            byte[] b = rein.readNBytes(MAX_INDEX_BYTES + 1);
+            if (b.length > MAX_INDEX_BYTES) {
+                throw new IOException(ziel + ": Index groesser als " + MAX_INDEX_BYTES + " Bytes");
+            }
+            return new String(b, java.nio.charset.StandardCharsets.UTF_8);
         }
     }
 
