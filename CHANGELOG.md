@@ -12,6 +12,14 @@ exhaustive.
 
 ## [Unreleased]
 
+### Removed
+- **`PlaintextSecWrapper` and `PlaintextAuthentication` (`plaintext-root-common`) are gone** (Karte 1615). root
+  never had an implementation of `PlaintextAuthentication`, so the wrapper returned `null` from `getUser()` (the
+  fwtool adfliste NPE, Karte 1614) and `true` from `hasRole()` for every caller. **Breaking** for code that still
+  references either type; the only consumer, plaintext-fwtool, moved off it in fwtool#131. Use
+  `PlaintextSecurityHolder` (mandate, user, authentication) or an injected `PlaintextSecurity` (`ifGranted`) instead.
+  No new arch rule: the existing `root-common-api` rule already forbids non-`@StabileApi` types for other repos.
+
 ### Changed
 - **`plaintext-admin-requirements` no longer ships `AutoConfiguration.imports`** (Karte 1520). The module is not
   part of `plaintext-root-webapp`; in the shell it is loaded by the module loader, which refuses any module jar
