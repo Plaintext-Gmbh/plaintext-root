@@ -56,6 +56,12 @@ public final class ModulAuswahl {
     public static final String LATEST = "latest";
     static final String INDEX_KOPF = "plaintext-modul-index 1";
     static final String SIGNATUR_KOPF = "plaintext-modul-signatur-1";
+    /** Karte 1610: Signatur-Wert einer unsignierten Zeile (nur Entwicklungsmodus, siehe {@link #entwicklungsmodusVerweigert}). */
+    public static final String UNSIGNIERT = "UNSIGNIERT";
+    static final String UNSIGNIERT_ENV = "PLAINTEXT_MODULE_UNSIGNIERT";
+    static final String UNSIGNIERT_WERT = "entwicklung";
+    /** System-Property, die der Lader setzt, wenn er unsignierte Module geladen hat (name:version,...). */
+    public static final String UNSIGNIERT_GELADEN = "plaintext.module.unsigniert-geladen";
 
     private static final Set<String> ZEILEN_SCHLUESSEL = Set.of("root-min", "sha256", "braucht", "bibliotheken", "datei", "signatur");
     private static final Pattern BIBLIOTHEK = Pattern.compile("([a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*):([A-Za-z0-9][A-Za-z0-9_.-]*):([0-9][A-Za-z0-9_.-]*)@([0-9a-f]{64})");
@@ -376,8 +382,24 @@ public final class ModulAuswahl {
     }
 
     static void signaturPruefen(Zeile z, List<PublicKey> schluessel) {
+        signaturPruefen(z, schluessel, System.getenv(), System.getProperty("spring.profiles.active"));
+    }
+
+    static void signaturPruefen(Zeile z, List<PublicKey> schluessel, Map<String, String> env, String profilProperty) {
         if (z.istBibliothek()) {
             return; // gedeckt durch die Signatur des Moduls (sha256 in dessen Liste 'bibliotheken')
+        }
+        if (UNSIGNIERT.equals(z.signatur())) {
+            String nein = entwicklungsmodusVerweigert(z, env, profilProperty);
+            if (nein != null) {
+                throw new IllegalStateException("unsigniertes Modul " + z.name() + " " + z.version() + " aus Registry '"
+                        + z.registry() + "' abgelehnt: " + nein);
+            }
+            System.out.println("[modul-lader] !!! ENTWICKLUNGSMODUS: UNSIGNIERTES Modul " + z.name() + " " + z.version()
+                    + " aus " + z.index() + " geladen - nur lokal (./traeger), NIE auf PROD !!!");
+            String bisher = System.getProperty(UNSIGNIERT_GELADEN);
+            System.setProperty(UNSIGNIERT_GELADEN, (bisher == null ? "" : bisher + ",") + z.name() + ":" + z.version());
+            return;
         }
         if (schluessel.isEmpty()) {
             throw new IllegalStateException("kein Signatur-Schluessel konfiguriert (" + QUELLEN
@@ -387,6 +409,29 @@ public final class ModulAuswahl {
             throw new IllegalStateException("Signatur ungueltig: " + z.name() + " " + z.version() + " aus Registry '"
                     + z.registry() + "' - nicht geladen");
         }
+    }
+
+    /**
+     * Karte 1610: Eine Zeile mit {@code signatur=UNSIGNIERT} ist nur erlaubt, wenn ALLES gilt: Umgebung
+     * {@code PLAINTEXT_MODULE_UNSIGNIERT=entwicklung}, kein Profil {@code prod} (Umgebung und System-Property; die
+     * Spring-Seite prueft das Profil nach dem Start noch einmal, siehe {@link #UNSIGNIERT_GELADEN}) und die Zeile
+     * kommt aus einer {@code file:}-Registry. Sonst der Grund der Ablehnung.
+     */
+    static String entwicklungsmodusVerweigert(Zeile z, Map<String, String> env, String profilProperty) {
+        if (!UNSIGNIERT_WERT.equals(env.get(UNSIGNIERT_ENV))) {
+            return "Entwicklungsmodus aus (" + UNSIGNIERT_ENV + "=" + UNSIGNIERT_WERT + " fehlt)";
+        }
+        for (String profile : new String[] {env.get("SPRING_PROFILES_ACTIVE"), profilProperty}) {
+            for (String p : profile == null ? new String[0] : profile.split(",")) {
+                if (p.strip().equalsIgnoreCase("prod")) {
+                    return "Profil prod aktiv - unsignierte Module nie auf PROD";
+                }
+            }
+        }
+        if (z.index() == null || !"file".equals(z.index().getScheme())) {
+            return "nur aus einer file:-Registry, nicht aus " + z.index();
+        }
+        return null;
     }
 
     // ------------------------------------------------------------------------------------------ Aufloesen
