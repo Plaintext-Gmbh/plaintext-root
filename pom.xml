@@ -31,7 +31,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Build Tools -->
-        <jacoco.version>0.8.15</jacoco.version>
+        <jacoco.version>0.8.16</jacoco.version>
         <!-- JaCoCo-Gate (Zustandsbericht 29.08.2026, Massnahme 13): root haelt die Schwelle ein und
              faehrt das Gate scharf. Consumer (app, guild, iot, schuetu) erben die coverage-check-
              Ausfuehrung aus diesem Parent und schalten sie mit
