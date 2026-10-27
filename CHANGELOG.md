@@ -13,6 +13,13 @@ exhaustive.
 ## [Unreleased]
 
 ### Changed
+- **`plaintext-admin-requirements` no longer ships `AutoConfiguration.imports`** (Karte 1520). The module is not
+  part of `plaintext-root-webapp`; in the shell it is loaded by the module loader, which refuses any module jar
+  with an imports file ("Module haengen sich nicht in den Spring-Start"), so plaintext-app could not move to the
+  shell. `AnforderungenModuleConfiguration` stays (still `@AutoConfiguration`) and is picked up by the
+  `ch.plaintext` component scan of the shell and of plaintext-app; an application that does not scan
+  `ch.plaintext` enables it with `@ImportAutoConfiguration`. Same pattern as plaintext-app#1136 (drawio,
+  praesentation). No consumer other than plaintext-app declares the module.
 - **`scripts/release-vollstaendig.sh` counts again in CI and fails closed** (Karte 1603). The Woodpecker step
   `vollstaendigkeit` had never counted a file in v1 or v2: `printf | grep -q '</parent>'` under `pipefail` lost to
   SIGPIPE in the CI image (200 of 200 runs, 0 of 200 locally), the root artifactId fell back to

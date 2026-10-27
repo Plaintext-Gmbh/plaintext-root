@@ -9,13 +9,16 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
- * Makes the module usable outside of plaintext-root - the same pattern as
- * {@code CronModuleConfiguration} respectively {@code SettingsModuleConfiguration}:
- * consumers scan their own package, not {@code ch.plaintext}; this
- * AutoConfiguration explicitly registers the module's beans, entities and
- * repositories. Loaded via the imports file; excluded from the webapp's
- * component scan as an AutoConfiguration. The consumer still finds the menu
- * classes via {@code plaintext.menu.scan-package} (comma-separated list).
+ * Registers the module's beans, entities and repositories.
+ *
+ * <p>Since Karte 1520 there is no {@code AutoConfiguration.imports} entry any more: this module
+ * is not part of {@code plaintext-root-webapp} (whoever wants it declares it, as plaintext-app
+ * does) and therefore reaches the shell through the module loader, which rejects module jars
+ * that hook into the Spring start. The class is found by the {@code ch.plaintext} component
+ * scan of the shell and of plaintext-app. An application that scans its own package only
+ * enables it with {@code @ImportAutoConfiguration(AnforderungenModuleConfiguration.class)}.
+ * The consumer still finds the menu classes via {@code plaintext.menu.scan-package}
+ * (comma-separated list).
  *
  * @since 1.508.0
  */
