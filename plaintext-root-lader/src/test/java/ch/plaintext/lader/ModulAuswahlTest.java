@@ -423,4 +423,64 @@ class ModulAuswahlTest {
         assertThat(ModulAuswahl.versionVergleich("3.0.10", "3.0.9")).isPositive();
         assertThat(ModulAuswahl.versionVergleich("1.0", "1.0.0")).isZero();
     }
+
+    // ------------------------------------------------------------------ Karte 1610: Entwicklungsmodus (./traeger)
+
+    private static ModulAuswahl.Zeile unsigniert(String index) {
+        return new ModulAuswahl.Zeile("modul", "plaintext-z-a", "1.0.0", "1.770.0", "0".repeat(64), List.of(), List.of(),
+                "a.jar", ModulAuswahl.UNSIGNIERT, "lokal", java.net.URI.create(index));
+    }
+
+    private static final Map<String, String> DEV = Map.of("PLAINTEXT_MODULE_UNSIGNIERT", "entwicklung");
+
+    @Test
+    void unsigniertNurMitSchalterOhneProdAusFileRegistry() {
+        System.clearProperty(ModulAuswahl.UNSIGNIERT_GELADEN);
+        try {
+            ModulAuswahl.signaturPruefen(unsigniert("file:/tmp/reg/index.txt"), List.of(), DEV, null);
+            assertThat(System.getProperty(ModulAuswahl.UNSIGNIERT_GELADEN)).isEqualTo("plaintext-z-a:1.0.0");
+        } finally {
+            System.clearProperty(ModulAuswahl.UNSIGNIERT_GELADEN);
+        }
+    }
+
+    @Test
+    void unsigniertAbgelehntOhneSchalterMitProdOderNetzRegistry() {
+        assertThatThrownBy(() -> ModulAuswahl.signaturPruefen(unsigniert("file:/tmp/reg/index.txt"), List.of(), Map.of(), null))
+                .hasMessageContaining("Entwicklungsmodus aus");
+        assertThatThrownBy(() -> ModulAuswahl.signaturPruefen(unsigniert("file:/tmp/reg/index.txt"), List.of(),
+                Map.of("PLAINTEXT_MODULE_UNSIGNIERT", "ja"), null)).hasMessageContaining("Entwicklungsmodus aus");
+        assertThatThrownBy(() -> ModulAuswahl.signaturPruefen(unsigniert("file:/tmp/reg/index.txt"), List.of(),
+                Map.of("PLAINTEXT_MODULE_UNSIGNIERT", "entwicklung", "SPRING_PROFILES_ACTIVE", "default, PROD"), null))
+                .hasMessageContaining("Profil prod");
+        assertThatThrownBy(() -> ModulAuswahl.signaturPruefen(unsigniert("file:/tmp/reg/index.txt"), List.of(), DEV, "prod"))
+                .hasMessageContaining("Profil prod");
+        assertThatThrownBy(() -> ModulAuswahl.signaturPruefen(unsigniert("https://registry.example/index.txt"), List.of(), DEV, null))
+                .hasMessageContaining("nur aus einer file:-Registry");
+        assertThatThrownBy(() -> ModulAuswahl.signaturPruefen(unsigniert("http://127.0.0.1/index.txt"), List.of(), DEV, null))
+                .hasMessageContaining("nur aus einer file:-Registry");
+        assertThat(System.getProperty(ModulAuswahl.UNSIGNIERT_GELADEN)).isNull();
+    }
+
+    @Test
+    void falscheSignaturBleibtImEntwicklungsmodusUngueltig() {
+        ModulAuswahl.Zeile z = unsigniert("file:/tmp/reg/index.txt");
+        ModulAuswahl.Zeile kaputt = new ModulAuswahl.Zeile(z.art(), z.name(), z.version(), z.rootMin(), z.sha256(), z.braucht(),
+                z.bibliotheken(), z.datei(), "AAAA", z.registry(), z.index());
+        assertThatThrownBy(() -> ModulAuswahl.signaturPruefen(kaputt, List.of(schluessel.getPublic()), DEV, null))
+                .hasMessageContaining("Signatur ungueltig");
+    }
+
+    @Test
+    void unsigniertesModulAusFileRegistryOhneSchalterStartetNicht() throws Exception {
+        Path reg = Files.createDirectories(huellenDir.resolve("reg"));
+        Files.write(reg.resolve("a.jar"), A1);
+        Files.writeString(reg.resolve("index.txt"), ModulAuswahl.INDEX_KOPF + "\nmodul plaintext-z-a 1.0.0 root-min=1.770.0 sha256="
+                + sha(A1) + " datei=a.jar signatur=" + ModulAuswahl.UNSIGNIERT + "\n");
+        Files.writeString(konfig.resolve(ModulAuswahl.QUELLEN), "registry lokal " + reg.resolve("index.txt").toUri() + "\n");
+        auswahl("plaintext-z-a", "1.0.0");
+
+        assertThat(starten()).isEmpty(); // Testlauf ohne PLAINTEXT_MODULE_UNSIGNIERT: abgelehnt, kein Modul
+        assertThat(status().get("grund")).contains("unsigniertes Modul plaintext-z-a 1.0.0").contains("Entwicklungsmodus aus");
+    }
 }
