@@ -7,7 +7,7 @@ import ch.plaintext.boot.menu.MenuAnnotation;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 /**
- * Karte 1608: Seite «Laufzeit-Module» (Auswahl aus signierten Registries). ADMIN sieht, ROOT schaltet.
+ * Karte 1608: Seite «Laufzeit-Module» (Auswahl aus signierten Registries). Karte 1612 (Daniel): unter Root, nur ROOT.
  * Nur mit {@code plaintext.module.auswahl=true}: Instanzen ohne Auswahl-Weg sehen die Seite nicht (ohne Menue
  * sperrt der Page-Guard sie auch).
  */
@@ -16,9 +16,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
     title = "Laufzeit-Module",
     link = "modulauswahl.html",
     order = 97,
-    parent = "Admin",
+    parent = "Root",
     icon = "pi pi-box",
-    roles = {"ADMIN", "ROOT"}
+    roles = {"ROOT"}
 )
 public class ModulAuswahlMenu {
 }

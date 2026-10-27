@@ -36,7 +36,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Karte 1608: ADMIN sieht, nur ROOT schaltet; Auswahl nur aus dem Angebot; Neustart per Exit-Code. */
+/** Karte 1608/1612: nur ROOT sieht und schaltet; Auswahl nur aus dem Angebot; Neustart per Exit-Code. */
 class ModulAuswahlServiceTest {
 
     @TempDir
@@ -101,17 +101,23 @@ class ModulAuswahlServiceTest {
     }
 
     @Test
-    void adminSiehtAlleModuleNeuesteZuerstMitSignaturstatus() throws Exception {
-        als("ADMIN");
+    void rootSiehtAlleModuleNeuesteZuerstMitSignaturstatus() throws Exception {
+        als("ROOT");
         ModulAuswahlService.Ansicht a = service.ansicht();
 
-        assertThat(a.darfSchalten()).isFalse();
+        assertThat(a.darfSchalten()).isTrue();
         assertThat(a.module()).extracting(ModulAuswahlService.Modul::name).containsExactly("plaintext-z-a", "plaintext-z-b");
         assertThat(a.module().get(0).versionen()).extracting(ModulAuswahlService.Version::version)
                 .containsExactly("1.10.0", "1.0.0");
         assertThat(a.module().get(0).versionen().get(0).signiert()).isTrue();
         assertThat(a.module().get(1).versionen().get(0).signiert()).isFalse();
         assertThat(a.registryFehler()).isEmpty();
+    }
+
+    @Test
+    void adminSiehtNichts() {
+        als("ADMIN");
+        assertThatThrownBy(service::ansicht).isInstanceOf(SecurityException.class).hasMessageContaining("nur ROOT");
     }
 
     @Test
