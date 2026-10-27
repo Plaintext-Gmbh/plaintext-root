@@ -19,16 +19,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Karte 1608: Seite {@code modulauswahl.html}. ADMIN sieht, ROOT schaltet. Schalt-Aktionen eines Nicht-ROOT
+ * Karte 1608: Seite {@code modulauswahl.html}, nur ROOT (Karte 1612). Schalt-Aktionen eines Nicht-ROOT
  * enden mit HTTP 403 (der Dienst prueft zusaetzlich selbst).
  *
- * <p>Feldinjektion mit {@code transient} wie {@code LaufzeitModuleBackingBean} (Sitzungs-Bean, Karte 1273).</p>
+ * <p>Feldinjektion mit {@code transient} wie {@code ModulesBackingBean} (Sitzungs-Bean, Karte 1273).</p>
  */
 @Slf4j
 @Scope("session")
 @Component
 @Data
-@SuppressWarnings("java:S6813") // wie LaufzeitModuleBackingBean (Karte 1273)
+@SuppressWarnings("java:S6813") // wie ModulesBackingBean (Karte 1273)
 public class ModulAuswahlBackingBean implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -70,6 +70,11 @@ public class ModulAuswahlBackingBean implements Serializable {
                 z.setAktiv(m.gewaehlt() != null);
                 z.getOptionen().add(ModulAuswahl.LATEST);
                 m.versionen().forEach(v -> z.getOptionen().add(v.version()));
+                // Karte 1612: die gespeicherte Version bleibt waehlbar, auch wenn keine Registry sie gerade anbietet
+                // (sonst zeigt die Seite die erste Option vorgewaehlt, und "Auswahl speichern" stellte still um).
+                if (m.gewaehlt() != null && !z.getOptionen().contains(m.gewaehlt())) {
+                    z.getOptionen().add(m.gewaehlt());
+                }
                 z.setVersion(m.gewaehlt() != null ? m.gewaehlt() : ModulAuswahl.LATEST);
                 z.setGeladen(m.geladen());
                 z.setHinweis(hinweis(m));

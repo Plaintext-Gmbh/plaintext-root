@@ -29,7 +29,7 @@ import java.util.Map;
  * Karte 1608: Seite «Laufzeit-Module» (Auswahl aus signierten Registries, wirksam per «Neu starten»).
  *
  * <ul>
- *   <li>Lesen: ADMIN und ROOT. Schalten (Auswahl speichern, Neu starten): <b>nur ROOT</b>, hier im Dienst geprueft.</li>
+ *   <li>Lesen und Schalten (Auswahl speichern, Neu starten): <b>nur ROOT</b> (Karte 1612), hier im Dienst geprueft.</li>
  *   <li>Schreibt nur {@code auswahl.yaml} im Modulverzeichnis (Pfad aus der Umgebung, Dateiname fest), atomar mit
  *       {@code .vorher}; was der Lader-Parser ablehnt, wird nicht geschrieben. Registries und Schluessel stehen in
  *       der Instanz-Konfig und sind hier nicht aenderbar.</li>
@@ -84,8 +84,8 @@ public class ModulAuswahlService {
     // ------------------------------------------------------------------------------------------- lesen
 
     public Ansicht ansicht() throws IOException {
-        if (!darfSchalten() && !security.ifGranted("ROLE_ADMIN")) {
-            throw new SecurityException("Laufzeit-Module: nur ADMIN und ROOT");
+        if (!darfSchalten()) {
+            throw new SecurityException("Laufzeit-Module: nur ROOT");
         }
         ModulLader.Huelle huelle = huelle();
         String quellenFehler = null;
@@ -108,7 +108,7 @@ public class ModulAuswahlService {
         } catch (RuntimeException ex) {
             auswahlFehler = ex.getMessage();
         }
-        List<String> geladen = LaufzeitModuleService.geladen();
+        List<String> geladen = geladen();
         Map<String, List<Version>> jeName = new LinkedHashMap<>();
         for (ModulAuswahl.Zeile z : angebot.zeilen()) {
             if (z.istModul()) {
@@ -234,5 +234,14 @@ public class ModulAuswahlService {
 
     private static String kurz(String s) {
         return s.length() <= 2000 ? s : s.substring(0, 1997) + "...";
+    }
+
+    /** Dateinamen der Jars, die der Lader in {@code loader.path} gelegt hat (leer: ohne Module gestartet). */
+    static List<String> geladen() {
+        String p = System.getProperty("loader.path");
+        if (p == null || p.isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(p.split(",")).map(x -> Path.of(x.strip()).getFileName().toString()).toList();
     }
 }
