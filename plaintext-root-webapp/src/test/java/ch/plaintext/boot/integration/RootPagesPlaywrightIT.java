@@ -38,11 +38,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import ch.plaintext.lader.ModulLader;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,36 +75,9 @@ class RootPagesPlaywrightIT {
     private static final String ADMIN_USER = "pw-admin";
     private static final String PASSWORT = "Playwright-2026!";
 
-    /** Karte 1515: Modulverzeichnis der Laufzeit-Module (registry.yaml, module.yaml) fuer diesen Kontext. */
-    private static final Path DIR;
-
-    static {
-        try {
-            DIR = Files.createTempDirectory("laufzeit-module-it");
-            Files.writeString(DIR.resolve("registry.yaml"), """
-                    format: 2
-                    module:
-                    - name: plaintext-z-kontakte
-                      klasse: app
-                      art: modul
-                      versionen:
-                      - {version: 2.1.0, root-min: 1.775.0, sha256: %s, api: [], pflicht: [], optional: [], bibliotheken: []}
-                    - name: plaintext-z-rechnungen
-                      klasse: app
-                      art: modul
-                      versionen:
-                      - {version: 2.1.0, root-min: 1.775.0, sha256: %s, api: [], pflicht: [plaintext-z-kontakte], optional: [], bibliotheken: []}
-                    """.formatted("a".repeat(64), "b".repeat(64)));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         EmbeddedPg.registrieren(registry, "rootpagesplaywrightit");
-        // Karte 1515: im selben Kontext statt eigener IT-Klasse (ein weiterer Kontext sprengt max_connections in CI)
-        registry.add(ModulLader.VERZEICHNIS_ENV, DIR::toString);
     }
 
     @LocalServerPort int port;
@@ -616,62 +584,16 @@ class RootPagesPlaywrightIT {
         assertFalse(page.content().contains("PropertyNotFoundException"));
     }
 
-    // ------------------------------------------------------------------ Laufzeit-Module (Karte 1515)
-
-    /** Den sichtbaren Ja-Knopf des globalen Bestaetigungsdialogs. */
-    private void ja() {
-        page.locator(".ui-confirm-dialog .ui-confirmdialog-yes:visible").click();
-    }
-
-    private void schreibenMit(String... module) {
-        Response r = page.navigate(url("/module.html"));
-        assertEquals(200, r.status(), "module.html: HTTP " + r.status());
-        page.locator("[id=\"fm:laufzeit\"] .ui-fieldset-legend").click();
-        ruhig();
-        for (String m : module) {
-            page.locator("[id=\"fm:auswahl\"] label").filter(new com.microsoft.playwright.Locator.FilterOptions()
-                    .setHasText(m)).first().click();
-        }
-        page.locator("[id=\"fm:btnLaufzeitSchreiben\"]").click();
-        ja();
-        ruhig();
-        page.waitForSelector("text=Konfig geschrieben");
-    }
+    // ------------------------------------------------------------------ module.html bleibt ROOT-only (Karte 1515)
+    // Karte 1612: die Laufzeit-Ansicht (Konfig im PV) ist abgebaut; ersetzt durch modulauswahl.html (Karte 1608).
 
     @Test
-    @DisplayName("Laufzeit-Module (Karte 1515): ROOT schreibt die Konfig im PV und macht Rollback")
-    void laufzeitModuleRootSchreibtUndMachtRollback() throws Exception {
-        Path konfig = DIR.resolve(ModulLader.KONFIG);
-        Files.deleteIfExists(konfig);
-        Files.deleteIfExists(DIR.resolve(ModulLader.KONFIG_VORHER));
-        anmelden(ROOT_USER);
-
-        schreibenMit("plaintext-z-kontakte");
-        String erster = Files.readString(konfig);
-        assertEquals(java.util.List.of("plaintext-z-kontakte:2.1.0"), ModulLader.konfigPruefen(erster));
-
-        // neu laden: die Auswahl kommt aus der Konfig (kontakte angehakt), rechnungen dazu
-        schreibenMit("plaintext-z-rechnungen");
-        assertTrue(Files.readString(konfig).contains("plaintext-z-rechnungen"), Files.readString(konfig));
-
-        page.locator("[id=\"fm:btnLaufzeitRollback\"]").click();
-        ja();
-        ruhig();
-        page.waitForSelector("text=Vorheriger Stand zurueck");
-        assertEquals(erster, Files.readString(konfig));
-    }
-
-    @Test
-    @DisplayName("Laufzeit-Module (Karte 1515): ADMIN kommt nicht an module.html")
-    void laufzeitModuleAdminKommtNichtAnDieSeite() throws Exception {
+    @DisplayName("module.html (Karte 1515): ADMIN kommt nicht an die Seite")
+    void moduleAdminKommtNichtAnDieSeite() {
         anmelden(ADMIN_USER);
-        String vorher = Files.exists(DIR.resolve(ModulLader.KONFIG)) ? Files.readString(DIR.resolve(ModulLader.KONFIG)) : null;
         Response r = page.navigate(url("/module.html"));
         page.waitForLoadState();
         boolean gesperrt = r.status() != 200 || !page.url().contains("module");
         assertTrue(gesperrt, "ADMIN sieht module.html: " + page.url());
-        assertEquals(0, page.locator("[id=\"fm:laufzeit\"]").count(), "Abschnitt sichtbar fuer ADMIN");
-        String nachher = Files.exists(DIR.resolve(ModulLader.KONFIG)) ? Files.readString(DIR.resolve(ModulLader.KONFIG)) : null;
-        assertEquals(vorher, nachher);
     }
 }

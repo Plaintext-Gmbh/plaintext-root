@@ -19,6 +19,12 @@ exhaustive.
   references either type; the only consumer, plaintext-fwtool, moved off it in fwtool#131. Use
   `PlaintextSecurityHolder` (mandate, user, authentication) or an injected `PlaintextSecurity` (`ifGranted`) instead.
   No new arch rule: the existing `root-common-api` rule already forbids non-`@StabileApi` types for other repos.
+- **The "Laufzeit-Module (Konfig im PV)" section of `module.html` is gone** (Karte 1612, from Karte 1515), with
+  `LaufzeitModuleBackingBean` and `LaufzeitModuleService`. It wrote `module/module.yaml`, which the `huelle/start.sh`
+  of app, guild, schuetu and iot rewrites from the app jar on every start, and which the loader ignores once
+  `module/auswahl.yaml` exists (demo); the audit log of all four PROD instances has no `LAUFZEIT_MODULE_*` entry.
+  Its replacement is `modulauswahl.html` (Karte 1608, behind `plaintext.module.auswahl=true`). The rest of
+  `module.html` (switching modules, interfaces, clearing data) and the loader's `module.yaml` path are unchanged.
 
 ### Changed
 - **`plaintext-admin-requirements` no longer ships `AutoConfiguration.imports`** (Karte 1520). The module is not

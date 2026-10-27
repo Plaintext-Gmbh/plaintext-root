@@ -22,13 +22,13 @@ import java.util.List;
  * Karte 1608: Seite {@code modulauswahl.html}. ADMIN sieht, ROOT schaltet. Schalt-Aktionen eines Nicht-ROOT
  * enden mit HTTP 403 (der Dienst prueft zusaetzlich selbst).
  *
- * <p>Feldinjektion mit {@code transient} wie {@code LaufzeitModuleBackingBean} (Sitzungs-Bean, Karte 1273).</p>
+ * <p>Feldinjektion mit {@code transient} wie {@code ModulesBackingBean} (Sitzungs-Bean, Karte 1273).</p>
  */
 @Slf4j
 @Scope("session")
 @Component
 @Data
-@SuppressWarnings("java:S6813") // wie LaufzeitModuleBackingBean (Karte 1273)
+@SuppressWarnings("java:S6813") // wie ModulesBackingBean (Karte 1273)
 public class ModulAuswahlBackingBean implements Serializable {
 
     private static final long serialVersionUID = 1L;

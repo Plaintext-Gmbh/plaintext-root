@@ -108,7 +108,7 @@ public class ModulAuswahlService {
         } catch (RuntimeException ex) {
             auswahlFehler = ex.getMessage();
         }
-        List<String> geladen = LaufzeitModuleService.geladen();
+        List<String> geladen = geladen();
         Map<String, List<Version>> jeName = new LinkedHashMap<>();
         for (ModulAuswahl.Zeile z : angebot.zeilen()) {
             if (z.istModul()) {
@@ -234,5 +234,14 @@ public class ModulAuswahlService {
 
     private static String kurz(String s) {
         return s.length() <= 2000 ? s : s.substring(0, 1997) + "...";
+    }
+
+    /** Dateinamen der Jars, die der Lader in {@code loader.path} gelegt hat (leer: ohne Module gestartet). */
+    static List<String> geladen() {
+        String p = System.getProperty("loader.path");
+        if (p == null || p.isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(p.split(",")).map(x -> Path.of(x.strip()).getFileName().toString()).toList();
     }
 }

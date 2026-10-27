@@ -6,7 +6,6 @@
 
     <f:metadata>
         <f:event type="preRenderView" listener="#{modulesBackingBean.load()}"/>
-        <f:event type="preRenderView" listener="#{laufzeitModuleBackingBean.load()}"/>
     </f:metadata>
 
     <ui:define name="title">Module</ui:define>
@@ -275,74 +274,6 @@
                 </f:facet>
             </p:dialog>
 
-            <!-- Karte 1515: Laufzeit-Module. Schreibt die Konfig im PV, die der ModulLader beim naechsten Start liest.
-                 Nur ROOT (im Dienst geprueft), Pfad fest, Lader-Parser vor dem Schreiben, atomar, Audit-Log. -->
-            <p:fieldset id="laufzeit" legend="Laufzeit-Module (Konfig im PV)" toggleable="true" collapsed="true"
-                        style="margin-top: 20px;">
-                <p:outputPanel id="laufzeitPanel">
-                    <h:panelGroup rendered="#{laufzeitModuleBackingBean.stand ne null}">
-                        <p style="font-size:.85em; color:var(--pt-text-color-secondary);">
-                            Verzeichnis <code>#{laufzeitModuleBackingBean.stand.verzeichnis}</code>.
-                            Wirksam erst beim naechsten Start. Daten eines Moduls loeschen geht nur, solange es geladen
-                            ist: erst oben "Daten leeren", dann hier abschalten.
-                        </p>
-                        <h:panelGroup rendered="#{laufzeitModuleBackingBean.stand.registryFehler ne null}">
-                            <p class="ui-messages-warn">Registry: #{laufzeitModuleBackingBean.stand.registryFehler}</p>
-                        </h:panelGroup>
-                        <h:panelGroup rendered="#{laufzeitModuleBackingBean.stand.konfigFehler ne null}">
-                            <p class="ui-messages-error">Aktuelle Konfig: #{laufzeitModuleBackingBean.stand.konfigFehler}</p>
-                        </h:panelGroup>
-
-                        <p:selectManyCheckbox id="auswahl" value="#{laufzeitModuleBackingBean.auswahl}" layout="responsive" columns="2">
-                            <f:selectItems value="#{laufzeitModuleBackingBean.stand.registry}" var="r"
-                                           itemValue="#{r.name}" itemLabel="#{r.name} #{r.version} (#{r.art})"/>
-                        </p:selectManyCheckbox>
-
-                        <div style="display:flex; flex-wrap:wrap; gap:.5rem; margin:.6rem 0;">
-                            <p:commandButton value="Vorschau" icon="pi pi-eye" process="@this :fm:auswahl"
-                                             action="#{laufzeitModuleBackingBean.vorschauErzeugen}"
-                                             update=":fm:laufzeitPanel :fm:messages"/>
-                            <p:commandButton id="btnLaufzeitSchreiben" value="Konfig schreiben" icon="pi pi-save"
-                                             process="@this :fm:auswahl" styleClass="ui-button-warning"
-                                             action="#{laufzeitModuleBackingBean.schreiben}"
-                                             update=":fm:laufzeitPanel :fm:messages">
-                                <p:confirm header="Konfig schreiben?" icon="pi pi-exclamation-triangle"
-                                           message="Die Konfig im PV wird ersetzt; der bisherige Stand bleibt als Rollback. Wirksam beim naechsten Start."/>
-                            </p:commandButton>
-                            <p:commandButton id="btnLaufzeitRollback" value="Rollback" icon="pi pi-undo"
-                                             process="@this" styleClass="ui-button-secondary"
-                                             disabled="#{empty laufzeitModuleBackingBean.stand.vorher}"
-                                             action="#{laufzeitModuleBackingBean.rollback}"
-                                             update=":fm:laufzeitPanel :fm:messages">
-                                <p:confirm header="Rollback?" icon="pi pi-exclamation-triangle"
-                                           message="Aktuelle Konfig und vorheriger Stand werden getauscht. Wirksam beim naechsten Start."/>
-                            </p:commandButton>
-                        </div>
-
-                        <h:panelGrid columns="2" cellpadding="4" style="font-size:.85em;">
-                            <h:outputText value="Konfig jetzt:"/>
-                            <h:outputText value="#{empty laufzeitModuleBackingBean.stand.konfig ? '-' : laufzeitModuleBackingBean.stand.konfig}"/>
-                            <h:outputText value="Vorheriger Stand:"/>
-                            <h:outputText value="#{empty laufzeitModuleBackingBean.stand.vorher ? '-' : laufzeitModuleBackingBean.stand.vorher}"/>
-                            <h:outputText value="Geladen (loader.path):"/>
-                            <h:outputText value="#{empty laufzeitModuleBackingBean.stand.geladen ? 'ohne Module gestartet' : laufzeitModuleBackingBean.stand.geladen}"/>
-                            <h:outputText value="Beim naechsten Start neu:"/>
-                            <h:outputText value="#{empty laufzeitModuleBackingBean.stand.neuBeimStart ? '-' : laufzeitModuleBackingBean.stand.neuBeimStart}"/>
-                            <h:outputText value="Beim naechsten Start weg:"/>
-                            <h:outputText value="#{empty laufzeitModuleBackingBean.stand.wegBeimStart ? '-' : laufzeitModuleBackingBean.stand.wegBeimStart}"/>
-                        </h:panelGrid>
-
-                        <h:panelGroup rendered="#{laufzeitModuleBackingBean.vorschau ne null}">
-                            <pre style="font-size:.8em; max-height:20rem; overflow:auto;">#{laufzeitModuleBackingBean.vorschau}</pre>
-                        </h:panelGroup>
-                    </h:panelGroup>
-                </p:outputPanel>
-            </p:fieldset>
-
-            <p:confirmDialog global="true" showEffect="fade" hideEffect="fade">
-                <p:commandButton value="Ja" type="button" styleClass="ui-confirmdialog-yes ui-button-danger"/>
-                <p:commandButton value="Nein" type="button" styleClass="ui-confirmdialog-no"/>
-            </p:confirmDialog>
         </h:form>
     </ui:define>
 </ui:composition>
