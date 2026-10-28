@@ -44,6 +44,11 @@ import java.util.regex.Pattern;
 public final class ModulAuswahl {
 
     public static final String AUSWAHL = "auswahl.yaml";
+    /**
+     * Karte 1618: Verzeichnis der Auswahl, wenn es nicht das Modulverzeichnis ist. Blue/green: beide Slots teilen so EINE
+     * Auswahl (was die Seite schreibt, gilt auch nach dem naechsten Slotwechsel); Cache, Stand und Status bleiben je Slot.
+     */
+    public static final String AUSWAHL_VERZEICHNIS_ENV = "PLAINTEXT_MODULE_AUSWAHL_VERZEICHNIS";
     public static final String AUSWAHL_VORHER = "auswahl.yaml.vorher";
     public static final String STAND = "stand.txt";
     public static final String STATUS = "status.txt";

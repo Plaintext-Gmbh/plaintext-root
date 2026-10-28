@@ -73,7 +73,7 @@ class ModulAuswahlServiceTest {
                 + Base64.getEncoder().encodeToString(schluessel.getPublic().getEncoded()) + "\nregistry test http://127.0.0.1:"
                 + server.getAddress().getPort() + "/index.txt\n");
         when(security.getUser()).thenReturn("root@plaintext.ch");
-        service = new ModulAuswahlService(security, audit, mock(ApplicationContext.class), module.toString(), konfig.toString()) {
+        service = new ModulAuswahlService(security, audit, mock(ApplicationContext.class), module.toString(), konfig.toString(), "") {
             @Override
             void beenden() {
                 beendet.incrementAndGet();
@@ -138,6 +138,21 @@ class ModulAuswahlServiceTest {
         verify(audit).logDestructiveAction(eq("UI"), eq("MODUL_AUSWAHL_SPEICHERN"), eq("auswahl.yaml"),
                 eq("plaintext-z-a:1.0.0"), anyString());
         assertThat(service.ansicht().module().get(0).gewaehlt()).isEqualTo("1.0.0");
+    }
+
+    @Test
+    void gemeinsameAuswahlLiegtImEigenenVerzeichnisNichtImSlot(@TempDir Path gemeinsam) throws Exception {
+        // Karte 1618: blue/green - die Seite schreibt die Auswahl beider Slots, nicht die Kopie im Slot
+        ModulAuswahlService g = new ModulAuswahlService(security, audit, mock(ApplicationContext.class), module.toString(),
+                konfig.toString(), gemeinsam.toString());
+        als("ROOT");
+        g.speichern(List.of(new ModulAuswahl.Wahl("plaintext-z-a", "latest")));
+        g.speichern(List.of());
+
+        assertThat(ModulAuswahl.auswahlParsen(Files.readString(gemeinsam.resolve(ModulAuswahl.AUSWAHL)), "t")).isEmpty();
+        assertThat(Files.readString(gemeinsam.resolve(ModulAuswahl.AUSWAHL_VORHER))).contains("plaintext-z-a");
+        assertThat(module.resolve(ModulAuswahl.AUSWAHL)).doesNotExist();
+        assertThat(g.ansicht().module()).allSatisfy(m -> assertThat(m.gewaehlt()).isNull());
     }
 
     @Test
