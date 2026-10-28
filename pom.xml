@@ -97,8 +97,21 @@
 
         <!-- Reporting -->
 
-        <!-- Apache POI -->
-        <poi.version>5.5.1</poi.version>
+        <!-- Apache POI. 6.0.0 wie guild/schuetu (Karte 1618: die Huelle liefert die Versionen der Apps,
+             der ModulLader bricht bei abweichender Version ab). Bringt xmlbeans 5.4.1 und
+             commons-collections4 4.6.0 mit. -->
+        <poi.version>6.0.0</poi.version>
+
+        <!-- Karte 1618: ohne Pin gewinnt spring-ai-model mit 4.13.1 (nearest wins), die Apps haben 4.13.2. -->
+        <antlr4.version>4.13.2</antlr4.version>
+
+        <!-- Karte 1618: die Huelle loest 2.50.0 auf, Apps ohne eigenen Pfad dorthin 2.41.0 (ueber guava); ein Pin fuer beide. -->
+        <error_prone_annotations.version>2.50.0</error_prone_annotations.version>
+
+        <!-- Karte 1618: ZXing fuer TOTP-QR (root-webapp). totp 1.7.1 bringt 3.4.0 und com.beust:jcommander 1.72,
+             die Apps 3.5.4 (dazu org.jcommander 1.85). Nur in root-webapp benutzt, darum nicht im
+             dependencyManagement (sonst wuerden die harten 3.5.4-Pins der Apps zu PlaintextZentralerPinTest-Befunden). -->
+        <zxing.version>3.5.4</zxing.version>
 
         <!-- Misc -->
         <commons-compress.version>1.28.0</commons-compress.version>
@@ -606,6 +619,18 @@
                 <groupId>org.apache.poi</groupId>
                 <artifactId>poi-ooxml</artifactId>
                 <version>${poi.version}</version>
+            </dependency>
+
+            <!-- Karte 1618: Huelle = App-Version -->
+            <dependency>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-runtime</artifactId>
+                <version>${antlr4.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>${error_prone_annotations.version}</version>
             </dependency>
 
             <!-- Misc -->

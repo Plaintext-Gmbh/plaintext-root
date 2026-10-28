@@ -47,6 +47,8 @@ class ModulAuswahlTest {
     @TempDir
     Path huellenDir;
 
+    private static final String GEHEIM_KOPF = "Basic " + Base64.getEncoder().encodeToString("tok:pw".getBytes(StandardCharsets.UTF_8));
+
     private ModulLader.Huelle huelle;
     private HttpServer server;
     private final Map<String, byte[]> dateien = new ConcurrentHashMap<>();
@@ -59,8 +61,17 @@ class ModulAuswahlTest {
         huelle = new ModulLader.Huelle("1.780.0", "1.767.0", TestJars.huelle(huellenDir.resolve("app.jar")));
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/", ex -> {
-            byte[] b = ex.getRequestURI().getPath().equals("/reg/index.txt")
-                    ? String.join("\n", index).getBytes(StandardCharsets.UTF_8) : dateien.get(ex.getRequestURI().getPath());
+            String pfad = ex.getRequestURI().getPath();
+            if (pfad.startsWith("/geheim/")) { // Karte 1618: wie eine Nextcloud-Freigabe, nur mit HTTP Basic
+                if (!GEHEIM_KOPF.equals(ex.getRequestHeaders().getFirst("Authorization"))) {
+                    ex.sendResponseHeaders(401, -1);
+                    ex.close();
+                    return;
+                }
+                pfad = "/reg/" + pfad.substring("/geheim/".length());
+            }
+            byte[] b = pfad.equals("/reg/index.txt")
+                    ? String.join("\n", index).getBytes(StandardCharsets.UTF_8) : dateien.get(pfad);
             if (b == null) {
                 ex.sendResponseHeaders(404, -1);
             } else {
@@ -206,6 +217,96 @@ class ModulAuswahlTest {
         assertThat(status()).containsEntry("ergebnis", "OHNE-MODULE");
         assertThat(status().get("grund")).contains("Signatur ungueltig");
         assertThat(dir.resolve("cache/plaintext-z-a-1.0.0.jar")).doesNotExist();
+    }
+
+    @Test
+    void ersterStartOhneLetztenGutenStandFaelltAufModuleYamlZurueck() throws Exception {
+        // Karte 1618: Auswahl nicht anwendbar (fremder Schluessel), noch kein stand.txt, aber module.yaml von start.sh
+        veroeffentlichen("modul", "plaintext-z-a", "1.0.0", "1.770.0", A1, "", "", fremderSchluessel);
+        auswahl("plaintext-z-a", "1.0.0");
+        Files.createDirectories(dir.resolve("cache"));
+        Files.write(dir.resolve("cache/plaintext-z-b-2.0.0.jar"), A2);
+        Files.writeString(dir.resolve(ModulLader.KONFIG), """
+                module:
+                  - name: plaintext-z-b
+                    version: 2.0.0
+                    sha256: %s
+                    root-min: "1.770.0"
+                """.formatted(sha(A2)));
+
+        assertThat(namen(starten())).containsExactly("plaintext-z-b-2.0.0.jar");
+        assertThat(status()).containsEntry("ergebnis", "RUECKFALL-MODULE-YAML");
+        assertThat(status().get("grund")).contains("Signatur ungueltig");
+        assertThat(dir.resolve(ModulAuswahl.STAND)).doesNotExist();
+    }
+
+    private void ausgerollt(String name, String version, byte[] jar) throws Exception {
+        Files.createDirectories(dir.resolve("cache"));
+        Files.write(dir.resolve("cache/" + name + "-" + version + ".jar"), jar);
+        Files.writeString(dir.resolve(ModulLader.KONFIG), """
+                module:
+                  - name: %s
+                    version: %s
+                    sha256: %s
+                    root-min: "1.770.0"
+                """.formatted(name, version, sha(jar)));
+    }
+
+    @Test
+    void latestHeisstFuerEinAusgerolltesModulDessenVersion() throws Exception {
+        // Karte 1618: Registry hat schon 1.1.0 (Release ohne Deploy), ausgerollt ist 1.0.0 -> 1.0.0
+        modul("plaintext-z-a", "1.0.0", "1.770.0", A1);
+        modul("plaintext-z-a", "1.1.0", "1.770.0", A2);
+        ausgerollt("plaintext-z-a", "1.0.0", A1);
+        auswahl("plaintext-z-a", "latest");
+
+        assertThat(namen(starten())).containsExactly("plaintext-z-a-1.0.0.jar");
+        assertThat(status()).containsEntry("ergebnis", "OK").containsEntry("geladen", "plaintext-z-a:1.0.0");
+    }
+
+    @Test
+    void standEinesFrueherenDeploysWeichtDemModuleYamlWeg() throws Exception {
+        modul("plaintext-z-a", "1.0.0", "1.770.0", A1);
+        ausgerollt("plaintext-z-a", "1.0.0", A1);
+        auswahl("plaintext-z-a", "latest");
+        assertThat(namen(starten())).containsExactly("plaintext-z-a-1.0.0.jar"); // stand.txt = 1.0.0
+
+        // Deploy von 1.1.0, die Registry hat es noch nicht (Upload laeuft noch)
+        ausgerollt("plaintext-z-a", "1.1.0", A2);
+        assertThat(namen(starten())).containsExactly("plaintext-z-a-1.1.0.jar");
+        assertThat(status()).containsEntry("ergebnis", "RUECKFALL-MODULE-YAML");
+        assertThat(status().get("grund")).contains("plaintext-z-a").contains("1.1.0");
+    }
+
+    @Test
+    void registryMitAnmeldungAusDerUmgebung() throws Exception {
+        modul("plaintext-z-a", "1.0.0", "1.770.0", A1);
+        java.net.URI geheim = java.net.URI.create(url().replace("/reg/", "/geheim/"));
+        ModulAuswahl.Quellen q = new ModulAuswahl.Quellen(ModulAuswahl.quellenLesen(konfig.resolve(ModulAuswahl.QUELLEN))
+                .schluessel(), List.of(new ModulAuswahl.Registry("g", geheim, "REG_TEST")), false);
+
+        ModulQuelle quelle = new ModulQuelle();
+        ModulAuswahl.Angebot mit = ModulAuswahl.angebot(q, quelle, Map.of("REG_TEST", "tok:pw"));
+        assertThat(mit.fehler()).isEmpty();
+        ModulAuswahl.Zeile z = mit.zeilen().getFirst();
+        Path jar = ModulAuswahl.bereitstellen(z, Files.createDirectories(dir.resolve("cache")), quelle, true);
+        assertThat(jar.getFileName()).hasToString("plaintext-z-a-1.0.0.jar"); // auch das Jar mit Anmeldung
+
+        assertThat(ModulAuswahl.angebot(q, new ModulQuelle(), Map.of()).fehler().get("g"))
+                .contains("REG_TEST fehlt");
+        String falsch = ModulAuswahl.angebot(q, new ModulQuelle(), Map.of("REG_TEST", "tok:falsch")).fehler().get("g");
+        assertThat(falsch).contains("401").doesNotContain("falsch").doesNotContain("tok");
+    }
+
+    @Test
+    void anmeldungNurMitHttpsUndGueltigemVariablennamen() throws Exception {
+        Path f = konfig.resolve("q2.txt");
+        Files.writeString(f, "registry g https://example.org/r/index.txt anmeldung-env=REG_X\n");
+        assertThat(ModulAuswahl.quellenLesen(f).registries().getFirst().anmeldungEnv()).isEqualTo("REG_X");
+        Files.writeString(f, "registry g http://example.org/r/index.txt anmeldung-env=REG_X\n");
+        assertThatThrownBy(() -> ModulAuswahl.quellenLesen(f)).hasMessageContaining("nur mit einer https");
+        Files.writeString(f, "registry g https://example.org/r/index.txt anmeldung=tok:pw\n");
+        assertThatThrownBy(() -> ModulAuswahl.quellenLesen(f)).hasMessageContaining("unbekannte Zeile");
     }
 
     @Test

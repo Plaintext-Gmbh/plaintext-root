@@ -158,6 +158,11 @@ public final class ModulLader {
             }
             return auswahlLaden(q, auswahl);
         }
+        return konfigLaden();
+    }
+
+    /** Der {@code module.yaml}-Weg (ohne Auswahl, und Karte 1618 als Rueckfall beim ersten Start). */
+    private List<Path> konfigLaden() throws IOException, InterruptedException {
         Path konfig = verzeichnis.resolve(KONFIG);
         if (!Files.isRegularFile(konfig)) {
             log("keine " + konfig + ": Start ohne Module");
@@ -199,8 +204,10 @@ public final class ModulLader {
     private List<Path> auswahlLaden(ModulAuswahl.Quellen q, Path auswahl) throws IOException, InterruptedException {
         Path cache = verzeichnis.resolve("cache");
         Path stand = verzeichnis.resolve(ModulAuswahl.STAND);
+        java.util.Map<String, String> ausgerollt = ausgerollt();
         try {
-            List<ModulAuswahl.Wahl> wahl = ModulAuswahl.auswahlParsen(Files.readString(auswahl), auswahl.toString());
+            List<ModulAuswahl.Wahl> wahl = mitAusgerollterVersion(
+                    ModulAuswahl.auswahlParsen(Files.readString(auswahl), auswahl.toString()), ausgerollt);
             huellePruefen();
             ModulAuswahl.Angebot angebot = wahl.isEmpty() ? new ModulAuswahl.Angebot(List.of(), java.util.Map.of())
                     : ModulAuswahl.angebot(q, quelle);
@@ -222,8 +229,25 @@ public final class ModulLader {
             log("AUSWAHL NICHT ANWENDBAR: " + grund + " - starte mit dem letzten guten Stand");
             try {
                 java.util.Optional<String> text = ModulAuswahl.lesen(stand);
+                if (text.isPresent() && !ausgerollt.isEmpty()) {
+                    String abweichung = abweichung(ModulAuswahl.indexParsen(text.get(), stand.toString(), stand.toUri()), ausgerollt);
+                    if (abweichung != null) {
+                        // Karte 1618: der Stand stammt aus einem frueheren Deploy dieses Slots; alte Module zum neuen
+                        // App-Jar waeren schlimmer als der module.yaml-Weg mit genau den ausgerollten Modulen.
+                        log("letzter guter Stand passt nicht zum ausgerollten App-Jar (" + abweichung + ")");
+                        text = java.util.Optional.empty();
+                    }
+                }
                 if (text.isEmpty()) {
-                    log("kein letzter guter Stand (" + stand + "): Start ohne Module");
+                    if (Files.isRegularFile(verzeichnis.resolve(KONFIG))) {
+                        // Karte 1618 (Entscheid Daniel): erster Start mit Auswahl, noch kein letzter guter Stand ->
+                        // die Module wie vor der Umstellung aus module.yaml statt einer Instanz ohne Fachseiten.
+                        log("kein letzter guter Stand (" + stand + "): Rueckfall auf " + KONFIG);
+                        List<Path> jars = konfigLaden();
+                        ModulAuswahl.statusSchreiben(verzeichnis, "RUECKFALL-MODULE-YAML", grund, List.of());
+                        return jars;
+                    }
+                    log("kein letzter guter Stand (" + stand + "), keine " + KONFIG + ": Start ohne Module");
                     ModulAuswahl.statusSchreiben(verzeichnis, "OHNE-MODULE", grund, List.of());
                     return List.of();
                 }
@@ -241,6 +265,55 @@ public final class ModulLader {
                 return List.of();
             }
         }
+    }
+
+    /**
+     * Karte 1618: Module aus {@code module.yaml} (schreibt {@code huelle/start.sh} bei jedem Start aus dem ausgerollten
+     * App-Jar) als name -&gt; Version; leer ohne Datei oder wenn sie unlesbar ist.
+     */
+    private java.util.Map<String, String> ausgerollt() {
+        Path konfig = verzeichnis.resolve(KONFIG);
+        java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
+        if (Files.isRegularFile(konfig)) {
+            try {
+                ModulKonfig.lesen(konfig).stream().filter(e -> !e.bibliothek()).forEach(e -> m.put(e.name(), e.version()));
+            } catch (Exception ex) {
+                log(konfig + " unlesbar (" + ex.getMessage() + "): Auswahl ohne ausgerollte Versionen");
+                return java.util.Map.of();
+            }
+        }
+        return m;
+    }
+
+    /**
+     * Karte 1618: {@code latest} fuer ein Modul des ausgerollten App-Jars heisst dessen Version. So bringt ein Deploy
+     * die neuen Module (wie bisher), ein Neustart des alten Slots (Rueckweg) zieht keine neueren nach, und ein Start vor
+     * dem Hochladen in die Registry nimmt keine aelteren.
+     */
+    private static List<ModulAuswahl.Wahl> mitAusgerollterVersion(List<ModulAuswahl.Wahl> wahl,
+                                                                   java.util.Map<String, String> ausgerollt) {
+        List<ModulAuswahl.Wahl> out = new ArrayList<>();
+        for (ModulAuswahl.Wahl w : wahl) {
+            String v = ausgerollt.get(w.name());
+            if (ModulAuswahl.LATEST.equals(w.version()) && v != null) {
+                log("Auswahl " + w.name() + ": latest = ausgerollte Version " + v + " (" + KONFIG + ")");
+                out.add(new ModulAuswahl.Wahl(w.name(), v));
+            } else {
+                out.add(w);
+            }
+        }
+        return out;
+    }
+
+    /** null, wenn jedes Modul des Stands, das auch ausgerollt ist, dieselbe Version hat; sonst das erste Beispiel. */
+    private static String abweichung(List<ModulAuswahl.Zeile> stand, java.util.Map<String, String> ausgerollt) {
+        for (ModulAuswahl.Zeile z : stand) {
+            String v = ausgerollt.get(z.name());
+            if (!z.istBibliothek() && v != null && !v.equals(z.version())) {
+                return z.name() + " " + z.version() + " statt " + v;
+            }
+        }
+        return null;
     }
 
     /** Signatur, Jar (sha256), Kompatibilitaet und Inhaltspruefung; erst danach ist ein Jar ladbar. */

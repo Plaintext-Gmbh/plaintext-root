@@ -126,8 +126,18 @@ public final class ModulAuswahl {
         }
     }
 
-    public record Registry(String name, URI url) {
+    /**
+     * Karte 1618: {@code anmeldungEnv} = Name einer Umgebungsvariable mit {@code benutzer:passwort} (z.B. der Token einer
+     * Nextcloud-Freigabe); dann geht HTTP Basic an diese Registry. Der Wert steht nie in der Datei, der URL oder im Log.
+     */
+    public record Registry(String name, URI url, String anmeldungEnv) {
+        public Registry(String name, URI url) {
+            this(name, url, null);
+        }
     }
+
+    static final String ANMELDUNG_PRAEFIX = "anmeldung-env=";
+    static final java.util.regex.Pattern ANMELDUNG = java.util.regex.Pattern.compile("anmeldung-env=[A-Z][A-Z0-9_]{0,63}");
 
     public record Quellen(List<PublicKey> schluessel, List<Registry> registries, boolean eingebettetUeberschreibbar) {
     }
@@ -159,8 +169,13 @@ public final class ModulAuswahl {
             String[] t = z.split("\\s+");
             if (t.length == 3 && t[0].equals("schluessel") && t[1].equals("ed25519")) {
                 schluessel.add(schluessel(t[2], datei + ":" + nr));
-            } else if (t.length == 3 && t[0].equals("registry") && ModulKonfig.NAME.matcher(t[1]).matches()) {
+            } else if ((t.length == 3 || t.length == 4 && ANMELDUNG.matcher(t[3]).matches())
+                    && t[0].equals("registry") && ModulKonfig.NAME.matcher(t[1]).matches()) {
                 URI u = URI.create(t[2]);
+                String anmeldung = t.length == 4 ? t[3].substring(ANMELDUNG_PRAEFIX.length()) : null;
+                if (anmeldung != null && !"https".equals(u.getScheme())) {
+                    throw new IllegalArgumentException(datei + ":" + nr + ": Anmeldung nur mit einer https-Adresse");
+                }
                 boolean netz = ("https".equals(u.getScheme()) || "http".equals(u.getScheme())) && u.getHost() != null;
                 if (!netz && !"file".equals(u.getScheme())) {
                     throw new IllegalArgumentException(datei + ":" + nr + ": Registry braucht eine http(s)- oder file-Adresse");
@@ -168,12 +183,12 @@ public final class ModulAuswahl {
                 if (registries.stream().anyMatch(r -> r.name().equals(t[1]))) {
                     throw new IllegalArgumentException(datei + ":" + nr + ": Registry '" + t[1] + "' doppelt");
                 }
-                registries.add(new Registry(t[1], u));
+                registries.add(new Registry(t[1], u, anmeldung));
             } else if (t.length == 2 && t[0].equals("eingebettet") && t[1].equals("ueberschreibbar")) {
                 ueberschreibbar = true;
             } else {
                 throw new IllegalArgumentException(datei + ":" + nr + ": unbekannte Zeile (erlaubt: 'schluessel ed25519 <base64>', "
-                        + "'registry <name> <url>', 'eingebettet ueberschreibbar')");
+                        + "'registry <name> <url> [anmeldung-env=<VARIABLE>]', 'eingebettet ueberschreibbar')");
             }
         }
         return new Quellen(List.copyOf(schluessel), List.copyOf(registries), ueberschreibbar);
@@ -336,10 +351,22 @@ public final class ModulAuswahl {
 
     /** Liest alle Registries; eine nicht erreichbare oder kaputte Registry steht in {@link Angebot#fehler()}. */
     static Angebot angebot(Quellen q, ModulQuelle quelle) {
+        return angebot(q, quelle, System.getenv());
+    }
+
+    static Angebot angebot(Quellen q, ModulQuelle quelle, Map<String, String> umgebung) {
         List<Zeile> zeilen = new ArrayList<>();
         Map<String, String> fehler = new LinkedHashMap<>();
         for (Registry r : q.registries()) {
             try {
+                if (r.anmeldungEnv() != null) {
+                    String wert = umgebung.get(r.anmeldungEnv());
+                    if (wert == null || !wert.contains(":")) {
+                        throw new IllegalStateException("Anmeldung: Umgebungsvariable " + r.anmeldungEnv()
+                                + " fehlt oder ohne ':' (erwartet benutzer:passwort)");
+                    }
+                    quelle.anmeldung(r.url(), wert);
+                }
                 zeilen.addAll(indexParsen(quelle.text(r.url()), r.name(), r.url()));
             } catch (Exception ex) {
                 if (ex instanceof InterruptedException) {
