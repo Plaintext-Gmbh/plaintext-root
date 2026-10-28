@@ -43,6 +43,8 @@ final class ModulQuelle {
     private final URI plaintext;
     private final URI central;
     private final HttpClient client;
+    /** Karte 1618: Verzeichnis einer Registry (normalisiert) -> Authorization-Kopf; nur fuer Ziele darunter. */
+    private final java.util.Map<String, String> anmeldungen = new java.util.concurrent.ConcurrentHashMap<>();
 
     ModulQuelle() {
         this(PLAINTEXT, CENTRAL);
@@ -56,6 +58,23 @@ final class ModulQuelle {
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
+    }
+
+    /** Karte 1618: HTTP Basic fuer alles unter dem Verzeichnis von {@code index} ({@code benutzerPasswort} = a:b). */
+    void anmeldung(URI index, String benutzerPasswort) {
+        anmeldungen.put(index.normalize().resolve(".").toString(), "Basic "
+                + java.util.Base64.getEncoder().encodeToString(benutzerPasswort.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    }
+
+    private HttpRequest.Builder anfrage(URI ziel) {
+        HttpRequest.Builder b = HttpRequest.newBuilder(ziel);
+        String z = ziel.normalize().toString();
+        anmeldungen.forEach((praefix, kopf) -> {
+            if (z.startsWith(praefix)) {
+                b.header("Authorization", kopf);
+            }
+        });
+        return b;
     }
 
     URI adresse(ModulKonfig.Eintrag e) {
@@ -90,7 +109,7 @@ final class ModulQuelle {
             Files.copy(Path.of(ziel), temp);
             return sha256(temp);
         }
-        HttpRequest anfrage = HttpRequest.newBuilder(ziel).timeout(Duration.ofMinutes(5)).GET().build();
+        HttpRequest anfrage = anfrage(ziel).timeout(Duration.ofMinutes(5)).GET().build();
         HttpResponse<InputStream> antwort = client.send(anfrage, HttpResponse.BodyHandlers.ofInputStream());
         try (InputStream rein = antwort.body()) {
             if (antwort.statusCode() != 200) {
@@ -123,7 +142,7 @@ final class ModulQuelle {
             }
             return Files.readString(Path.of(ziel), java.nio.charset.StandardCharsets.UTF_8);
         }
-        HttpRequest anfrage = HttpRequest.newBuilder(ziel).timeout(Duration.ofSeconds(30)).GET().build();
+        HttpRequest anfrage = anfrage(ziel).timeout(Duration.ofSeconds(30)).GET().build();
         HttpResponse<InputStream> antwort = client.send(anfrage, HttpResponse.BodyHandlers.ofInputStream());
         try (InputStream rein = antwort.body()) {
             if (antwort.statusCode() != 200) {

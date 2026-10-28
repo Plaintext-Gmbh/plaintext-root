@@ -348,6 +348,18 @@
              Standard-Spring-TOTP-Lib: Base32-Secret-Generierung, otpauth://-URI,
              QR-Code (PNG-Data-URI via ZXing) und zeitfenster-tolerante Code-Pruefung
              (RFC 6238). Version gepinnt. Nur aktiv, wenn plaintext.security.totp.enabled=true. -->
+        <!-- Karte 1618: ZXing direkt (Tiefe 1) vor totp, damit 3.5.4 statt totps 3.4.0 gewinnt, in der Huelle
+             wie in den Apps. javase 3.5.4 bringt org.jcommander:jcommander 1.85 statt com.beust 1.72. -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>${zxing.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>${zxing.version}</version>
+        </dependency>
         <dependency>
             <groupId>dev.samstevens.totp</groupId>
             <artifactId>totp</artifactId>
