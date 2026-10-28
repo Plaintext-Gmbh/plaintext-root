@@ -279,6 +279,26 @@ class ModulAuswahlTest {
     }
 
     @Test
+    void gemeinsameAuswahlGiltFuerBeideSlots(@TempDir Path blau, @TempDir Path gruen, @TempDir Path gemeinsam) throws Exception {
+        // Karte 1618: abwaehlen (Seite im Slot blau) -> Slotwechsel nach gruen -> bleibt abgewaehlt
+        modul("plaintext-z-a", "1.0.0", "1.770.0", A1);
+        modul("plaintext-z-b", "2.0.0", "1.770.0", API);
+        Files.writeString(gemeinsam.resolve(ModulAuswahl.AUSWAHL), ModulAuswahl.auswahlText(List.of(
+                new ModulAuswahl.Wahl("plaintext-z-a", "latest"), new ModulAuswahl.Wahl("plaintext-z-b", "latest")), "t"));
+        assertThat(namen(slot(blau, gemeinsam))).containsExactlyInAnyOrder("plaintext-z-a-1.0.0.jar", "plaintext-z-b-2.0.0.jar");
+
+        Files.writeString(gemeinsam.resolve(ModulAuswahl.AUSWAHL), ModulAuswahl.auswahlText(List.of(
+                new ModulAuswahl.Wahl("plaintext-z-a", "latest")), "t"));
+        assertThat(namen(slot(gruen, gemeinsam))).containsExactly("plaintext-z-a-1.0.0.jar");
+        assertThat(gruen.resolve(ModulAuswahl.AUSWAHL)).doesNotExist();
+        assertThat(ModulAuswahl.statusLesen(gruen)).containsEntry("geladen", "plaintext-z-a:1.0.0");
+    }
+
+    private List<Path> slot(Path slot, Path gemeinsam) throws Exception {
+        return new ModulLader(slot, new ModulQuelle(), null, huelle, konfig, slot.resolve("gibt-es-nicht"), gemeinsam).vorbereiten();
+    }
+
+    @Test
     void registryMitAnmeldungAusDerUmgebung() throws Exception {
         modul("plaintext-z-a", "1.0.0", "1.770.0", A1);
         java.net.URI geheim = java.net.URI.create(url().replace("/reg/", "/geheim/"));

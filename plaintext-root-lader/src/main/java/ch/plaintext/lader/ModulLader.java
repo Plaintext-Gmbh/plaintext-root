@@ -70,6 +70,7 @@ public final class ModulLader {
     private final Huelle huelle;
     private final Path konfigVerzeichnis;
     private final Path eingebettet;
+    private final Path auswahlVerzeichnis;
 
     ModulLader(Path verzeichnis, ModulQuelle quelle, String notfallEnv, Huelle huelle) {
         this(verzeichnis, quelle, notfallEnv, huelle, verzeichnis.resolve("kein-konfig-verzeichnis"), null);
@@ -78,6 +79,13 @@ public final class ModulLader {
     /** Karte 1608: mit Instanz-Konfig ({@code module-quellen.txt}) und Verzeichnis eingebetteter Module. */
     ModulLader(Path verzeichnis, ModulQuelle quelle, String notfallEnv, Huelle huelle, Path konfigVerzeichnis,
                Path eingebettet) {
+        this(verzeichnis, quelle, notfallEnv, huelle, konfigVerzeichnis, eingebettet, verzeichnis);
+    }
+
+    /** Karte 1618: mit eigenem Verzeichnis der Auswahl (gemeinsam fuer beide blue/green-Slots). */
+    ModulLader(Path verzeichnis, ModulQuelle quelle, String notfallEnv, Huelle huelle, Path konfigVerzeichnis,
+               Path eingebettet, Path auswahlVerzeichnis) {
+        this.auswahlVerzeichnis = auswahlVerzeichnis == null ? verzeichnis : auswahlVerzeichnis;
         this.verzeichnis = verzeichnis;
         this.quelle = quelle;
         this.notfallEnv = notfallEnv;
@@ -105,11 +113,13 @@ public final class ModulLader {
         Path verzeichnis = Path.of(dir == null || dir.isBlank() ? STANDARD_VERZEICHNIS : dir);
         String konfig = System.getenv(ModulAuswahl.KONFIG_ENV);
         String eingebettet = System.getenv(ModulAuswahl.EINGEBETTET_ENV);
+        String auswahlDir = System.getenv(ModulAuswahl.AUSWAHL_VERZEICHNIS_ENV);
         List<Path> jars;
         try {
             jars = new ModulLader(verzeichnis, new ModulQuelle(), System.getenv(NOTFALL_ENV), huelleAusManifest(),
                     Path.of(konfig == null || konfig.isBlank() ? ModulAuswahl.STANDARD_KONFIG : konfig),
-                    Path.of(eingebettet == null || eingebettet.isBlank() ? ModulAuswahl.STANDARD_EINGEBETTET : eingebettet))
+                    Path.of(eingebettet == null || eingebettet.isBlank() ? ModulAuswahl.STANDARD_EINGEBETTET : eingebettet),
+                    auswahlDir == null || auswahlDir.isBlank() ? verzeichnis : Path.of(auswahlDir))
                     .vorbereiten();
         } catch (Exception ex) {
             System.err.println("[modul-lader] START ABGEBROCHEN: " + ex.getMessage());
@@ -142,7 +152,7 @@ public final class ModulLader {
                     + verzeichnis.resolve(NOTFALL_DATEI) + ")");
             return List.of();
         }
-        Path auswahl = verzeichnis.resolve(ModulAuswahl.AUSWAHL);
+        Path auswahl = auswahlVerzeichnis.resolve(ModulAuswahl.AUSWAHL);
         boolean hatEingebettet = eingebettet != null && Files.isRegularFile(eingebettet.resolve(ModulAuswahl.EINGEBETTET_INDEX));
         if (hatEingebettet || Files.isRegularFile(auswahl)) {
             ModulAuswahl.Quellen q = ModulAuswahl.quellenLesen(konfigVerzeichnis.resolve(ModulAuswahl.QUELLEN));

@@ -64,17 +64,22 @@ public class ModulAuswahlService {
     private final ApplicationContext kontext;
     private final Path modulVerzeichnis;
     private final Path konfigVerzeichnis;
+    /** Karte 1618: hier liegt auswahl.yaml (gemeinsam fuer beide Slots); ohne Angabe das Modulverzeichnis. */
+    private final Path auswahlVerzeichnis;
 
     public ModulAuswahlService(PlaintextSecurity security, DestructiveActionAuditService audit, ApplicationContext kontext,
                                @Value("${" + ModulLader.VERZEICHNIS_ENV + ":" + ModulLader.STANDARD_VERZEICHNIS + "}")
                                String modulVerzeichnis,
                                @Value("${" + ModulAuswahl.KONFIG_ENV + ":" + ModulAuswahl.STANDARD_KONFIG + "}")
-                               String konfigVerzeichnis) {
+                               String konfigVerzeichnis,
+                               @Value("${" + ModulAuswahl.AUSWAHL_VERZEICHNIS_ENV + ":}") String auswahlVerzeichnis) {
         this.security = security;
         this.audit = audit;
         this.kontext = kontext;
         this.modulVerzeichnis = Path.of(modulVerzeichnis);
         this.konfigVerzeichnis = Path.of(konfigVerzeichnis);
+        this.auswahlVerzeichnis = auswahlVerzeichnis == null || auswahlVerzeichnis.isBlank()
+                ? this.modulVerzeichnis : Path.of(auswahlVerzeichnis);
     }
 
     public boolean darfSchalten() {
@@ -131,7 +136,7 @@ public class ModulAuswahlService {
     }
 
     List<ModulAuswahl.Wahl> auswahl() throws IOException {
-        Path p = modulVerzeichnis.resolve(ModulAuswahl.AUSWAHL);
+        Path p = auswahlVerzeichnis.resolve(ModulAuswahl.AUSWAHL);
         return Files.isRegularFile(p)
                 ? ModulAuswahl.auswahlParsen(Files.readString(p, StandardCharsets.UTF_8), p.toString()) : List.of();
     }
@@ -156,10 +161,10 @@ public class ModulAuswahlService {
         List<ModulAuswahl.Wahl> alt = nachsichtig();
         String text = ModulAuswahl.auswahlText(neu, "geschrieben von der Seite Laufzeit-Module (Karte 1608), "
                 + security.getUser());
-        Path ziel = modulVerzeichnis.resolve(ModulAuswahl.AUSWAHL);
-        Files.createDirectories(modulVerzeichnis);
+        Path ziel = auswahlVerzeichnis.resolve(ModulAuswahl.AUSWAHL);
+        Files.createDirectories(auswahlVerzeichnis);
         if (Files.isRegularFile(ziel)) {
-            atomar(modulVerzeichnis.resolve(ModulAuswahl.AUSWAHL_VORHER), Files.readString(ziel, StandardCharsets.UTF_8));
+            atomar(auswahlVerzeichnis.resolve(ModulAuswahl.AUSWAHL_VORHER), Files.readString(ziel, StandardCharsets.UTF_8));
         }
         atomar(ziel, text);
         protokoll("MODUL_AUSWAHL_SPEICHERN", text(neu), "vorher: " + text(alt));
@@ -217,7 +222,7 @@ public class ModulAuswahlService {
     }
 
     private void atomar(Path ziel, String text) throws IOException {
-        Path temp = Files.createTempFile(modulVerzeichnis, "." + ziel.getFileName() + ".", ".tmp");
+        Path temp = Files.createTempFile(ziel.getParent(), "." + ziel.getFileName() + ".", ".tmp"); // gleiches Dateisystem wie ziel (atomar)
         try {
             Files.writeString(temp, text, StandardCharsets.UTF_8);
             Files.move(temp, ziel, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
