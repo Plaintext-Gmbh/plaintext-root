@@ -74,7 +74,7 @@
 
         <!-- Common Utilities -->
         <xstream.version>1.4.21</xstream.version>
-        <joda-time.version>2.15.0</joda-time.version>
+        <joda-time.version>2.15.1</joda-time.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
         <guava.version>33.7.2-jre</guava.version>
         <commons-lang3.version>3.21.0</commons-lang3.version>
