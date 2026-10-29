@@ -106,7 +106,7 @@
         <antlr4.version>4.13.2</antlr4.version>
 
         <!-- Karte 1618: die Huelle loest 2.50.0 auf, Apps ohne eigenen Pfad dorthin 2.41.0 (ueber guava); ein Pin fuer beide. -->
-        <error_prone_annotations.version>2.50.0</error_prone_annotations.version>
+        <error_prone_annotations.version>2.51.0</error_prone_annotations.version>
 
         <!-- Karte 1618: ZXing fuer TOTP-QR (root-webapp). totp 1.7.1 bringt 3.4.0 und com.beust:jcommander 1.72,
              die Apps 3.5.4 (dazu org.jcommander 1.85). Nur in root-webapp benutzt, darum nicht im
