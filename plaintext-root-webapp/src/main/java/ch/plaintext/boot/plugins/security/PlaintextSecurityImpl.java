@@ -329,6 +329,12 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
                 allowed.add(dbHome.toLowerCase());
             }
         }
+        fuegeDatenbankMandateHinzu(allowed);
+        return allowed;
+    }
+
+    /** Additional tenants of the signed-in user from the database; errors are logged, not thrown. */
+    private void fuegeDatenbankMandateHinzu(Set<String> allowed) {
         try {
             String username = getUser();
             if (username != null && !SYSTEM_USER.equals(username)) {
@@ -341,7 +347,6 @@ public class PlaintextSecurityImpl implements PlaintextSecurity {
         } catch (Exception e) {
             log.error("Error loading zusätzliche Mandate für den Benutzer", e);
         }
-        return allowed;
     }
 
     @Override

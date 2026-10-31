@@ -103,17 +103,24 @@ public class FreigabeLinkService implements FreigabeLinks {
      */
     @Transactional
     public Link erzeuge(String typ, Long objektId, String teil, FreigabeRecht recht, Integer gueltigTage, String zweck) {
-        int tage = gueltigTage == null ? STANDARD_TAGE : gueltigTage;
-        if (tage < 0 || tage > MAX_TAGE) {
-            throw new IllegalArgumentException("gueltigTage muss zwischen 0 (unbefristet) und " + MAX_TAGE + " liegen, war " + tage);
-        }
+        int tage = gepruefteTage(gueltigTage);
         return anlegen(typ, objektId, teil, recht, tage == 0 ? null : LocalDate.now().plusDays(tage), zweck);
     }
 
     @Override
     @Transactional
     public String erzeugeAdresse(String typ, Long objektId, String teil, FreigabeRecht recht, Integer gueltigTage, String zweck) {
-        return erzeuge(typ, objektId, teil, recht, gueltigTage, zweck).url();
+        int tage = gepruefteTage(gueltigTage);
+        return anlegen(typ, objektId, teil, recht, tage == 0 ? null : LocalDate.now().plusDays(tage), zweck).url();
+    }
+
+    /** @throws IllegalArgumentException bei Gültigkeit ausserhalb 0..{@value #MAX_TAGE} */
+    private int gepruefteTage(Integer gueltigTage) {
+        int tage = gueltigTage == null ? STANDARD_TAGE : gueltigTage;
+        if (tage < 0 || tage > MAX_TAGE) {
+            throw new IllegalArgumentException("gueltigTage muss zwischen 0 (unbefristet) und " + MAX_TAGE + " liegen, war " + tage);
+        }
+        return tage;
     }
 
     @Override
@@ -130,7 +137,7 @@ public class FreigabeLinkService implements FreigabeLinks {
     @Transactional
     public int widerrufeAlle(String typ, Long objektId) {
         List<Link> alle = liste(typ, objektId);
-        alle.forEach(l -> widerrufe(l.id()));
+        alle.forEach(l -> widerrufeIntern(l.id()));
         return alle.size();
     }
 
@@ -184,6 +191,11 @@ public class FreigabeLinkService implements FreigabeLinks {
     /** @throws NoSuchElementException wenn der Link nicht im Mandat liegt oder der Benutzer sein Objekt nicht freigeben darf */
     @Transactional
     public void widerrufe(Long linkId) {
+        widerrufeIntern(linkId);
+    }
+
+    /** Loescht den Link; gemeinsame Logik fuer {@link #widerrufe} und {@link #widerrufeAlle}. */
+    private void widerrufeIntern(Long linkId) {
         FreigabeLink l = links.findByIdAndMandatAndDeletedFalse(linkId, security.getMandat())
                 .filter(FreigabeLinkService::istFreigabe).filter(this::darf)
                 .orElseThrow(() -> new NoSuchElementException("Link " + linkId + " nicht gefunden"));
