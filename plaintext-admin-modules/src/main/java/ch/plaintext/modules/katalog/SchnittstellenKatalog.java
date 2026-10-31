@@ -40,8 +40,8 @@ public class SchnittstellenKatalog {
     /** Card 1438: framework functionality of plaintext-root ({@code plaintext-root-*}, {@code plaintext-admin-*}). */
     public static final String ROOT = "root";
     /** Card 1438: functionality of an app module ({@code plaintext-z-*}, {@code plaintext-guild-*}, …). */
-    public static final String MODUL = "modul";
-    /** JSON field of a catalogue: the jar name (different meaning from {@link #MODUL}, same text). */
+    public static final String EBENE_MODUL = "modul";
+    /** JSON field of a catalogue: the jar name (different meaning from {@link #EBENE_MODUL}, same text). */
     private static final String FELD_MODUL = "modul";
     private static final ObjectMapper JSON = JsonMapper.builderWithJackson2Defaults().build();
 
@@ -68,7 +68,7 @@ public class SchnittstellenKatalog {
      */
     public record Umsetzer(String bean, String klasse, String modul, Umsetzung beschreibung) {
 
-        /** @return {@link #ROOT} or {@link #MODUL} for {@link #modul()} (card 1438) */
+        /** @return {@link #ROOT} or {@link #EBENE_MODUL} for {@link #modul()} (card 1438) */
         @JsonProperty("ebene")
         public String ebene() {
             return SchnittstellenKatalog.ebene(modul);
@@ -83,7 +83,7 @@ public class SchnittstellenKatalog {
                             String beschreibung, String seiteneffekte, List<String> hinweise,
                             List<String> beispiele, List<MethodenUmsetzung> methoden) {
 
-        /** @return {@link #ROOT} or {@link #MODUL} for {@link #modul()} (card 1438) */
+        /** @return {@link #ROOT} or {@link #EBENE_MODUL} for {@link #modul()} (card 1438) */
         @JsonProperty("ebene")
         public String ebene() {
             return SchnittstellenKatalog.ebene(modul);
@@ -110,7 +110,7 @@ public class SchnittstellenKatalog {
             return "DTO".equals(art);
         }
 
-        /** @return {@link #ROOT} for a contract of plaintext-root, {@link #MODUL} for one of an app module (card 1438) */
+        /** @return {@link #ROOT} for a contract of plaintext-root, {@link #EBENE_MODUL} for one of an app module (card 1438) */
         @JsonProperty("ebene")
         public String ebene() {
             return SchnittstellenKatalog.ebene(modul);
@@ -152,11 +152,11 @@ public class SchnittstellenKatalog {
      * {@code plaintext-root-*} or {@code plaintext-admin-*}, and no app uses these prefixes.
      *
      * @param modul jar name without version, e.g. {@code plaintext-admin-sidecars}
-     * @return {@link #ROOT} or {@link #MODUL}
+     * @return {@link #ROOT} or {@link #EBENE_MODUL}
      */
     public static String ebene(String modul) {
         String m = modul == null ? "" : modul;
-        return m.startsWith("plaintext-root-") || m.startsWith("plaintext-admin-") ? ROOT : MODUL;
+        return m.startsWith("plaintext-root-") || m.startsWith("plaintext-admin-") ? ROOT : EBENE_MODUL;
     }
 
     /**

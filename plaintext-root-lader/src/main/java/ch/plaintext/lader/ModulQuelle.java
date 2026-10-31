@@ -40,8 +40,8 @@ final class ModulQuelle {
     /** Karte 1608: Obergrenze fuer eine Indexdatei. */
     static final int MAX_INDEX_BYTES = 1024 * 1024;
 
-    private final URI plaintext;
-    private final URI central;
+    private final URI plaintextBasis;
+    private final URI centralBasis;
     private final HttpClient client;
     /** Karte 1618: Verzeichnis einer Registry (normalisiert) -> Authorization-Kopf; nur fuer Ziele darunter. */
     private final java.util.Map<String, String> anmeldungen = new java.util.concurrent.ConcurrentHashMap<>();
@@ -52,8 +52,8 @@ final class ModulQuelle {
 
     /** Nur fuer Tests: andere feste Basen (z.B. ein lokaler Server). */
     ModulQuelle(URI plaintext, URI central) {
-        this.plaintext = plaintext;
-        this.central = central;
+        this.plaintextBasis = plaintext;
+        this.centralBasis = central;
         this.client = HttpClient.newBuilder()
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .connectTimeout(Duration.ofSeconds(15))
@@ -78,7 +78,7 @@ final class ModulQuelle {
     }
 
     URI adresse(ModulKonfig.Eintrag e) {
-        URI basis = ModulKonfig.istPlaintext(e.gruppe()) ? plaintext : central;
+        URI basis = ModulKonfig.istPlaintext(e.gruppe()) ? plaintextBasis : centralBasis;
         URI ziel = basis.resolve(e.mavenPfad());
         // Zweite Sperre neben dem Muster in ModulKonfig: das Ziel muss unter der Basis liegen.
         if (!ziel.normalize().toString().startsWith(basis.toString())

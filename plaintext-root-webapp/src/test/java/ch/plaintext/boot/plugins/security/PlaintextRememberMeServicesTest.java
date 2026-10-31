@@ -76,8 +76,8 @@ class PlaintextRememberMeServicesTest {
     /** Repository with a matching token; records removals. */
     private static final class PassendesRepository implements PersistentTokenRepository {
         private final List<String> entfernt = new ArrayList<>();
-        @Override public void createNewToken(PersistentRememberMeToken token) { }
-        @Override public void updateToken(String series, String tokenValue, Date lastUsed) { }
+        @Override public void createNewToken(PersistentRememberMeToken token) { /* not needed */ }
+        @Override public void updateToken(String series, String tokenValue, Date lastUsed) { /* not needed */ }
         @Override public PersistentRememberMeToken getTokenForSeries(String seriesId) {
             return new PersistentRememberMeToken("mad", seriesId, "gleiches-token", new Date());
         }
@@ -130,8 +130,8 @@ class PlaintextRememberMeServicesTest {
     @DisplayName("NEGATIVPROBE: ein passendes Token wird weiterhin angemeldet")
     void passendes_token_wird_weiter_angemeldet() {
         PersistentTokenRepository passend = new PersistentTokenRepository() {
-            @Override public void createNewToken(PersistentRememberMeToken token) { }
-            @Override public void updateToken(String series, String tokenValue, Date lastUsed) { }
+            @Override public void createNewToken(PersistentRememberMeToken token) { /* not needed */ }
+            @Override public void updateToken(String series, String tokenValue, Date lastUsed) { /* not needed */ }
             @Override public PersistentRememberMeToken getTokenForSeries(String seriesId) {
                 return new PersistentRememberMeToken("mad", seriesId, "gleiches-token", new Date());
             }

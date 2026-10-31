@@ -259,14 +259,14 @@ public class ModulesBackingBean implements Serializable {
     public String ebeneText(String wert) {
         return switch (wert == null ? "" : wert) {
             case SchnittstellenKatalog.ROOT -> "root";
-            case SchnittstellenKatalog.MODUL -> "Modul";
+            case SchnittstellenKatalog.EBENE_MODUL -> "Modul";
             default -> "";
         };
     }
 
     /** root in the default tag colour, modules green; PrimeFaces 15 knows success/info/warning/danger only. */
     public String ebeneSchwere(String wert) {
-        return SchnittstellenKatalog.MODUL.equals(wert) ? SUCCESS : null;
+        return SchnittstellenKatalog.EBENE_MODUL.equals(wert) ? SUCCESS : null;
     }
 
     static List<SchnittstellenKatalog.Schnittstelle> filtere(List<SchnittstellenKatalog.Schnittstelle> l, String art) {
