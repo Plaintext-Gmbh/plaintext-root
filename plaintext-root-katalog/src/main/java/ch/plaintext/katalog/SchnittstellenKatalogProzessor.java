@@ -88,18 +88,11 @@ public class SchnittstellenKatalogProzessor extends AbstractProcessor {
             for (Element e : env.getRootElements()) {
                 sammle(e);
             }
-            return false;
+        } else if (modul != null && !modul.isBlank() && (alle || !gefunden.isEmpty() || !umsetzungen.isEmpty())) {
+            // Ohne Option (Karte 1422: Testkompilieren) still; Fachmodul ohne @ModulApi: keine leere Datei ins Jar.
+            schreibeKatalog(modul);
         }
-        if (modul == null || modul.isBlank()) {
-            // Karte 1422: der Parent setzt die Option nur fuer die Hauptquellen; beim Testkompilieren fehlt sie
-            // absichtlich. Still, sonst warnte jeder Testbau jedes Moduls.
-            return false;
-        }
-        if (!alle && gefunden.isEmpty() && umsetzungen.isEmpty()) {
-            return false;   // Fachmodul ohne @ModulApi: keine leere Datei ins Jar
-        }
-        schreibeKatalog(modul);
-        return false;
+        return false;   // Annotationen nie beanspruchen: andere Prozessoren sollen sie auch sehen
     }
 
     /** Schreibt {@code META-INF/plaintext-katalog/<modul>.json} mit allen gesammelten Typen. */

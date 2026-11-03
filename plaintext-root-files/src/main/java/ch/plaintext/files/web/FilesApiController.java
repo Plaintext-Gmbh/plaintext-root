@@ -39,6 +39,7 @@ import java.util.Map;
 public class FilesApiController {
 
     static final String BASIS = "/files/api";
+    private static final String FEHLER = "fehler";
     private static final DateTimeFormatter TAG = DateTimeFormatter.ISO_LOCAL_DATE.withZone(FilesService.ZONE);
     private static final DateTimeFormatter AB = DateTimeFormatter.ofPattern("dd.MM.yyyy").withZone(FilesService.ZONE);
 
@@ -92,7 +93,7 @@ public class FilesApiController {
     @PostMapping(value = {BASIS + "/ordner", BASIS + "/verschieben"}, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> nichtUnterstuetzt() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("fehler", "Ordner und Umbenennen gibt es hier nicht - neu hochladen ersetzt eine Datei"));
+                .body(Map.of(FEHLER, "Ordner und Umbenennen gibt es hier nicht - neu hochladen ersetzt eine Datei"));
     }
 
     @GetMapping(BASIS + "/datei")
@@ -123,15 +124,15 @@ public class FilesApiController {
     private ResponseEntity<Map<String, Object>> mitZugriff(Aktion aktion) {
         String benutzer = zugriff.benutzer();
         if (benutzer == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("fehler", "Kein Zugriff"));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(FEHLER, "Kein Zugriff"));
         }
         try {
             return ResponseEntity.ok(aktion.ausfuehren(benutzer));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("fehler", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of(FEHLER, e.getMessage()));
         } catch (RuntimeException e) {
             log.warn("[FilesApi] fehlgeschlagen | {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body(Map.of("fehler", String.valueOf(e.getMessage())));
+            return ResponseEntity.internalServerError().body(Map.of(FEHLER, String.valueOf(e.getMessage())));
         }
     }
 

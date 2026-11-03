@@ -227,20 +227,27 @@ public class AnthropicClaudeClient implements ClaudeClient {
         for (int i = 0; i < 10; i++) {
             String pfad = seite == null ? basis : basis + "&page=" + URLEncoder.encode(seite, StandardCharsets.UTF_8);
             JsonNode j = lies(sende(get(pfad), adminKey).body());
-            for (JsonNode bucket : j.path("data")) {
-                for (JsonNode res : bucket.path("results")) {
-                    String betrag = res.path("amount").asString(null);
-                    if (betrag != null && !betrag.isBlank()) {
-                        cent = cent.add(new BigDecimal(betrag));
-                    }
-                }
-            }
+            cent = cent.add(centDerSeite(j));
             if (!j.path("has_more").asBoolean(false)) {
                 break;
             }
             seite = j.path("next_page").asString(null);
         }
         return new Kosten(von, bis.minusDays(1), cent.movePointLeft(2));
+    }
+
+    /** Sum of all {@code amount} values (cents) of one cost-report page. */
+    private static BigDecimal centDerSeite(JsonNode seite) {
+        BigDecimal cent = BigDecimal.ZERO;
+        for (JsonNode bucket : seite.path("data")) {
+            for (JsonNode res : bucket.path("results")) {
+                String betrag = res.path("amount").asString(null);
+                if (betrag != null && !betrag.isBlank()) {
+                    cent = cent.add(new BigDecimal(betrag));
+                }
+            }
+        }
+        return cent;
     }
 
     private HttpRequest.Builder get(String pfad) {
@@ -251,15 +258,7 @@ public class AnthropicClaudeClient implements ClaudeClient {
     HttpResponse<String> sende(HttpRequest.Builder anfrage, String schluessel) {
         HttpRequest req = anfrage.header("x-api-key", schluessel).header("anthropic-version", API_VERSION).build();
         for (int versuch = 0; ; versuch++) {
-            HttpResponse<String> r;
-            try {
-                r = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            } catch (IOException e) {
-                throw new ClaudeException(Art.NETZ, "Anthropic nicht erreichbar: " + e.getClass().getSimpleName(), null, e);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new ClaudeException(Art.NETZ, "Unterbrochen", null, e);
-            }
+            HttpResponse<String> r = schicke(req);
             merkeRateLimit(r);
             int s = r.statusCode();
             if (s >= 200 && s < 300) {
@@ -267,16 +266,32 @@ public class AnthropicClaudeClient implements ClaudeClient {
             }
             Duration warte = retryAfter(r);
             if ((s == 429 || s == 529) && versuch < MAX_WIEDERHOLUNGEN) {
-                Duration d = warte != null ? warte : Duration.ofSeconds(1L << versuch);
-                try {
-                    schlaefer.schlafe(d.compareTo(MAX_WARTEZEIT) > 0 ? MAX_WARTEZEIT : d);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new ClaudeException(Art.NETZ, "Unterbrochen", warte, e);
-                }
+                warteVorWiederholung(warte, versuch);
                 continue;
             }
             throw fehler(r, warte);
+        }
+    }
+
+    private HttpResponse<String> schicke(HttpRequest req) {
+        try {
+            return http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new ClaudeException(Art.NETZ, "Anthropic nicht erreichbar: " + e.getClass().getSimpleName(), null, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ClaudeException(Art.NETZ, "Unterbrochen", null, e);
+        }
+    }
+
+    /** Waits {@code retry-after} if given, else 2^versuch seconds; capped at MAX_WARTEZEIT. */
+    private void warteVorWiederholung(Duration warte, int versuch) {
+        Duration d = warte != null ? warte : Duration.ofSeconds(1L << versuch);
+        try {
+            schlaefer.schlafe(d.compareTo(MAX_WARTEZEIT) > 0 ? MAX_WARTEZEIT : d);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ClaudeException(Art.NETZ, "Unterbrochen", warte, e);
         }
     }
 
