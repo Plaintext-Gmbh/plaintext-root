@@ -55,9 +55,13 @@ public class CronController implements Serializable {
      * Rows in {@code cron_config} whose cron name no loaded {@link SuperCron} carries (card 1521): the
      * module was switched off, the job renamed or removed. They are never scheduled, because
      * scheduling starts from the beans, not from the rows; the view only shows them.
+     * Transient: a start-up snapshot of non-serializable entities, recomputed in {@link #init()}.
      */
-    @Getter
-    private List<CronConfigEntity> verwaiste = List.of();
+    private transient List<CronConfigEntity> verwaiste = List.of();
+
+    public List<CronConfigEntity> getVerwaiste() {
+        return verwaiste == null ? List.of() : verwaiste;
+    }
 
     @EventListener(ApplicationReadyEvent.class)
     void init() {

@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,7 +55,8 @@ class ClaudeNutzungSpeicherTest {
 
     @Test
     void kaputteDatenbankBrichtDenAufruferNicht() {
-        new ClaudeNutzungSpeicher(new DriverManagerDataSource("jdbc:postgresql://127.0.0.1:1/weg"))
-                .erfasse("app", "sonnet", false, 1, 1, 0, 1);
+        ClaudeNutzungSpeicher kaputt = new ClaudeNutzungSpeicher(
+                new DriverManagerDataSource("jdbc:postgresql://127.0.0.1:1/weg"));
+        assertDoesNotThrow(() -> kaputt.erfasse("app", "sonnet", false, 1, 1, 0, 1));
     }
 }

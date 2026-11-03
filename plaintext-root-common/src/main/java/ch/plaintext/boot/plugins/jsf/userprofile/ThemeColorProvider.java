@@ -65,6 +65,10 @@ public class ThemeColorProvider implements Serializable {
         }
     }
 
+    private static final String GRUEN = "green";
+    private static final String BLAU = "blue";
+    private static final String ORANGE = "orange";
+
     /**
      * Karte 1548 (UI 2, Entscheid Daniel 15.10.2026): drei Farbvarianten statt zehn.
      *
@@ -77,7 +81,7 @@ public class ThemeColorProvider implements Serializable {
      *
      * <p>Die Reihenfolge ist die Reihenfolge im Farbwaehler.</p>
      */
-    public static final List<String> VARIANTEN = List.of("green", "blue", "orange");
+    public static final List<String> VARIANTEN = List.of(GRUEN, BLAU, ORANGE);
 
     /**
      * Rueckfall fuer die sieben gestrichenen Varianten auf die naechstliegende verbliebene — nach
@@ -89,13 +93,13 @@ public class ThemeColorProvider implements Serializable {
      * {@link UserPreferencesBackingBean} schreibt sie beim Laden zurueck.
      */
     static final Map<String, String> RUECKFALL = Map.of(
-            "turquoise", "blue",
-            "purple", "blue",
-            "avocado", "green",
-            "lime", "green",
-            "red", "orange",
-            "crimson", "orange",
-            "yellow", "orange");
+            "turquoise", BLAU,
+            "purple", BLAU,
+            "avocado", GRUEN,
+            "lime", GRUEN,
+            "red", ORANGE,
+            "crimson", ORANGE,
+            "yellow", ORANGE);
 
     /**
      * Die Variante, die fuer {@code name} tatsaechlich gilt: eine gestrichene wird auf ihre
@@ -108,17 +112,17 @@ public class ThemeColorProvider implements Serializable {
     }
 
     private static final Map<String, ColorPalette> PALETTES = Map.ofEntries(
-            Map.entry("blue", new ColorPalette(
+            Map.entry(BLAU, new ColorPalette(
                     "#2196F3", "#ffffff", "#e3f2fd",
                     "rgba(33,150,243,.16)", "rgba(33,150,243,.04)", "rgba(33,150,243,.5)",
                     "#69B7FF", "#1e3a5f",
                     "rgba(105,183,255,.16)", "rgba(105,183,255,.04)", "rgba(105,183,255,.5)")),
-            Map.entry("green", new ColorPalette(
+            Map.entry(GRUEN, new ColorPalette(
                     "#4CAF50", "#ffffff", "#e8f5e9",
                     "rgba(76,175,80,.16)", "rgba(76,175,80,.04)", "rgba(76,175,80,.5)",
                     "#81C784", "#1b3d1c",
                     "rgba(129,199,132,.16)", "rgba(129,199,132,.04)", "rgba(129,199,132,.5)")),
-            Map.entry("orange", new ColorPalette(
+            Map.entry(ORANGE, new ColorPalette(
                     "#FF9800", "#ffffff", "#fff3e0",
                     "rgba(255,152,0,.16)", "rgba(255,152,0,.04)", "rgba(255,152,0,.5)",
                     "#FFB74D", "#3e2700",
@@ -126,7 +130,7 @@ public class ThemeColorProvider implements Serializable {
     );
 
     public ColorPalette getPalette(String colorName) {
-        return PALETTES.getOrDefault(variante(colorName), PALETTES.get("blue"));
+        return PALETTES.getOrDefault(variante(colorName), PALETTES.get(BLAU));
     }
 
     /**
@@ -138,7 +142,7 @@ public class ThemeColorProvider implements Serializable {
      */
     public ColorPalette generatePaletteFromHex(String hex) {
         if (hex == null || !hex.matches("^#[0-9A-Fa-f]{6}$")) {
-            return PALETTES.get("blue");
+            return PALETTES.get(BLAU);
         }
 
         int r = Integer.parseInt(hex.substring(1, 3), 16);

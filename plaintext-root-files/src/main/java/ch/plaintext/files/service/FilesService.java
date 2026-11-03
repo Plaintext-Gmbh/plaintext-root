@@ -42,6 +42,9 @@ import java.util.regex.Pattern;
 public class FilesService {
 
     public static final String ART = "files";
+    /** Wurzel im Speicher; zufaellig gleich benannt wie {@link #ART}, aber ein Pfad, keine Link-Art. */
+    private static final String WURZEL = "files";
+    private static final String PRAEFIX = WURZEL + "/";
     public static final String PFAD = "/nosec/files/";
     public static final ZoneId ZONE = ZoneId.of("Europe/Zurich");
     public static final int MAX_TAGE = 3650;
@@ -173,7 +176,7 @@ public class FilesService {
             return null;
         }
         links.aufgerufen(ART, token);
-        return speicher.download("files/" + link.objekt());
+        return speicher.download(PRAEFIX + link.objekt());
     }
 
     /** Dateiname eines Links. */
@@ -203,11 +206,11 @@ public class FilesService {
             return 0;
         }
         int geloescht = 0;
-        for (DateiEintrag benutzer : speicher.list("files")) {
+        for (DateiEintrag benutzer : speicher.list(WURZEL)) {
             if (!benutzer.ordner()) {
                 continue;
             }
-            for (DateiEintrag e : speicher.list("files/" + benutzer.name())) {
+            for (DateiEintrag e : speicher.list(PRAEFIX + benutzer.name())) {
                 if (!e.ordner() && Instant.now().isAfter(e.geaendert().plus(frist()))) {
                     entferne(benutzer.name(), e.name());
                     geloescht++;
@@ -223,7 +226,7 @@ public class FilesService {
 
     /** Gibt es die Datei und lebt sie noch? */
     private boolean gibtEs(String ordnerName, String name) {
-        Optional<DateiEintrag> e = speicher.list("files/" + ordnerName).stream()
+        Optional<DateiEintrag> e = speicher.list(PRAEFIX + ordnerName).stream()
                 .filter(x -> !x.ordner() && x.name().equals(name)).findFirst();
         if (e.isEmpty()) {
             return false;
@@ -236,12 +239,12 @@ public class FilesService {
     }
 
     private void entferne(String ordnerName, String name) {
-        speicher.delete("files/" + ordnerName + "/" + name);
+        speicher.delete(PRAEFIX + ordnerName + "/" + name);
         links.widerrufeFuer(ART, objekt(ordnerName, name));
     }
 
     static String ordner(String benutzer) {
-        return "files/" + ordnerName(benutzer);
+        return PRAEFIX + ordnerName(benutzer);
     }
 
     static String pfad(String benutzer, String name) {
