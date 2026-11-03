@@ -76,7 +76,7 @@
         <xstream.version>1.4.21</xstream.version>
         <joda-time.version>2.15.1</joda-time.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
-        <guava.version>33.7.2-jre</guava.version>
+        <guava.version>33.8.0-jre</guava.version>
         <commons-lang3.version>3.21.0</commons-lang3.version>
         <commons-io.version>2.22.0</commons-io.version>
         <lombok.version>1.18.48</lombok.version>
