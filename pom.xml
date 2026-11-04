@@ -82,7 +82,7 @@
         <lombok.version>1.18.48</lombok.version>
 
         <!-- Web -->
-        <jsoup.version>1.23.2</jsoup.version>
+        <jsoup.version>1.24.1</jsoup.version>
 
         <!-- Misc -->
         <prettytime.version>5.0.9.Final</prettytime.version>
