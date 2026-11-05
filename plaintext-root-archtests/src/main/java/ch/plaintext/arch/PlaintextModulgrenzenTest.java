@@ -142,8 +142,10 @@ class PlaintextModulgrenzenTest {
      * smallest of the six, because the same jar runs in all of them. schuetu has a single module
      * with such classes (its webapp's main class lives in package {@code ch}), so the module
      * bound is 1 — the class bound is what catches an empty scan.
+     * Since the app modules moved to their own repositories (Karte 1601) the app reactor is the
+     * smallest: 29 classes without flow, 14 once briefing has left too.
      */
-    private static final int MINDESTENS_KLASSEN = 40;
+    private static final int MINDESTENS_KLASSEN = 10;
 
     private static final int MINDESTENS_MODULE = 1;
 
